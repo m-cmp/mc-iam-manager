@@ -80,6 +80,7 @@ func App() *buffalo.App {
 		app.GET("/saml/aws", AwsSamlSTSKey)
 		app.GET("/saml/ali", AliSamlSTSKey)
 
+		app.GET("/roles/get_update", RolesGetUpdate)
 		app.ServeFiles("/", http.FS(public.FS())) // serve files from the public directory
 	}
 
