@@ -6,10 +6,11 @@ import (
 	"net/http"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/pop/v6"
 )
 
 // WorkspaceGetWorkspace default implementation.
-func WorkspaceGetWorkspace(c buffalo.Context) error {
+func GetWorkspace(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.HTML("workspace/get_workspace.html"))
 }
 
@@ -19,6 +20,7 @@ func CreateWorkspace(c buffalo.Context) error {
 	if err != nil {
 
 	}
+	tx := c.Value("tx").(*pop.Connection)
 	resp := handler.CreateWorkspace(tx, ws)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }

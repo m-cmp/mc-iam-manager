@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/pop/v6"
 )
 
 // MappingWsUserRoleMapping default implementation.
@@ -16,6 +17,7 @@ func MappingWsUserRoleMapping(c buffalo.Context) error {
 	if err != nil {
 
 	}
+	tx := c.Value("tx").(*pop.Connection)
 	resp := handler.WsUserRoleMapping(tx, wurm)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
