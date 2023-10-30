@@ -13,6 +13,7 @@ import (
 	forcessl "github.com/gobuffalo/mw-forcessl"
 	i18n "github.com/gobuffalo/mw-i18n/v2"
 	paramlogger "github.com/gobuffalo/mw-paramlogger"
+	"github.com/gobuffalo/pop/v6"
 	"github.com/unrolled/secure"
 )
 
@@ -23,6 +24,7 @@ var ENV = envy.Get("GO_ENV", "development")
 var (
 	app *buffalo.App
 	T   *i18n.Translator
+	tx  *pop.Connection
 )
 
 // App is where all routes and middleware for buffalo
@@ -81,6 +83,9 @@ func App() *buffalo.App {
 		app.GET("/saml/ali", AliSamlSTSKey)
 
 		app.GET("/roles/get_update", RolesGetUpdate)
+		app.POST("/roles/create", CreateRole)
+		app.GET("/workspace/get_workspace", WorkspaceGetWorkspace)
+		app.GET("/mapping/ws_user_role_mapping", MappingWsUserRoleMapping)
 		app.ServeFiles("/", http.FS(public.FS())) // serve files from the public directory
 	}
 
