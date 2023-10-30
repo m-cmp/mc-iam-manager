@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"mc_iam_manager/handler"
 	"mc_iam_manager/models"
 	"net/http"
 
@@ -15,5 +16,6 @@ func MappingWsUserRoleMapping(c buffalo.Context) error {
 	if err != nil {
 
 	}
-	return c.Render(http.StatusOK, r.HTML("mapping/ws_user_role_mapping.html"))
+	resp := handler.WsUserRoleMapping(tx, wurm)
+	return c.Render(http.StatusOK, r.JSON(resp))
 }
