@@ -17,3 +17,15 @@ func WsUserRoleMapping(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapp
 		"": "",
 	}
 }
+
+func WsProjectMapping(tx *pop.Connection, bindModel *models.MCIamWsProjectMapping) map[string]interface{} {
+
+	err := tx.Create(bindModel)
+
+	if err != nil {
+
+	}
+	return map[string]interface{}{
+		"": "",
+	}
+}

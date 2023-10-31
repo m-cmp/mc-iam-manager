@@ -86,6 +86,7 @@ func App() *buffalo.App {
 		app.POST("/roles/create", CreateRole)
 		app.GET("/workspace/get_workspace", GetWorkspace)
 		app.GET("/mapping/ws_user_role_mapping", MappingWsUserRoleMapping)
+		app.GET("/project/get_project", ProjectGetProject)
 		app.ServeFiles("/", http.FS(public.FS())) // serve files from the public directory
 	}
 

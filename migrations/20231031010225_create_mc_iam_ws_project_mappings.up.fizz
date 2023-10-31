@@ -1,0 +1,6 @@
+create_table("mc_iam_ws_project_mappings") {
+	t.Column("id", "uuid", {primary: true})
+	t.Column("ws_id", "uuid", {})
+	t.Column("project_id", "uuid", {})
+	t.Timestamps()
+}

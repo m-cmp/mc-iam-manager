@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"log"
 	"mc_iam_manager/handler"
 	"mc_iam_manager/models"
 	"net/http"
@@ -18,7 +19,10 @@ func CreateWorkspace(c buffalo.Context) error {
 	ws := &models.MCIamWorkspace{}
 	err := c.Bind(ws)
 	if err != nil {
-
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]interface{}{
+			"error": err,
+		}))
 	}
 	tx := c.Value("tx").(*pop.Connection)
 	resp := handler.CreateWorkspace(tx, ws)
