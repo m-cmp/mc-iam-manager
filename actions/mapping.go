@@ -21,3 +21,15 @@ func MappingWsUserRoleMapping(c buffalo.Context) error {
 	resp := handler.WsUserRoleMapping(tx, wurm)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
+
+func UserRoleMapping(c buffalo.Context) error {
+	urm := &models.MCIamUserRoleMapping{}
+	err := c.Bind(urm)
+
+	if err != nil {
+
+	}
+	tx := c.Value("tx").(*pop.Connection)
+	resp := handler.UserRoleMapping(tx, urm)
+	return c.Render(http.StatusOK, r.JSON(resp))
+}

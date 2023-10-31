@@ -79,13 +79,14 @@ func App() *buffalo.App {
 		bf.GET("/", HomeHandler)
 		bf.GET("/authuser", AuthUserTestPageHandler)
 
-		apiPath := "/api/v1/"
-
 		app.GET("/saml/aws", AwsSamlSTSKey)
 		app.GET("/saml/ali", AliSamlSTSKey)
 
+		apiPath := "/api/v1/"
+
 		rolePath := app.Group(apiPath + "roles")
-		rolePath.GET("/get_update", RolesGetUpdate)
+		rolePath.GET("/", ListRole)
+		rolePath.PUT("/id/{role_id}", UpdateRole)
 		rolePath.POST("/create", CreateRole)
 
 		workspacePath := app.Group(apiPath + "workspace")
