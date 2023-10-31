@@ -94,6 +94,7 @@ func App() *buffalo.App {
 
 		mappingPath := app.Group(apiPath + "mapping")
 		mappingPath.GET("/ws_user_role_mapping", MappingWsUserRoleMapping)
+		mappingPath.POST("/", MappingWsUserRoleMapping)
 
 		projectPath := app.Group(apiPath + "project")
 		projectPath.GET("/get_project", ProjectGetProject)
