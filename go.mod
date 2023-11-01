@@ -14,12 +14,12 @@ require (
 	github.com/gobuffalo/buffalo-pop/v3 v3.0.7
 	github.com/gobuffalo/envy v1.10.2
 	github.com/gobuffalo/grift v1.5.2
-	github.com/gobuffalo/mw-csrf v1.0.2
 	github.com/gobuffalo/mw-forcessl v1.0.2
 	github.com/gobuffalo/mw-i18n/v2 v2.0.3
 	github.com/gobuffalo/mw-paramlogger v1.0.2
 	github.com/gobuffalo/pop/v6 v6.1.1
 	github.com/gobuffalo/suite/v4 v4.0.4
+	github.com/gofrs/uuid v4.3.1+incompatible
 	github.com/marshallbrekka/go-u2fhost v0.0.0-20210111072507-3ccdec8c8105
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
@@ -33,7 +33,6 @@ require (
 
 require (
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
-	github.com/gofrs/uuid v4.3.1+incompatible // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 )
@@ -65,7 +64,7 @@ require (
 	github.com/gobuffalo/plush/v4 v4.1.18 // indirect
 	github.com/gobuffalo/refresh v1.13.3 // indirect
 	github.com/gobuffalo/tags/v3 v3.1.4 // indirect
-	github.com/gobuffalo/validate/v3 v3.3.3 // indirect
+	github.com/gobuffalo/validate/v3 v3.3.3
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect

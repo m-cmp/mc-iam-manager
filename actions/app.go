@@ -80,7 +80,23 @@ func App() *buffalo.App {
 		app.GET("/saml/aws", AwsSamlSTSKey)
 		app.GET("/saml/ali", AliSamlSTSKey)
 
-		app.GET("/roles/get_update", RolesGetUpdate)
+		apiPath := "/api/v1/"
+
+		rolePath := app.Group(apiPath + "roles")
+		rolePath.GET("/", ListRole)
+		rolePath.PUT("/id/{role_id}", UpdateRole)
+		rolePath.POST("/", CreateRole)
+
+		workspacePath := app.Group(apiPath + "workspace")
+		workspacePath.GET("/get_workspace", GetWorkspace)
+
+		mappingPath := app.Group(apiPath + "mapping")
+		mappingPath.GET("/ws_user_role_mapping", MappingWsUserRoleMapping)
+		mappingPath.POST("/", MappingWsUserRoleMapping)
+
+		projectPath := app.Group(apiPath + "project")
+		projectPath.GET("/get_project", ProjectGetProject)
+
 		app.ServeFiles("/", http.FS(public.FS())) // serve files from the public directory
 	}
 

@@ -1,0 +1,6 @@
+create_table("mc_iam_user_role_mappings") {
+	t.Column("id", "uuid", {primary: true})
+	t.Column("role_id", "uuid", {})
+	t.Column("user_id", "uuid", {})
+	t.Timestamps()
+}
