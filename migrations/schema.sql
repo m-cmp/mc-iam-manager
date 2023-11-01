@@ -3636,6 +3636,14 @@ ALTER TABLE ONLY public.identity_provider_config
 
 
 --
+-- Name: mc_iam_user_role_mappings mc_iam_fkey_role_id; Type: FK CONSTRAINT; Schema: public; Owner: mcp
+--
+
+ALTER TABLE ONLY public.mc_iam_user_role_mappings
+    ADD CONSTRAINT mc_iam_fkey_role_id FOREIGN KEY (role_id) REFERENCES public.mc_iam_roles(id);
+
+
+--
 -- Name: SCHEMA public; Type: ACL; Schema: -; Owner: mcp
 --
 

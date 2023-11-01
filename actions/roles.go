@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"log"
 	"mc_iam_manager/handler"
 	"mc_iam_manager/models"
 	"net/http"
@@ -45,8 +46,15 @@ func UpdateRole(c buffalo.Context) error {
 func CreateRole(c buffalo.Context) error {
 	role_bind := &models.MCIamRole{}
 	if err := c.Bind(role_bind); err != nil {
-
+		log.Println("========= role bind error ===========")
+		log.Println(err)
+		log.Println("========= role bind error ===========")
+		return c.Render(http.StatusBadRequest, r.JSON(err))
 	}
+	log.Println("========= role bind ===========")
+	log.Println(role_bind)
+	log.Println("========= role bind ===========")
+
 	tx := c.Value("tx").(*pop.Connection)
 
 	resp := handler.CreateRole(tx, role_bind)

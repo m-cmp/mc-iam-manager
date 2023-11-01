@@ -1,0 +1,7 @@
+add_foreign_key("mc_iam_ws_project_mappings", "ws_id", {"mc_iam_workspaces": ["id"]}, {
+    "name": "mc_iam_fkey_workspace_id",    
+})
+
+add_foreign_key("mc_iam_ws_project_mappings", "project_id", {"mc_iam_projects": ["id"]}, {
+    "name": "mc_iam_fkey_project_id",    
+})

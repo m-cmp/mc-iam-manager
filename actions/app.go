@@ -13,7 +13,6 @@ import (
 	forcessl "github.com/gobuffalo/mw-forcessl"
 	i18n "github.com/gobuffalo/mw-i18n/v2"
 	paramlogger "github.com/gobuffalo/mw-paramlogger"
-	"github.com/gobuffalo/pop/v6"
 	"github.com/unrolled/secure"
 )
 
@@ -24,7 +23,6 @@ var ENV = envy.Get("GO_ENV", "development")
 var (
 	app *buffalo.App
 	T   *i18n.Translator
-	tx  *pop.Connection
 )
 
 // App is where all routes and middleware for buffalo
@@ -87,7 +85,7 @@ func App() *buffalo.App {
 		rolePath := app.Group(apiPath + "roles")
 		rolePath.GET("/", ListRole)
 		rolePath.PUT("/id/{role_id}", UpdateRole)
-		rolePath.POST("/create", CreateRole)
+		rolePath.POST("/", CreateRole)
 
 		workspacePath := app.Group(apiPath + "workspace")
 		workspacePath.GET("/get_workspace", GetWorkspace)
