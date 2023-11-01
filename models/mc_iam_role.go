@@ -38,8 +38,7 @@ func (m MCIamRoles) String() string {
 // This method is not required and may be deleted.
 func (m *MCIamRole) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
-		&validators.StringIsPresent{Field: m.Name, Name: "Name"},
-		&validators.StringIsPresent{Field: m.Description, Name: "Description"},
+		&validators.StringIsPresent{Field: m.Name, Name: "name"},
 	), nil
 }
 
