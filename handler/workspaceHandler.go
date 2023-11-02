@@ -2,6 +2,7 @@ package handler
 
 import (
 	"mc_iam_manager/models"
+	"net/http"
 
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
@@ -12,10 +13,14 @@ func CreateWorkspace(tx *pop.Connection, bindModel *models.MCIamWorkspace) map[s
 	err := tx.Create(bindModel)
 
 	if err != nil {
-
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
 	}
 	return map[string]interface{}{
-		"": "",
+		"message": "success",
+		"status":  http.StatusOK,
 	}
 }
 
@@ -47,9 +52,13 @@ func DeleteWorkspace(tx *pop.Connection, wsId string) map[string]interface{} {
 
 	err := tx.Destroy(ws)
 	if err != nil {
-
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
 	}
 	return map[string]interface{}{
-		"": "",
+		"message": "success",
+		"status":  http.StatusOK,
 	}
 }

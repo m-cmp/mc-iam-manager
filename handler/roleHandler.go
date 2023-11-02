@@ -51,10 +51,14 @@ func UpdateRole(tx *pop.Connection, bindModel *models.MCIamRole) map[string]inte
 	_, err := bindModel.ValidateUpdate(tx)
 
 	if err != nil {
-
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
 	}
 	return map[string]interface{}{
-		"": "",
+		"message": "success",
+		"status":  http.StatusOK,
 	}
 }
 
@@ -65,9 +69,13 @@ func DeleteRole(tx *pop.Connection, roleId string) map[string]interface{} {
 
 	err := tx.Destroy(role)
 	if err != nil {
-
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
 	}
 	return map[string]interface{}{
-		"": "",
+		"message": "success",
+		"status":  http.StatusOK,
 	}
 }

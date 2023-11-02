@@ -2,6 +2,7 @@ package handler
 
 import (
 	"mc_iam_manager/models"
+	"net/http"
 
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
@@ -12,10 +13,14 @@ func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapp
 	err := tx.Create(bindModel)
 
 	if err != nil {
-
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
 	}
 	return map[string]interface{}{
-		"": "",
+		"message": "success",
+		"status":  http.StatusOK,
 	}
 }
 
@@ -53,10 +58,14 @@ func MappingWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMappin
 	err := tx.Create(bindModel)
 
 	if err != nil {
-
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
 	}
 	return map[string]interface{}{
-		"": "",
+		"message": "success",
+		"status":  http.StatusOK,
 	}
 }
 
@@ -76,9 +85,13 @@ func MappingUserRole(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping)
 	err := tx.Create(bindModel)
 
 	if err != nil {
-
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
 	}
 	return map[string]interface{}{
-		"": "",
+		"message": "success",
+		"status":  http.StatusOK,
 	}
 }

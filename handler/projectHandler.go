@@ -52,9 +52,13 @@ func DeleteProject(tx *pop.Connection, wsId string) map[string]interface{} {
 
 	err := tx.Destroy(ws)
 	if err != nil {
-
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
 	}
 	return map[string]interface{}{
-		"": "",
+		"message": "success",
+		"status":  http.StatusOK,
 	}
 }
