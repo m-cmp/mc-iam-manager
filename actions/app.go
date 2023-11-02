@@ -99,11 +99,11 @@ func App() *buffalo.App {
 		mappingPath.POST("/ws/user", MappingWsUser)
 		mappingPath.POST("/ws/user/role", MappingWsUserRole)
 		mappingPath.POST("/ws/project", MappingWsProject)
-		mappingPath.GET("/ws/{workspaceId}/project", MappingGetProjectByWorkspace)
+		mappingPath.GET("/ws/id/{workspaceId}/project", MappingGetProjectByWorkspace)
 
 		projectPath := app.Group(apiPath + "project")
-		projectPath.GET("/id/{projectId}", GetProjectList)
-		projectPath.GET("/", GetProject)
+		projectPath.GET("/id/{projectId}", GetProject)
+		projectPath.GET("/", GetProjectList)
 		projectPath.POST("/", CreateProject)
 		projectPath.DELETE("/id/{projectId}", DeleteProject)
 
