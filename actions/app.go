@@ -88,7 +88,9 @@ func App() *buffalo.App {
 		rolePath.POST("/", CreateRole)
 
 		workspacePath := app.Group(apiPath + "workspace")
-		workspacePath.GET("/get_workspace", GetWorkspace)
+		workspacePath.GET("/", GetWorkspaceList)
+		workspacePath.GET("/id/{workspaceId}", GetWorkspace)
+		workspacePath.DELETE("/id/{workspaceId}", GetWorkspace)
 
 		mappingPath := app.Group(apiPath + "mapping")
 		mappingPath.GET("/ws_user_role_mapping", MappingWsUserRoleMapping)

@@ -12,24 +12,37 @@ import (
 // MappingWsUserRoleMapping default implementation.
 func MappingWsUserRoleMapping(c buffalo.Context) error {
 	wurm := &models.MCIamWsUserRoleMapping{}
-	err := c.Bind(wurm)
-
-	if err != nil {
+	if err := c.Bind(wurm); err != nil {
 
 	}
 	tx := c.Value("tx").(*pop.Connection)
+
 	resp := handler.WsUserRoleMapping(tx, wurm)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
 func UserRoleMapping(c buffalo.Context) error {
 	urm := &models.MCIamUserRoleMapping{}
-	err := c.Bind(urm)
 
-	if err != nil {
+	if err := c.Bind(urm); err != nil {
 
 	}
+
 	tx := c.Value("tx").(*pop.Connection)
 	resp := handler.UserRoleMapping(tx, urm)
+
+	return c.Render(http.StatusOK, r.JSON(resp))
+}
+
+func WorkspaceProjectMapping(c buffalo.Context) error {
+	wp := &models.MCIamWsProjectMapping{}
+
+	if err := c.Bind(wp); err != nil {
+
+	}
+
+	tx := c.Value("tx").(*pop.Connection)
+	resp := handler.WsProjectMapping(tx, wp)
+
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
