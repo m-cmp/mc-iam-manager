@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"mc_iam_manager/models"
 	"net/http"
 
@@ -55,9 +56,15 @@ func GetWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapping)
 
 func MappingWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMapping) map[string]interface{} {
 
+	log.Println("======== mapping ws project bind model =====")
+	log.Println(bindModel)
+	log.Println("======== mapping ws project bind model =====")
 	err := tx.Create(bindModel)
 
 	if err != nil {
+		log.Println("======== mapping ws project =====")
+		log.Println(err)
+		log.Println("======== mapping ws project =====")
 		return map[string]interface{}{
 			"message": err,
 			"status":  http.StatusBadRequest,
