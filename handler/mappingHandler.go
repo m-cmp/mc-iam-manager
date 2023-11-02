@@ -7,7 +7,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func WsUserRoleMapping(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapping) map[string]interface{} {
+func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapping) map[string]interface{} {
 
 	err := tx.Create(bindModel)
 
@@ -48,7 +48,7 @@ func GetWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapping)
 	return respModel
 }
 
-func WsProjectMapping(tx *pop.Connection, bindModel *models.MCIamWsProjectMapping) map[string]interface{} {
+func MappingWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMapping) map[string]interface{} {
 
 	err := tx.Create(bindModel)
 
@@ -60,7 +60,18 @@ func WsProjectMapping(tx *pop.Connection, bindModel *models.MCIamWsProjectMappin
 	}
 }
 
-func UserRoleMapping(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping) map[string]interface{} {
+func MappingGetProjectByWorkspace(tx *pop.Connection, wsId string) *models.MCIamWsProjectMappings {
+	ws := &models.MCIamWsProjectMappings{}
+
+	err := tx.Eager().Where("ws_id =?", wsId).All(ws)
+	if err != nil {
+
+	}
+	return ws
+
+}
+
+func MappingUserRole(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping) map[string]interface{} {
 
 	err := tx.Create(bindModel)
 
