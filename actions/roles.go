@@ -11,17 +11,12 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-// RolesGetUpdate default implementation.
-func RolesGetUpdate(c buffalo.Context) error {
-	return c.Render(http.StatusOK, r.HTML("roles/get_update.html"))
-}
-
-func GetRoles(c buffalo.Context) error {
-	return c.Render(http.StatusOK, r.HTML("roles/get_update.html"))
-}
-
 func GetRole(c buffalo.Context) error {
-	return c.Render(http.StatusOK, r.HTML("roles/get_update.html"))
+	tx := c.Value("tx").(*pop.Connection)
+	roleId := c.Param("roleId")
+
+	resp := handler.GetRole(tx, roleId)
+	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
 func ListRole(c buffalo.Context) error {
@@ -32,16 +27,20 @@ func ListRole(c buffalo.Context) error {
 }
 
 func UpdateRole(c buffalo.Context) error {
-	roleId := c.Param("role_id")
-	role_bind := &models.MCIamRole{}
-	if err := c.Bind(role_bind); err != nil {
-
+	roleId := c.Param("roleId")
+	roleBind := &models.MCIamRole{}
+	if err := c.Bind(roleBind); err != nil {
+		log.Println("========= role bind error ===========")
+		log.Println(err)
+		log.Println("========= role bind error ===========")
+		return c.Render(http.StatusBadRequest, r.JSON(err))
 	}
-	role_bind.ID, _ = uuid.FromString(roleId)
+	roleBind.ID, _ = uuid.FromString(roleId)
 	tx := c.Value("tx").(*pop.Connection)
-	handler.UpdateRole(tx, role_bind)
 
-	return c.Render(http.StatusOK, r.HTML("roles/get_update.html"))
+	resp := handler.UpdateRole(tx, roleBind)
+
+	return c.Render(http.StatusOK, r.JSON(resp))
 }
 func CreateRole(c buffalo.Context) error {
 	role_bind := &models.MCIamRole{}
@@ -60,4 +59,12 @@ func CreateRole(c buffalo.Context) error {
 	resp := handler.CreateRole(tx, role_bind)
 
 	return c.Render(http.StatusAccepted, r.JSON(resp))
+}
+
+func DeleteRole(c buffalo.Context) error {
+	paramRoleId := c.Param("roleId")
+
+	tx := c.Value("tx").(*pop.Connection)
+	resp := handler.DeleteRole(tx, paramRoleId)
+	return c.Render(http.StatusOK, r.JSON(resp))
 }
