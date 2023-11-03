@@ -26,6 +26,7 @@ func GetProjectList(c buffalo.Context) error {
 	resp := handler.GetProjectList(tx)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
+
 func CreateProject(c buffalo.Context) error {
 	pj := &models.MCIamProject{}
 	err := c.Bind(pj)
