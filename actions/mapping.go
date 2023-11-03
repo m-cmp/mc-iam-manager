@@ -7,6 +7,7 @@ import (
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/v6"
+	"github.com/pkg/errors"
 )
 
 func MappingWsUser(c buffalo.Context) error {
@@ -65,4 +66,20 @@ func MappingGetProjectByWorkspace(c buffalo.Context) error {
 	resp := handler.MappingGetProjectByWorkspace(tx, paramWsId)
 
 	return c.Render(http.StatusOK, r.JSON(resp))
+}
+
+func MappingDeleteWsProject(c buffalo.Context) error {
+	// paramWsId := c.Param("workspaceId")
+	// paramProjectId := c.Param("projectId")
+
+	bindModel := &models.MCIamWsProjectMapping{}
+
+	if err := c.Bind(bindModel); err != nil {
+		return errors.WithStack(err)
+	}
+	tx := c.Value("tx").(*pop.Connection)
+	resp := handler.MappingDeleteWsProject(tx, bindModel)
+
+	return c.Render(http.StatusOK, r.JSON(resp))
+
 }
