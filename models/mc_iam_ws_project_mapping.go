@@ -13,7 +13,7 @@ import (
 type MCIamWsProjectMapping struct {
 	ID        uuid.UUID       `json:"id" db:"id"`
 	WsID      uuid.UUID       `json:"ws_id" db:"ws_id"`
-	Workspace *MCIamWorkspace `belongs_to:"mc_iam_workspace"`
+	Ws        *MCIamWorkspace `belongs_to:"mc_iam_workspace"`
 	ProjectID uuid.UUID       `json:"project_id" db:"project_id"`
 	Project   *MCIamProject   `belongs_to:"mc_iam_project"`
 	CreatedAt time.Time       `json:"created_at" db:"created_at"`

@@ -84,18 +84,28 @@ func App() *buffalo.App {
 
 		rolePath := app.Group(apiPath + "roles")
 		rolePath.GET("/", ListRole)
-		rolePath.PUT("/id/{role_id}", UpdateRole)
+		rolePath.GET("/id/{roleId}", GetRole)
+		rolePath.PUT("/id/{roleId}", UpdateRole)
 		rolePath.POST("/", CreateRole)
+		rolePath.DELETE("/id/{roleId}", DeleteRole)
 
 		workspacePath := app.Group(apiPath + "workspace")
-		workspacePath.GET("/get_workspace", GetWorkspace)
+		workspacePath.GET("/", GetWorkspaceList)
+		workspacePath.GET("/id/{workspaceId}", GetWorkspace)
+		workspacePath.POST("/", CreateWorkspace)
+		workspacePath.DELETE("/id/{workspaceId}", GetWorkspace)
 
 		mappingPath := app.Group(apiPath + "mapping")
-		mappingPath.GET("/ws_user_role_mapping", MappingWsUserRoleMapping)
-		mappingPath.POST("/", MappingWsUserRoleMapping)
+		mappingPath.POST("/ws/user", MappingWsUser)
+		mappingPath.POST("/ws/user/role", MappingWsUserRole)
+		mappingPath.POST("/ws/project", MappingWsProject)
+		mappingPath.GET("/ws/id/{workspaceId}/project", MappingGetProjectByWorkspace)
 
 		projectPath := app.Group(apiPath + "project")
-		projectPath.GET("/get_project", ProjectGetProject)
+		projectPath.GET("/id/{projectId}", GetProject)
+		projectPath.GET("/", GetProjectList)
+		projectPath.POST("/", CreateProject)
+		projectPath.DELETE("/id/{projectId}", DeleteProject)
 
 		app.ServeFiles("/", http.FS(public.FS())) // serve files from the public directory
 	}

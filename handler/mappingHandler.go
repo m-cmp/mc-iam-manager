@@ -2,20 +2,25 @@ package handler
 
 import (
 	"mc_iam_manager/models"
+	"net/http"
 
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
 )
 
-func WsUserRoleMapping(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapping) map[string]interface{} {
+func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapping) map[string]interface{} {
 
 	err := tx.Create(bindModel)
 
 	if err != nil {
-
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
 	}
 	return map[string]interface{}{
-		"": "",
+		"message": "success",
+		"status":  http.StatusOK,
 	}
 }
 
@@ -48,26 +53,70 @@ func GetWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapping)
 	return respModel
 }
 
-func WsProjectMapping(tx *pop.Connection, bindModel *models.MCIamWsProjectMapping) map[string]interface{} {
+func MappingWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMapping) map[string]interface{} {
+	// check dupe
+	if bindModel != nil {
+		wsPjModel := &models.MCIamWsProjectMapping{}
 
+		wsId := bindModel.WsID
+		projectId := bindModel.ProjectID
+
+		q := tx.Eager().Where("ws_id = ?", wsId).Where("project_id = ?", projectId)
+		b, err := q.Exists(wsPjModel)
+		if err != nil {
+			return map[string]interface{}{
+				"error":  "something query error",
+				"status": "301",
+			}
+		}
+
+		if b {
+			return map[string]interface{}{
+				"error":  "already Exists",
+				"status": "301",
+			}
+		}
+	}
+	LogPrintHandler("mapping ws project bind model", bindModel)
 	err := tx.Create(bindModel)
 
 	if err != nil {
+		LogPrintHandler("mapping ws project error", err)
 
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
 	}
 	return map[string]interface{}{
-		"": "",
+		"message": "success",
+		"status":  http.StatusOK,
 	}
 }
 
-func UserRoleMapping(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping) map[string]interface{} {
+func MappingGetProjectByWorkspace(tx *pop.Connection, wsId string) *models.MCIamWsProjectMappings {
+	ws := &models.MCIamWsProjectMappings{}
+
+	err := tx.Eager().Where("ws_id =?", wsId).All(ws)
+	if err != nil {
+
+	}
+	return ws
+
+}
+
+func MappingUserRole(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping) map[string]interface{} {
 
 	err := tx.Create(bindModel)
 
 	if err != nil {
-
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
 	}
 	return map[string]interface{}{
-		"": "",
+		"message": "success",
+		"status":  http.StatusOK,
 	}
 }

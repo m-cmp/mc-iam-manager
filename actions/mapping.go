@@ -9,27 +9,60 @@ import (
 	"github.com/gobuffalo/pop/v6"
 )
 
-// MappingWsUserRoleMapping default implementation.
-func MappingWsUserRoleMapping(c buffalo.Context) error {
+func MappingWsUser(c buffalo.Context) error {
 	wurm := &models.MCIamWsUserRoleMapping{}
-	err := c.Bind(wurm)
-
-	if err != nil {
+	if err := c.Bind(wurm); err != nil {
 
 	}
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.WsUserRoleMapping(tx, wurm)
+
+	resp := handler.MappingWsUserRole(tx, wurm)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
-func UserRoleMapping(c buffalo.Context) error {
-	urm := &models.MCIamUserRoleMapping{}
-	err := c.Bind(urm)
-
-	if err != nil {
+// MappingWsUserRoleMapping default implementation.
+func MappingWsUserRole(c buffalo.Context) error {
+	wurm := &models.MCIamWsUserRoleMapping{}
+	if err := c.Bind(wurm); err != nil {
 
 	}
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.UserRoleMapping(tx, urm)
+
+	resp := handler.MappingWsUserRole(tx, wurm)
+	return c.Render(http.StatusOK, r.JSON(resp))
+}
+
+func MappingUserRole(c buffalo.Context) error {
+	urm := &models.MCIamUserRoleMapping{}
+
+	if err := c.Bind(urm); err != nil {
+
+	}
+
+	tx := c.Value("tx").(*pop.Connection)
+	resp := handler.MappingUserRole(tx, urm)
+
+	return c.Render(http.StatusOK, r.JSON(resp))
+}
+
+func MappingWsProject(c buffalo.Context) error {
+	wp := &models.MCIamWsProjectMapping{}
+
+	if err := c.Bind(wp); err != nil {
+
+	}
+
+	tx := c.Value("tx").(*pop.Connection)
+	resp := handler.MappingWsProject(tx, wp)
+
+	return c.Render(http.StatusOK, r.JSON(resp))
+}
+
+func MappingGetProjectByWorkspace(c buffalo.Context) error {
+	paramWsId := c.Param("workspaceId")
+
+	tx := c.Value("tx").(*pop.Connection)
+	resp := handler.MappingGetProjectByWorkspace(tx, paramWsId)
+
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
