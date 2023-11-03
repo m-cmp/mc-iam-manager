@@ -6,10 +6,37 @@ import (
 
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
+	"github.com/pkg/errors"
 )
 
 func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapping) map[string]interface{} {
+	if bindModel != nil {
+		wsUserProjectModel := &models.MCIamWsUserRoleMapping{}
 
+		wsId := bindModel.WsID
+		roleId := bindModel.RoleID
+		userId := bindModel.UserID
+
+		q := tx.Eager().Where("ws_id = ?", wsId)
+		q = q.Where("role_id = ?", roleId)
+		q = q.Where("user_id = ?", userId)
+
+		b, err := q.Exists(wsUserProjectModel)
+		if err != nil {
+			return map[string]interface{}{
+				"error":  "something query error",
+				"status": "301",
+			}
+		}
+
+		if b {
+			return map[string]interface{}{
+				"error":  "already Exists",
+				"status": "301",
+			}
+		}
+	}
+	LogPrintHandler("mapping ws user role bind model", bindModel)
 	err := tx.Create(bindModel)
 
 	if err != nil {
@@ -61,19 +88,20 @@ func MappingWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMappin
 		wsId := bindModel.WsID
 		projectId := bindModel.ProjectID
 
-		q := tx.Eager().Where("ws_id = ?", wsId).Where("project_id = ?", projectId)
+		q := tx.Eager().Where("ws_id = ?", wsId)
+		q = q.Where("project_id = ?", projectId)
 		b, err := q.Exists(wsPjModel)
 		if err != nil {
 			return map[string]interface{}{
-				"error":  "something query error",
-				"status": "301",
+				"message": "something query error",
+				"status":  "301",
 			}
 		}
 
 		if b {
 			return map[string]interface{}{
-				"error":  "already Exists",
-				"status": "301",
+				"message": "already Exists",
+				"status":  "301",
 			}
 		}
 	}
@@ -105,8 +133,47 @@ func MappingGetProjectByWorkspace(tx *pop.Connection, wsId string) *models.MCIam
 
 }
 
-func MappingUserRole(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping) map[string]interface{} {
+func MappingDeleteWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMapping) map[string]interface{} {
+	err := tx.Destroy(bindModel)
+	if err != nil {
+		return map[string]interface{}{
+			"message": errors.WithStack(err),
+			"status":  "301",
+		}
+	}
+	return map[string]interface{}{
+		"message": "success",
+		"status":  http.StatusOK,
+	}
 
+}
+
+func MappingUserRole(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping) map[string]interface{} {
+	if bindModel != nil {
+		userRoleModel := &models.MCIamUserRoleMapping{}
+
+		roleId := bindModel.RoleID
+		userId := bindModel.UserID
+
+		q := tx.Eager().Where("role_id = ?", roleId)
+		q = q.Where("user_id = ?", userId)
+
+		b, err := q.Exists(userRoleModel)
+		if err != nil {
+			return map[string]interface{}{
+				"error":  "something query error",
+				"status": "301",
+			}
+		}
+
+		if b {
+			return map[string]interface{}{
+				"error":  "already Exists",
+				"status": "301",
+			}
+		}
+	}
+	LogPrintHandler("mapping user role bind model", bindModel)
 	err := tx.Create(bindModel)
 
 	if err != nil {
