@@ -3636,11 +3636,43 @@ ALTER TABLE ONLY public.identity_provider_config
 
 
 --
+-- Name: mc_iam_ws_project_mappings mc_iam_fkey_project_id; Type: FK CONSTRAINT; Schema: public; Owner: mcp
+--
+
+ALTER TABLE ONLY public.mc_iam_ws_project_mappings
+    ADD CONSTRAINT mc_iam_fkey_project_id FOREIGN KEY (project_id) REFERENCES public.mc_iam_projects(id);
+
+
+--
 -- Name: mc_iam_user_role_mappings mc_iam_fkey_role_id; Type: FK CONSTRAINT; Schema: public; Owner: mcp
 --
 
 ALTER TABLE ONLY public.mc_iam_user_role_mappings
     ADD CONSTRAINT mc_iam_fkey_role_id FOREIGN KEY (role_id) REFERENCES public.mc_iam_roles(id);
+
+
+--
+-- Name: mc_iam_ws_project_mappings mc_iam_fkey_workspace_id; Type: FK CONSTRAINT; Schema: public; Owner: mcp
+--
+
+ALTER TABLE ONLY public.mc_iam_ws_project_mappings
+    ADD CONSTRAINT mc_iam_fkey_workspace_id FOREIGN KEY (ws_id) REFERENCES public.mc_iam_workspaces(id);
+
+
+--
+-- Name: mc_iam_ws_user_role_mappings mc_iam_fkey_ws_id; Type: FK CONSTRAINT; Schema: public; Owner: mcp
+--
+
+ALTER TABLE ONLY public.mc_iam_ws_user_role_mappings
+    ADD CONSTRAINT mc_iam_fkey_ws_id FOREIGN KEY (ws_id) REFERENCES public.mc_iam_workspaces(id);
+
+
+--
+-- Name: mc_iam_ws_user_role_mappings mc_iam_fkey_ws_user_role_id; Type: FK CONSTRAINT; Schema: public; Owner: mcp
+--
+
+ALTER TABLE ONLY public.mc_iam_ws_user_role_mappings
+    ADD CONSTRAINT mc_iam_fkey_ws_user_role_id FOREIGN KEY (role_id) REFERENCES public.mc_iam_roles(id);
 
 
 --
