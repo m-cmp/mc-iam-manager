@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"log"
 	"mc_iam_manager/models"
 	"net/http"
 
@@ -55,16 +54,35 @@ func GetWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapping)
 }
 
 func MappingWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMapping) map[string]interface{} {
+	// check dupe
+	if bindModel != nil {
+		wsPjModel := &models.MCIamWsProjectMapping{}
 
-	log.Println("======== mapping ws project bind model =====")
-	log.Println(bindModel)
-	log.Println("======== mapping ws project bind model =====")
+		wsId := bindModel.WsID
+		projectId := bindModel.ProjectID
+
+		q := tx.Eager().Where("ws_id = ?", wsId).Where("project_id = ?", projectId)
+		b, err := q.Exists(wsPjModel)
+		if err != nil {
+			return map[string]interface{}{
+				"error":  "something query error",
+				"status": "301",
+			}
+		}
+
+		if b {
+			return map[string]interface{}{
+				"error":  "already Exists",
+				"status": "301",
+			}
+		}
+	}
+	LogPrintHandler("mapping ws project bind model", bindModel)
 	err := tx.Create(bindModel)
 
 	if err != nil {
-		log.Println("======== mapping ws project =====")
-		log.Println(err)
-		log.Println("======== mapping ws project =====")
+		LogPrintHandler("mapping ws project error", err)
+
 		return map[string]interface{}{
 			"message": err,
 			"status":  http.StatusBadRequest,
