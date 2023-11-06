@@ -67,12 +67,14 @@ func App() *buffalo.App {
 		// kc.GET("/login", KcLoginHandler)
 		// kc.GET("/createuser", KcCreateUserHandler)
 
-		bf := app.Group("/buffalo")
+		bf := app.Group("/iam")
 		bf.Use(IsAuth)
-		bf.Middleware.Skip(IsAuth, LoginHandler, NotAuthUserTestPageHandler)
-		bf.GET("/login", LoginHandler)
-		bf.POST("/login", LoginHandler)
+		bf.Middleware.Skip(IsAuth, IamLoginForm, IamLogin, NotAuthUserTestPageHandler)
+		bf.GET("/login", IamLoginForm)
+		bf.POST("/login", IamLogin)
 		bf.GET("/authuser/not", NotAuthUserTestPageHandler)
+
+		app.POST("/api/vi/login", IamLoginApi)
 
 		bf.GET("/", HomeHandler)
 		bf.GET("/authuser", AuthUserTestPageHandler)
