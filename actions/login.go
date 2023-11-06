@@ -36,16 +36,28 @@ func IamLogin(c buffalo.Context) error {
 	return c.Redirect(302, "/buffalo/authuser")
 }
 
+type Mciamuser struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 // Iam Manager Login 처리
 func IamLoginApi(c buffalo.Context) error {
 
-	username := c.Param("username")
-	password := c.Param("password")
+	u := &Mciamuser{}
+	if err := c.Bind(u); err != nil {
+		return c.Render(http.StatusOK, r.JSON(map[string]interface{}{
+			"err": err.Error(),
+		}))
+	}
 
-	token, err := KC_client.Login(c, KC_clientID, KC_clientSecret, KC_realm, username, password)
+	fmt.Println(u.Username, u.Password)
+
+	token, err := KC_client.Login(c, KC_clientID, KC_clientSecret, KC_realm, u.Username, u.Password)
 	if err != nil {
-		c.Set("simplestr", err.Error())
-		return c.Render(http.StatusOK, r.HTML("simplestr.html"))
+		return c.Render(http.StatusOK, r.JSON(map[string]interface{}{
+			"err": err.Error(),
+		}))
 	}
 
 	// fmt.Println("token ::: ", token)
