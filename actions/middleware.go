@@ -9,24 +9,22 @@ import (
 
 func IsAuth(next buffalo.Handler) buffalo.Handler {
 	return func(c buffalo.Context) error {
-		AccessToken := c.Session().Get("AccessToken")
+		// AccessToken := c.Session().Get("AccessToken")
+		AccessToken := c.Request().Header.Get("Authorization")
 
 		// 아래로 DecodeAccessToken 을 사용
-
-		token, tokenMap, err := KC_client.DecodeAccessToken(c, AccessToken.(string), KC_realm)
+		token, tokenMap, err := KC_client.DecodeAccessToken(c, AccessToken, KC_realm)
 		// token 이 expire 되면 err 로그 출력 됨 : could not decode accessToken with custom claims: Token is expired
 		if err != nil {
-			// RefreshToken := c.Session().Get("RefreshToken") // db
-			// AccessToken, err = KC_client.RefreshToken(c, RefreshToken.(string), KC_clientID, KC_clientSecret, KC_realm)
-			// if err != nil {
-			// 	fmt.Println("******************************")
-			// 	fmt.Println("RefreshToken err", err)
-			// 	fmt.Println("******************************")
-			// 	return c.Redirect(302, "/buffalo/authuser/not")
-			// }
-			// c.Session().Set("AccessToken", AccessToken)
-			c.Flash().Add("danger", err.Error())
-			return c.Redirect(302, "/buffalo/login")
+			return c.Render(http.StatusOK, r.JSON(map[string]interface{}{
+				"err": err.Error(),
+			}))
+		}
+		if !token.Valid {
+			return c.Render(http.StatusOK, r.JSON(map[string]interface{}{
+				"token.Valid": false,
+				"err":         err.Error(),
+			}))
 		}
 
 		fmt.Println("******************************")
@@ -36,24 +34,7 @@ func IsAuth(next buffalo.Handler) buffalo.Handler {
 		fmt.Println("******************************")
 		fmt.Println("DecodeAccessToken tokenMapClaims =", tokenMap)
 		fmt.Println("******************************")
-
 		fmt.Println("DecodeAccessToken token.Valid =", token.Valid)
-
-		if !token.Valid {
-			c.Flash().Add("danger", "session expired")
-			return c.Redirect(302, "/buffalo/login")
-		}
-
-		// 아래로 userinfo를 사용
-
-		userinfo, err := KC_client.GetUserInfo(c, AccessToken.(string), KC_realm)
-		if err != nil {
-			c.Set("simplestr", err.Error())
-			return c.Render(http.StatusOK, r.HTML("simplestr.html"))
-		}
-		fmt.Println("userinfo", userinfo)
-
-		c.Session().Set("userinfo", userinfo.Name)
 
 		return next(c)
 	}
