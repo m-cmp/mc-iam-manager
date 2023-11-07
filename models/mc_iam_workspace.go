@@ -26,9 +26,7 @@ func (m MCIamWorkspace) String() string {
 }
 
 // MCIamWorkspaces is not required by pop and may be deleted
-type MCIamWorkspaces struct {
-	Workspace []MCIamWorkspace `json:"workspace"`
-}
+type MCIamWorkspaces []MCIamWorkspace
 
 // String is not required by pop and may be deleted
 func (m MCIamWorkspaces) String() string {
