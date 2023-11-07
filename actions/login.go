@@ -7,12 +7,13 @@ import (
 	"github.com/gobuffalo/buffalo"
 )
 
-// HomeHandler is a default handler to serve up
-// a home page.
-func LoginHandler(c buffalo.Context) error {
-	if c.Request().Method == "GET" {
-		return c.Render(http.StatusOK, r.HTML("login/index.html"))
-	}
+// Iam Manager 로그인 화면
+func IamLoginForm(c buffalo.Context) error {
+	return c.Render(http.StatusOK, r.HTML("login/index.html"))
+}
+
+// Iam Manager Login 처리
+func IamLogin(c buffalo.Context) error {
 
 	var username = c.Request().FormValue("username")
 	var password = c.Request().FormValue("password")
@@ -33,6 +34,38 @@ func LoginHandler(c buffalo.Context) error {
 	// c.Session().Set("RefreshToken", token.RefreshToken) // TODO : save in db to reduce cookie
 
 	return c.Redirect(302, "/buffalo/authuser")
+}
+
+type Mciamuser struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// Iam Manager Login 처리
+func IamLoginApi(c buffalo.Context) error {
+
+	u := &Mciamuser{}
+	if err := c.Bind(u); err != nil {
+		return c.Render(http.StatusOK, r.JSON(map[string]interface{}{
+			"err": err.Error(),
+		}))
+	}
+
+	fmt.Println(u.Username, u.Password)
+
+	token, err := KC_client.Login(c, KC_clientID, KC_clientSecret, KC_realm, u.Username, u.Password)
+	if err != nil {
+		return c.Render(http.StatusOK, r.JSON(map[string]interface{}{
+			"err": err.Error(),
+		}))
+	}
+
+	// fmt.Println("token ::: ", token)
+
+	//token.AccessToken
+	return c.Render(http.StatusOK, r.JSON(map[string]interface{}{
+		"iamAccessToken": token.AccessToken,
+	}))
 }
 
 func AuthUserTestPageHandler(c buffalo.Context) error {
