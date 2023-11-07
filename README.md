@@ -180,3 +180,9 @@ A sub-system of [M-CMP platform](https://github.com/m-cmp/docs/tree/main) to dep
     ```
     
 - run buffalo
+  
+    ```
+    # at the this repo clone folder
+    $ cd mc-iam-manager
+    $ buffalo dev
+    ```
