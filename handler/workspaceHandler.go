@@ -24,16 +24,33 @@ func CreateWorkspace(tx *pop.Connection, bindModel *models.MCIamWorkspace) map[s
 	}
 }
 
-func GetWorkspaceList(tx *pop.Connection) *models.MCIamWorkspaces {
-	bindModel := &models.MCIamWorkspaces{}
+func GetWorkspaceList(tx *pop.Connection) []models.ParserWsProjectMapping {
+	bindModel := []models.MCIamWorkspace{}
 	// projects := &models.MCIamProjects{}
 	// wsProjectMapping := &models.MCIamWsProjectMappings{}
-	err := tx.Eager().All(bindModel)
-
+	err := tx.Eager().All(&bindModel)
+	parsingArray := []models.ParserWsProjectMapping{}
 	if err != nil {
 
 	}
-	return bindModel
+
+	for _, obj := range bindModel {
+		arr := MappingGetProjectByWorkspace(tx, obj.ID.String())
+
+		if arr.WsID != uuid.Nil {
+			parsingArray = append(parsingArray, *arr)
+		} else {
+			md := &models.ParserWsProjectMapping{}
+			pj := []models.MCIamProject{}
+			md.Ws = &obj
+			md.WsID = obj.ID
+			md.Projects = pj
+			parsingArray = append(parsingArray, *md)
+			LogPrintHandler("print object", obj)
+		}
+	}
+
+	return parsingArray
 }
 
 func GetWorkspace(tx *pop.Connection, wsId string) *models.MCIamWorkspace {
