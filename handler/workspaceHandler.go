@@ -26,7 +26,8 @@ func CreateWorkspace(tx *pop.Connection, bindModel *models.MCIamWorkspace) map[s
 
 func GetWorkspaceList(tx *pop.Connection) *models.MCIamWorkspaces {
 	bindModel := &models.MCIamWorkspaces{}
-
+	// projects := &models.MCIamProjects{}
+	// wsProjectMapping := &models.MCIamWsProjectMappings{}
 	err := tx.Eager().All(bindModel)
 
 	if err != nil {
@@ -38,7 +39,7 @@ func GetWorkspaceList(tx *pop.Connection) *models.MCIamWorkspaces {
 func GetWorkspace(tx *pop.Connection, wsId string) *models.MCIamWorkspace {
 	ws := &models.MCIamWorkspace{}
 
-	err := tx.Find(ws, wsId)
+	err := tx.Eager().Find(ws, wsId)
 	if err != nil {
 
 	}
