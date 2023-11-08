@@ -126,9 +126,9 @@ func MappingGetProjectByWorkspace(tx *pop.Connection, wsId string) *models.Parse
 	ws := []models.MCIamWsProjectMapping{}
 
 	err := tx.Eager().Where("ws_id =?", wsId).All(&ws)
-	LogPrintHandler("MappingGetProjectByWorkspace", ws)
-	if err != nil {
 
+	if err != nil {
+		LogPrintHandler("MappingGetProjectByWorkspace", wsId)
 	}
 	parsingWs := ParserWsProjectByWs(ws, wsId)
 	return parsingWs
@@ -143,11 +143,13 @@ func ParserWsProjectByWs(bindModels []models.MCIamWsProjectMapping, ws_id string
 		if wsUuid == obj.WsID {
 			parserWsProject.WsID = obj.WsID
 			parserWsProject.Ws = obj.Ws
-			projectArray = append(projectArray, *obj.Project)
+			if obj.ProjectID != uuid.Nil {
+				projectArray = append(projectArray, *obj.Project)
+				parserWsProject.Projects = projectArray
+			}
 		}
 
 	}
-	parserWsProject.Projects = projectArray
 	return parserWsProject
 }
 
@@ -161,7 +163,7 @@ func ParserWsProjectByWs(bindModels []models.MCIamWsProjectMapping, ws_id string
 // }
 
 func MappingUserRole(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping) map[string]interface{} {
-	if bindModel != nil {
+	if bindModel.ID != uuid.Nil {
 		userRoleModel := &models.MCIamUserRoleMapping{}
 
 		roleId := bindModel.RoleID
