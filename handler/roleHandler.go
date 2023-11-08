@@ -47,6 +47,7 @@ func GetRole(tx *pop.Connection, roleId string) *models.MCIamRole {
 	return role
 }
 
+// 롤 체크를 어디서 할지 확인이 필요.
 func CheckRole(tx *pop.Connection, roleId string) {
 	getRole := GetRole(tx, roleId)
 
@@ -54,6 +55,7 @@ func CheckRole(tx *pop.Connection, roleId string) {
 
 	}
 }
+
 func UpdateRole(tx *pop.Connection, bindModel *models.MCIamRole) map[string]interface{} {
 
 	_, err := bindModel.ValidateUpdate(tx)
