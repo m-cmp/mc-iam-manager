@@ -46,6 +46,14 @@ func GetRole(tx *pop.Connection, roleId string) *models.MCIamRole {
 	}
 	return role
 }
+
+func CheckRole(tx *pop.Connection, roleId string) {
+	getRole := GetRole(tx, roleId)
+
+	if roleName := getRole.Name; roleName == "admin_role" {
+
+	}
+}
 func UpdateRole(tx *pop.Connection, bindModel *models.MCIamRole) map[string]interface{} {
 
 	_, err := bindModel.ValidateUpdate(tx)
