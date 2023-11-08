@@ -99,7 +99,7 @@ func App() *buffalo.App {
 		workspacePath.GET("/", GetWorkspaceList)
 		workspacePath.GET("/id/{workspaceId}", GetWorkspace)
 		workspacePath.POST("/", CreateWorkspace)
-		workspacePath.DELETE("/id/{workspaceId}", GetWorkspace)
+		workspacePath.DELETE("/id/{workspaceId}", DeleteWorkspace)
 
 		mappingPath := app.Group(apiPath + "mapping")
 		mappingPath.POST("/ws/user", MappingWsUser)

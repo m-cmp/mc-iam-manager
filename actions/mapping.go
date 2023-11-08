@@ -77,6 +77,7 @@ func MappingDeleteWsProject(c buffalo.Context) error {
 	if err := c.Bind(bindModel); err != nil {
 		return errors.WithStack(err)
 	}
+
 	tx := c.Value("tx").(*pop.Connection)
 	resp := handler.MappingDeleteWsProject(tx, bindModel)
 
