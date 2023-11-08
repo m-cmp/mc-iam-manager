@@ -80,7 +80,7 @@ func App() *buffalo.App {
 		// app.GET("/saml/aws", AwsSamlSTSKey)
 		// app.GET("/saml/ali", AliSamlSTSKey)
 
-		app.Use(IsAuth)
+		//app.Use(IsAuth)
 
 		apiPath := "/api/v1/"
 
