@@ -20,6 +20,14 @@ type MCIamWsProjectMapping struct {
 	UpdatedAt time.Time       `json:"updated_at" db:"updated_at"`
 }
 
+type ParserWsProjectMapping struct {
+	WsID     uuid.UUID       `json:"ws_id" db:"ws_id"`
+	Ws       *MCIamWorkspace `belongs_to:"mc_iam_workspace"`
+	Projects []MCIamProject
+}
+
+type ParserWsProjectMappings []ParserWsProjectMapping
+
 // String is not required by pop and may be deleted
 func (m MCIamWsProjectMapping) String() string {
 	jm, _ := json.Marshal(m)

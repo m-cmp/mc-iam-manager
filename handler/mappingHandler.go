@@ -122,31 +122,43 @@ func MappingWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMappin
 	}
 }
 
-func MappingGetProjectByWorkspace(tx *pop.Connection, wsId string) *models.MCIamWsProjectMappings {
-	ws := &models.MCIamWsProjectMappings{}
+func MappingGetProjectByWorkspace(tx *pop.Connection, wsId string) *models.ParserWsProjectMapping {
+	ws := []models.MCIamWsProjectMapping{}
 
-	err := tx.Eager().Where("ws_id =?", wsId).All(ws)
+	err := tx.Eager().Where("ws_id =?", wsId).All(&ws)
+	LogPrintHandler("MappingGetProjectByWorkspace", ws)
 	if err != nil {
 
 	}
-	return ws
+	parsingWs := ParserWsProjectByWs(ws, wsId)
+	return parsingWs
 
 }
 
-func MappingDeleteWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMapping) map[string]interface{} {
-	err := tx.Destroy(bindModel)
-	if err != nil {
-		return map[string]interface{}{
-			"message": errors.WithStack(err),
-			"status":  "301",
+func ParserWsProjectByWs(bindModels []models.MCIamWsProjectMapping, ws_id string) *models.ParserWsProjectMapping {
+	parserWsProject := &models.ParserWsProjectMapping{}
+	projectArray := []models.MCIamProject{}
+	wsUuid, _ := uuid.FromString(ws_id)
+	for _, obj := range bindModels {
+		if wsUuid == obj.WsID {
+			parserWsProject.WsID = obj.WsID
+			parserWsProject.Ws = obj.Ws
+			projectArray = append(projectArray, *obj.Project)
 		}
-	}
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
 
+	}
+	parserWsProject.Projects = projectArray
+	return parserWsProject
 }
+
+// func ParserWsProject(tx *pop.Connection, bindModels []models.MCIamWorkspace) *models.ParserWsProjectMappings {
+// 	parserWsProject := []models.ParserWsProjectMapping{}
+// 	projectArray := []models.MCIamProject{}
+
+// 	ParserWsProjectByWs
+
+// 	return parserWsProject
+// }
 
 func MappingUserRole(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping) map[string]interface{} {
 	if bindModel != nil {
@@ -186,4 +198,19 @@ func MappingUserRole(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping)
 		"message": "success",
 		"status":  http.StatusOK,
 	}
+}
+
+func MappingDeleteWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMapping) map[string]interface{} {
+	err := tx.Destroy(bindModel)
+	if err != nil {
+		return map[string]interface{}{
+			"message": errors.WithStack(err),
+			"status":  "301",
+		}
+	}
+	return map[string]interface{}{
+		"message": "success",
+		"status":  http.StatusOK,
+	}
+
 }
