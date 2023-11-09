@@ -840,6 +840,21 @@ CREATE TABLE public.mc_iam_ws_project_mappings (
 ALTER TABLE public.mc_iam_ws_project_mappings OWNER TO mcp;
 
 --
+-- Name: mc_iam_ws_user_mappings; Type: TABLE; Schema: public; Owner: mcp
+--
+
+CREATE TABLE public.mc_iam_ws_user_mappings (
+    id uuid NOT NULL,
+    ws_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+
+ALTER TABLE public.mc_iam_ws_user_mappings OWNER TO mcp;
+
+--
 -- Name: mc_iam_ws_user_role_mappings; Type: TABLE; Schema: public; Owner: mcp
 --
 
@@ -2285,6 +2300,14 @@ ALTER TABLE ONLY public.mc_iam_workspaces
 
 ALTER TABLE ONLY public.mc_iam_ws_project_mappings
     ADD CONSTRAINT mc_iam_ws_project_mappings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: mc_iam_ws_user_mappings mc_iam_ws_user_mappings_pkey; Type: CONSTRAINT; Schema: public; Owner: mcp
+--
+
+ALTER TABLE ONLY public.mc_iam_ws_user_mappings
+    ADD CONSTRAINT mc_iam_ws_user_mappings_pkey PRIMARY KEY (id);
 
 
 --
