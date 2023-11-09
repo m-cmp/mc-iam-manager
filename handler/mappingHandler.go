@@ -51,6 +51,46 @@ func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapp
 	}
 }
 
+func MappingWsUser(tx *pop.Connection, bindModel *models.MCIamWsUserMapping) map[string]interface{} {
+	if bindModel != nil {
+		wsUserModel := &models.MCIamWsUserMapping{}
+
+		wsId := bindModel.WsID
+		userId := bindModel.UserID
+
+		q := tx.Eager().Where("ws_id = ?", wsId)
+		q = q.Where("user_id = ?", userId)
+
+		b, err := q.Exists(wsUserModel)
+		if err != nil {
+			return map[string]interface{}{
+				"error":  "something query error",
+				"status": "301",
+			}
+		}
+
+		if b {
+			return map[string]interface{}{
+				"error":  "already Exists",
+				"status": "301",
+			}
+		}
+	}
+	LogPrintHandler("mapping ws user bind model", bindModel)
+	err := tx.Create(bindModel)
+
+	if err != nil {
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
+	}
+	return map[string]interface{}{
+		"message": "success",
+		"status":  http.StatusOK,
+	}
+}
+
 func GetWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapping) *models.MCIamWsUserRoleMappings {
 
 	respModel := &models.MCIamWsUserRoleMappings{}

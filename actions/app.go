@@ -91,6 +91,7 @@ func App() *buffalo.App {
 		rolePath := app.Group(apiPath + "roles")
 		rolePath.GET("/", ListRole)
 		rolePath.GET("/id/{roleId}", GetRole)
+		//rolePath.GET("/user/id/{userId}", GetRoleByUser)
 		rolePath.PUT("/id/{roleId}", UpdateRole)
 		rolePath.POST("/", CreateRole)
 		rolePath.DELETE("/id/{roleId}", DeleteRole)
