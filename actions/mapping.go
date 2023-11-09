@@ -11,13 +11,13 @@ import (
 )
 
 func MappingWsUser(c buffalo.Context) error {
-	wurm := &models.MCIamWsUserRoleMapping{}
-	if err := c.Bind(wurm); err != nil {
+	wum := &models.MCIamWsUserMapping{}
+	if err := c.Bind(wum); err != nil {
 
 	}
 	tx := c.Value("tx").(*pop.Connection)
 
-	resp := handler.MappingWsUserRole(tx, wurm)
+	resp := handler.MappingWsUser(tx, wum)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
