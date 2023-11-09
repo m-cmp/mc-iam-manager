@@ -18,6 +18,14 @@ func GetRole(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
+// func GetRoleByUser(c buffalo.Context) error {
+// 	tx := c.Value("tx").(*pop.Connection)
+// 	userId := c.Param("userId")
+
+// 	resp := handler.GetRoleByUser(tx, userId)
+// 	return c.Render(http.StatusOK,r.JSON(resp))
+// }
+
 func ListRole(c buffalo.Context) error {
 	listRole := &models.MCIamRoles{}
 	tx := c.Value("tx").(*pop.Connection)
