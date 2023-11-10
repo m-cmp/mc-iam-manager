@@ -20,7 +20,7 @@ A sub-system of [M-CMP platform](https://github.com/m-cmp/docs/tree/main) to dep
 
 ## How to Install
 
-### Envirment
+### Environment
 
 - go : go1.21.0 >
     
