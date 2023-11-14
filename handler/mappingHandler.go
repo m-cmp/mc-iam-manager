@@ -175,6 +175,35 @@ func MappingGetProjectByWorkspace(tx *pop.Connection, wsId string) *models.Parse
 
 }
 
+func MappingWsProjectValidCheck(tx *pop.Connection, wsId string, projectId string) map[string]interface{} {
+	ws := &models.MCIamWsProjectMapping{}
+
+	q := tx.Eager().Where("ws_id =?", wsId)
+	q = q.Where("project_id =?", projectId)
+
+	b, _ := q.Exists(ws)
+	// if err != nil {
+	// 	return map[string]interface{}{
+	// 		"error":  "something query error",
+	// 		"status": "301",
+	// 	}
+	// }
+
+	if b {
+		project := GetProject(tx, projectId)
+		return map[string]interface{}{
+			"message": "valid",
+			"project": project,
+		}
+	}
+	return map[string]interface{}{
+		"message": "invalid",
+		"error":   "invalid project",
+		"status":  "301",
+	}
+
+}
+
 func ParserWsProjectByWs(bindModels []models.MCIamWsProjectMapping, ws_id string) *models.ParserWsProjectMapping {
 	parserWsProject := &models.ParserWsProjectMapping{}
 	projectArray := []models.MCIamProject{}
