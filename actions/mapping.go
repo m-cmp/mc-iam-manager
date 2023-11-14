@@ -68,6 +68,15 @@ func MappingGetProjectByWorkspace(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
+func MappingWsProjectValidCheck(c buffalo.Context) error {
+	paramWsId := c.Param("workspaceId")
+	paramProjectId := c.Param("projectId")
+
+	tx := c.Value("tx").(*pop.Connection)
+	resp := handler.MappingWsProjectValidCheck(tx, paramWsId, paramProjectId)
+
+	return c.Render(http.StatusOK, r.JSON(resp))
+}
 func MappingDeleteWsProject(c buffalo.Context) error {
 	// paramWsId := c.Param("workspaceId")
 	// paramProjectId := c.Param("projectId")

@@ -26,6 +26,7 @@ func GetWorkspaceList(c buffalo.Context) error {
 	resp := handler.GetWorkspaceList(tx)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
+
 func CreateWorkspace(c buffalo.Context) error {
 	ws := &models.MCIamWorkspace{}
 	err := c.Bind(ws)
