@@ -29,6 +29,7 @@ func GetWorkspaceList(tx *pop.Connection) []models.ParserWsProjectMapping {
 	// projects := &models.MCIamProjects{}
 	// wsProjectMapping := &models.MCIamWsProjectMappings{}
 	err := tx.Eager().All(&bindModel)
+
 	parsingArray := []models.ParserWsProjectMapping{}
 	if err != nil {
 
@@ -39,14 +40,19 @@ func GetWorkspaceList(tx *pop.Connection) []models.ParserWsProjectMapping {
 
 		if arr.WsID != uuid.Nil {
 			parsingArray = append(parsingArray, *arr)
+
 		} else {
-			md := &models.ParserWsProjectMapping{}
+
+			md := models.ParserWsProjectMapping{}
+			ws := models.MCIamWorkspace{}
 			pj := []models.MCIamProject{}
-			md.Ws = &obj
+			ws = obj
+			md.Ws = &ws
 			md.WsID = obj.ID
 			md.Projects = pj
-			parsingArray = append(parsingArray, *md)
-			LogPrintHandler("print object", obj)
+
+			parsingArray = append(parsingArray, md)
+
 		}
 	}
 
@@ -70,6 +76,21 @@ func DeleteWorkspace(tx *pop.Connection, wsId string) map[string]interface{} {
 
 	err := tx.Destroy(ws)
 	if err != nil {
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
+	}
+	//만약 삭제가 된다면 mapping table 도 삭제 해야 한다.
+	// mapping table 조회
+	mws := []models.MCIamWsProjectMapping{}
+
+	err2 := tx.Eager().Where("ws_id =?", wsId).All(&mws)
+	if err2 != nil {
+		LogPrintHandler("MappingGetProjectByWorkspace", wsId)
+	}
+	err3 := tx.Destroy(mws)
+	if err3 != nil {
 		return map[string]interface{}{
 			"message": err,
 			"status":  http.StatusBadRequest,
