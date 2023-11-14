@@ -35,10 +35,10 @@ func GetProjectList(tx *pop.Connection) *models.MCIamProjects {
 	return bindModel
 }
 
-func GetProject(tx *pop.Connection, wsId string) *models.MCIamProject {
+func GetProject(tx *pop.Connection, projectId string) *models.MCIamProject {
 	ws := &models.MCIamProject{}
 
-	err := tx.Find(ws, wsId)
+	err := tx.Find(ws, projectId)
 	if err != nil {
 
 	}
