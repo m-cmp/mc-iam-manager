@@ -164,13 +164,22 @@ func MappingWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMappin
 
 func MappingGetProjectByWorkspace(tx *pop.Connection, wsId string) *models.ParserWsProjectMapping {
 	ws := []models.MCIamWsProjectMapping{}
+	parsingWs := &models.ParserWsProjectMapping{}
 
-	err := tx.Eager().Where("ws_id =?", wsId).All(&ws)
-
+	q := tx.Eager().Where("ws_id =?", wsId)
+	b, err := q.Exists(ws)
 	if err != nil {
-		LogPrintHandler("MappingGetProjectByWorkspace", wsId)
+
 	}
-	parsingWs := ParserWsProjectByWs(ws, wsId)
+	if b {
+		err := q.All(&ws)
+		if err != nil {
+
+		}
+
+		parsingWs = ParserWsProjectByWs(ws, wsId)
+	}
+
 	return parsingWs
 
 }
@@ -208,7 +217,9 @@ func ParserWsProjectByWs(bindModels []models.MCIamWsProjectMapping, ws_id string
 	parserWsProject := &models.ParserWsProjectMapping{}
 	projectArray := []models.MCIamProject{}
 	wsUuid, _ := uuid.FromString(ws_id)
+	LogPrintHandler("#### bindmodels ####", bindModels)
 	for _, obj := range bindModels {
+		LogPrintHandler("#### wsuuid ####", obj.WsID)
 		if wsUuid == obj.WsID {
 			parserWsProject.WsID = obj.WsID
 			parserWsProject.Ws = obj.Ws
