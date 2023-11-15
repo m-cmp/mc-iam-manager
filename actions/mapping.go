@@ -33,6 +33,18 @@ func MappingWsUserRole(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
+func MappingGetWsUserRole(c buffalo.Context) error {
+	userId := c.Param("userId")
+	// wurm := &models.MCIamWsUserRoleMapping{}
+	// if err := c.Bind(wurm); err != nil {
+
+	// }
+	tx := c.Value("tx").(*pop.Connection)
+
+	resp := handler.GetWsUserRole(tx, userId)
+	return c.Render(http.StatusOK, r.JSON(resp))
+}
+
 func MappingUserRole(c buffalo.Context) error {
 	urm := &models.MCIamUserRoleMapping{}
 
@@ -77,6 +89,7 @@ func MappingWsProjectValidCheck(c buffalo.Context) error {
 
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
+
 func MappingDeleteWsProject(c buffalo.Context) error {
 	// paramWsId := c.Param("workspaceId")
 	// paramProjectId := c.Param("projectId")
