@@ -801,7 +801,7 @@ ALTER TABLE public.mc_iam_roles OWNER TO mcp;
 CREATE TABLE public.mc_iam_user_role_mappings (
     id uuid NOT NULL,
     role_id uuid NOT NULL,
-    user_id uuid NOT NULL,
+    user_id character varying(255) NOT NULL,
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL
 );
@@ -846,7 +846,7 @@ ALTER TABLE public.mc_iam_ws_project_mappings OWNER TO mcp;
 CREATE TABLE public.mc_iam_ws_user_mappings (
     id uuid NOT NULL,
     ws_id uuid NOT NULL,
-    user_id uuid NOT NULL,
+    user_id character varying(255) NOT NULL,
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL
 );
@@ -861,7 +861,7 @@ ALTER TABLE public.mc_iam_ws_user_mappings OWNER TO mcp;
 CREATE TABLE public.mc_iam_ws_user_role_mappings (
     id uuid NOT NULL,
     ws_id uuid NOT NULL,
-    user_id uuid NOT NULL,
+    user_id character varying(255) NOT NULL,
     role_id uuid NOT NULL,
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL
