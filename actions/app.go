@@ -88,6 +88,9 @@ func App() *buffalo.App {
 		auth.Middleware.Skip(IsAuth, IamLoginApi)
 		auth.POST("/login", IamLoginApi)
 
+		userPath := app.Group(apiPath + "users")
+		userPath.GET("/", GetUsersList)
+
 		rolePath := app.Group(apiPath + "roles")
 		rolePath.GET("/", ListRole)
 		rolePath.GET("/id/{roleId}", GetRole)
@@ -109,6 +112,7 @@ func App() *buffalo.App {
 		mappingPath.GET("/ws/id/{workspaceId}/project", MappingGetProjectByWorkspace)
 		mappingPath.GET("/ws/id/{workspaceId}/project/id/{projectId}", MappingWsProjectValidCheck)
 		mappingPath.DELETE("/ws/project", MappingDeleteWsProject)
+		mappingPath.GET("/user/id/{userId}/workspace", MappingGetWsUserRole)
 
 		projectPath := app.Group(apiPath + "project")
 		projectPath.GET("/id/{projectId}", GetProject)
