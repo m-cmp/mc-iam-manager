@@ -77,10 +77,10 @@ func App() *buffalo.App {
 		// bf.GET("/", HomeHandler)
 		// bf.GET("/authuser", AuthUserTestPageHandler)
 
-		// app.GET("/saml/aws", AwsSamlSTSKey)
-		// app.GET("/saml/ali", AliSamlSTSKey)
+		app.GET("/saml/aws", AwsSamlSTSKey)
+		app.GET("/saml/ali", AliSamlSTSKey)
 
-		app.Use(IsAuth)
+		// app.Use(IsAuth)
 
 		apiPath := "/api/v1/"
 
