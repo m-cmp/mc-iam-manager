@@ -2,10 +2,8 @@ package keycloak
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -16,10 +14,9 @@ import (
 	"mc_iam_manager/util/samlhandler/aws/pkg/prompter"
 
 	"mc_iam_manager/util/samlhandler/provider"
-	"mc_iam_manager/util/samlhandler/provider/okta"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/marshallbrekka/go-u2fhost"
+	//"github.com/marshallbrekka/go-u2fhost"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -246,47 +243,47 @@ func (kc *Client) postTotpForm(authCtx *authContext, totpSubmitURL string, doc *
 func (kc *Client) postWebauthnForm(webauthnSubmitURL string, credentialIDs []string, challenge, rpId string) (*goquery.Document, error) {
 	webauthnForm := url.Values{}
 
-	var assertion *okta.SignedAssertion
+	// var assertion *okta.SignedAssertion
 	var pickedCredentialID string
-	for i, credentialID := range credentialIDs {
-		fidoClient, err := okta.NewFidoClient(
-			challenge,
-			rpId,
-			"",
-			credentialID,
-			"",
-			new(okta.U2FDeviceFinder),
-		)
-		if err != nil {
-			return nil, errors.Wrap(err, "error connecting to Webauthn device")
-		}
+	// for i, credentialID := range credentialIDs {
+	// 	fidoClient, err := okta.NewFidoClient(
+	// 		challenge,
+	// 		rpId,
+	// 		"",
+	// 		credentialID,
+	// 		"",
+	// 		new(okta.U2FDeviceFinder),
+	// 	)
+	// 	if err != nil {
+	// 		return nil, errors.Wrap(err, "error connecting to Webauthn device")
+	// 	}
 
-		assertion, err = fidoClient.ChallengeU2F()
-		if _, ok := err.(*u2fhost.BadKeyHandleError); ok && i < len(credentialIDs)-1 {
-			log.Println("Device does not have key handle, trying next ...")
-			continue
-		}
-		if err != nil {
-			return nil, errors.Wrap(err, "error while getting Webauthn challenge")
-		}
-		pickedCredentialID = credentialID
-		break
-	}
-	if assertion == nil {
-		return nil, errors.New("tried all Webauthn devices, none was recognized")
-	}
+	// 	assertion, err = fidoClient.ChallengeU2F()
+	// 	if _, ok := err.(*u2fhost.BadKeyHandleError); ok && i < len(credentialIDs)-1 {
+	// 		log.Println("Device does not have key handle, trying next ...")
+	// 		continue
+	// 	}
+	// 	if err != nil {
+	// 		return nil, errors.Wrap(err, "error while getting Webauthn challenge")
+	// 	}
+	// 	pickedCredentialID = credentialID
+	// 	break
+	// }
+	// if assertion == nil {
+	// 	return nil, errors.New("tried all Webauthn devices, none was recognized")
+	// }
 
-	signature, err := reencodeAsURLEncoding(assertion.SignatureData)
-	if err != nil {
-		return nil, errors.Wrap(err, "unexpected format for Webauthn signature data")
-	}
-	authenticatorData, err := reencodeAsURLEncoding(assertion.AuthenticatorData)
-	if err != nil {
-		return nil, errors.Wrap(err, "unexpected format for Webauthn authenticator data")
-	}
-	webauthnForm.Set("clientDataJSON", assertion.ClientData)
-	webauthnForm.Set("authenticatorData", authenticatorData)
-	webauthnForm.Set("signature", signature)
+	// signature, err := reencodeAsURLEncoding(assertion.SignatureData)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "unexpected format for Webauthn signature data")
+	// }
+	// authenticatorData, err := reencodeAsURLEncoding(assertion.AuthenticatorData)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "unexpected format for Webauthn authenticator data")
+	// }
+	// webauthnForm.Set("clientDataJSON", assertion.ClientData)
+	// webauthnForm.Set("authenticatorData", authenticatorData)
+	// webauthnForm.Set("signature", signature)
 	webauthnForm.Set("credentialId", pickedCredentialID)
 	webauthnForm.Set("userHandle", "")
 	webauthnForm.Set("error", "")
@@ -311,13 +308,13 @@ func (kc *Client) postWebauthnForm(webauthnSubmitURL string, credentialIDs []str
 	return doc, nil
 }
 
-func reencodeAsURLEncoding(data string) (string, error) {
-	decodedSignature, err := base64.StdEncoding.DecodeString(data)
-	if err != nil {
-		return "", errors.Wrap(err, "invalid base64 encoding")
-	}
-	return base64.RawURLEncoding.EncodeToString(decodedSignature), nil
-}
+// func reencodeAsURLEncoding(data string) (string, error) {
+// 	decodedSignature, err := base64.StdEncoding.DecodeString(data)
+// 	if err != nil {
+// 		return "", errors.Wrap(err, "invalid base64 encoding")
+// 	}
+// 	return base64.RawURLEncoding.EncodeToString(decodedSignature), nil
+// }
 
 func extractSubmitURL(doc *goquery.Document) (string, error) {
 

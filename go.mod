@@ -32,6 +32,7 @@ require (
 )
 
 require (
+	github.com/bearsh/hid v1.3.0 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
@@ -43,7 +44,6 @@ require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.62.588
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/bearsh/hid v1.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
