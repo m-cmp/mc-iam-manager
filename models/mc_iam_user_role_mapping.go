@@ -14,7 +14,7 @@ type MCIamUserRoleMapping struct {
 	ID        uuid.UUID  `json:"id" db:"id"`
 	RoleID    uuid.UUID  `json:"role_id" db:"role_id"`
 	Role      *MCIamRole `belongs_to:"mc_iam_roles"`
-	UserID    uuid.UUID  `json:"user_id" db:"user_id"`
+	UserID    string     `json:"user_id" db:"user_id"`
 	CreatedAt time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
 }
