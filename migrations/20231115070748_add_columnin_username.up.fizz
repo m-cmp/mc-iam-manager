@@ -1,0 +1,2 @@
+change_column("mc_iam_ws_user_role_mappings", "user_id", "string", {})
+change_column("mc_iam_user_role_mappings", "user_id", "string", {})
