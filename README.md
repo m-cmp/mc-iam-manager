@@ -13,7 +13,17 @@ A sub-system of [M-CMP platform](https://github.com/m-cmp/docs/tree/main) to dep
 
 ## Overview
 
-- 
+- M-CMP 계정 및 역할 관리
+  - M-CMP 계정관리/인증제어
+  - M-CMP 역할관리/접근제어
+ 
+- 멀티 클라우드 워크스페이스 관리
+  - 워크 스페이스 생성/관리
+  - 워크스페이스 권한/공유관리
+
+- 멀티 클라우드 계정 및 접근 제어 정보 통합관리
+  - M-CMP 계정-멀티클라우드 계정간 권한 관리
+  - 멀티클라우드 계정/접근제어 정보 통합 관리
 
 ## How to Use
 
