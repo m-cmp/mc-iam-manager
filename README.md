@@ -36,14 +36,10 @@ It defines an access control reference model for multi-cloud, distinguishing bet
   - [[환경 설정]](#환경-설정)
   - [[mc-iam-manager 실행]](#mc-iam-manager-실행)
 
-## How to Contribute
-- Issues/Discussions/Ideas: Utilize issue of mc-iam-manager
-
 ## How to Install
-
-***
 ### [설치 환경]
 mc-iam-manager는 1.19 이상의 Go 버전이 설치된 다양한 환경에서 실행 가능하지만 최종 동작을 검증한 OS는 Ubuntu 22.0.4입니다.
+keycloak은 PoC 환경에서 임시로 사용자 자격증명과 CSP SAML 인증을 위한 의존성이 있습니다.
 
 ### [의존성]
 - go : go1.21.0 >
@@ -211,6 +207,8 @@ mc-iam-manager는 1.19 이상의 Go 버전이 설치된 다양한 환경에서 �
     $ buffalo dev
     ```
 
+## How to Contribute
+- Issues/Discussions/Ideas: Utilize issue of mc-iam-manager
 
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fm-cmp%2Fmc-iam-manager.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fm-cmp%2Fmc-iam-manager?ref=badge_large)
