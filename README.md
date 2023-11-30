@@ -1,6 +1,9 @@
 # mc-iam-manager-README.md
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fm-cmp%2Fmc-iam-manager.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fm-cmp%2Fmc-iam-manager?ref=badge_shield)
-
+[![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/m-cmp/mc-iam-manager?label=go.mod)](https://github.com/m-cmp/mc-iam-manager/blob/master/go.mod)
+[![GoDoc](https://godoc.org/github.com/m-cmp/mc-iam-manager?status.svg)](https://pkg.go.dev/github.com/m-cmp/mc-iam-manager@master)
+[![Release Version](https://img.shields.io/github/v/release/m-cmp/mc-iam-manager)](https://github.com/m-cmp/mc-iam-manager/releases)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/m-cmp/mc-iam-manager/blob/master/LICENSE)
 
 # M-CMP IAM Manager
 
@@ -9,21 +12,36 @@ This repository provides a Multi-Cloud IAM Management Framework.
 A sub-system of [M-CMP platform](https://github.com/m-cmp/docs/tree/main) to deploy and manage Multi-Cloud Infrastructures.
 
 ## Overview
+The Multi-Cloud Authorization and Access Control Framework provides platform account/role management, integrated management of cloud account/access control information, and workspace management functionalities. It offers features compatible with security policy determination, establishment, and enforcement for existing multi-cloud services. Additionally, it provides the capability to establish and manage independent security policies within the framework.
 
-- 
+It defines an access control reference model for multi-cloud, distinguishing between user access control and service provider access control. This model adopts a prominent Role-Based Access Control (RBAC) approach and integrates it with existing policy management solutions for application and utilization.
+
+
+- M-CMP 계정 및 역할 관리
+  - M-CMP 계정관리/인증제어
+  - M-CMP 역할관리/접근제어
+ 
+- 멀티 클라우드 워크스페이스 관리
+  - 워크 스페이스 생성/관리
+  - 워크스페이스 권한/공유관리
+
+- 멀티 클라우드 계정 및 접근 제어 정보 통합관리
+  - M-CMP 계정-멀티클라우드 계정간 권한 관리
+  - 멀티클라우드 계정/접근제어 정보 통합 관리
 
 ## How to Use
-
-- 
-
-## How to Contribute
-
-- Issues/Discussions/Ideas: Utilize issue of mc-iam-manager
+  - [[설치 환경]](#설치-환경)
+  - [[의존성]](#의존성)
+  - [[소스 설치]](#소스-설치)
+  - [[환경 설정]](#환경-설정)
+  - [[mc-iam-manager 실행]](#mc-iam-manager-실행)
 
 ## How to Install
+### [설치 환경]
+mc-iam-manager는 1.19 이상의 Go 버전이 설치된 다양한 환경에서 실행 가능하지만 최종 동작을 검증한 OS는 Ubuntu 22.0.4입니다.
+keycloak은 PoC 환경에서 임시로 사용자 자격증명과 CSP SAML 인증을 위한 의존성이 있습니다.
 
-### Environment
-
+### [의존성]
 - go : go1.21.0 >
     
     ```bash
@@ -112,7 +130,7 @@ A sub-system of [M-CMP platform](https://github.com/m-cmp/docs/tree/main) to dep
     ```
     
 
-### Get Sourcecode
+### [소스-설치]
 
 - clone this repository
     
@@ -189,6 +207,8 @@ A sub-system of [M-CMP platform](https://github.com/m-cmp/docs/tree/main) to dep
     $ buffalo dev
     ```
 
+## How to Contribute
+- Issues/Discussions/Ideas: Utilize issue of mc-iam-manager
 
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fm-cmp%2Fmc-iam-manager.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fm-cmp%2Fmc-iam-manager?ref=badge_large)
