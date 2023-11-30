@@ -33,13 +33,15 @@ A sub-system of [M-CMP platform](https://github.com/m-cmp/docs/tree/main) to dep
   - [[mc-iam-manager 실행]](#mc-iam-manager-실행)
 
 ## How to Contribute
-
 - Issues/Discussions/Ideas: Utilize issue of mc-iam-manager
 
 ## How to Install
 
-### Environment
+***
+### [설치 환경]
+mc-web-console은 1.19 이상의 Go 버전이 설치된 다양한 환경에서 실행 가능하지만 최종 동작을 검증한 OS는 Ubuntu 22.0.4입니다.
 
+### [의존성]
 - go : go1.21.0 >
     
     ```bash
@@ -128,7 +130,7 @@ A sub-system of [M-CMP platform](https://github.com/m-cmp/docs/tree/main) to dep
     ```
     
 
-### Get Sourcecode
+### [소스-설치]
 
 - clone this repository
     
