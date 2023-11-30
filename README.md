@@ -39,7 +39,7 @@ A sub-system of [M-CMP platform](https://github.com/m-cmp/docs/tree/main) to dep
 
 ***
 ### [설치 환경]
-mc-web-console은 1.19 이상의 Go 버전이 설치된 다양한 환경에서 실행 가능하지만 최종 동작을 검증한 OS는 Ubuntu 22.0.4입니다.
+mc-iam-manager는 1.19 이상의 Go 버전이 설치된 다양한 환경에서 실행 가능하지만 최종 동작을 검증한 OS는 Ubuntu 22.0.4입니다.
 
 ### [의존성]
 - go : go1.21.0 >
