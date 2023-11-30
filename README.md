@@ -25,10 +25,6 @@ A sub-system of [M-CMP platform](https://github.com/m-cmp/docs/tree/main) to dep
   - M-CMP 계정-멀티클라우드 계정간 권한 관리
   - 멀티클라우드 계정/접근제어 정보 통합 관리
 
-## How to Use
-
-- 
-
 ## How to Contribute
 
 - Issues/Discussions/Ideas: Utilize issue of mc-iam-manager
