@@ -30,4 +30,3 @@ generated/
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
-database.yml
