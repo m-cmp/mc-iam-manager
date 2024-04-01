@@ -3,7 +3,8 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"mc_iam_manager/iammodels"
 	"mc_iam_manager/models"
 	"net/http"
 	"net/url"
@@ -11,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/validate/v3"
+	"github.com/gobuffalo/validate/v3/validators"
 )
 
 var (
@@ -28,17 +31,22 @@ func init() {
 }
 
 func AuthLoginHandler(c buffalo.Context) error {
-	// 	ID       string `json:"id" db:"id"`
-	// 	UserId string `json:"UserId" db:"UserId"`
-	// 	Password string `json:"pasword"`
-	var user models.UserEntity
-	if err := c.Bind(&user); err != nil {
+
+	user := &iammodels.UserLogin{}
+	user.Id = c.Request().Form.Get("id")
+	user.Password = c.Request().Form.Get("password")
+	validateErr := validate.Validate(
+		&validators.StringIsPresent{Field: user.Id, Name: "id"},
+		&validators.StringIsPresent{Field: user.Password, Name: "password"},
+	)
+	if validateErr.HasAny() {
+		fmt.Println(validateErr)
 		return c.Render(http.StatusServiceUnavailable,
-			r.JSON(map[string]string{"error": err.Error()}))
+			r.JSON(map[string]string{"err": validateErr.Error()}))
 	}
 
 	formData := url.Values{
-		"username":      {user.UserId},
+		"username":      {user.Id},
 		"password":      {user.Password},
 		"client_id":     {keycloakClient},
 		"client_secret": {keycloakClientSecret},
@@ -71,7 +79,7 @@ func AuthLoginHandler(c buffalo.Context) error {
 			r.JSON(map[string]string{"code": resp.Status}))
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("Failed to read response body:", err)
 		return c.Render(http.StatusServiceUnavailable,
@@ -90,7 +98,51 @@ func AuthLoginHandler(c buffalo.Context) error {
 }
 
 func AuthLogoutHandler(c buffalo.Context) error {
-	return c.Render(http.StatusOK, r.JSON(map[string]string{"message": "AuthLogoutHandler"}))
+
+	accessToken := c.Request().Header.Get("Authorization")
+	fmt.Println("********************************accessToken", accessToken)
+	refreshToken := c.Request().FormValue("refresh_token")
+
+	formData := url.Values{
+		"client_id":     {keycloakClient},
+		"client_secret": {keycloakClientSecret},
+		"refresh_token": {refreshToken},
+	}
+
+	baseURL := &url.URL{
+		Scheme: "https",
+		Host:   keycloakHost,
+	}
+
+	endSessionPath := "/realms/" + keycloakRealm + "/protocol/openid-connect/logout"
+	endSessionEndpoint := baseURL.ResolveReference(&url.URL{Path: endSessionPath})
+
+	req, err := http.NewRequest("POST", endSessionEndpoint.String(), strings.NewReader(formData.Encode()))
+	if err != nil {
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{"error": err.Error()}))
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", accessToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{"error": err.Error()}))
+	}
+	defer resp.Body.Close()
+
+	if resp.Status != "204 No Content" {
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{"code": resp.Status}))
+	}
+
+	fmt.Println("********************************resp.Status", resp.Status)
+	respBody, _ := io.ReadAll(resp.Body)
+	fmt.Println("********************************respBody", string(respBody))
+
+	return c.Render(http.StatusNoContent, r.JSON(""))
 }
 
 func AuthGetSecurityKeyHandler(c buffalo.Context) error {
