@@ -3,7 +3,6 @@ package actions
 import (
 	"mc_iam_manager/models"
 	"net/http"
-	"os"
 	"sync"
 
 	"github.com/gobuffalo/buffalo"
@@ -85,15 +84,18 @@ func App() *buffalo.App {
 
 		// app.Use(IsAuth)
 
-		apiVersion := os.Getenv("apiVersion")
-		apiPath := "/api/" + apiVersion + "/"
+		// apiVersion := os.Getenv("apiVersion")
+		// apiPath := "/api/" + apiVersion + "/"
+
+		apiPath := "/api/"
 
 		// app.GET("/", HomeHandler)/
 		app.GET("/alive", alive)
 
 		auth := app.Group(apiPath + "auth")
-		auth.POST("/login", LoginWithPasswordHandler)
-		auth.GET("/logout", LogoutHandler)
+		auth.POST("/login", AuthLoginHandler)
+		auth.POST("/logout", AuthLogoutHandler)
+		auth.POST("/securitykey", AuthGetSecurityKeyHandler)
 
 		// manage := app.Group(apiPath + "manage")
 		// manage.POST("/login", GetWorkspace)
