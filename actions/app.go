@@ -97,6 +97,8 @@ func App() *buffalo.App {
 		auth.POST("/logout", AuthLogoutHandler)
 		auth.POST("/securitykey", AuthGetSecurityKeyHandler)
 
+		auth.GET("/validate", AuthGetUserInfo)
+
 		// manage := app.Group(apiPath + "manage")
 		// manage.POST("/login", GetWorkspace)
 		// manage.GET("/logout", GetWorkspace)
