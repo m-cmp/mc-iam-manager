@@ -11,10 +11,8 @@ import (
 
 // UserEntity is used by pop to map your user_entities database table to your go code.
 type UserEntity struct {
-	ID         uuid.UUID                   `json:"id" db:"id"`
-	UserId     string                      `json:"userid" db:"userid"`
-	Password   string                      `json:"pasword"`
-	MciamToken KeycloakAccessTokenResponse `json:"mciamToken"`
+	ID     uuid.UUID `json:"id" db:"id"`
+	UserId string    `json:"userid" db:"userid"`
 }
 
 // UserEntities is not required by pop and may be deleted
