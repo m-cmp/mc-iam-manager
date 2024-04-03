@@ -147,7 +147,7 @@ func AuthLogoutHandler(c buffalo.Context) error {
 			r.JSON(map[string]string{"code": resp.Status}))
 	}
 
-	return c.Render(http.StatusNoContent, r.JSON(""))
+	return c.Render(http.StatusNoContent, nil)
 }
 
 func AuthGetSecurityKeyHandler(c buffalo.Context) error {
