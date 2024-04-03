@@ -1,15 +1,12 @@
 # This is a multi-stage Dockerfile and requires >= Docker 17.05
 # https://docs.docker.com/engine/userguide/eng-image/multistage-build/
-FROM gobuffalo/buffalo:v0.18.8 as builder
+FROM gobuffalo/buffalo:v0.18.14 as builder
 
 ENV GOPROXY http://proxy.golang.org
 
-RUN mkdir -p /src/mc_iam_manager
-WORKDIR /src/mc_iam_manager
+RUN mkdir -p /src/mc-iam-manager
+WORKDIR /src/mc-iam-manager
 
-# this will cache the npm install step, unless package.json changes
-ADD package.json .
-RUN npm install --no-progress
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum

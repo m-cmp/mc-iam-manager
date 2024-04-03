@@ -7,11 +7,6 @@ import (
 	"github.com/gobuffalo/buffalo"
 )
 
-// Iam Manager 로그인 화면
-func IamLoginForm(c buffalo.Context) error {
-	return c.Render(http.StatusOK, r.HTML("login/index.html"))
-}
-
 // Iam Manager Login 처리
 func IamLogin(c buffalo.Context) error {
 

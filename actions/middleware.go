@@ -26,15 +26,6 @@ func IsAuth(next buffalo.Handler) buffalo.Handler {
 			}))
 		}
 
-		// fmt.Println("******************************")
-		// fmt.Println("DecodeAccessToken err =", err)
-		// fmt.Println("******************************")
-		// fmt.Println("DecodeAccessToken token =", token)
-		// fmt.Println("******************************")
-		// fmt.Println("DecodeAccessToken tokenMapClaims =", tokenMap)
-		// fmt.Println("******************************")
-		// fmt.Println("DecodeAccessToken token.Valid =", token.Valid)
-
 		return next(c)
 	}
 }

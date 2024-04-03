@@ -207,8 +207,15 @@ keycloak은 PoC 환경에서 임시로 사용자 자격증명과 CSP SAML 인증
     $ buffalo dev
     ```
 
+## models
+- mc-iam-manager/buffalo/iammodels
+  - 요청 응답 모델 관리
+
 ## How to Contribute
 - Issues/Discussions/Ideas: Utilize issue of mc-iam-manager
 
+
 ## License
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fm-cmp%2Fmc-iam-manager.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fm-cmp%2Fmc-iam-manager?ref=badge_large)
+
+
