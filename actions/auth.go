@@ -8,7 +8,6 @@ import (
 	"mc_iam_manager/iammodels"
 	csputil "mc_iam_manager/iammodels/csp"
 	awsmodels "mc_iam_manager/iammodels/csp/aws"
-	"mc_iam_manager/models"
 	"net/http"
 	"net/url"
 	"os"
@@ -87,7 +86,7 @@ func AuthLoginHandler(c buffalo.Context) error {
 			r.JSON(map[string]string{"err": err.Error()}))
 	}
 
-	var accessTokenResponse models.KeycloakAccessTokenResponse
+	var accessTokenResponse iammodels.KeycloakAccessTokenResponse
 	jsonerr := json.Unmarshal(respBody, &accessTokenResponse)
 	if jsonerr != nil {
 		fmt.Println("Failed to parse response:", err)
