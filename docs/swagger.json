@@ -1,289 +1,330 @@
 {
-    "collection": {
-        "info": {
-            "_postman_id": "5d3aa31d-5739-417a-9151-dd84334bafc6",
-            "name": "mc-iam-manager",
-            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-            "updatedAt": "2024-04-04T02:00:34.000Z",
-            "uid": "30551118-5d3aa31d-5739-417a-9151-dd84334bafc6",
-            "createdAt": "2024-04-01T05:03:50.000Z",
-            "lastUpdatedBy": "30551118"
-        },
-        "item": [
-            {
-                "name": "AUTH",
-                "item": [
+    "swagger": "2.0",
+    "info": {
+        "contact": {},
+        "title": "mc-iam-manager",
+        "version": "1.0.0"
+    },
+    "basePath": "localhost",
+    "paths": {
+        "/api/auth/login": {
+            "post": {
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
                     {
-                        "name": "Login",
-                        "event": [
-                            {
-                                "listen": "test",
-                                "script": {
-                                    "id": "7c030262-1d54-4730-8499-def860ebd368",
-                                    "exec": [
-                                        "var jsonData = JSON.parse(responseBody);\r",
-                                        "pm.collectionVariables.set(\"user_refresh_token\", jsonData.refresh_token);\r",
-                                        "pm.collectionVariables.set(\"user_access_token\", jsonData.access_token);"
-                                    ],
-                                    "type": "text/javascript",
-                                    "packages": {}
-                                }
-                            }
-                        ],
-                        "id": "2db3d926-859f-4335-af78-19b9a570ed84",
-                        "protocolProfileBehavior": {
-                            "disableBodyPruning": true,
-                            "disabledSystemHeaders": {
-                                "content-type": true
-                            }
-                        },
-                        "request": {
-                            "auth": {
-                                "type": "noauth"
-                            },
-                            "method": "POST",
-                            "header": [
-                                {
-                                    "key": "Content-Type",
-                                    "value": "application/json",
-                                    "type": "text",
-                                    "disabled": true
-                                }
-                            ],
-                            "body": {
-                                "mode": "urlencoded",
-                                "urlencoded": [
-                                    {
-                                        "key": "id",
-                                        "value": "{{userid}}",
-                                        "type": "text"
-                                    },
-                                    {
-                                        "key": "password",
-                                        "value": "{{userpw}}",
-                                        "type": "text"
-                                    }
-                                ]
-                            },
-                            "url": {
-                                "raw": "{{baseUrl}}/api/auth/login",
-                                "host": [
-                                    "{{baseUrl}}"
-                                ],
-                                "path": [
-                                    "api",
-                                    "auth",
-                                    "login"
-                                ]
-                            },
-                            "description": "ID/Password 입력을 받아와 토큰을 반환"
-                        },
-                        "response": [],
-                        "uid": "30551118-2db3d926-859f-4335-af78-19b9a570ed84"
+                        "in": "formData",
+                        "name": "id",
+                        "type": "string"
                     },
                     {
-                        "name": "Logout",
-                        "id": "534d7b8a-5224-49fb-8d56-405da7b41f25",
-                        "protocolProfileBehavior": {
-                            "disableBodyPruning": true
-                        },
-                        "request": {
-                            "auth": {
-                                "type": "bearer",
-                                "bearer": [
-                                    {
-                                        "key": "token",
-                                        "value": "{{user_access_token}}",
-                                        "type": "string"
-                                    }
-                                ]
-                            },
-                            "method": "POST",
-                            "header": [],
-                            "body": {
-                                "mode": "urlencoded",
-                                "urlencoded": [
-                                    {
-                                        "key": "refresh_token",
-                                        "value": "{{user_refresh_token}}",
-                                        "type": "text"
-                                    }
-                                ]
-                            },
-                            "url": {
-                                "raw": "{{baseUrl}}/api/auth/logout",
-                                "host": [
-                                    "{{baseUrl}}"
-                                ],
-                                "path": [
-                                    "api",
-                                    "auth",
-                                    "logout"
-                                ]
-                            },
-                            "description": "Access Token을 입력을 header에서 받아 토큰 파기"
-                        },
-                        "response": [],
-                        "uid": "30551118-534d7b8a-5224-49fb-8d56-405da7b41f25"
-                    },
-                    {
-                        "name": "GetUserinfo",
-                        "id": "dd2a0891-c5fd-49bb-8d0e-f8958c925126",
-                        "protocolProfileBehavior": {
-                            "disableBodyPruning": true
-                        },
-                        "request": {
-                            "auth": {
-                                "type": "bearer",
-                                "bearer": [
-                                    {
-                                        "key": "token",
-                                        "value": "{{user_access_token}}",
-                                        "type": "string"
-                                    }
-                                ]
-                            },
-                            "method": "GET",
-                            "header": [],
-                            "url": {
-                                "raw": "{{baseUrl}}/api/auth/validate",
-                                "host": [
-                                    "{{baseUrl}}"
-                                ],
-                                "path": [
-                                    "api",
-                                    "auth",
-                                    "validate"
-                                ]
-                            },
-                            "description": "Access Token을 입력을 header에서 받아 토큰 파기"
-                        },
-                        "response": [],
-                        "uid": "30551118-dd2a0891-c5fd-49bb-8d0e-f8958c925126"
-                    },
-                    {
-                        "name": "Securitykey",
-                        "id": "c7fb906d-b153-42d5-8e5d-ee3fe4c09a8a",
-                        "protocolProfileBehavior": {
-                            "disableBodyPruning": true
-                        },
-                        "request": {
-                            "auth": {
-                                "type": "bearer",
-                                "bearer": [
-                                    {
-                                        "key": "token",
-                                        "value": "{{user_access_token}}",
-                                        "type": "string"
-                                    }
-                                ]
-                            },
-                            "method": "POST",
-                            "header": [
-                                {
-                                    "key": "Content-Type",
-                                    "value": "application/json",
-                                    "disabled": true
-                                },
-                                {
-                                    "key": "Accept",
-                                    "value": "application/json",
-                                    "disabled": true
-                                }
-                            ],
-                            "body": {
-                                "mode": "urlencoded",
-                                "urlencoded": [
-                                    {
-                                        "key": "cspname",
-                                        "value": "{{cspname}}",
-                                        "type": "text"
-                                    },
-                                    {
-                                        "key": "rolename",
-                                        "value": "{{rolename}}",
-                                        "type": "text"
-                                    }
-                                ]
-                            },
-                            "url": {
-                                "raw": "{{baseUrl}}/api/auth/securitykey",
-                                "host": [
-                                    "{{baseUrl}}"
-                                ],
-                                "path": [
-                                    "api",
-                                    "auth",
-                                    "securitykey"
-                                ]
-                            },
-                            "description": "임시보안자격증명 (aws는 sts) 발급요청"
-                        },
-                        "response": [],
-                        "uid": "30551118-c7fb906d-b153-42d5-8e5d-ee3fe4c09a8a"
+                        "in": "formData",
+                        "name": "password",
+                        "type": "string"
                     }
                 ],
-                "id": "1211ad70-566d-4b16-bdbc-9115020ce581",
-                "uid": "30551118-1211ad70-566d-4b16-bdbc-9115020ce581"
+                "responses": {
+                    "200": {
+                        "description": "Login Success",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "access_token": {
+                                    "example": "***********************************************************************************************",
+                                    "type": "string"
+                                },
+                                "expires_in": {
+                                    "example": 300,
+                                    "type": "number"
+                                },
+                                "not-before-policy": {
+                                    "example": 1711960136,
+                                    "type": "number"
+                                },
+                                "refresh_expires_in": {
+                                    "example": 1800,
+                                    "type": "number"
+                                },
+                                "refresh_token": {
+                                    "example": "***********************************************************************************************",
+                                    "type": "string"
+                                },
+                                "scope": {
+                                    "example": "openid",
+                                    "type": "string"
+                                },
+                                "session_state": {
+                                    "example": "xxxxx-xxxx-xxxx-xxxx-xxxx",
+                                    "type": "string"
+                                },
+                                "token_type": {
+                                    "example": "Bearer",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "503": {
+                        "description": "Login Fail",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "code": {
+                                    "example": "401 Unauthorized",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "tags": [
+                    "AUTH"
+                ],
+                "description": "ID/Password 입력을 받아와 JWT 세션 토큰을 반환",
+                "operationId": "login",
+                "summary": "Login"
             }
-        ],
-        "event": [
-            {
-                "listen": "prerequest",
-                "script": {
-                    "id": "4a3fede5-ea84-4b97-87b0-48e0b23898e7",
-                    "type": "text/javascript",
-                    "packages": {},
-                    "exec": [
-                        ""
-                    ]
-                }
-            },
-            {
-                "listen": "test",
-                "script": {
-                    "id": "07eb904f-d108-4b83-88c5-1a98ca642b98",
-                    "type": "text/javascript",
-                    "packages": {},
-                    "exec": [
-                        ""
-                    ]
-                }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "formData",
+                        "name": "refresh_token",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Logout Success",
+                        "headers": {
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Logout Fail",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "code": {
+                                    "example": "400 Bad Request",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "tags": [
+                    "AUTH"
+                ],
+                "description": "AccessToken및 RefreshToken을 받아 해당 토큰 파기",
+                "operationId": "logout",
+                "summary": "Logout"
             }
-        ],
-        "variable": [
-            {
-                "key": "baseUrl",
-                "value": ""
-            },
-            {
-                "key": "user_refresh_token",
-                "value": ""
-            },
-            {
-                "key": "user_access_token",
-                "value": ""
-            },
-            {
-                "key": "rolename",
-                "value": "",
-                "type": "string"
-            },
-            {
-                "key": "cspname",
-                "value": "AWS",
-                "type": "string"
-            },
-            {
-                "key": "userid",
-                "value": "",
-                "type": "string"
-            },
-            {
-                "key": "userpw",
-                "value": "",
-                "type": "string"
+        },
+        "/api/auth/securitykey": {
+            "post": {
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "formData",
+                        "name": "cspname",
+                        "type": "string"
+                    },
+                    {
+                        "in": "formData",
+                        "name": "rolename",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Securitykey Success",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "AccessKeyId": {
+                                    "example": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                                    "type": "string"
+                                },
+                                "Expiration": {
+                                    "example": "2024-04-04T02:37:49Z",
+                                    "type": "string"
+                                },
+                                "SecretAccessKey": {
+                                    "example": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                                    "type": "string"
+                                },
+                                "SessionToken": {
+                                    "example": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "503": {
+                        "description": "Securitykey CSP err",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "err": {
+                                    "example": "provided CSP is not supported",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "tags": [
+                    "AUTH"
+                ],
+                "description": "임시보안자격증명 (aws는 sts) 발급요청",
+                "operationId": "securitykey",
+                "summary": "Securitykey"
             }
-        ]
-    }
+        },
+        "/api/auth/validate": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "GetUserinfo Success",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "sub": {
+                                    "example": "xxxxx-xxxx-xxxx-xxxx-xxxx",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "503": {
+                        "description": "GetUserinfo Fail",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "code": {
+                                    "example": "401 Unauthorized",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "tags": [
+                    "AUTH"
+                ],
+                "description": "AccessToken 및 header에서 받아 유저 정보 반환",
+                "operationId": "getuserinfo",
+                "summary": "GetUserinfo"
+            }
+        }
+    },
+    "tags": [
+        {
+            "description": "API를 통한 토큰 발급 및 토큰 파기",
+            "name": "AUTH"
+        }
+    ]
 }
