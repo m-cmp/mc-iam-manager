@@ -2,10 +2,15 @@
     "swagger": "2.0",
     "info": {
         "contact": {},
+        "description": "권한 및 접근제어와 워크스페이스 관리 프레임워크",
         "title": "mc-iam-manager",
         "version": "1.0.0"
     },
-    "basePath": "localhost",
+    "host": "localhost:3000",
+    "basePath": "/",
+    "schemes": [
+        "http"
+    ],
     "paths": {
         "/api/auth/login": {
             "post": {
@@ -64,7 +69,7 @@
                                     "type": "string"
                                 },
                                 "scope": {
-                                    "example": "openid",
+                                    "example": "***********************************************************************************************",
                                     "type": "string"
                                 },
                                 "session_state": {
@@ -106,7 +111,7 @@
                 "tags": [
                     "AUTH"
                 ],
-                "description": "ID/Password 입력을 받아와 JWT 세션 토큰을 반환",
+                "description": "ID/Password를 받아 JWT 세션 토큰을 반환",
                 "operationId": "login",
                 "summary": "Login"
             }
@@ -253,7 +258,7 @@
                 "tags": [
                     "AUTH"
                 ],
-                "description": "임시보안자격증명 (aws는 sts) 발급요청",
+                "description": "임시보안자격증명 발급요청",
                 "operationId": "securitykey",
                 "summary": "Securitykey"
             }
@@ -315,7 +320,7 @@
                 "tags": [
                     "AUTH"
                 ],
-                "description": "AccessToken 및 header에서 받아 유저 정보 반환",
+                "description": "유저 정보 조회",
                 "operationId": "getuserinfo",
                 "summary": "GetUserinfo"
             }
@@ -323,7 +328,7 @@
     },
     "tags": [
         {
-            "description": "API를 통한 토큰 발급 및 토큰 파기",
+            "description": "권한 및 젭근제어",
             "name": "AUTH"
         }
     ]
