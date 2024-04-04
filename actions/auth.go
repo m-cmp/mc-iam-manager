@@ -150,6 +150,62 @@ func AuthLogoutHandler(c buffalo.Context) error {
 	return c.Render(http.StatusNoContent, nil)
 }
 
+func AuthGetUserInfo(c buffalo.Context) error {
+	accessToken := c.Request().Header.Get("Authorization")
+
+	validateErr := validate.Validate(
+		&validators.StringIsPresent{Field: accessToken, Name: "Authorization"},
+	)
+	if validateErr.HasAny() {
+		fmt.Println(validateErr)
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{"err": validateErr.Error()}))
+	}
+
+	baseURL := &url.URL{
+		Scheme: "https",
+		Host:   keycloakHost,
+	}
+	getUserInfoPath := "/realms/" + keycloakRealm + "/protocol/openid-connect/userinfo"
+	getUserInfoEndpoint := baseURL.ResolveReference(&url.URL{Path: getUserInfoPath})
+
+	req, err := http.NewRequest("GET", getUserInfoEndpoint.String(), nil)
+	if err != nil {
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{"error": err.Error()}))
+	}
+	req.Header.Set("Authorization", accessToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{"error": err.Error()}))
+	}
+	defer resp.Body.Close()
+
+	if resp.Status != "200 OK" {
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{"code": resp.Status}))
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Failed to read response body:", err)
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{"err": err.Error()}))
+	}
+
+	var userinfo map[string]interface{}
+	if err := json.Unmarshal([]byte(respBody), &userinfo); err != nil {
+		fmt.Println("JSON 파싱 에러:", err)
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{"err": err.Error()}))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(userinfo))
+}
+
 func AuthGetSecurityKeyHandler(c buffalo.Context) error {
 	cspName := c.Request().FormValue("cspname")
 	roleName := c.Request().FormValue("rolename") // role attr 에 roleArn을 넣는가..?
@@ -214,53 +270,6 @@ func AuthGetSecurityKeyHandler(c buffalo.Context) error {
 		return c.Render(http.StatusOK, r.JSON(securityToken.AssumeRoleWithWebIdentityResult.Credentials))
 	default:
 		return c.Render(http.StatusServiceUnavailable,
-			r.JSON(map[string]string{"err": "applied CSP is not supported"}))
+			r.JSON(map[string]string{"err": "provided CSP is not supported"}))
 	}
-}
-
-func AuthGetUserInfo(c buffalo.Context) error {
-	accessToken := c.Request().Header.Get("Authorization")
-
-	baseURL := &url.URL{
-		Scheme: "https",
-		Host:   keycloakHost,
-	}
-	getUserInfoPath := "/realms/" + keycloakRealm + "/protocol/openid-connect/userinfo"
-	getUserInfoEndpoint := baseURL.ResolveReference(&url.URL{Path: getUserInfoPath})
-
-	req, err := http.NewRequest("GET", getUserInfoEndpoint.String(), nil)
-	if err != nil {
-		return c.Render(http.StatusServiceUnavailable,
-			r.JSON(map[string]string{"error": err.Error()}))
-	}
-	req.Header.Set("Authorization", accessToken)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return c.Render(http.StatusServiceUnavailable,
-			r.JSON(map[string]string{"error": err.Error()}))
-	}
-	defer resp.Body.Close()
-
-	if resp.Status != "200 OK" {
-		return c.Render(http.StatusServiceUnavailable,
-			r.JSON(map[string]string{"code": resp.Status}))
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Failed to read response body:", err)
-		return c.Render(http.StatusServiceUnavailable,
-			r.JSON(map[string]string{"err": err.Error()}))
-	}
-
-	var userinfo map[string]interface{}
-	if err := json.Unmarshal([]byte(respBody), &userinfo); err != nil {
-		fmt.Println("JSON 파싱 에러:", err)
-		return c.Render(http.StatusServiceUnavailable,
-			r.JSON(map[string]string{"err": err.Error()}))
-	}
-
-	return c.Render(http.StatusOK, r.JSON(userinfo))
 }
