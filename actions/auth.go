@@ -35,8 +35,13 @@ func init() {
 func AuthLoginHandler(c buffalo.Context) error {
 
 	user := &iammodels.UserLogin{}
-	user.Id = c.Request().FormValue("id")
-	user.Password = c.Request().FormValue("password")
+	if err := c.Bind(user); err != nil {
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{
+				"code": err.Error(),
+				"msg":  "user input bind Err",
+			}))
+	}
 
 	validateErr := validate.Validate(
 		&validators.StringIsPresent{Field: user.Id, Name: "id"},
@@ -99,12 +104,19 @@ func AuthLoginHandler(c buffalo.Context) error {
 
 func AuthLogoutHandler(c buffalo.Context) error {
 
-	accessToken := c.Request().Header.Get("Authorization")
-	refreshToken := c.Request().FormValue("refresh_token")
+	user := &iammodels.UserLogout{}
+	user.AccessToken = c.Request().Header.Get("Authorization")
+	if err := c.Bind(user); err != nil {
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{
+				"code": err.Error(),
+				"msg":  "user input bind Err",
+			}))
+	}
 
 	validateErr := validate.Validate(
-		&validators.StringIsPresent{Field: accessToken, Name: "Authorization"},
-		&validators.StringIsPresent{Field: refreshToken, Name: "refresh_token"},
+		&validators.StringIsPresent{Field: user.AccessToken, Name: "Authorization"},
+		&validators.StringIsPresent{Field: user.RefreshToken, Name: "refresh_token"},
 	)
 	if validateErr.HasAny() {
 		fmt.Println(validateErr)
@@ -115,7 +127,7 @@ func AuthLogoutHandler(c buffalo.Context) error {
 	formData := url.Values{
 		"client_id":     {keycloakClient},
 		"client_secret": {keycloakClientSecret},
-		"refresh_token": {refreshToken},
+		"refresh_token": {user.RefreshToken},
 	}
 
 	baseURL := &url.URL{
@@ -132,7 +144,7 @@ func AuthLogoutHandler(c buffalo.Context) error {
 			r.JSON(map[string]string{"error": err.Error()}))
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", accessToken)
+	req.Header.Set("Authorization", user.AccessToken)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -207,14 +219,21 @@ func AuthGetUserInfo(c buffalo.Context) error {
 }
 
 func AuthGetSecurityKeyHandler(c buffalo.Context) error {
-	cspName := c.Request().FormValue("cspname")
-	roleName := c.Request().FormValue("rolename") // role attr 에 roleArn을 넣는가..?
-	accessToken := strings.Replace(c.Request().Header.Get("Authorization"), "Bearer ", "", -1)
+
+	user := &iammodels.SecurityKeyRequest{}
+	user.AccessToken = strings.Replace(c.Request().Header.Get("Authorization"), "Bearer ", "", -1)
+	if err := c.Bind(user); err != nil {
+		return c.Render(http.StatusServiceUnavailable,
+			r.JSON(map[string]string{
+				"code": err.Error(),
+				"msg":  "user input bind Err",
+			}))
+	}
 
 	validateErr := validate.Validate(
-		&validators.StringIsPresent{Field: cspName, Name: "cspname"},
-		&validators.StringIsPresent{Field: roleName, Name: "rolename"},
-		&validators.StringIsPresent{Field: accessToken, Name: "Authorization"},
+		&validators.StringIsPresent{Field: user.Cspname, Name: "cspname"},
+		&validators.StringIsPresent{Field: user.Rolename, Name: "rolename"},
+		&validators.StringIsPresent{Field: user.AccessToken, Name: "Authorization"},
 	)
 	if validateErr.HasAny() {
 		fmt.Println(validateErr)
@@ -222,11 +241,11 @@ func AuthGetSecurityKeyHandler(c buffalo.Context) error {
 			r.JSON(map[string]string{"err": validateErr.Error()}))
 	}
 
-	switch cspName {
+	switch user.Cspname {
 	case "AWS":
 		inputParams := awsmodels.AWSSecuritykeyInputParams
-		inputParams.RoleArn = roleName
-		inputParams.WebIdentityToken = accessToken
+		inputParams.RoleArn = user.Rolename
+		inputParams.WebIdentityToken = user.AccessToken
 
 		encodedinputParams, err := csputil.StructToMap(*inputParams)
 		if err != nil {
@@ -252,6 +271,11 @@ func AuthGetSecurityKeyHandler(c buffalo.Context) error {
 			fmt.Println("Error sending request:", err)
 		}
 		defer resp.Body.Close()
+
+		if resp.Status != "200 OK" {
+			return c.Render(http.StatusServiceUnavailable,
+				r.JSON(map[string]string{"code": resp.Status}))
+		}
 
 		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
