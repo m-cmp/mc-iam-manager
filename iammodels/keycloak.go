@@ -1,6 +1,5 @@
 package iammodels
 
-// UserEntity is used by pop to map your user_entities database table to your go code.
 type KeycloakAccessTokenResponse struct {
 	AccessToken      string `json:"access_token"`
 	ExpiresIn        int    `json:"expires_in"`
