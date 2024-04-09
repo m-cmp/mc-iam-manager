@@ -15,21 +15,28 @@
         "/api/auth/login": {
             "post": {
                 "consumes": [
-                    "application/x-www-form-urlencoded"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
                 "parameters": [
                     {
-                        "in": "formData",
-                        "name": "id",
-                        "type": "string"
-                    },
-                    {
-                        "in": "formData",
-                        "name": "password",
-                        "type": "string"
+                        "in": "body",
+                        "name": "body",
+                        "schema": {
+                            "properties": {
+                                "id": {
+                                    "example": "userid",
+                                    "type": "string"
+                                },
+                                "password": {
+                                    "example": "userpw",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -49,7 +56,7 @@
                         "schema": {
                             "properties": {
                                 "access_token": {
-                                    "example": "***********************************************************************************************",
+                                    "example": "xxxxx",
                                     "type": "string"
                                 },
                                 "expires_in": {
@@ -57,7 +64,7 @@
                                     "type": "number"
                                 },
                                 "not-before-policy": {
-                                    "example": 1711960136,
+                                    "example": 9999999999,
                                     "type": "number"
                                 },
                                 "refresh_expires_in": {
@@ -65,15 +72,15 @@
                                     "type": "number"
                                 },
                                 "refresh_token": {
-                                    "example": "***********************************************************************************************",
+                                    "example": "xxxxx",
                                     "type": "string"
                                 },
                                 "scope": {
-                                    "example": "***********************************************************************************************",
+                                    "example": "xxxxx",
                                     "type": "string"
                                 },
                                 "session_state": {
-                                    "example": "xxxxx-xxxx-xxxx-xxxx-xxxx",
+                                    "example": "xxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
                                     "type": "string"
                                 },
                                 "token_type": {
@@ -119,16 +126,24 @@
         "/api/auth/logout": {
             "post": {
                 "consumes": [
-                    "application/x-www-form-urlencoded"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
                 "parameters": [
                     {
-                        "in": "formData",
-                        "name": "refresh_token",
-                        "type": "string"
+                        "in": "body",
+                        "name": "body",
+                        "schema": {
+                            "properties": {
+                                "refresh_token": {
+                                    "example": "****************************",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -178,21 +193,28 @@
         "/api/auth/securitykey": {
             "post": {
                 "consumes": [
-                    "application/x-www-form-urlencoded"
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
                 "parameters": [
                     {
-                        "in": "formData",
-                        "name": "cspname",
-                        "type": "string"
-                    },
-                    {
-                        "in": "formData",
-                        "name": "rolename",
-                        "type": "string"
+                        "in": "body",
+                        "name": "body",
+                        "schema": {
+                            "properties": {
+                                "cspname": {
+                                    "example": "AWS",
+                                    "type": "string"
+                                },
+                                "rolename": {
+                                    "example": "roleName",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -212,19 +234,19 @@
                         "schema": {
                             "properties": {
                                 "AccessKeyId": {
-                                    "example": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                                    "example": "xxxx",
                                     "type": "string"
                                 },
                                 "Expiration": {
-                                    "example": "2024-04-04T02:37:49Z",
+                                    "example": "2024-04-09T00:51:43Z",
                                     "type": "string"
                                 },
                                 "SecretAccessKey": {
-                                    "example": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                                    "example": "xxxx",
                                     "type": "string"
                                 },
                                 "SessionToken": {
-                                    "example": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                                    "example": "xxxx",
                                     "type": "string"
                                 }
                             },
@@ -259,8 +281,8 @@
                     "AUTH"
                 ],
                 "description": "임시보안자격증명 발급요청",
-                "operationId": "securitykey",
-                "summary": "Securitykey"
+                "operationId": "securitykeyFail",
+                "summary": "Securitykey Fail"
             }
         },
         "/api/auth/validate": {
@@ -286,7 +308,7 @@
                         "schema": {
                             "properties": {
                                 "sub": {
-                                    "example": "xxxxx-xxxx-xxxx-xxxx-xxxx",
+                                    "example": "xxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
                                     "type": "string"
                                 }
                             },
@@ -328,7 +350,7 @@
     },
     "tags": [
         {
-            "description": "권한 및 젭근제어",
+            "description": "The Multi-Cloud Authorization and Access Control Framework provides platform account/role management, integrated management of cloud account/access control information, and workspace management functionalities. It offers features compatible with security policy determination, establishment, and enforcement for existing multi-cloud services. Additionally, it provides the capability to establish and manage independent security policies within the framework.\n\nIt defines an access control reference model for multi-cloud, distinguishing between user access control and service provider access control. This model adopts a prominent Role-Based Access Control (RBAC) approach and integrates it with existing policy management solutions for application and utilization.",
             "name": "AUTH"
         }
     ]
