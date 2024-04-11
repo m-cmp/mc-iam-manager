@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/gobuffalo/pop/v6"
@@ -46,7 +47,9 @@ func (m *MCIamWorkspace) Validate(tx *pop.Connection) (*validate.Errors, error) 
 // ValidateCreate gets run every time you call "pop.ValidateAndCreate" method.
 // This method is not required and may be deleted.
 func (m *MCIamWorkspace) ValidateCreate(tx *pop.Connection) (*validate.Errors, error) {
-	return validate.NewErrors(), nil
+	log.Println("Workspace ValidateCreate")
+	//return validate.NewErrors(), nil
+	return nil, nil
 }
 
 // ValidateUpdate gets run every time you call "pop.ValidateAndUpdate" method.
