@@ -22,16 +22,11 @@ func init() {
 }
 
 func CreateWorkspace(tx *pop.Connection, bindModel *iammodels.WorkspaceReq) map[string]interface{} {
-	//cblogger.Info("workspace bindModel : ")
-	//cblogger.Info(bindModel)
 
 	workspace := &models.MCIamWorkspace{
 		Name:        bindModel.WorkspaceName,
 		Description: bindModel.Description,
 	}
-
-	cblogger.Info("workspace bindModel : ")
-	cblogger.Info(workspace)
 
 	err := tx.Create(workspace)
 
@@ -120,7 +115,7 @@ func GetWorkspaceList(tx *pop.Connection, userId string) iammodels.WorkspaceInfo
 		/**
 		To-Do ws_user mapping table crud 다음, 유저 기반으로 검색하도록 작성
 		*/
-		err = tx.Eager().Where("").All(&bindModel)
+		err = tx.Eager().Where("user_id = ?", userId).All(&bindModel)
 	} else {
 		err = tx.Eager().All(&bindModel)
 	}
@@ -143,10 +138,6 @@ func GetWorkspaceList(tx *pop.Connection, userId string) iammodels.WorkspaceInfo
 		}
 
 	}
-
-	cblogger.Info("ParsingArray")
-	cblogger.Info(parsingArray)
-	cblogger.Info("end of ParsingArray")
 
 	return parsingArray
 }
@@ -222,9 +213,8 @@ func DeleteProjectFromWorkspace(paramWsId string, paramPjId string, tx *pop.Conn
 
 	models := &models.MCIamWsProjectMapping{}
 
-	err := tx.Eager().Where("ws_id = ? and project_id =?", models.WsID, models.ProjectID).All(models)
-	cblogger.Info("After Search")
-	cblogger.Info(models)
+	err := tx.Eager().Where("ws_id = ? and project_id =?", paramWsId, paramPjId).First(models)
+
 	if err != nil {
 		cblogger.Info(err)
 	}
