@@ -43,7 +43,7 @@ func GetWorkspaceList(c buffalo.Context) error {
 
 // Workspace 목록	GET	/api/ws	/workspace	CreateWorkspace
 func CreateWorkspace(c buffalo.Context) error {
-	workspaceParam := iammodels.WorkspaceReq{}
+	workspaceParam := &iammodels.WorkspaceReq{}
 	err := c.Bind(workspaceParam)
 
 	if err != nil {
@@ -61,8 +61,8 @@ func CreateWorkspace(c buffalo.Context) error {
 }
 
 func UpdateWorkspace(c buffalo.Context) error {
-	workspaceParam := iammodels.WorkspaceInfo{}
-
+	workspaceParam := &iammodels.WorkspaceInfo{}
+	cblogger.Info(workspaceParam)
 	err := c.Bind(workspaceParam)
 	if err != nil {
 		log.Println("Error binding workspaceParam:", err)
@@ -74,7 +74,7 @@ func UpdateWorkspace(c buffalo.Context) error {
 	log.Println("Workspace request data:", workspaceParam)
 
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.UpdateWorkspace(tx, workspaceParam)
+	resp := handler.UpdateWorkspace(tx, *workspaceParam)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
@@ -102,7 +102,8 @@ func DeleteProjectFromWorkspace(c buffalo.Context) error {
 	tx := c.Value("tx").(*pop.Connection)
 	paramWsId := c.Param("workspaceId")
 	paramPjId := c.Param("projectId")
-
+	cblogger.Info("wsId:" + paramWsId)
+	cblogger.Info("pjId:" + paramPjId)
 	handler.DeleteProjectFromWorkspace(paramWsId, paramPjId, tx)
 	return c.Render(http.StatusOK, r.JSON(""))
 }

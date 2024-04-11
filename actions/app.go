@@ -124,7 +124,7 @@ func App() *buffalo.App {
 		workspacePath.POST("/", CreateWorkspace)
 		workspacePath.DELETE("/{workspaceId}", DeleteWorkspace)
 		workspacePath.PATCH("/{workspaceId}", UpdateWorkspace)
-		workspacePath.GET("/ws/id/{workspaceId}/project", AttachedProjectByWorkspace)
+		workspacePath.GET("/{workspaceId}/project", AttachedProjectByWorkspace)
 
 		workspacePath.POST("/{workspaceId}/attachproject", AttachProjectToWorkspace)
 		workspacePath.DELETE("/{workspaceId}/attachproject/{projectId}", DeleteProjectFromWorkspace)
