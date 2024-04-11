@@ -11,10 +11,10 @@ package iammodels
 import "mc_iam_manager/models"
 
 type WorkspaceInfo struct {
-	WorkspaceId   string `json:"workspaceId,omitempty"`
-	WorkspaceName string `json:"workspaceName,omitempty"`
-	Description   string `json:"description,omitempty"`
-	ProjectList   ProjectInfos
+	WorkspaceId   string         `json:"workspaceId,omitempty"`
+	WorkspaceName string         `json:"workspaceName,omitempty"`
+	Description   string         `json:"description,omitempty"`
+	ProjectList   ProjectInfos   "omitempty"
 	UserList      []UserRoleInfo `json:"userList,omitempty"`
 }
 

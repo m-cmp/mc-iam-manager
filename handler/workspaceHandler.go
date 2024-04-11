@@ -21,7 +21,7 @@ func init() {
 	cblog.SetLevel("debug")
 }
 
-func CreateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceReq) map[string]interface{} {
+func CreateWorkspace(tx *pop.Connection, bindModel *iammodels.WorkspaceReq) map[string]interface{} {
 	//cblogger.Info("workspace bindModel : ")
 	//cblogger.Info(bindModel)
 
@@ -52,11 +52,8 @@ func CreateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceReq) map[s
 }
 
 func UpdateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceInfo) map[string]interface{} {
-	//cblogger.Info("workspace bindModel : ")
-	//cblogger.Info(bindModel)
-
-	workspace := models.MCIamWorkspace{}
-	tx.Select().Where("ws_id=? ", bindModel.WorkspaceId).All(&workspace)
+	workspace := &models.MCIamWorkspace{}
+	tx.Select().Where("id = ? ", bindModel.WorkspaceId).All(workspace)
 
 	workspace.Name = bindModel.WorkspaceName
 	workspace.Description = bindModel.Description
@@ -115,7 +112,7 @@ func UpdateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceInfo) map[
 //}
 
 func GetWorkspaceList(tx *pop.Connection, userId string) iammodels.WorkspaceInfos {
-	bindModel := []models.MCIamWorkspace{}
+	var bindModel []models.MCIamWorkspace
 	cblogger.Info("userId : " + userId)
 	var err error
 
@@ -223,14 +220,13 @@ func AttachedDefaultByWorkspace(tx *pop.Connection) error {
 // Workspace에 Project 할당 해제	DELELTE	/api/ws	/workspace/{workspaceId}/attachproject/{projectId}
 func DeleteProjectFromWorkspace(paramWsId string, paramPjId string, tx *pop.Connection) map[string]interface{} {
 
-	models := models.MCIamWsProjectMapping{
-		WsID:      uuid.FromStringOrNil(paramWsId),
-		ProjectID: uuid.FromStringOrNil(paramPjId),
-	}
+	models := &models.MCIamWsProjectMapping{}
 
-	err := tx.Eager().Where("ws_id =?", models.WsID).All(&models)
+	err := tx.Eager().Where("ws_id = ? and project_id =?", models.WsID, models.ProjectID).All(models)
+	cblogger.Info("After Search")
+	cblogger.Info(models)
 	if err != nil {
-		LogPrintHandler("DeleteProjectFromWorkspace", models.WsID)
+		cblogger.Info(err)
 	}
 
 	err2 := tx.Destroy(models)
