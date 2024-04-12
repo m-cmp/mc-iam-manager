@@ -4,6 +4,7 @@ go 1.21.4
 
 require (
 	github.com/Nerzal/gocloak/v13 v13.9.0
+	github.com/cloud-barista/cb-log v0.7.0
 	github.com/gobuffalo/buffalo v1.1.0
 	github.com/gobuffalo/buffalo-pop/v3 v3.0.7
 	github.com/gobuffalo/envy v1.10.2
@@ -22,7 +23,11 @@ require (
 	github.com/unrolled/secure v1.14.0
 )
 
-require github.com/kr/pretty v0.2.0 // indirect
+require (
+	github.com/kr/pretty v0.2.0 // indirect
+	github.com/snowzach/rotatefilehook v0.0.0-20220211133110-53752135082d // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
+)
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
@@ -81,7 +86,7 @@ require (
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/sirupsen/logrus v1.9.0
 	github.com/sourcegraph/annotate v0.0.0-20160123013949-f4cad6c6324d // indirect
 	github.com/sourcegraph/syntaxhighlight v0.0.0-20170531221838-bd320f5d308e // indirect
 	github.com/spf13/cobra v1.6.1 // indirect

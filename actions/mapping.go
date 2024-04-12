@@ -1,35 +1,24 @@
 package actions
 
 import (
-	"mc_iam_manager/handler"
-	"mc_iam_manager/models"
-	"net/http"
-
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/pkg/errors"
+	"mc_iam_manager/handler"
+	"mc_iam_manager/iammodels"
+	"mc_iam_manager/models"
+	"net/http"
 )
 
-func MappingWsUser(c buffalo.Context) error {
-	wum := &models.MCIamWsUserMapping{}
+func AssignUserToWorkspace(c buffalo.Context) error {
+
+	wum := &models.MCIamWsUserRoleMappings{}
 	if err := c.Bind(wum); err != nil {
 
 	}
 	tx := c.Value("tx").(*pop.Connection)
 
-	resp := handler.MappingWsUser(tx, wum)
-	return c.Render(http.StatusOK, r.JSON(resp))
-}
-
-// MappingWsUserRoleMapping default implementation.
-func MappingWsUserRole(c buffalo.Context) error {
-	wurm := &models.MCIamWsUserRoleMapping{}
-	if err := c.Bind(wurm); err != nil {
-
-	}
-	tx := c.Value("tx").(*pop.Connection)
-
-	resp := handler.MappingWsUserRole(tx, wurm)
+	resp := handler.MappingWsUserRole(tx, wum)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
@@ -58,16 +47,14 @@ func MappingUserRole(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
-func MappingWsProject(c buffalo.Context) error {
-	wp := &models.MCIamWsProjectMapping{}
-
-	if err := c.Bind(wp); err != nil {
-
-	}
+func AttachProjectToWorkspace(c buffalo.Context) error {
+	param := &iammodels.WorkspaceProjectMappingReq{}
+	c.Bind(param)
 
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.MappingWsProject(tx, wp)
+	resp := handler.AttachProjectToWorkspace(tx, iammodels.WsPjMappingreqToModels(*param))
 
+	//return c.Render(http.StatusOK, r.JSON(resp))
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
