@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"mc_iam_manager/iammodels"
 	"mc_iam_manager/models"
 	"net/http"
 
@@ -8,9 +9,14 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func CreateProject(tx *pop.Connection, bindModel *models.MCIamProject) map[string]interface{} {
+func CreateProject(tx *pop.Connection, bindModel *iammodels.ProjectReq) map[string]interface{} {
 
-	err := tx.Create(bindModel)
+	project := &models.MCIamProject{
+		Name:        bindModel.ProjectName,
+		Description: bindModel.Description,
+	}
+
+	err := tx.Create(project)
 
 	if err != nil {
 		return map[string]interface{}{
@@ -20,6 +26,30 @@ func CreateProject(tx *pop.Connection, bindModel *models.MCIamProject) map[strin
 	}
 	return map[string]interface{}{
 		"message": "success",
+		"project": project,
+		"status":  http.StatusOK,
+	}
+}
+
+func UpdateProject(tx *pop.Connection, bindModel *iammodels.ProjectInfo) map[string]interface{} {
+
+	project := &models.MCIamProject{
+		ID:          uuid.FromStringOrNil(bindModel.ProjectId),
+		Name:        bindModel.ProjectName,
+		Description: bindModel.Description,
+	}
+
+	err := tx.Update(project)
+
+	if err != nil {
+		return map[string]interface{}{
+			"message": err,
+			"status":  http.StatusBadRequest,
+		}
+	}
+	return map[string]interface{}{
+		"message": "success",
+		"project": project,
 		"status":  http.StatusOK,
 	}
 }
@@ -32,6 +62,18 @@ func GetProjectList(tx *pop.Connection) *models.MCIamProjects {
 	if err != nil {
 
 	}
+	return bindModel
+}
+
+func GetProjectListByWorkspaceId(tx *pop.Connection, wsId string) *models.MCIamWsProjectMappings {
+	bindModel := &models.MCIamWsProjectMappings{}
+	query := models.DB.Where("ws_id = " + wsId)
+	err := query.All(bindModel)
+
+	if err != nil {
+
+	}
+
 	return bindModel
 }
 

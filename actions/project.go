@@ -3,7 +3,7 @@ package actions
 import (
 	"log"
 	"mc_iam_manager/handler"
-	"mc_iam_manager/models"
+	"mc_iam_manager/iammodels"
 	"net/http"
 
 	"github.com/gobuffalo/buffalo"
@@ -28,8 +28,9 @@ func GetProjectList(c buffalo.Context) error {
 }
 
 func CreateProject(c buffalo.Context) error {
-	pj := &models.MCIamProject{}
-	err := c.Bind(pj)
+
+	pjr := &iammodels.ProjectReq{}
+	err := c.Bind(pjr)
 	if err != nil {
 		log.Println(err)
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]interface{}{
@@ -37,7 +38,25 @@ func CreateProject(c buffalo.Context) error {
 		}))
 	}
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.CreateProject(tx, pj)
+	resp := handler.CreateProject(tx, pjr)
+	return c.Render(http.StatusOK, r.JSON(resp))
+}
+
+func UpdateProject(c buffalo.Context) error {
+	projectInfo := &iammodels.ProjectInfo{}
+	err := c.Bind(projectInfo)
+
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]interface{}{
+			"error": err,
+		}))
+	}
+
+	cblogger.Info(projectInfo)
+
+	tx := c.Value("tx").(*pop.Connection)
+	resp := handler.UpdateProject(tx, projectInfo)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
