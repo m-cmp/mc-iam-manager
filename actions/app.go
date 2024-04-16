@@ -94,7 +94,12 @@ func App() *buffalo.App {
 
 		auth := app.Group(apiPath + "auth")
 		auth.POST("/login", AuthLoginHandler)
+		auth.POST("/login/refresh", AuthLoginRefreshHandler)
 		auth.POST("/logout", AuthLogoutHandler)
+
+		auth.GET("/validate", AuthGetUserValidate)
+		auth.GET("/userinfo", AuthGetUserInfo)
+
 		auth.POST("/securitykey", AuthGetSecurityKeyHandler)
 
 		auth.GET("/validate", AuthGetUserInfo)
@@ -118,26 +123,36 @@ func App() *buffalo.App {
 		// rolePath.POST("/", CreateRole)
 		// rolePath.DELETE("/id/{roleId}", DeleteRole)
 
-		// workspacePath := app.Group(apiPath + "workspace")
-		// workspacePath.GET("/", GetWorkspaceList)
-		// workspacePath.GET("/id/{workspaceId}", GetWorkspace)
-		// workspacePath.POST("/", CreateWorkspace)
-		// workspacePath.DELETE("/id/{workspaceId}", DeleteWorkspace)
+		workspacePath := app.Group(apiPath + "/ws/workspace")
+		workspacePath.GET("/", GetWorkspaceList)
+		workspacePath.GET("/{workspaceId}", GetWorkspace)
+		workspacePath.POST("/", CreateWorkspace)
+		workspacePath.DELETE("/{workspaceId}", DeleteWorkspace)
+		workspacePath.PATCH("/{workspaceId}", UpdateWorkspace)
+		workspacePath.GET("/{workspaceId}/project", AttachedProjectByWorkspace)
+
+		workspacePath.POST("/{workspaceId}/attachproject", AttachProjectToWorkspace)
+		workspacePath.DELETE("/{workspaceId}/attachproject/{projectId}", DeleteProjectFromWorkspace)
+		workspacePath.POST("/{workspaceId}/assigneduser", AssignUserToWorkspace)
+
+		workspaceUserPath := app.Group(apiPath + "/ws/user")
+		workspaceUserPath.GET("/user/{userId}", GetWorkspaceListByUser)
 
 		// mappingPath := app.Group(apiPath + "mapping")
 		// mappingPath.POST("/ws/user", MappingWsUser)
 		// mappingPath.POST("/ws/user/role", MappingWsUserRole)
-		// mappingPath.POST("/ws/project", MappingWsProject)
+		// mappingPath.POST("/ws/project", AttachProjectToWorkspace)
 		// mappingPath.GET("/ws/id/{workspaceId}/project", MappingGetProjectByWorkspace)
 		// mappingPath.GET("/ws/id/{workspaceId}/project/id/{projectId}", MappingWsProjectValidCheck)
 		// mappingPath.DELETE("/ws/project", MappingDeleteWsProject)
 		// mappingPath.GET("/user/id/{userId}/workspace", MappingGetWsUserRole)
 
-		// projectPath := app.Group(apiPath + "project")
-		// projectPath.GET("/id/{projectId}", GetProject)
-		// projectPath.GET("/", GetProjectList)
-		// projectPath.POST("/", CreateProject)
-		// projectPath.DELETE("/id/{projectId}", DeleteProject)
+		projectPath := app.Group(apiPath + "/ws/project")
+		projectPath.GET("/{projectId}", GetProject)
+		projectPath.GET("/", GetProjectList)
+		projectPath.POST("/", CreateProject)
+		projectPath.DELETE("/{projectId}", DeleteProject)
+		projectPath.PATCH("/{projectId}", UpdateProject)
 
 	})
 
