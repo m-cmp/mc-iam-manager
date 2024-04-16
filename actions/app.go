@@ -94,6 +94,7 @@ func App() *buffalo.App {
 
 		auth := app.Group(apiPath + "auth")
 		auth.POST("/login", AuthLoginHandler)
+		auth.POST("/login/refresh", AuthLoginRefreshHandler)
 		auth.POST("/logout", AuthLogoutHandler)
 
 		auth.GET("/validate", AuthGetUserValidate)
