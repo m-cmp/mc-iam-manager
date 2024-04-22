@@ -2,6 +2,7 @@ package actions
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -60,4 +61,26 @@ func KcLoginAdminHandler(c buffalo.Context) error {
 	}
 
 	return c.Render(http.StatusOK, r.JSON(token))
+}
+
+func DebugGetRealmRoleByID(c buffalo.Context) error {
+
+	token, err := KC_client.LoginAdmin(c, KC_admin, KC_passwd, "master")
+	if err != nil {
+		log.Println("ERR : while get admin console token")
+		log.Println(err.Error())
+		return c.Render(http.StatusOK, r.JSON(err))
+	}
+	role, err := KC_client.GetRealmRoleByID(c, token.AccessToken, KC_realm, c.Param("roleid"))
+	if err != nil {
+		log.Println("ERR : while GetRealmRoleByID")
+		log.Println(err.Error())
+		return c.Render(http.StatusOK, r.JSON(err))
+	}
+
+	fmt.Println("#########################")
+	fmt.Printf("Request Role is : %+v\n", role)
+	fmt.Println("#########################")
+
+	return c.Render(http.StatusOK, r.JSON(role))
 }
