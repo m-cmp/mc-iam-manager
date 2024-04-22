@@ -154,6 +154,9 @@ func App() *buffalo.App {
 		projectPath.DELETE("/{projectId}", DeleteProject)
 		projectPath.PATCH("/{projectId}", UpdateProject)
 
+		debugPath := app.Group("/debug")
+		debugPath.GET("/getrealmrolebyid/{roleid}", DebugGetRealmRoleByID)
+
 	})
 
 	return app
