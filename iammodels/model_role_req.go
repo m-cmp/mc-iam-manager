@@ -8,7 +8,28 @@
  */
 package iammodels
 
+import "github.com/Nerzal/gocloak/v13"
+
 type RoleReq struct {
-	RoleName    string `json:"roleName,omitempty"`
-	WorkspaceId string `json:"workspaceId,omitempty"`
+	RoleId   string `json:"roleId,omitempty"`
+	RoleName string `json:"roleName,omitempty"`
+	ID       string `json:"id,omitempty"`
+	//ScopeParamRequired bool                `json:"scopeParamRequired,omitempty"`
+	//Composite          bool                `json:"composite,omitempty"`
+	ClientRole  bool                `json:"clientRole,omitempty"`
+	ContainerID string              `json:"containerID,omitempty"`
+	Description string              `json:"description,omitempty"`
+	Attributes  map[string][]string `json:"attributes,omitempty"`
+	WorkspaceId string              `json:"workspaceId,omitempty"`
+}
+
+func ConvertRoleReqToRole(info RoleReq) gocloak.Role {
+	return gocloak.Role{
+		ID:          &info.ID,
+		Name:        &info.RoleName,
+		ClientRole:  &info.ClientRole,
+		ContainerID: &info.ContainerID,
+		Description: &info.Description,
+		Attributes:  &info.Attributes,
+	}
 }

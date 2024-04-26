@@ -2,19 +2,15 @@ package actions
 
 import (
 	"mc_iam_manager/handler"
-	"mc_iam_manager/models"
+	"mc_iam_manager/iammodels"
 	"net/http"
 
 	"github.com/gobuffalo/buffalo"
-	"github.com/gobuffalo/pop/v6"
-	"github.com/gofrs/uuid"
 )
 
-func GetRole(c buffalo.Context) error {
-	tx := c.Value("tx").(*pop.Connection)
-	roleId := c.Param("roleId")
-
-	resp := handler.GetRole(tx, roleId)
+func GetUserRole(c buffalo.Context) error {
+	roleName := c.Param("roleId")
+	resp := handler.GetRole(roleName)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
@@ -26,48 +22,56 @@ func GetRole(c buffalo.Context) error {
 // 	return c.Render(http.StatusOK,r.JSON(resp))
 // }
 
-func ListRole(c buffalo.Context) error {
-	listRole := &models.MCIamRoles{}
-	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.ListRole(tx, listRole)
+func GetUserRoleList(c buffalo.Context) error {
+	resp := handler.GetRoles("")
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
-func UpdateRole(c buffalo.Context) error {
-	roleId := c.Param("roleId")
-	roleBind := &models.MCIamRole{}
+func UpdateUserRole(c buffalo.Context) error {
+
+	roleBind := &iammodels.RoleReq{}
 	if err := c.Bind(roleBind); err != nil {
 		handler.LogPrintHandler("role bind error", err)
 		return c.Render(http.StatusBadRequest, r.JSON(err))
 	}
-	roleBind.ID, _ = uuid.FromString(roleId)
-	tx := c.Value("tx").(*pop.Connection)
 
-	resp := handler.UpdateRole(tx, roleBind)
+	resp := handler.UpdateRole(*roleBind)
 
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
-func CreateRole(c buffalo.Context) error {
-	role_bind := &models.MCIamRole{}
-	if err := c.Bind(role_bind); err != nil {
+func CreateUserRole(c buffalo.Context) error {
+	roleReq := &iammodels.RoleReq{}
+	//roleBind := &models.MCIamRole{}
+	if err := c.Bind(roleReq); err != nil {
 		handler.LogPrintHandler("role bind error", err)
 
 		return c.Render(http.StatusBadRequest, r.JSON(err))
 	}
 
-	handler.LogPrintHandler("role bind", role_bind)
+	handler.LogPrintHandler("role bind", roleReq)
 
-	tx := c.Value("tx").(*pop.Connection)
-
-	resp := handler.CreateRole(tx, role_bind)
+	resp := handler.CreateRole(roleReq)
 
 	return c.Render(http.StatusAccepted, r.JSON(resp))
 }
 
-func DeleteRole(c buffalo.Context) error {
+func DeleteUserRole(c buffalo.Context) error {
 	paramRoleId := c.Param("roleId")
 
-	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.DeleteRole(tx, paramRoleId)
+	resp := handler.DeleteRole(paramRoleId)
 	return c.Render(http.StatusOK, r.JSON(resp))
+}
+
+// POST	/api/auth	/usergroup/{groupId}/assignuser	AssignUserToUserGroup
+func AssignUserToUserGroup(c buffalo.Context) error {
+	userRoleInfo := &iammodels.UserRoleInfo{}
+	c.Bind(userRoleInfo)
+
+	return nil
+}
+
+// UPDATE	/api/auth	/usergroup/{groupId}/unassign	UnassignUserFromUserGroup
+func UnassignUserFromUserGroup(c buffalo.Context) error {
+
+	return nil
 }
