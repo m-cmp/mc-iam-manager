@@ -19,7 +19,6 @@ func StructToEncode(s interface{}) (string, error) {
 		field := t.Field(i)
 		value := v.Field(i)
 
-		// 값이 제로 값이면 건너뜁니다.
 		if reflect.DeepEqual(value.Interface(), reflect.Zero(value.Type()).Interface()) {
 			continue
 		}
@@ -48,7 +47,6 @@ func StructToMap(s interface{}) (map[string]string, error) {
 		field := t.Field(i)
 		value := v.Field(i)
 
-		// 값이 제로 값이면 건너뜁니다.
 		if reflect.DeepEqual(value.Interface(), reflect.Zero(value.Type()).Interface()) {
 			continue
 		}
