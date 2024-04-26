@@ -5,6 +5,18 @@ type UserLogin struct {
 	Password string `json:"password"`
 }
 
-type UserLogout struct {
+type UserLoginRefresh struct {
+	AccessToken  string
 	RefreshToken string `json:"refresh_token"`
+}
+
+type UserLogout struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type SecurityKeyRequest struct {
+	AccessToken string `json:"access_token"`
+	Cspname     string `json:"cspname"`
+	Rolename    string `json:"rolename"`
 }

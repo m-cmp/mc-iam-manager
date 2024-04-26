@@ -94,7 +94,12 @@ func App() *buffalo.App {
 
 		auth := app.Group(apiPath + "auth")
 		auth.POST("/login", AuthLoginHandler)
+		auth.POST("/login/refresh", AuthLoginRefreshHandler)
 		auth.POST("/logout", AuthLogoutHandler)
+
+		auth.GET("/validate", AuthGetUserValidate)
+		auth.GET("/userinfo", AuthGetUserInfo)
+
 		auth.POST("/securitykey", AuthGetSecurityKeyHandler)
 
 		auth.GET("/validate", AuthGetUserInfo)
@@ -148,6 +153,10 @@ func App() *buffalo.App {
 		projectPath.POST("/", CreateProject)
 		projectPath.DELETE("/{projectId}", DeleteProject)
 		projectPath.PATCH("/{projectId}", UpdateProject)
+    
+		debugPath := app.Group("/debug")
+		debugPath.GET("/getrealmrolebyid/{roleid}", DebugGetRealmRoleByID)
+
 
 	})
 
