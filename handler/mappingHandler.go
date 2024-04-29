@@ -150,6 +150,29 @@ func AttachProjectToWorkspace(tx *pop.Connection, bindModel models.MCIamWsProjec
 		}
 
 		LogPrintHandler("mapping ws project bind model", wsPjModel)
+
+		//workspace 존재 여부 체크
+		wsQuery := models.DB.Where("id = ?", obj.WsID)
+		existWs, err := wsQuery.Exists(models.MCIamWorkspace{})
+		if !existWs {
+			cblogger.Error("Workspace not exist, WSID : ", obj.WsID)
+			return map[string]interface{}{
+				"message": "Workspace not exist, WSID : " + obj.WsID.String(),
+				"status":  http.StatusBadRequest,
+			}
+		}
+
+		//project 존재 여부 체크
+		projectQuery := models.DB.Where("id = ?", obj.ProjectID)
+		existPj, err := projectQuery.Exists(models.MCIamProject{})
+		if !existPj {
+			cblogger.Error("Project not exist, PjId : ", obj.ProjectID)
+			return map[string]interface{}{
+				"message": "Project not exist, PjId : " + obj.ProjectID.String(),
+				"status":  http.StatusBadRequest,
+			}
+		}
+
 		err2 := tx.Create(wsPjModel)
 
 		if err2 != nil {
@@ -169,21 +192,24 @@ func AttachProjectToWorkspace(tx *pop.Connection, bindModel models.MCIamWsProjec
 	}
 }
 
-func MappingGetProjectByWorkspace(tx *pop.Connection, wsId string) models.ParserWsProjectMapping {
-	ws := &[]models.MCIamWsProjectMapping{}
+func MappingGetProjectByWorkspace(wsId string) models.ParserWsProjectMapping {
+	ws := &models.MCIamWsProjectMappings{}
 	parsingWs := &models.ParserWsProjectMapping{}
-
-	wsQuery := tx.Eager().Where("ws_id =?", wsId)
+	cblogger.Info("wsId : ", wsId)
+	wsQuery := models.DB.Eager().Where("ws_id =?", wsId)
 	projects, err := wsQuery.Exists(ws)
-	if err != nil {
 
+	cblogger.Info("projects:", projects)
+
+	if err != nil {
+		cblogger.Error(err)
 	}
+
 	if projects {
-		err := wsQuery.All(&ws)
+		err := wsQuery.All(ws)
 		if err != nil {
 			cblogger.Error(err)
 		}
-
 		parsingWs = ParserWsProjectByWs(*ws, wsId)
 	}
 
@@ -222,11 +248,11 @@ func MappingWsProjectValidCheck(tx *pop.Connection, wsId string, projectId strin
 
 func ParserWsProjectByWs(bindModels []models.MCIamWsProjectMapping, ws_id string) *models.ParserWsProjectMapping {
 	parserWsProject := &models.ParserWsProjectMapping{}
-	projectArray := []models.MCIamProject{}
+	projectArray := models.MCIamProjects{}
 	wsUuid, _ := uuid.FromString(ws_id)
-	LogPrintHandler("#### bindmodels ####", bindModels)
+	cblogger.Info("#### bindmodels ####", bindModels)
 	for _, obj := range bindModels {
-		LogPrintHandler("#### wsuuid ####", obj.WsID)
+		cblogger.Info("#### wsuuid ####", obj.WsID)
 		if wsUuid == obj.WsID {
 			parserWsProject.WsID = obj.WsID
 			parserWsProject.Ws = obj.Ws
@@ -237,6 +263,8 @@ func ParserWsProjectByWs(bindModels []models.MCIamWsProjectMapping, ws_id string
 		}
 
 	}
+
+	cblogger.Info("parserWsProject : ", parserWsProject)
 	return parserWsProject
 }
 
