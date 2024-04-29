@@ -10,7 +10,7 @@ import (
 
 func GetUserRole(c buffalo.Context) error {
 	roleName := c.Param("roleId")
-	resp := handler.GetRole(roleName)
+	resp := handler.GetRole(c, roleName)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
@@ -23,7 +23,7 @@ func GetUserRole(c buffalo.Context) error {
 // }
 
 func GetUserRoleList(c buffalo.Context) error {
-	resp := handler.GetRoles("")
+	resp := handler.GetRoles(c, "")
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
@@ -35,7 +35,7 @@ func UpdateUserRole(c buffalo.Context) error {
 		return c.Render(http.StatusBadRequest, r.JSON(err))
 	}
 
-	resp := handler.UpdateRole(*roleBind)
+	resp := handler.UpdateRole(c, *roleBind)
 
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
@@ -50,7 +50,7 @@ func CreateUserRole(c buffalo.Context) error {
 
 	handler.LogPrintHandler("role bind", roleReq)
 
-	resp := handler.CreateRole(roleReq)
+	resp := handler.CreateRole(c, roleReq)
 
 	return c.Render(http.StatusAccepted, r.JSON(resp))
 }
@@ -58,7 +58,7 @@ func CreateUserRole(c buffalo.Context) error {
 func DeleteUserRole(c buffalo.Context) error {
 	paramRoleId := c.Param("roleId")
 
-	resp := handler.DeleteRole(paramRoleId)
+	resp := handler.DeleteRole(c, paramRoleId)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
