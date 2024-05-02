@@ -9,8 +9,10 @@
 package iammodels
 
 type UserInfo struct {
+	Id            string              `json:"Id,omitempty"`
 	UserId        string              `json:"userId,omitempty"`
 	UserName      string              `json:"userName,omitempty"`
+	Email         string              `json:"email,omitempty"`
 	UserRoleList  []UserRoleInfo      `json:"userRoleList,omitempty"`
 	WorkspaceList []UserWorkspaceInfo `json:"workspaceList,omitempty"`
 }

@@ -107,11 +107,12 @@ func App() *buffalo.App {
 		auth.DELETE("/user/{userId}", UnRegistUser)
 		auth.GET("/user", GetUserList)
 		auth.GET("/user/{userId}", GetUser)
+		auth.PATCH("/user/{userId}", UpdateUserProfile)
 
 		auth.POST("/usergroup", CreateUserGroup)
 		auth.PATCH("/usergroup/{groupId}", UpdateUserGroup)
-		auth.GET("/usergroup/{groupId}", GetUserGroupList)
-		auth.GET("/usergroup", GetUserGroup)
+		auth.GET("/usergroup", GetUserGroupList)
+		auth.GET("/usergroup/{groupId}", GetUserGroup)
 		auth.DELETE("/usergroup/{groupId}", DeleteUserGroup)
 
 		// manage := app.Group(apiPath + "manage")

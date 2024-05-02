@@ -33,7 +33,7 @@ func DeleteUser(ctx buffalo.Context, userId string) error {
 
 func UpdateUser(ctx buffalo.Context, userInfo iammodels.UserInfo) error {
 	adminAccessToken := GetKeycloakAdminToken(ctx).AccessToken
-	user, err := KCClient.GetUserByID(ctx, adminAccessToken, KCRealm, userInfo.UserId)
+	user, err := KCClient.GetUserByID(ctx, adminAccessToken, KCRealm, userInfo.Id)
 	if err != nil {
 		cblogger.Error(err)
 		return err
@@ -43,7 +43,7 @@ func UpdateUser(ctx buffalo.Context, userInfo iammodels.UserInfo) error {
 	To-do
 	User Update 항목 logic 추가
 	*/
-	user.Username = &userInfo.UserName
+	user.Email = &userInfo.Email
 
 	return KCClient.UpdateUser(ctx, adminAccessToken, KCRealm, *user)
 }
