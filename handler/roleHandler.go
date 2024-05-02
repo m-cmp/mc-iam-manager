@@ -1,40 +1,19 @@
 package handler
 
 import (
-	"context"
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/gobuffalo/buffalo"
 	"mc_iam_manager/iammodels"
 	"net/http"
-	"os"
 )
 
-var KCAdmin = os.Getenv("keycloakAdmin")
-var KCPwd = os.Getenv("keycloakAdminPwd")
-var KCUri = os.Getenv("keycloakHost")
-var KCClientID = os.Getenv("keycloakClient")
-var KCClientSecret = os.Getenv("keycloakClientSecret")
-var KCAdminRealm = os.Getenv("keycloakAdminRealm")
-var KCRealm = os.Getenv("keycloakRealm")
-var KCClient = gocloak.NewClient(KCUri)
-
-func CreateRole(bindModel *iammodels.RoleReq) map[string]interface{} {
-	ctx := context.Background() // 기본 컨텍스트 생성
-	cblogger.Info("CreateRole")
-	cblogger.Info(*bindModel)
-
-	token, kcLoginErr := KCClient.LoginAdmin(ctx, KCAdmin, KCPwd, KCAdminRealm)
-
-	if kcLoginErr != nil {
-		cblogger.Info(kcLoginErr)
-	}
-
-	cblogger.Info("Tokens : " + token.AccessToken)
+func CreateRole(ctx buffalo.Context, bindModel *iammodels.RoleReq) map[string]interface{} {
 
 	keyCloakRole := gocloak.Role{
 		Name: &bindModel.RoleName,
 	}
 
-	_, kcErr := KCClient.CreateRealmRole(ctx, token.AccessToken, KCRealm, keyCloakRole)
+	_, kcErr := KCClient.CreateRealmRole(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, keyCloakRole)
 
 	if kcErr != nil {
 		return map[string]interface{}{
@@ -69,40 +48,21 @@ func CreateRole(bindModel *iammodels.RoleReq) map[string]interface{} {
 	}
 }
 
-func GetRoles(searchString string) []*gocloak.Role {
-
-	ctx := context.Background() // 기본 컨텍스트 생성
-	cblogger.Info("CreateRole")
-
-	token, kcLoginErr := KCClient.LoginAdmin(ctx, KCAdmin, KCPwd, KCAdminRealm)
-
-	if kcLoginErr != nil {
-		cblogger.Info(kcLoginErr)
-	}
-
+func GetRoles(ctx buffalo.Context, searchString string) []*gocloak.Role {
 	roleSearchParam := gocloak.GetRoleParams{}
 
 	if len(searchString) > 0 {
 		roleSearchParam.Search = &searchString
 	}
 
-	roleList, _ := KCClient.GetRealmRoles(ctx, token.AccessToken, KCRealm, roleSearchParam)
-
-	cblogger.Info(roleList)
+	roleList, _ := KCClient.GetRealmRoles(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, roleSearchParam)
 
 	return roleList
 }
 
-func GetRole(roleId string) *gocloak.Role {
-	cblogger.Info("roleId : " + roleId)
-	c := context.Background()
-	token, kcLoginErr := KCClient.LoginAdmin(c, KCAdmin, KCPwd, KCAdminRealm)
+func GetRole(ctx buffalo.Context, roleId string) *gocloak.Role {
 
-	if kcLoginErr != nil {
-		cblogger.Info(kcLoginErr)
-	}
-	//role, err := KCClient.GetRealmRole(c, token.AccessToken, KCRealm, roleId)
-	role, err := KCClient.GetRealmRoleByID(c, token.AccessToken, KCRealm, roleId)
+	role, err := KCClient.GetRealmRoleByID(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, roleId)
 	cblogger.Info(role)
 
 	if err != nil {
@@ -112,20 +72,9 @@ func GetRole(roleId string) *gocloak.Role {
 	return role
 }
 
-func UpdateRole(model iammodels.RoleReq) error {
-	cblogger.Info(model)
-	//cblogger.Info("roleId : " + roleId)
-	c := context.Background()
-	token, kcLoginErr := KCClient.LoginAdmin(c, KCAdmin, KCPwd, KCAdminRealm)
-
-	if kcLoginErr != nil {
-		cblogger.Info(kcLoginErr)
-	}
-
+func UpdateRole(ctx buffalo.Context, model iammodels.RoleReq) error {
 	role := iammodels.ConvertRoleReqToRole(model)
-	cblogger.Info(model.ID)
-	cblogger.Info(&role)
-	err := KCClient.UpdateRealmRoleByID(c, token.AccessToken, KCRealm, model.ID, role)
+	err := KCClient.UpdateRealmRoleByID(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, model.ID, role)
 
 	if err != nil {
 		cblogger.Error(err)
@@ -134,21 +83,14 @@ func UpdateRole(model iammodels.RoleReq) error {
 	return err
 }
 
-func DeleteRole(roleId string) error {
-	ctx := context.Background() // 기본 컨텍스트 생성
-
-	token, kcLoginErr := KCClient.LoginAdmin(ctx, KCAdmin, KCPwd, KCAdminRealm)
-
-	if kcLoginErr != nil {
-		cblogger.Info(kcLoginErr)
-	}
-
-	role, roleErr := KCClient.GetRealmRoleByID(ctx, token.AccessToken, KCRealm, roleId)
+func DeleteRole(ctx buffalo.Context, roleId string) error {
+	adminAccessToken := GetKeycloakAdminToken(ctx).AccessToken
+	role, roleErr := KCClient.GetRealmRoleByID(ctx, adminAccessToken, KCRealm, roleId)
 
 	if roleErr != nil {
 		cblogger.Info(roleErr)
 	}
 
-	return KCClient.DeleteRealmRole(ctx, token.AccessToken, KCRealm, *role.Name)
+	return KCClient.DeleteRealmRole(ctx, adminAccessToken, KCRealm, *role.Name)
 
 }
