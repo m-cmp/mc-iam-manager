@@ -54,15 +54,13 @@ func AttachProjectToWorkspace(c buffalo.Context) error {
 	tx := c.Value("tx").(*pop.Connection)
 	resp := handler.AttachProjectToWorkspace(tx, iammodels.WsPjMappingreqToModels(*param))
 
-	//return c.Render(http.StatusOK, r.JSON(resp))
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
 func MappingGetProjectByWorkspace(c buffalo.Context) error {
 	paramWsId := c.Param("workspaceId")
 
-	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.MappingGetProjectByWorkspace(tx, paramWsId)
+	resp := handler.MappingGetProjectByWorkspace(paramWsId)
 
 	return c.Render(http.StatusOK, r.JSON(resp))
 }

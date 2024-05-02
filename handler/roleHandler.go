@@ -1,91 +1,96 @@
 package handler
 
 import (
-	"log"
-	"mc_iam_manager/models"
+	"github.com/Nerzal/gocloak/v13"
+	"github.com/gobuffalo/buffalo"
+	"mc_iam_manager/iammodels"
 	"net/http"
-
-	"github.com/gobuffalo/pop/v6"
-	"github.com/gofrs/uuid"
 )
 
-func CreateRole(tx *pop.Connection, bindModel *models.MCIamRole) map[string]interface{} {
-	log.Println("========= bind model ===========")
-	log.Println(bindModel)
-	log.Println("========= bind model ===========")
-	err := tx.Create(bindModel)
+func CreateRole(ctx buffalo.Context, bindModel *iammodels.RoleReq) map[string]interface{} {
 
-	if err != nil {
+	keyCloakRole := gocloak.Role{
+		Name: &bindModel.RoleName,
+	}
+
+	_, kcErr := KCClient.CreateRealmRole(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, keyCloakRole)
+
+	if kcErr != nil {
 		return map[string]interface{}{
-			"message": err,
+			"message": kcErr,
 			"status":  http.StatusBadRequest,
 		}
 	}
+
+	//start of client Role
+
+	//param := gocloak.GetClientsParams{}
+	//kcClientList, _ := KCClient.GetClients(ctx, token.AccessToken, KCRealm, param)
+	//
+	//for _, client := range kcClientList {
+	//	if KCClientID == *client.ClientID {
+	//		_, kcErr := KCClient.CreateClientRole(ctx, token.AccessToken, KCRealm, *client.ID, keyCloakRole)
+	//		if kcErr != nil {
+	//			return map[string]interface{}{
+	//				"message": kcErr,
+	//				"status":  http.StatusBadRequest,
+	//			}
+	//		}
+	//		break
+	//	}
+	//}
+
+	//end of client Role
+
 	return map[string]interface{}{
 		"message": "success",
 		"status":  http.StatusOK,
 	}
 }
 
-func ListRole(tx *pop.Connection, bindModel *models.MCIamRoles) *models.MCIamRoles {
+func GetRoles(ctx buffalo.Context, searchString string) []*gocloak.Role {
+	roleSearchParam := gocloak.GetRoleParams{}
 
-	err := tx.All(bindModel)
-
-	if err != nil {
-		log.Println("ListRole error :", err)
+	if len(searchString) > 0 {
+		roleSearchParam.Search = &searchString
 	}
-	return bindModel
+
+	roleList, _ := KCClient.GetRealmRoles(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, roleSearchParam)
+
+	return roleList
 }
 
-func GetRole(tx *pop.Connection, roleId string) *models.MCIamRole {
-	role := &models.MCIamRole{}
+func GetRole(ctx buffalo.Context, roleId string) *gocloak.Role {
 
-	err := tx.Find(role, roleId)
+	role, err := KCClient.GetRealmRoleByID(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, roleId)
+	cblogger.Info(role)
+
 	if err != nil {
-
+		cblogger.Error(err)
 	}
+
 	return role
 }
 
-// 롤 체크를 어디서 할지 확인이 필요.
-func CheckRole(tx *pop.Connection, roleId string) {
-	getRole := GetRole(tx, roleId)
-
-	if roleName := getRole.Name; roleName == "admin_role" {
-
-	}
-}
-
-func UpdateRole(tx *pop.Connection, bindModel *models.MCIamRole) map[string]interface{} {
-
-	_, err := bindModel.ValidateUpdate(tx)
+func UpdateRole(ctx buffalo.Context, model iammodels.RoleReq) error {
+	role := iammodels.ConvertRoleReqToRole(model)
+	err := KCClient.UpdateRealmRoleByID(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, model.ID, role)
 
 	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
+		cblogger.Error(err)
 	}
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
+
+	return err
 }
 
-func DeleteRole(tx *pop.Connection, roleId string) map[string]interface{} {
-	role := &models.MCIamRole{}
-	wsUuid, _ := uuid.FromString(roleId)
-	role.ID = wsUuid
+func DeleteRole(ctx buffalo.Context, roleId string) error {
+	adminAccessToken := GetKeycloakAdminToken(ctx).AccessToken
+	role, roleErr := KCClient.GetRealmRoleByID(ctx, adminAccessToken, KCRealm, roleId)
 
-	err := tx.Destroy(role)
-	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
+	if roleErr != nil {
+		cblogger.Info(roleErr)
 	}
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
+
+	return KCClient.DeleteRealmRole(ctx, adminAccessToken, KCRealm, *role.Name)
+
 }

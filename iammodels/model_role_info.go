@@ -9,6 +9,12 @@
 package iammodels
 
 type RoleInfo struct {
-	RoleId   string `json:"roleId,omitempty"`
-	RoleName string `json:"roleName,omitempty"`
+	RoleId             string              `json:"roleId,omitempty"`
+	RoleName           string              `json:"roleName,omitempty"`
+	ID                 string              `json:"id,omitempty"`
+	ScopeParamRequired bool                `json:"scopeParamRequired,omitempty"`
+	ClientRole         bool                `json:"clientRole,omitempty"`
+	ContainerID        string              `json:"containerID,omitempty"`
+	Description        string              `json:"description,omitempty"`
+	Attributes         map[string][]string `json:"attributes,omitempty"`
 }

@@ -1,15 +1,13 @@
 package handler
 
 import (
+	cblog "github.com/cloud-barista/cb-log"
+	"github.com/gobuffalo/pop/v6"
+	"github.com/gofrs/uuid"
 	"github.com/sirupsen/logrus"
 	"mc_iam_manager/iammodels"
 	"mc_iam_manager/models"
 	"net/http"
-	"strings"
-
-	cblog "github.com/cloud-barista/cb-log"
-	"github.com/gobuffalo/pop/v6"
-	"github.com/gofrs/uuid"
 )
 
 var cblogger *logrus.Logger
@@ -107,35 +105,48 @@ func UpdateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceInfo) map[
 //}
 
 func GetWorkspaceList(tx *pop.Connection, userId string) iammodels.WorkspaceInfos {
-	var bindModel []models.MCIamWorkspace
+	var bindModel models.MCIamWorkspaces
 	cblogger.Info("userId : " + userId)
-	var err error
+	err := models.DB.All(bindModel)
 
-	if len(strings.TrimSpace(userId)) > 0 {
-		/**
-		To-Do ws_user mapping table crud 다음, 유저 기반으로 검색하도록 작성
-		*/
-		err = tx.Eager().Where("user_id = ?", userId).All(&bindModel)
-	} else {
-		err = tx.Eager().All(&bindModel)
+	if err != nil {
+		cblogger.Error(err)
 	}
 
 	parsingArray := iammodels.WorkspaceInfos{}
-	if err != nil {
-	}
 
 	for _, obj := range bindModel {
-		arr := MappingGetProjectByWorkspace(tx, obj.ID.String())
+		parsingArray = append(parsingArray, iammodels.WorkspaceToWorkspaceInfo(obj))
+	}
 
-		if arr.WsID != uuid.Nil {
-			info := iammodels.WorkspaceToWorkspaceInfo(*arr.Ws)
-			cblogger.Info("Info : ")
-			cblogger.Info(info)
-			info.ProjectList = iammodels.ProjectsToProjectInfoList(arr.Projects)
-			parsingArray = append(parsingArray, info)
-		} else {
-			parsingArray = append(parsingArray, iammodels.WorkspaceToWorkspaceInfo(obj))
-		}
+	return parsingArray
+}
+
+func GetWorkspaceListByUserId(userId string) iammodels.WorkspaceInfos {
+	wsUserMapping := &models.MCIamWsUserMappings{}
+	cblogger.Info("userId : " + userId)
+	query := models.DB.Where("user_id=?", userId)
+
+	err := query.All(wsUserMapping)
+
+	parsingArray := iammodels.WorkspaceInfos{}
+
+	cblogger.Info("bindModel :", wsUserMapping)
+
+	if err != nil {
+		cblogger.Error(err)
+	}
+
+	for _, obj := range *wsUserMapping {
+		arr := MappingGetProjectByWorkspace(obj.WsID.String())
+
+		cblogger.Info("arr:", arr)
+
+		info := iammodels.WorkspaceToWorkspaceInfo(*arr.Ws)
+		cblogger.Info("Info : ")
+		cblogger.Info(info)
+		info.ProjectList = iammodels.ProjectsToProjectInfoList(arr.Projects)
+		parsingArray = append(parsingArray, info)
 
 	}
 
@@ -188,7 +199,7 @@ func DeleteWorkspace(tx *pop.Connection, wsId string) map[string]interface{} {
 
 // Workspace에 할당된 project 조회	GET	/api/ws	/workspace/{workspaceId}/project	AttachedProjectByWorkspace
 func AttachedProjectByWorkspace(tx *pop.Connection, wsId string) iammodels.ProjectInfos {
-	arr := MappingGetProjectByWorkspace(tx, wsId)
+	arr := MappingGetProjectByWorkspace(wsId)
 
 	return iammodels.ProjectsToProjectInfoList(arr.Projects)
 }

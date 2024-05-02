@@ -13,7 +13,7 @@ import (
 type MCIamWsUserMapping struct {
 	ID        uuid.UUID `json:"id" db:"id"`
 	WsID      uuid.UUID `json:"ws_id" db:"ws_id"`
-	UserID    uuid.UUID `json:"user_id" db:"user_id"`
+	UserID    string    `json:"user_id" db:"user_id"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
