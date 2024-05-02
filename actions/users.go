@@ -21,7 +21,7 @@ func GetUserList(c buffalo.Context) error {
 func RegistUser(c buffalo.Context) error {
 	userInfo := &iammodels.UserReq{}
 	c.Bind(userInfo)
-
+	cblogger.Info(userInfo)
 	user, err := handler.CreateUser(c, userInfo)
 	if err != nil {
 		cblogger.Error(err)

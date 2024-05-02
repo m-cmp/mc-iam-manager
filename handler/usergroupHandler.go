@@ -47,11 +47,7 @@ func UpdateUserGroup(ctx buffalo.Context, userGroupInfo iammodels.UserGroupInfo)
 		return err
 	}
 
-	/**
-	To-do
-	User Update 항목 logic 추가
-	*/
-	group.Name = &userGroupInfo.GroupName
+	updateGroup := iammodels.UpdateUserGroupByInfoToGroup(userGroupInfo, *group)
 
-	return KCClient.UpdateGroup(ctx, adminAccessToken, KCRealm, *group)
+	return KCClient.UpdateGroup(ctx, adminAccessToken, KCRealm, updateGroup)
 }

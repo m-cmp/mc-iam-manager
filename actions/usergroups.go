@@ -49,6 +49,6 @@ func GetUserGroup(c buffalo.Context) error {
 func UpdateUserGroup(c buffalo.Context) error {
 	userGroupInfo := &iammodels.UserGroupInfo{}
 	c.Bind(userGroupInfo)
-
+	cblogger.Info("GroupInfo : ", userGroupInfo)
 	return c.Render(http.StatusOK, r.JSON(handler.UpdateUserGroup(c, *userGroupInfo)))
 }
