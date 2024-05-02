@@ -111,8 +111,7 @@ func DeleteProjectFromWorkspace(c buffalo.Context) error {
 // 유저에게 할당된 Workspace 목록	GET	/api/ws	/user/{userId}	GetWorkspaceListByUser
 func GetWorkspaceListByUser(c buffalo.Context) error {
 	userId := c.Param("userId")
-	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.GetWorkspaceList(tx, userId)
+	resp := handler.GetWorkspaceListByUserId(userId)
 
 	return c.Render(http.StatusOK, r.JSON(resp))
 

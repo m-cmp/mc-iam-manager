@@ -8,7 +8,27 @@
  */
 package iammodels
 
+import "github.com/Nerzal/gocloak/v13"
+
 type UserGroupInfo struct {
-	GroupId   string `json:"groupId,omitempty"`
-	GroupName string `json:"groupName,omitempty"`
+	GroupId     string              `json:"Id,omitempty"`
+	ParentId    string              `json:"parentGroupId,omitempty"`
+	GroupName   string              `json:"groupName,omitempty"`
+	Path        string              `json:"path,omitempty"`
+	SubGroups   []string            `json:"subGroups,omitempty"`
+	Attributes  map[string][]string `json:"attributes,omitempty"`
+	Access      map[string]bool     `json:"access,omitempty"`
+	ClientRoles map[string][]string `json:"clientRoles,omitempty"`
+	RealmRoles  []string            `json:"realmRoles,omitempty"`
+}
+
+func UpdateUserGroupByInfoToGroup(userGroupInfo UserGroupInfo, group gocloak.Group) gocloak.Group {
+	group.Name = &userGroupInfo.GroupName
+	//group.Path = &userGroupInfo.Path
+	group.Attributes = &userGroupInfo.Attributes
+	//group.Access = &userGroupInfo.Access
+	group.ClientRoles = &userGroupInfo.ClientRoles
+	group.RealmRoles = &userGroupInfo.RealmRoles
+
+	return group
 }

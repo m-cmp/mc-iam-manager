@@ -23,7 +23,7 @@ type MCIamWsProjectMapping struct {
 type ParserWsProjectMapping struct {
 	WsID     uuid.UUID       `json:"ws_id" db:"ws_id"`
 	Ws       *MCIamWorkspace `belongs_to:"mc_iam_workspace"`
-	Projects []MCIamProject
+	Projects MCIamProjects
 }
 
 type ParserWsProjectMappings []ParserWsProjectMapping
