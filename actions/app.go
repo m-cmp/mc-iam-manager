@@ -104,6 +104,18 @@ func App() *buffalo.App {
 
 		auth.GET("/validate", AuthGetUserInfo)
 
+		auth.POST("/user", RegistUser)
+		auth.DELETE("/user/{userId}", UnRegistUser)
+		auth.GET("/user", GetUserList)
+		auth.GET("/user/{userId}", GetUser)
+		auth.PATCH("/user/{userId}", UpdateUserProfile)
+
+		auth.POST("/usergroup", CreateUserGroup)
+		auth.PATCH("/usergroup/{groupId}", UpdateUserGroup)
+		auth.GET("/usergroup", GetUserGroupList)
+		auth.GET("/usergroup/{groupId}", GetUserGroup)
+		auth.DELETE("/usergroup/{groupId}", DeleteUserGroup)
+
 		// manage := app.Group(apiPath + "manage")
 		// manage.POST("/login", GetWorkspace)
 		// manage.GET("/logout", GetWorkspace)
@@ -135,7 +147,7 @@ func App() *buffalo.App {
 		workspacePath.POST("/{workspaceId}/assigneduser", AssignUserToWorkspace)
 
 		workspaceUserPath := app.Group(apiPath + "/ws/user")
-		workspaceUserPath.GET("/user/{userId}", GetWorkspaceListByUser)
+		workspaceUserPath.GET("/{userId}", GetWorkspaceListByUser)
 
 		// mappingPath := app.Group(apiPath + "mapping")
 		// mappingPath.POST("/ws/user", MappingWsUser)

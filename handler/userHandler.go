@@ -1,64 +1,49 @@
 package handler
 
 import (
-	"mc_iam_manager/models"
-	"net/http"
-
-	"github.com/gobuffalo/pop/v6"
-	"github.com/gofrs/uuid"
+	"github.com/Nerzal/gocloak/v13"
+	"github.com/gobuffalo/buffalo"
+	"mc_iam_manager/iammodels"
 )
 
-func CreateUser(tx *pop.Connection, bindModel *models.MCIamProject) map[string]interface{} {
+func CreateUser(ctx buffalo.Context, userReq *iammodels.UserReq) (string, error) {
 
-	err := tx.Create(bindModel)
+	user := gocloak.User{
+		FirstName: &userReq.UserFirstName,
+		LastName:  &userReq.UserLastName,
+		Email:     &userReq.Email,
+		Enabled:   gocloak.BoolP(true),
+		Username:  &userReq.UserName,
+	}
 
-	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
-	}
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
+	return KCClient.CreateUser(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, user)
 }
 
-func GetUserList(tx *pop.Connection) []models.UserEntity {
-	bindModel := []models.UserEntity{}
-
-	err := tx.Eager().All(&bindModel)
-
-	if err != nil {
-
-	}
-	return bindModel
+func GetUserList(ctx buffalo.Context) ([]*gocloak.User, error) {
+	return KCClient.GetUsers(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, gocloak.GetUsersParams{})
 }
 
-func GetUser(tx *pop.Connection, projectId string) *models.UserEntity {
-	ws := &models.UserEntity{}
-
-	err := tx.Find(ws, projectId)
-	if err != nil {
-
-	}
-	return ws
+func GetUser(ctx buffalo.Context, userId string) (*gocloak.User, error) {
+	return KCClient.GetUserByID(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, userId)
 }
 
-func DeleteUser(tx *pop.Connection, wsId string) map[string]interface{} {
-	ws := &models.MCIamProject{}
-	wsUuid, _ := uuid.FromString(wsId)
-	ws.ID = wsUuid
+func DeleteUser(ctx buffalo.Context, userId string) error {
+	return KCClient.DeleteUser(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, userId)
+}
 
-	err := tx.Destroy(ws)
+func UpdateUser(ctx buffalo.Context, userInfo iammodels.UserInfo) error {
+	adminAccessToken := GetKeycloakAdminToken(ctx).AccessToken
+	user, err := KCClient.GetUserByID(ctx, adminAccessToken, KCRealm, userInfo.Id)
 	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
+		cblogger.Error(err)
+		return err
 	}
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
+
+	/**
+	To-do
+	User Update 항목 logic 추가
+	*/
+	user.Email = &userInfo.Email
+
+	return KCClient.UpdateUser(ctx, adminAccessToken, KCRealm, *user)
 }
