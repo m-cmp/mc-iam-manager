@@ -20,34 +20,70 @@ func CreateUserGroup(ctx buffalo.Context, userGroupReq *iammodels.UserGroupReq) 
 		RealmRoles:  &userGroupReq.RealmRoles,  //*[]string            `json:"realmRoles,omitempty"`
 	}
 
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return "", tokenErr
+	}
+
 	if userGroupReq.ParentGroupId != "" {
-		return KCClient.CreateChildGroup(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, userGroupReq.ParentGroupId, createGroup)
+		return KCClient.CreateChildGroup(ctx, token.AccessToken, KCRealm, userGroupReq.ParentGroupId, createGroup)
 	} else {
-		return KCClient.CreateGroup(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, createGroup)
+		return KCClient.CreateGroup(ctx, token.AccessToken, KCRealm, createGroup)
 	}
 }
 
 func GetUserGroupList(ctx buffalo.Context) ([]*gocloak.Group, error) {
-	return KCClient.GetGroups(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, gocloak.GetGroupsParams{})
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return nil, tokenErr
+	}
+	return KCClient.GetGroups(ctx, token.AccessToken, KCRealm, gocloak.GetGroupsParams{})
 }
 
 func GetUserGroup(ctx buffalo.Context, groupId string) (*gocloak.Group, error) {
-	return KCClient.GetGroup(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, groupId)
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return nil, tokenErr
+	}
+	return KCClient.GetGroup(ctx, token.AccessToken, KCRealm, groupId)
 }
 
 func DeleteUserGroup(ctx buffalo.Context, groupId string) error {
-	return KCClient.DeleteGroup(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, groupId)
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return tokenErr
+	}
+	return KCClient.DeleteGroup(ctx, token.AccessToken, KCRealm, groupId)
 }
 
-func UpdateUserGroup(ctx buffalo.Context, userGroupInfo iammodels.UserGroupInfo) error {
-	adminAccessToken := GetKeycloakAdminToken(ctx).AccessToken
-	group, err := KCClient.GetGroup(ctx, adminAccessToken, KCRealm, userGroupInfo.GroupId)
+func UpdateUserGroup(ctx buffalo.Context, userGroupInfo iammodels.UserGroupInfo) (*gocloak.Group, error) {
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return nil, tokenErr
+	}
+
+	group, err := KCClient.GetGroup(ctx, token.AccessToken, KCRealm, userGroupInfo.GroupId)
+
 	if err != nil {
 		cblogger.Error(err)
-		return err
+		return nil, err
 	}
 
 	updateGroup := iammodels.UpdateUserGroupByInfoToGroup(userGroupInfo, *group)
 
-	return KCClient.UpdateGroup(ctx, adminAccessToken, KCRealm, updateGroup)
+	if kcErr := KCClient.UpdateGroup(ctx, token.AccessToken, KCRealm, updateGroup); kcErr != nil {
+		return nil, kcErr
+	}
+
+	return GetUserGroup(ctx, *updateGroup.ID)
 }
