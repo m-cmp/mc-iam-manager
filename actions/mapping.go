@@ -61,7 +61,11 @@ func AttachProjectToWorkspace(c buffalo.Context) error {
 func MappingGetProjectByWorkspace(c buffalo.Context) error {
 	paramWsId := c.Param("workspaceId")
 
-	resp := handler.MappingGetProjectByWorkspace(paramWsId)
+	resp, err := handler.MappingGetProjectByWorkspace(paramWsId)
+
+	if err != nil {
+		return err
+	}
 
 	return c.Render(http.StatusOK, r.JSON(resp))
 }

@@ -192,7 +192,7 @@ func AttachProjectToWorkspace(tx *pop.Connection, bindModel models.MCIamWsProjec
 	}
 }
 
-func MappingGetProjectByWorkspace(wsId string) models.ParserWsProjectMapping {
+func MappingGetProjectByWorkspace(wsId string) (models.ParserWsProjectMapping, error) {
 	ws := &models.MCIamWsProjectMappings{}
 	parsingWs := &models.ParserWsProjectMapping{}
 	cblogger.Info("wsId : ", wsId)
@@ -203,17 +203,21 @@ func MappingGetProjectByWorkspace(wsId string) models.ParserWsProjectMapping {
 
 	if err != nil {
 		cblogger.Error(err)
+		return models.ParserWsProjectMapping{}, err
 	}
 
 	if projects {
-		err := wsQuery.All(ws)
-		if err != nil {
+		err2 := wsQuery.All(ws)
+
+		if err2 != nil {
 			cblogger.Error(err)
+			return models.ParserWsProjectMapping{}, err
 		}
+
 		parsingWs = ParserWsProjectByWs(*ws, wsId)
 	}
 
-	return *parsingWs
+	return *parsingWs, nil
 
 }
 
