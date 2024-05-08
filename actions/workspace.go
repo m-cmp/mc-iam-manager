@@ -24,19 +24,19 @@ func init() {
 // Workspace 단건 조회	GET	/api/ws	/workspace/{workspaceId}	GetWorkspace
 func GetWorkspace(c buffalo.Context) error {
 
-	tx := c.Value("tx").(*pop.Connection)
+	//tx := c.Value("tx").(*pop.Connection)
 	paramWsId := c.Param("workspaceId")
 
-	resp := handler.GetWorkspace(tx, paramWsId)
+	resp := handler.GetWorkspace(paramWsId)
 
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
 // Workspace 목록	GET	/api/ws	/workspace	GetWorkspaceList
 func GetWorkspaceList(c buffalo.Context) error {
-	tx := c.Value("tx").(*pop.Connection)
+	//tx := c.Value("tx").(*pop.Connection)
 
-	resp := handler.GetWorkspaceList(tx, "")
+	resp := handler.GetWorkspaceList("")
 
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
