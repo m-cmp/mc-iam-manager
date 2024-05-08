@@ -14,24 +14,25 @@ type WorkspaceInfo struct {
 	WorkspaceId   string         `json:"workspaceId,omitempty"`
 	WorkspaceName string         `json:"workspaceName,omitempty"`
 	Description   string         `json:"description,omitempty"`
-	ProjectList   ProjectInfos   "omitempty"
+	ProjectList   ProjectInfos   `json:"projectList,omitempty"`
 	UserList      []UserRoleInfo `json:"userList,omitempty"`
 }
 
 type WorkspaceInfos []WorkspaceInfo
 
-func WorkspaceToWorkspaceInfo(workspace models.MCIamWorkspace) WorkspaceInfo {
+func WorkspaceToWorkspaceInfo(workspace models.MCIamWorkspace, projects models.MCIamProjects) WorkspaceInfo {
 	return WorkspaceInfo{
 		WorkspaceId:   workspace.ID.String(),
 		WorkspaceName: workspace.Name,
 		Description:   workspace.Description,
+		ProjectList:   ProjectsToProjectInfoList(projects),
 	}
 }
 
 func WorkspaceListToWorkspaceInfoList(workspaces models.MCIamWorkspaces) WorkspaceInfos {
 	var infos WorkspaceInfos
 	for _, i := range workspaces {
-		infos = append(infos, WorkspaceToWorkspaceInfo(i))
+		infos = append(infos, WorkspaceToWorkspaceInfo(i, nil))
 	}
 
 	return infos
