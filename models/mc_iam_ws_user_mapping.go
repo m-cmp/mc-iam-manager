@@ -12,8 +12,8 @@ import (
 // MCIamWsUserMapping is used by pop to map your mc_iam_ws_user_mappings database table to your go code.
 type MCIamWsUserMapping struct {
 	ID        uuid.UUID `json:"id" db:"id"`
-	WsID      uuid.UUID `json:"ws_id" db:"ws_id"`
-	UserID    string    `json:"user_id" db:"user_id"`
+	WsID      uuid.UUID `json:"workspaceId" db:"ws_id"`
+	UserID    string    `json:"userId" db:"user_id"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
