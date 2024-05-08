@@ -12,8 +12,14 @@ func CreateRole(ctx buffalo.Context, bindModel *iammodels.RoleReq) map[string]in
 	keyCloakRole := gocloak.Role{
 		Name: &bindModel.RoleName,
 	}
-
-	_, kcErr := KCClient.CreateRealmRole(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, keyCloakRole)
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+	if tokenErr != nil {
+		return map[string]interface{}{
+			"message": tokenErr,
+			"status":  http.StatusBadRequest,
+		}
+	}
+	_, kcErr := KCClient.CreateRealmRole(ctx, token.AccessToken, KCRealm, keyCloakRole)
 
 	if kcErr != nil {
 		return map[string]interface{}{
@@ -48,49 +54,113 @@ func CreateRole(ctx buffalo.Context, bindModel *iammodels.RoleReq) map[string]in
 	}
 }
 
-func GetRoles(ctx buffalo.Context, searchString string) []*gocloak.Role {
+func GetRoles(ctx buffalo.Context, searchString string) map[string]interface{} {
 	roleSearchParam := gocloak.GetRoleParams{}
 
 	if len(searchString) > 0 {
 		roleSearchParam.Search = &searchString
 	}
 
-	roleList, _ := KCClient.GetRealmRoles(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, roleSearchParam)
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
 
-	return roleList
+		return map[string]interface{}{
+			"error":  tokenErr,
+			"status": http.StatusInternalServerError,
+		}
+	}
+
+	roleList, _ := KCClient.GetRealmRoles(ctx, token.AccessToken, KCRealm, roleSearchParam)
+
+	return map[string]interface{}{
+		"roleList": roleList,
+		"status":   http.StatusOK,
+	}
+
 }
 
-func GetRole(ctx buffalo.Context, roleId string) *gocloak.Role {
+func GetRole(ctx buffalo.Context, roleId string) (*gocloak.Role, error) {
 
-	role, err := KCClient.GetRealmRoleByID(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, roleId)
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return nil, tokenErr
+	}
+
+	role, err := KCClient.GetRealmRoleByID(ctx, token.AccessToken, KCRealm, roleId)
 	cblogger.Info(role)
 
 	if err != nil {
 		cblogger.Error(err)
+
+		return nil, err
 	}
 
-	return role
+	return role, err
 }
 
-func UpdateRole(ctx buffalo.Context, model iammodels.RoleReq) error {
+func UpdateRole(ctx buffalo.Context, model iammodels.RoleReq) map[string]interface{} {
 	role := iammodels.ConvertRoleReqToRole(model)
-	err := KCClient.UpdateRealmRoleByID(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, model.ID, role)
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return map[string]interface{}{
+			"error":  tokenErr,
+			"status": http.StatusInternalServerError,
+		}
+	}
+	err := KCClient.UpdateRealmRoleByID(ctx, token.AccessToken, KCRealm, model.ID, role)
 
 	if err != nil {
 		cblogger.Error(err)
+		return map[string]interface{}{
+			"error":  err,
+			"status": http.StatusInternalServerError,
+		}
 	}
 
-	return err
+	return map[string]interface{}{
+		"message": "update successfully",
+		"status":  http.StatusOK,
+	}
 }
 
-func DeleteRole(ctx buffalo.Context, roleId string) error {
-	adminAccessToken := GetKeycloakAdminToken(ctx).AccessToken
-	role, roleErr := KCClient.GetRealmRoleByID(ctx, adminAccessToken, KCRealm, roleId)
+func DeleteRole(ctx buffalo.Context, roleId string) map[string]interface{} {
+
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return map[string]interface{}{
+			"error":  tokenErr,
+			"status": http.StatusInternalServerError,
+		}
+	}
+
+	role, roleErr := KCClient.GetRealmRoleByID(ctx, token.AccessToken, KCRealm, roleId)
 
 	if roleErr != nil {
 		cblogger.Info(roleErr)
+		return map[string]interface{}{
+			"error":  roleErr,
+			"status": http.StatusInternalServerError,
+		}
 	}
 
-	return KCClient.DeleteRealmRole(ctx, adminAccessToken, KCRealm, *role.Name)
+	deleteErr := KCClient.DeleteRealmRole(ctx, token.AccessToken, KCRealm, *role.Name)
+
+	if deleteErr != nil {
+		cblogger.Info(deleteErr)
+		return map[string]interface{}{
+			"error":  deleteErr,
+			"status": http.StatusInternalServerError,
+		}
+	}
+
+	return map[string]interface{}{
+		"message": "Delete successfully",
+		"status":  http.StatusOK,
+	}
 
 }

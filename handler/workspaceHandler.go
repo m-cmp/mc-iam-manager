@@ -141,12 +141,13 @@ func GetWorkspaceListByUserId(userId string) iammodels.WorkspaceInfos {
 		arr := MappingGetProjectByWorkspace(obj.WsID.String())
 
 		cblogger.Info("arr:", arr)
-
-		info := iammodels.WorkspaceToWorkspaceInfo(*arr.Ws)
-		cblogger.Info("Info : ")
-		cblogger.Info(info)
-		info.ProjectList = iammodels.ProjectsToProjectInfoList(arr.Projects)
-		parsingArray = append(parsingArray, info)
+		if arr.WsID.String() != "00000000-0000-0000-0000-000000000000" {
+			info := iammodels.WorkspaceToWorkspaceInfo(*arr.Ws)
+			cblogger.Info("Info : ")
+			cblogger.Info(info)
+			info.ProjectList = iammodels.ProjectsToProjectInfoList(arr.Projects)
+			parsingArray = append(parsingArray, info)
+		}
 
 	}
 
