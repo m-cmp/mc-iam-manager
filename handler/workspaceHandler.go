@@ -107,7 +107,7 @@ func UpdateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceInfo) map[
 func GetWorkspaceList(tx *pop.Connection, userId string) iammodels.WorkspaceInfos {
 	var bindModel models.MCIamWorkspaces
 	cblogger.Info("userId : " + userId)
-	err := models.DB.All(bindModel)
+	err := models.DB.All(&bindModel)
 
 	if err != nil {
 		cblogger.Error(err)
