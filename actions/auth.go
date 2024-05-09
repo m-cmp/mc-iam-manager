@@ -2,12 +2,12 @@ package actions
 
 import (
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"io"
 	"mc_iam_manager/iammodels"
-	csputil "mc_iam_manager/iammodels/csp"
-	awsmodels "mc_iam_manager/iammodels/csp/aws"
+	"mc_iam_manager/stsmodule"
+	alibabaStsModule "mc_iam_manager/stsmodule/alibaba"
+	awsStsModule "mc_iam_manager/stsmodule/aws"
 	"net/http"
 	"net/url"
 	"os"
@@ -187,9 +187,6 @@ func AuthLogoutHandler(c buffalo.Context) error {
 			}))
 	}
 
-	fmt.Println("AccessToken############### ", user.AccessToken)
-	fmt.Println("RefreshToken############### ", user.RefreshToken)
-
 	validateErr := validate.Validate(
 		&validators.StringIsPresent{Field: user.AccessToken, Name: "Authorization"},
 		&validators.StringIsPresent{Field: user.RefreshToken, Name: "refresh_token"},
@@ -337,81 +334,52 @@ func AuthGetUserInfo(c buffalo.Context) error {
 }
 
 func AuthGetSecurityKeyHandler(c buffalo.Context) error {
-
-	user := &iammodels.SecurityKeyRequest{}
-	user.AccessToken = strings.Replace(c.Request().Header.Get("Authorization"), "Bearer ", "", -1)
-	if err := c.Bind(user); err != nil {
-		return c.Render(http.StatusServiceUnavailable,
-			r.JSON(map[string]string{
-				"code": err.Error(),
-				"msg":  "user input bind Err",
-			}))
-	}
-
+	accessToken := strings.Replace(c.Request().Header.Get("Authorization"), "Bearer ", "", -1)
 	validateErr := validate.Validate(
-		&validators.StringIsPresent{Field: user.Cspname, Name: "cspname"},
-		&validators.StringIsPresent{Field: user.Rolename, Name: "rolename"},
-		&validators.StringIsPresent{Field: user.AccessToken, Name: "Authorization"},
+		&validators.StringIsPresent{Field: accessToken, Name: "Authorization"},
 	)
 	if validateErr.HasAny() {
 		fmt.Println(validateErr)
-		return c.Render(http.StatusServiceUnavailable,
+		return c.Render(http.StatusBadRequest,
 			r.JSON(map[string]string{"err": validateErr.Error()}))
 	}
 
-	switch user.Cspname {
-	case "AWS":
-		inputParams := awsmodels.AWSSecuritykeyInputParams
-		inputParams.RoleArn = user.Rolename
-		inputParams.WebIdentityToken = user.AccessToken
-
-		encodedinputParams, err := csputil.StructToMap(*inputParams)
-		if err != nil {
-			return c.Render(http.StatusServiceUnavailable,
-				r.JSON(map[string]string{"error": err.Error()}))
-		}
-
-		req, err := http.NewRequest("GET", awsmodels.AWSSecuritykeyEndPoint, nil)
-		if err != nil {
-			return c.Render(http.StatusServiceUnavailable,
-				r.JSON(map[string]string{"error": err.Error()}))
-		}
-
-		q := req.URL.Query()
-		for key, value := range encodedinputParams {
-			q.Add(key, value)
-		}
-		req.URL.RawQuery = q.Encode()
-
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			fmt.Println("Error sending request:", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != 200 {
-			return c.Render(http.StatusServiceUnavailable,
-				r.JSON(map[string]string{"code": resp.Status}))
-		}
-
-		respBody, err := io.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Println("Failed to read response body:", err)
-			return c.Render(http.StatusServiceUnavailable,
-				r.JSON(map[string]string{"err": err.Error()}))
-		}
-
-		var securityToken awsmodels.AssumeRoleWithWebIdentityResponse
-		err = xml.Unmarshal([]byte(string(respBody)), &securityToken)
-		if err != nil && securityToken.AssumeRoleWithWebIdentityResult.Credentials.SecretAccessKey != "" {
-			return c.Render(http.StatusServiceUnavailable,
-				r.JSON(map[string]string{"err": err.Error()}))
-		}
-
-		return c.Render(http.StatusOK, r.JSON(securityToken.AssumeRoleWithWebIdentityResult.Credentials))
-	default:
-		return c.Render(http.StatusServiceUnavailable,
-			r.JSON(map[string]string{"err": "provided CSP is not supported"}))
+	providers := c.Param("providers")
+	var providerarr []string
+	if providers != "" {
+		providerarr = strings.Split(providers, ",")
+	} else {
+		providerarr = []string{"aws", "alibaba"}
 	}
+
+	var mciamCspCredentialsResponse stsmodule.MciamCspCredentialsResponse
+	for _, provider := range providerarr {
+		switch provider {
+		case "aws":
+			cred := stsmodule.CspCredential{
+				Provider: "aws",
+			}
+			securityToken, err := awsStsModule.GetAwsSecurityToken(c)
+			if err != nil {
+				cred.Credential = err.Error()
+			} else {
+				cred.Credential = securityToken.AssumeRoleWithWebIdentityResult.Credentials
+			}
+			mciamCspCredentialsResponse.CspCredentials = append(mciamCspCredentialsResponse.CspCredentials, cred)
+		case "alibaba":
+			cred := stsmodule.CspCredential{
+				Provider: "alibaba",
+			}
+			securityToken, err := alibabaStsModule.GetAlibabaSecurityToken(c)
+			if err != nil {
+				cred.Credential = err.Error()
+			} else {
+				cred.Credential = securityToken.Credentials
+			}
+			mciamCspCredentialsResponse.CspCredentials = append(mciamCspCredentialsResponse.CspCredentials, cred)
+		default:
+			mciamCspCredentialsResponse.UnSupportedProviders = append(mciamCspCredentialsResponse.UnSupportedProviders, provider)
+		}
+	}
+	return c.Render(http.StatusOK, r.JSON(mciamCspCredentialsResponse))
 }
