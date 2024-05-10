@@ -1,0 +1,1 @@
+drop_table("mc_iam_mapping_workspace_user_roles")

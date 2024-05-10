@@ -1,6 +1,10 @@
 package handler
 
 import (
+	"mc_iam_manager/iammodels"
+	"mc_iam_manager/models"
+	"net/http"
+
 	cblog "github.com/cloud-barista/cb-log"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
@@ -89,14 +93,13 @@ func UpdateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceInfo) (iam
 //	return parsingArray
 //}
 
-func GetWorkspaceList(userId string) (iammodels.WorkspaceInfos, error) {
+func GetWorkspaceList(userId string) iammodels.WorkspaceInfos {
 	var bindModel models.MCIamWorkspaces
 	cblogger.Info("userId : " + userId)
 	err := models.DB.All(&bindModel)
 
 	if err != nil {
 		cblogger.Error(err)
-		return nil, err
 	}
 
 	parsingArray := iammodels.WorkspaceInfos{}
@@ -105,11 +108,11 @@ func GetWorkspaceList(userId string) (iammodels.WorkspaceInfos, error) {
 		parsingArray = append(parsingArray, iammodels.WorkspaceToWorkspaceInfo(obj, nil))
 	}
 
-	return parsingArray, nil
+	return parsingArray
 }
 
-func GetWorkspaceListByUserId(userId string) (iammodels.WorkspaceInfos, error) {
-	wsUserMapping := &models.MCIamWsUserRoleMappings{}
+func GetWorkspaceListByUserId(userId string) iammodels.WorkspaceInfos {
+	wsUserMapping := &models.MCIamWsUserMappings{}
 	cblogger.Info("userId : " + userId)
 	query := models.DB.Where("user_id=?", userId)
 

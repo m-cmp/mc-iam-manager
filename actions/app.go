@@ -67,39 +67,19 @@ func App() *buffalo.App {
 		// Remove to disable this.
 		app.Use(popmw.Transaction(models.DB))
 
-		// kc := app.Group("/mcloak")
-		// kc.GET("/home", KcHomeHandler) // /mcloak/home
-		// kc.GET("/login", KcLoginHandler)
-		// kc.GET("/createuser", KcCreateUserHandler)
-
-		// bf := app.Group("/iam")
-		// bf.Use(IsAuth)
-		// bf.Middleware.Skip(IsAuth, IamLoginForm, IamLogin, NotAuthUserTestPageHandler)
-		// bf.GET("/login", IamLoginForm)
-		// bf.POST("/login", IamLogin)
-		// bf.GET("/authuser/not", NotAuthUserTestPageHandler)
-
-		// bf.GET("/", HomeHandler)
-		// bf.GET("/authuser", AuthUserTestPageHandler)
-
-		// app.Use(IsAuth)
-
-		// apiVersion := os.Getenv("apiVersion")
-		// apiPath := "/api/" + apiVersion + "/"
-
 		apiPath := "/api/"
 
-		// app.GET("/", HomeHandler)/
 		app.GET("/alive", alive)
 
 		auth := app.Group(apiPath + "auth")
 		auth.POST("/login", AuthLoginHandler)
+		auth.POST("/login/refresh", AuthLoginRefreshHandler)
 		auth.POST("/logout", AuthLogoutHandler)
 
 		auth.GET("/validate", AuthGetUserValidate)
 		auth.GET("/userinfo", AuthGetUserInfo)
 
-		auth.POST("/securitykey", AuthGetSecurityKeyHandler)
+		auth.GET("/securitykey", AuthGetSecurityKeyHandler)
 
 		auth.GET("/validate", AuthGetUserInfo)
 
@@ -163,6 +143,9 @@ func App() *buffalo.App {
 		projectPath.POST("/", CreateProject)
 		projectPath.DELETE("/{projectId}", DeleteProject)
 		projectPath.PATCH("/{projectId}", UpdateProject)
+
+		debugPath := app.Group("/debug")
+		debugPath.GET("/getrealmrolebyid/{roleid}", DebugGetRealmRoleByID)
 
 	})
 
