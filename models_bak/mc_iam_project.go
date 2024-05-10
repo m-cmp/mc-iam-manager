@@ -1,10 +1,9 @@
-package models
+package models_bak
 
 import (
 	"encoding/json"
 	"time"
 
-	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gobuffalo/validate/v3"
 	"github.com/gobuffalo/validate/v3/validators"
@@ -13,12 +12,11 @@ import (
 
 // MCIamProject is used by pop to map your mc_iam_projects database table to your go code.
 type MCIamProject struct {
-	ID          uuid.UUID    `json:"id" db:"id"`
-	ProjectID   string       `json:"project_id" db:"project_id"`
-	Name        string       `json:"name" db:"name"`
-	Description nulls.String `json:"description" db:"description"`
-	CreatedAt   time.Time    `json:"created_at" db:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at" db:"updated_at"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	Name        string    `json:"name" db:"name"`
+	Description string    `json:"description" db:"description"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // String is not required by pop and may be deleted
@@ -40,8 +38,8 @@ func (m MCIamProjects) String() string {
 // This method is not required and may be deleted.
 func (m *MCIamProject) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
-		&validators.StringIsPresent{Field: m.ProjectID, Name: "ProjectID"},
 		&validators.StringIsPresent{Field: m.Name, Name: "Name"},
+		&validators.StringIsPresent{Field: m.Description, Name: "Description"},
 	), nil
 }
 
