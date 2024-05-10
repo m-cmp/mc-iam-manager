@@ -1,3 +1,0 @@
-add_foreign_key("mc_iam_user_role_mappings", "role_id", {"mc_iam_roles": ["id"]}, {
-    "name": "mc_iam_fkey_role_id",    
-})

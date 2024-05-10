@@ -1,0 +1,7 @@
+create_table("mc_iam_workspaces") {
+	t.Column("id", "uuid", {primary: true})
+	t.Column("workspace_id", "text", {})
+	t.Column("name", "text", {})
+	t.Column("description", "text", {null: true})
+	t.Timestamps()
+}

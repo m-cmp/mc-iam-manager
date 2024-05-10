@@ -1,7 +1,0 @@
-add_foreign_key("mc_iam_ws_user_role_mappings", "ws_id", {"mc_iam_workspaces": ["id"]}, {
-    "name": "mc_iam_fkey_ws_id",    
-})
-
-add_foreign_key("mc_iam_ws_user_role_mappings", "role_id", {"mc_iam_roles": ["id"]}, {
-    "name": "mc_iam_fkey_ws_user_role_id",    
-})

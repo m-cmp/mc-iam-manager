@@ -206,6 +206,12 @@ keycloak은 PoC 환경에서 임시로 사용자 자격증명과 CSP SAML 인증
     $ cd mc-iam-manager
     $ buffalo dev
     ```
+## swagger docs
+https://m-cmp.github.io/mc-iam-manager/
+
+    ```
+    # https://m-cmp.github.io/mc-iam-manager/
+    ```
 
 ## models
 - mc-iam-manager/buffalo/iammodels
