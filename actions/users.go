@@ -15,53 +15,65 @@ func GetUserList(c buffalo.Context) error {
 		cblogger.Error(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
-	return c.Render(http.StatusOK, r.JSON(userList))
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, userList)))
 }
 
 func RegistUser(c buffalo.Context) error {
 	userInfo := &iammodels.UserReq{}
-	c.Bind(userInfo)
-	cblogger.Info(userInfo)
-	user, err := handler.CreateUser(c, userInfo)
+	err := c.Bind(userInfo)
 	if err != nil {
 		cblogger.Error(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
 
-	return c.Render(http.StatusOK, r.JSON(user))
+	cblogger.Info(userInfo)
+
+	user, createErr := handler.CreateUser(c, userInfo)
+	if createErr != nil {
+		cblogger.Error(createErr)
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, user)))
 }
 
 func UnRegistUser(c buffalo.Context) error {
-	err := handler.DeleteUser(c, c.Param("userId"))
+	userParam := c.Param("userId")
+	err := handler.DeleteUser(c, userParam)
 
 	if err != nil {
 		cblogger.Error(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
 
-	return c.Render(http.StatusOK, r.JSON("delete success"))
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, "delete success")))
 }
 
 func GetUser(c buffalo.Context) error {
-	user, err := handler.GetUser(c, c.Param("userId"))
+	userParam := c.Param("userId")
+	user, err := handler.GetUser(c, userParam)
 
 	if err != nil {
 		cblogger.Error(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
 
-	return c.Render(http.StatusOK, r.JSON(user))
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, user)))
 }
 
 func UpdateUserProfile(c buffalo.Context) error {
 	userInfo := &iammodels.UserInfo{}
-	c.Bind(userInfo)
-	updateUser, err := handler.UpdateUser(c, *userInfo)
-
+	err := c.Bind(userInfo)
 	if err != nil {
 		cblogger.Error(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
+	updateUser, updateErr := handler.UpdateUser(c, *userInfo)
 
-	return c.Render(http.StatusOK, r.JSON(updateUser))
+	if updateErr != nil {
+		cblogger.Error(updateErr)
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, updateUser)))
 }

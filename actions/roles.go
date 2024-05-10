@@ -13,7 +13,7 @@ func GetUserRole(c buffalo.Context) error {
 	resp, err := handler.GetRole(c, roleName)
 
 	if err != nil {
-		return c.Render(http.StatusInternalServerError, r.JSON(err))
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
 
 	return c.Render(http.StatusOK, r.JSON(resp))
@@ -28,8 +28,13 @@ func GetUserRole(c buffalo.Context) error {
 // }
 
 func GetUserRoleList(c buffalo.Context) error {
-	resp := handler.GetRoles(c, "")
-	return c.Render(http.StatusOK, r.JSON(resp))
+	resp, err := handler.GetRoles(c, "")
+	if err != nil {
+		cblogger.Error(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, resp)))
 }
 
 func UpdateUserRole(c buffalo.Context) error {
@@ -40,8 +45,11 @@ func UpdateUserRole(c buffalo.Context) error {
 		return c.Render(http.StatusBadRequest, r.JSON(err))
 	}
 
-	resp := handler.UpdateRole(c, *roleBind)
-
+	resp, err := handler.UpdateRole(c, *roleBind)
+	if err != nil {
+		cblogger.Error(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
+	}
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 func CreateUserRole(c buffalo.Context) error {
@@ -50,29 +58,40 @@ func CreateUserRole(c buffalo.Context) error {
 	if err := c.Bind(roleReq); err != nil {
 		handler.LogPrintHandler("role bind error", err)
 
-		return c.Render(http.StatusBadRequest, r.JSON(err))
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
 
 	handler.LogPrintHandler("role bind", roleReq)
 
-	resp := handler.CreateRole(c, roleReq)
+	resp, err := handler.CreateRole(c, roleReq)
 
-	return c.Render(http.StatusAccepted, r.JSON(resp))
+	if err != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
+	}
+
+	return c.Render(http.StatusAccepted, r.JSON(CommonResponseStatus(http.StatusOK, resp)))
 }
 
 func DeleteUserRole(c buffalo.Context) error {
 	paramRoleId := c.Param("roleId")
 
-	resp := handler.DeleteRole(c, paramRoleId)
-	return c.Render(http.StatusOK, r.JSON(resp))
+	deleteErr := handler.DeleteRole(c, paramRoleId)
+	if deleteErr != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, deleteErr)))
+	}
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, "Deleted role successfully")))
 }
 
 // POST	/api/auth	/usergroup/{groupId}/assignuser	AssignUserToUserGroup
 func AssignUserToUserGroup(c buffalo.Context) error {
 	userRoleInfo := &iammodels.UserRoleInfo{}
-	c.Bind(userRoleInfo)
+	err := c.Bind(userRoleInfo)
+	if err != nil {
+		cblogger.Error(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
+	}
 
-	return nil
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, "")))
 }
 
 // UPDATE	/api/auth	/usergroup/{groupId}/unassign	UnassignUserFromUserGroup

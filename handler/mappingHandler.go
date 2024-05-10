@@ -9,10 +9,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMappings) map[string]interface{} {
+func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMappings) (models.MCIamWsUserRoleMappings, error) {
 	if bindModel != nil {
 		for _, mapping := range *bindModel {
-			wsUserProjectModel := &models.MCIamWsUserRoleMapping{}
+			wsUserMapper := &models.MCIamWsUserRoleMapping{}
 
 			wsId := mapping.WsID
 			roleId := mapping.RoleID
@@ -22,19 +22,15 @@ func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapp
 			q = q.Where("role_id = ?", roleId)
 			q = q.Where("user_id = ?", userId)
 
-			b, err := q.Exists(wsUserProjectModel)
+			b, err := q.Exists(wsUserMapper)
 			if err != nil {
-				return map[string]interface{}{
-					"error":  "something query error",
-					"status": "301",
-				}
+				cblogger.Error("Error bind, ?, ?, ?", wsId, userId, roleId)
+				return nil, err
 			}
 
 			if b {
-				return map[string]interface{}{
-					"error":  "already Exists",
-					"status": "301",
-				}
+				cblogger.Error("Already mapped ws user, ?, ?, ?", wsId, userId, roleId)
+				return nil, errors.Wrap(err, "Already mapped ws user")
 			}
 		}
 
@@ -43,22 +39,18 @@ func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapp
 		err := tx.Create(bindModel)
 
 		if err != nil {
-			return map[string]interface{}{
-				"message": err,
-				"status":  http.StatusBadRequest,
-			}
+			cblogger.Error("Create Err, ?", err)
+			return nil, err
 		}
 	}
 
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
+	return *bindModel, nil
+
 }
 
 func MappingWsUser(tx *pop.Connection, bindModel *models.MCIamWsUserMapping) map[string]interface{} {
 	if bindModel != nil {
-		wsUserModel := &models.MCIamWsUserMapping{}
+		wsUserModel := &models.MCIamWsUserRoleMapping{}
 
 		wsId := bindModel.WsID
 		userId := bindModel.UserID

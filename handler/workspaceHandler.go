@@ -109,7 +109,7 @@ func GetWorkspaceList(userId string) (iammodels.WorkspaceInfos, error) {
 }
 
 func GetWorkspaceListByUserId(userId string) (iammodels.WorkspaceInfos, error) {
-	wsUserMapping := &models.MCIamWsUserMappings{}
+	wsUserMapping := &models.MCIamWsUserRoleMappings{}
 	cblogger.Info("userId : " + userId)
 	query := models.DB.Where("user_id=?", userId)
 
