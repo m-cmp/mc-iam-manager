@@ -11,15 +11,19 @@ import (
 )
 
 func AssignUserToWorkspace(c buffalo.Context) error {
-
-	wum := &models.MCIamWsUserMapping{}
+	wum := &models.MCIamWsUserRoleMappings{}
 	if err := c.Bind(wum); err != nil {
 		cblogger.Error(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(err))
 	}
 	tx := c.Value("tx").(*pop.Connection)
 
-	resp := handler.MappingWsUser(tx, wum)
+	resp, err := handler.MappingWsUserRole(tx, wum)
+
+	if resp == nil && err != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON("Data not Input"))
+	}
+
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 

@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"github.com/gobuffalo/pop/v6"
 	"github.com/sirupsen/logrus"
 	"log"
 	"mc_iam_manager/handler"
@@ -9,7 +10,6 @@ import (
 
 	cblog "github.com/cloud-barista/cb-log"
 	"github.com/gobuffalo/buffalo"
-	"github.com/gobuffalo/pop/v6"
 )
 
 var cblogger *logrus.Logger
