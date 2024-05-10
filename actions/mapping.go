@@ -13,13 +13,14 @@ import (
 
 func AssignUserToWorkspace(c buffalo.Context) error {
 
-	wum := &models.MCIamWsUserRoleMappings{}
+	wum := &models.MCIamWsUserMapping{}
 	if err := c.Bind(wum); err != nil {
-
+		cblogger.Error(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(err))
 	}
 	tx := c.Value("tx").(*pop.Connection)
 
-	resp := handler.MappingWsUserRole(tx, wum)
+	resp := handler.MappingWsUser(tx, wum)
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 

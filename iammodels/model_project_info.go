@@ -29,9 +29,11 @@ func ProjectToProjectInfo(project models.MCIamProject) ProjectInfo {
 
 func ProjectsToProjectInfoList(projects models.MCIamProjects) ProjectInfos {
 	var infos []ProjectInfo
-	for _, i := range projects {
-		infos = append(infos, ProjectToProjectInfo(i))
+	if projects != nil {
+		for _, i := range projects {
+			infos = append(infos, ProjectToProjectInfo(i))
+		}
 	}
-
 	return infos
+
 }

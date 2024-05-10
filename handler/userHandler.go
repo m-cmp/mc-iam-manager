@@ -8,6 +8,12 @@ import (
 
 func CreateUser(ctx buffalo.Context, userReq *iammodels.UserReq) (string, error) {
 
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return "", tokenErr
+	}
+
 	user := gocloak.User{
 		FirstName: &userReq.UserFirstName,
 		LastName:  &userReq.UserLastName,
@@ -16,27 +22,52 @@ func CreateUser(ctx buffalo.Context, userReq *iammodels.UserReq) (string, error)
 		Username:  &userReq.UserName,
 	}
 
-	return KCClient.CreateUser(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, user)
+	return KCClient.CreateUser(ctx, token.AccessToken, KCRealm, user)
 }
 
 func GetUserList(ctx buffalo.Context) ([]*gocloak.User, error) {
-	return KCClient.GetUsers(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, gocloak.GetUsersParams{})
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return nil, tokenErr
+	}
+
+	return KCClient.GetUsers(ctx, token.AccessToken, KCRealm, gocloak.GetUsersParams{})
 }
 
 func GetUser(ctx buffalo.Context, userId string) (*gocloak.User, error) {
-	return KCClient.GetUserByID(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, userId)
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return nil, tokenErr
+	}
+	return KCClient.GetUserByID(ctx, token.AccessToken, KCRealm, userId)
 }
 
 func DeleteUser(ctx buffalo.Context, userId string) error {
-	return KCClient.DeleteUser(ctx, GetKeycloakAdminToken(ctx).AccessToken, KCRealm, userId)
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return tokenErr
+	}
+	return KCClient.DeleteUser(ctx, token.AccessToken, KCRealm, userId)
 }
 
-func UpdateUser(ctx buffalo.Context, userInfo iammodels.UserInfo) error {
-	adminAccessToken := GetKeycloakAdminToken(ctx).AccessToken
-	user, err := KCClient.GetUserByID(ctx, adminAccessToken, KCRealm, userInfo.Id)
+func UpdateUser(ctx buffalo.Context, userInfo iammodels.UserInfo) (*gocloak.User, error) {
+	token, tokenErr := GetKeycloakAdminToken(ctx)
+
+	if tokenErr != nil {
+		cblogger.Error(tokenErr)
+		return nil, tokenErr
+	}
+
+	user, err := KCClient.GetUserByID(ctx, token.AccessToken, KCRealm, userInfo.Id)
 	if err != nil {
 		cblogger.Error(err)
-		return err
+		return nil, err
 	}
 
 	/**
@@ -44,6 +75,10 @@ func UpdateUser(ctx buffalo.Context, userInfo iammodels.UserInfo) error {
 	User Update 항목 logic 추가
 	*/
 	user.Email = &userInfo.Email
-
-	return KCClient.UpdateUser(ctx, adminAccessToken, KCRealm, *user)
+	updateErr := KCClient.UpdateUser(ctx, token.AccessToken, KCRealm, *user)
+	if updateErr != nil {
+		cblogger.Error(updateErr)
+		return nil, updateErr
+	}
+	return KCClient.GetUserByID(ctx, token.AccessToken, KCRealm, userInfo.Id)
 }

@@ -10,7 +10,12 @@ import (
 
 func GetUserRole(c buffalo.Context) error {
 	roleName := c.Param("roleId")
-	resp := handler.GetRole(c, roleName)
+	resp, err := handler.GetRole(c, roleName)
+
+	if err != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON(err))
+	}
+
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
