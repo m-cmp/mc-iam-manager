@@ -105,10 +105,10 @@ func UpdateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceInfo) map[
 //	return parsingArray
 //}
 
-func GetWorkspaceList(tx *pop.Connection, userId string) iammodels.WorkspaceInfos {
+func GetWorkspaceList(userId string) iammodels.WorkspaceInfos {
 	var bindModel models.MCIamWorkspaces
 	cblogger.Info("userId : " + userId)
-	err := models.DB.All(bindModel)
+	err := models.DB.All(&bindModel)
 
 	if err != nil {
 		cblogger.Error(err)
@@ -117,7 +117,7 @@ func GetWorkspaceList(tx *pop.Connection, userId string) iammodels.WorkspaceInfo
 	parsingArray := iammodels.WorkspaceInfos{}
 
 	for _, obj := range bindModel {
-		parsingArray = append(parsingArray, iammodels.WorkspaceToWorkspaceInfo(obj))
+		parsingArray = append(parsingArray, iammodels.WorkspaceToWorkspaceInfo(obj, nil))
 	}
 
 	return parsingArray
@@ -139,30 +139,35 @@ func GetWorkspaceListByUserId(userId string) iammodels.WorkspaceInfos {
 	}
 
 	for _, obj := range *wsUserMapping {
+		/**
+		1. workspace, user mapping 조회
+		2. workspace, projects mapping 조회
+		*/
 		arr := MappingGetProjectByWorkspace(obj.WsID.String())
 
 		cblogger.Info("arr:", arr)
-
-		info := iammodels.WorkspaceToWorkspaceInfo(*arr.Ws)
-		cblogger.Info("Info : ")
-		cblogger.Info(info)
-		info.ProjectList = iammodels.ProjectsToProjectInfoList(arr.Projects)
-		parsingArray = append(parsingArray, info)
-
+		if arr.WsID.String() != "00000000-0000-0000-0000-000000000000" {
+			info := iammodels.WorkspaceToWorkspaceInfo(*arr.Ws, nil)
+			cblogger.Info("Info : ")
+			cblogger.Info(info)
+			info.ProjectList = iammodels.ProjectsToProjectInfoList(arr.Projects)
+			parsingArray = append(parsingArray, info)
+		} else {
+			parsingArray = append(parsingArray, GetWorkspace(obj.WsID.String()))
+		}
 	}
 
 	return parsingArray
 }
 
-func GetWorkspace(tx *pop.Connection, wsId string) iammodels.WorkspaceInfo {
+func GetWorkspace(wsId string) iammodels.WorkspaceInfo {
 	ws := &models.MCIamWorkspace{}
-
-	err := tx.Eager().Find(ws, wsId)
+	err := models.DB.Eager().Find(ws, wsId)
 	if err != nil {
-
+		cblogger.Error(err)
 	}
 
-	return iammodels.WorkspaceToWorkspaceInfo(*ws)
+	return iammodels.WorkspaceToWorkspaceInfo(*ws, nil)
 }
 
 func DeleteWorkspace(tx *pop.Connection, wsId string) map[string]interface{} {

@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/gobuffalo/buffalo"
+	"net/http"
 	"os"
 )
 
@@ -17,7 +18,7 @@ var KCClient = gocloak.NewClient(KCUri)
 
 var adminToken gocloak.JWT
 
-func GetKeycloakAdminToken(c buffalo.Context) *gocloak.JWT {
+func GetKeycloakAdminToken(c buffalo.Context) (*gocloak.JWT, error) {
 	//todo
 	// 1. admintoken expire chk
 	// 1-1. if expired
@@ -34,5 +35,13 @@ func GetKeycloakAdminToken(c buffalo.Context) *gocloak.JWT {
 
 	//cblogger.Info("Tokens : " + token.AccessToken)
 
-	return &adminToken
+	return &adminToken, kcLoginErr
+}
+
+func ReturnErrorInterface(err error) map[string]interface{} {
+	cblogger.Error(err)
+	return map[string]interface{}{
+		"error":  err,
+		"status": http.StatusInternalServerError,
+	}
 }
