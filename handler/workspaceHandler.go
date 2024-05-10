@@ -1,13 +1,14 @@
 package handler
 
 import (
+	"mc_iam_manager/iammodels"
+	"mc_iam_manager/models"
+	"net/http"
+
 	cblog "github.com/cloud-barista/cb-log"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
 	"github.com/sirupsen/logrus"
-	"mc_iam_manager/iammodels"
-	"mc_iam_manager/models"
-	"net/http"
 )
 
 var cblogger *logrus.Logger

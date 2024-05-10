@@ -1,13 +1,14 @@
 package actions
 
 import (
-	"github.com/gobuffalo/buffalo"
-	"github.com/gobuffalo/pop/v6"
-	"github.com/pkg/errors"
 	"mc_iam_manager/handler"
 	"mc_iam_manager/iammodels"
 	"mc_iam_manager/models"
 	"net/http"
+
+	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/pop/v6"
+	"github.com/pkg/errors"
 )
 
 func AssignUserToWorkspace(c buffalo.Context) error {
