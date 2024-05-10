@@ -1,1 +1,0 @@
-drop_table("mc_iam_ws_user_role_mappings")
