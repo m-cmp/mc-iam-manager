@@ -1,11 +1,8 @@
 package handler
 
 import (
-	"mc_iam_manager/iammodels"
-	"mc_iam_manager/models"
-	"net/http"
-
 	cblog "github.com/cloud-barista/cb-log"
+	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
 	"github.com/sirupsen/logrus"
@@ -26,7 +23,7 @@ func CreateWorkspace(tx *pop.Connection, bindModel *iammodels.WorkspaceReq) (iam
 
 	workspace := &models.MCIamWorkspace{
 		Name:        bindModel.WorkspaceName,
-		Description: bindModel.Description,
+		Description: nulls.String{String: bindModel.Description, Valid: true},
 	}
 
 	err := tx.Create(workspace)
@@ -70,7 +67,7 @@ func UpdateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceInfo) (iam
 //	}
 //
 //	for _, obj := range bindModel {
-//		arr := MappingGetProjectByWorkspace(tx, obj.ID.String())
+//		arr := GetMappingProjectByWorkspace(tx, obj.ID.String())
 //
 //		if arr.WsID != uuid.Nil {
 //			parsingArray = append(parsingArray, *arr)
@@ -93,13 +90,14 @@ func UpdateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceInfo) (iam
 //	return parsingArray
 //}
 
-func GetWorkspaceList(userId string) iammodels.WorkspaceInfos {
+func GetWorkspaceList(userId string) (iammodels.WorkspaceInfos, error) {
 	var bindModel models.MCIamWorkspaces
 	cblogger.Info("userId : " + userId)
 	err := models.DB.All(&bindModel)
 
 	if err != nil {
 		cblogger.Error(err)
+		return nil, err
 	}
 
 	parsingArray := iammodels.WorkspaceInfos{}
@@ -108,11 +106,11 @@ func GetWorkspaceList(userId string) iammodels.WorkspaceInfos {
 		parsingArray = append(parsingArray, iammodels.WorkspaceToWorkspaceInfo(obj, nil))
 	}
 
-	return parsingArray
+	return parsingArray, nil
 }
 
-func GetWorkspaceListByUserId(userId string) iammodels.WorkspaceInfos {
-	wsUserMapping := &models.MCIamWsUserMappings{}
+func GetWorkspaceListByUserId(userId string) (iammodels.WorkspaceInfos, error) {
+	wsUserMapping := &models.MCIamMappingWorkspaceUserRoles{}
 	cblogger.Info("userId : " + userId)
 	query := models.DB.Where("user_id=?", userId)
 
@@ -132,20 +130,22 @@ func GetWorkspaceListByUserId(userId string) iammodels.WorkspaceInfos {
 		1. workspace, user mapping 조회
 		2. workspace, projects mapping 조회
 		*/
-		arr, err2 := MappingGetProjectByWorkspace(obj.WsID.String())
+		arr, err2 := GetMappingProjectByWorkspace(obj.WorkspaceID)
 
 		if err2 != nil {
 			cblogger.Error(err2)
-		} else {
-			cblogger.Info("arr:", arr)
-			if arr.WsID.String() != "00000000-0000-0000-0000-000000000000" {
-				info := iammodels.WorkspaceToWorkspaceInfo(*arr.Ws, nil)
+		}
+		cblogger.Info("arr:", arr)
+
+		for _, mapper := range arr {
+			if mapper.WorkspaceID != "00000000-0000-0000-0000-000000000000" {
+				info := iammodels.WorkspaceToWorkspaceInfo(*mapper.Workspace, nil)
 				cblogger.Info("Info : ")
 				cblogger.Info(info)
-				info.ProjectList = iammodels.ProjectsToProjectInfoList(arr.Projects)
+				info.ProjectList = append(info.ProjectList, iammodels.ProjectToProjectInfo(*mapper.Project))
 				parsingArray = append(parsingArray, info)
 			} else {
-				workspace, _ := GetWorkspace(obj.WsID.String())
+				workspace, _ := GetWorkspace(obj.WorkspaceID)
 				parsingArray = append(parsingArray, workspace)
 			}
 		}
@@ -176,11 +176,11 @@ func DeleteWorkspace(tx *pop.Connection, wsId string) error {
 	}
 	//만약 삭제가 된다면 mapping table 도 삭제 해야 한다.
 	// mapping table 조회
-	mws := []models.MCIamWsProjectMapping{}
+	var mws models.MCIamMappingWorkspaceProjects
 
 	err2 := tx.Eager().Where("ws_id =?", wsId).All(&mws)
 	if err2 != nil {
-		LogPrintHandler("MappingGetProjectByWorkspace", wsId)
+		LogPrintHandler("GetMappingProjectByWorkspace", wsId)
 	}
 	err3 := tx.Destroy(mws)
 	if err3 != nil {
@@ -191,14 +191,16 @@ func DeleteWorkspace(tx *pop.Connection, wsId string) error {
 
 // Workspace에 할당된 project 조회	GET	/api/ws	/workspace/{workspaceId}/project	AttachedProjectByWorkspace
 func AttachedProjectByWorkspace(wsId string) (iammodels.ProjectInfos, error) {
-	arr, err := MappingGetProjectByWorkspace(wsId)
+	arr, err := GetMappingProjectByWorkspace(wsId)
 
 	if err != nil {
 		cblogger.Error(err)
 		return nil, err
 	}
-
-	projects := iammodels.ProjectsToProjectInfoList(arr.Projects)
+	var projects iammodels.ProjectInfos
+	for _, mapper := range arr {
+		projects = append(projects, iammodels.ProjectToProjectInfo(*mapper.Project))
+	}
 
 	return projects, nil
 }
@@ -221,16 +223,16 @@ func AttachedDefaultByWorkspace(tx *pop.Connection) error {
 // Workspace에 Project 할당 해제	DELELTE	/api/ws	/workspace/{workspaceId}/attachproject/{projectId}
 func DeleteProjectFromWorkspace(paramWsId string, paramPjId string, tx *pop.Connection) error {
 
-	models := &models.MCIamWsProjectMapping{}
+	model := &models.MCIamMappingWorkspaceProject{}
 
-	err := tx.Eager().Where("ws_id = ? and project_id =?", paramWsId, paramPjId).First(models)
+	err := tx.Eager().Where("ws_id = ? and project_id =?", paramWsId, paramPjId).First(model)
 
 	if err != nil {
 		cblogger.Info(err)
 		return err
 	}
 
-	err2 := tx.Destroy(models)
+	err2 := tx.Destroy(model)
 	if err2 != nil {
 		cblogger.Info(err2)
 		return err2
