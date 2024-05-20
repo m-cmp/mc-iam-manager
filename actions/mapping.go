@@ -12,7 +12,7 @@ import (
 )
 
 func AssignUserToWorkspace(c buffalo.Context) error {
-	wum := &models.MCIamWsUserRoleMappings{}
+	wum := &models.MCIamMappingWorkspaceUserRoles{}
 	if err := c.Bind(wum); err != nil {
 		cblogger.Error(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(err))
@@ -41,7 +41,7 @@ func MappingGetWsUserRole(c buffalo.Context) error {
 }
 
 func MappingUserRole(c buffalo.Context) error {
-	urm := &models.MCIamUserRoleMapping{}
+	urm := &models.MCIamMappingWorkspaceUserRole{}
 
 	if err := c.Bind(urm); err != nil {
 
@@ -55,18 +55,24 @@ func MappingUserRole(c buffalo.Context) error {
 
 func AttachProjectToWorkspace(c buffalo.Context) error {
 	param := &iammodels.WorkspaceProjectMappingReq{}
-	c.Bind(param)
+	err := c.Bind(param)
+	if err != nil {
+		return err
+	}
 
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.AttachProjectToWorkspace(tx, iammodels.WsPjMappingreqToModels(*param))
-
+	resp, err := handler.AttachProjectToWorkspace(tx, iammodels.WsPjMappingreqToModels(*param))
+	if err != nil {
+		cblogger.Error(err)
+		return err
+	}
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
 func MappingGetProjectByWorkspace(c buffalo.Context) error {
 	paramWsId := c.Param("workspaceId")
 
-	resp, err := handler.MappingGetProjectByWorkspace(paramWsId)
+	resp, err := handler.GetMappingProjectByWorkspace(paramWsId)
 
 	if err != nil {
 		return err
@@ -89,7 +95,7 @@ func MappingDeleteWsProject(c buffalo.Context) error {
 	// paramWsId := c.Param("workspaceId")
 	// paramProjectId := c.Param("projectId")
 
-	bindModel := &models.MCIamWsProjectMapping{}
+	bindModel := &models.MCIamMappingWorkspaceProject{}
 
 	if err := c.Bind(bindModel); err != nil {
 		return errors.WithStack(err)

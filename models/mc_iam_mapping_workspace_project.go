@@ -12,11 +12,13 @@ import (
 
 // MCIamMappingWorkspaceProject is used by pop to map your mc_iam_mapping_workspace_projects database table to your go code.
 type MCIamMappingWorkspaceProject struct {
-	ID          uuid.UUID `json:"id" db:"id"`
-	WorkspaceID string    `json:"workspace_id" db:"workspace_id"`
-	ProjectID   string    `json:"project_id" db:"project_id"`
-	CreatedAt   time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	ID          uuid.UUID       `json:"id" db:"id"`
+	WorkspaceID string          `json:"workspace_id" db:"workspace_id"`
+	Workspace   *MCIamWorkspace `belongs_to:"mc_iam_workspaces"`
+	ProjectID   string          `json:"project_id" db:"project_id"`
+	Project     *MCIamProject   `belongs_to:"mc_iam_projects"`
+	CreatedAt   time.Time       `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at" db:"updated_at"`
 }
 
 // String is not required by pop and may be deleted
