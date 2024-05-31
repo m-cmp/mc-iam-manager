@@ -9,8 +9,9 @@
 package iammodels
 
 import (
+	models "mc_iam_manager/models_bak"
+
 	"github.com/gofrs/uuid"
-	"mc_iam_manager/models"
 )
 
 type WorkspaceProjectMappingReq struct {

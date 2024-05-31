@@ -8,7 +8,7 @@
  */
 package iammodels
 
-import "mc_iam_manager/models"
+import models "mc_iam_manager/models_bak"
 
 type WorkspaceInfo struct {
 	WorkspaceId   string         `json:"workspaceId,omitempty"`

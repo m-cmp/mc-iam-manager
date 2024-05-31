@@ -9,7 +9,7 @@
 package iammodels
 
 import (
-	"mc_iam_manager/models"
+	models "mc_iam_manager/models_bak"
 )
 
 type ProjectInfo struct {

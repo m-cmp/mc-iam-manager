@@ -1,7 +1,8 @@
 package handler
 
 import (
-	"mc_iam_manager/models"
+	models "mc_iam_manager/models_bak"
+
 	"net/http"
 
 	"github.com/gobuffalo/pop/v6"
