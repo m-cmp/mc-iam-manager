@@ -21,15 +21,18 @@ func GetUserGroupList(c buffalo.Context) error {
 
 func CreateUserGroup(c buffalo.Context) error {
 	userGroupInfo := &iammodels.UserGroupReq{}
-	c.Bind(userGroupInfo)
+	err := c.Bind(userGroupInfo)
+	if err != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
+	}
 
 	userGroup, err := handler.CreateUserGroup(c, userGroupInfo)
 	if err != nil {
 		cblogger.Error(err)
-		return c.Render(http.StatusOK, r.JSON(err))
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
 
-	return c.Render(http.StatusOK, r.JSON(userGroup))
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, userGroup)))
 }
 
 func DeleteUserGroup(c buffalo.Context) error {
@@ -38,7 +41,8 @@ func DeleteUserGroup(c buffalo.Context) error {
 		cblogger.Error(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
-	return c.Render(http.StatusOK, r.JSON(handler.DeleteUserGroup(c, c.Param("groupId"))))
+
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, "Deleted user group Successfully")))
 }
 
 func GetUserGroup(c buffalo.Context) error {
@@ -49,18 +53,21 @@ func GetUserGroup(c buffalo.Context) error {
 		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
 
-	return c.Render(http.StatusOK, r.JSON(user))
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, user)))
 }
 
 func UpdateUserGroup(c buffalo.Context) error {
 	userGroupInfo := &iammodels.UserGroupInfo{}
-	c.Bind(userGroupInfo)
-	cblogger.Info("GroupInfo : ", userGroupInfo)
-	userGroup, err := handler.UpdateUserGroup(c, *userGroupInfo)
-
+	err := c.Bind(userGroupInfo)
 	if err != nil {
 		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
+	cblogger.Info("GroupInfo : ", userGroupInfo)
+	userGroup, updateErr := handler.UpdateUserGroup(c, *userGroupInfo)
 
-	return c.Render(http.StatusOK, r.JSON(userGroup))
+	if updateErr != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, updateErr)))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, userGroup)))
 }

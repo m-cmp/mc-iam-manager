@@ -9,7 +9,6 @@
 package iammodels
 
 import (
-	"github.com/gofrs/uuid"
 	"mc_iam_manager/models"
 )
 
@@ -18,13 +17,13 @@ type WorkspaceProjectMappingReq struct {
 	ProjectIds  []string `json:"projectIds"`
 }
 
-func WsPjMappingreqToModels(param WorkspaceProjectMappingReq) models.MCIamWsProjectMappings {
-	mappings := models.MCIamWsProjectMappings{}
+func WsPjMappingreqToModels(param WorkspaceProjectMappingReq) models.MCIamMappingWorkspaceProjects {
+	mappings := models.MCIamMappingWorkspaceProjects{}
 
 	for _, pjId := range param.ProjectIds {
-		mappings = append(mappings, models.MCIamWsProjectMapping{
-			WsID:      uuid.FromStringOrNil(param.WorkspaceId),
-			ProjectID: uuid.FromStringOrNil(pjId),
+		mappings = append(mappings, models.MCIamMappingWorkspaceProject{
+			WorkspaceID: param.WorkspaceId,
+			ProjectID:   pjId,
 		})
 	}
 
