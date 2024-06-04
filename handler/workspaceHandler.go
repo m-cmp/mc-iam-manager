@@ -137,18 +137,29 @@ func GetWorkspaceListByUserId(userId string) (iammodels.WorkspaceInfos, error) {
 		}
 		cblogger.Info("arr:", arr)
 
-		for _, mapper := range arr {
-			if mapper.WorkspaceID != "00000000-0000-0000-0000-000000000000" {
-				info := iammodels.WorkspaceToWorkspaceInfo(*mapper.Workspace, nil)
-				cblogger.Info("Info : ")
-				cblogger.Info(info)
-				info.ProjectList = append(info.ProjectList, iammodels.ProjectToProjectInfo(*mapper.Project))
-				parsingArray = append(parsingArray, info)
-			} else {
-				workspace, _ := GetWorkspace(obj.WorkspaceID)
-				parsingArray = append(parsingArray, workspace)
+		if len(arr) != 0 {
+			for _, mapper := range arr {
+				if mapper.WorkspaceID != "00000000-0000-0000-0000-000000000000" {
+					info := iammodels.WorkspaceToWorkspaceInfo(*mapper.Workspace, nil)
+					cblogger.Info("Info : ")
+					cblogger.Info(info)
+					info.ProjectList = append(info.ProjectList, iammodels.ProjectToProjectInfo(*mapper.Project))
+					parsingArray = append(parsingArray, info)
+				} else {
+					workspace, _ := GetWorkspace(obj.WorkspaceID)
+					parsingArray = append(parsingArray, workspace)
+				}
 			}
+		} else { // project 가 없는 경우
+			cblogger.Debug("arr empty")
+			workspace, workspaceErr := GetWorkspace(obj.WorkspaceID)
+			if workspaceErr != nil {
+				cblogger.Error(workspaceErr)
+				return nil, workspaceErr
+			}
+			parsingArray = append(parsingArray, workspace)
 		}
+
 	}
 
 	return parsingArray, nil
