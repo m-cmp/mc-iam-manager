@@ -9,6 +9,7 @@
 package iammodels
 
 type WorkspaceReq struct {
+	WorkspaceId   string `json:"workspaceId"`
 	WorkspaceName string `json:"workspaceName"`
 	Description   string `json:"description"`
 }
