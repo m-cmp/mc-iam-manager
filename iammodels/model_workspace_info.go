@@ -8,12 +8,15 @@
  */
 package iammodels
 
-import models "mc_iam_manager/models_bak"
+import (
+	"github.com/gobuffalo/nulls"
+	"mc_iam_manager/models"
+)
 
 type WorkspaceInfo struct {
 	WorkspaceId   string         `json:"workspaceId,omitempty"`
 	WorkspaceName string         `json:"workspaceName,omitempty"`
-	Description   string         `json:"description,omitempty"`
+	Description   nulls.String   `json:"description,omitempty"`
 	ProjectList   ProjectInfos   `json:"projectList,omitempty"`
 	UserList      []UserRoleInfo `json:"userList,omitempty"`
 }

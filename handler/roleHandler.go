@@ -4,57 +4,21 @@ import (
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/gobuffalo/buffalo"
 	"mc_iam_manager/iammodels"
-	"net/http"
 )
 
-func CreateRole(ctx buffalo.Context, bindModel *iammodels.RoleReq) map[string]interface{} {
+func CreateRole(ctx buffalo.Context, bindModel *iammodels.RoleReq) (string, error) {
 
 	keyCloakRole := gocloak.Role{
 		Name: &bindModel.RoleName,
 	}
 	token, tokenErr := GetKeycloakAdminToken(ctx)
 	if tokenErr != nil {
-		return map[string]interface{}{
-			"message": tokenErr,
-			"status":  http.StatusBadRequest,
-		}
+		return "", tokenErr
 	}
-	_, kcErr := KCClient.CreateRealmRole(ctx, token.AccessToken, KCRealm, keyCloakRole)
-
-	if kcErr != nil {
-		return map[string]interface{}{
-			"message": kcErr,
-			"status":  http.StatusBadRequest,
-		}
-	}
-
-	//start of client Role
-
-	//param := gocloak.GetClientsParams{}
-	//kcClientList, _ := KCClient.GetClients(ctx, token.AccessToken, KCRealm, param)
-	//
-	//for _, client := range kcClientList {
-	//	if KCClientID == *client.ClientID {
-	//		_, kcErr := KCClient.CreateClientRole(ctx, token.AccessToken, KCRealm, *client.ID, keyCloakRole)
-	//		if kcErr != nil {
-	//			return map[string]interface{}{
-	//				"message": kcErr,
-	//				"status":  http.StatusBadRequest,
-	//			}
-	//		}
-	//		break
-	//	}
-	//}
-
-	//end of client Role
-
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
+	return KCClient.CreateRealmRole(ctx, token.AccessToken, KCRealm, keyCloakRole)
 }
 
-func GetRoles(ctx buffalo.Context, searchString string) map[string]interface{} {
+func GetRoles(ctx buffalo.Context, searchString string) ([]*gocloak.Role, error) {
 	roleSearchParam := gocloak.GetRoleParams{}
 
 	if len(searchString) > 0 {
@@ -65,18 +29,16 @@ func GetRoles(ctx buffalo.Context, searchString string) map[string]interface{} {
 	if tokenErr != nil {
 		cblogger.Error(tokenErr)
 
-		return map[string]interface{}{
-			"error":  tokenErr,
-			"status": http.StatusInternalServerError,
-		}
+		return nil, tokenErr
 	}
 
-	roleList, _ := KCClient.GetRealmRoles(ctx, token.AccessToken, KCRealm, roleSearchParam)
-
-	return map[string]interface{}{
-		"roleList": roleList,
-		"status":   http.StatusOK,
+	roleList, err := KCClient.GetRealmRoles(ctx, token.AccessToken, KCRealm, roleSearchParam)
+	if err != nil {
+		cblogger.Error(err)
+		return nil, err
 	}
+
+	return roleList, err
 
 }
 
@@ -87,80 +49,49 @@ func GetRole(ctx buffalo.Context, roleId string) (*gocloak.Role, error) {
 		cblogger.Error(tokenErr)
 		return nil, tokenErr
 	}
-
-	role, err := KCClient.GetRealmRoleByID(ctx, token.AccessToken, KCRealm, roleId)
-	cblogger.Info(role)
-
-	if err != nil {
-		cblogger.Error(err)
-
-		return nil, err
-	}
-
-	return role, err
+	return KCClient.GetRealmRoleByID(ctx, token.AccessToken, KCRealm, roleId)
 }
 
-func UpdateRole(ctx buffalo.Context, model iammodels.RoleReq) map[string]interface{} {
+func UpdateRole(ctx buffalo.Context, model iammodels.RoleReq) (*gocloak.Role, error) {
 	role := iammodels.ConvertRoleReqToRole(model)
 	token, tokenErr := GetKeycloakAdminToken(ctx)
 	if tokenErr != nil {
 		cblogger.Error(tokenErr)
-		return map[string]interface{}{
-			"error":  tokenErr,
-			"status": http.StatusInternalServerError,
-		}
+		return nil, tokenErr
 	}
 	err := KCClient.UpdateRealmRoleByID(ctx, token.AccessToken, KCRealm, model.ID, role)
 
 	if err != nil {
 		cblogger.Error(err)
-		return map[string]interface{}{
-			"error":  err,
-			"status": http.StatusInternalServerError,
-		}
+		return nil, err
 	}
 
-	return map[string]interface{}{
-		"message": "update successfully",
-		"status":  http.StatusOK,
-	}
+	return KCClient.GetRealmRoleByID(ctx, token.AccessToken, KCRealm, model.ID)
 }
 
-func DeleteRole(ctx buffalo.Context, roleId string) map[string]interface{} {
+func DeleteRole(ctx buffalo.Context, roleId string) error {
 
 	token, tokenErr := GetKeycloakAdminToken(ctx)
 
 	if tokenErr != nil {
 		cblogger.Error(tokenErr)
-		return map[string]interface{}{
-			"error":  tokenErr,
-			"status": http.StatusInternalServerError,
-		}
+		return tokenErr
 	}
 
 	role, roleErr := KCClient.GetRealmRoleByID(ctx, token.AccessToken, KCRealm, roleId)
 
 	if roleErr != nil {
 		cblogger.Info(roleErr)
-		return map[string]interface{}{
-			"error":  roleErr,
-			"status": http.StatusInternalServerError,
-		}
+		return roleErr
 	}
 
 	deleteErr := KCClient.DeleteRealmRole(ctx, token.AccessToken, KCRealm, *role.Name)
 
 	if deleteErr != nil {
 		cblogger.Info(deleteErr)
-		return map[string]interface{}{
-			"error":  deleteErr,
-			"status": http.StatusInternalServerError,
-		}
+		return deleteErr
 	}
 
-	return map[string]interface{}{
-		"message": "Delete successfully",
-		"status":  http.StatusOK,
-	}
+	return nil
 
 }

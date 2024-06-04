@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/gobuffalo/nulls"
 	"mc_iam_manager/iammodels"
 	models "mc_iam_manager/models_bak"
 	"net/http"
@@ -13,7 +14,7 @@ func CreateProject(tx *pop.Connection, bindModel *iammodels.ProjectReq) map[stri
 
 	project := &models.MCIamProject{
 		Name:        bindModel.ProjectName,
-		Description: bindModel.Description,
+		Description: nulls.String{String: bindModel.Description, Valid: true},
 	}
 
 	err := tx.Create(project)
@@ -65,16 +66,16 @@ func GetProjectList(tx *pop.Connection) *models.MCIamProjects {
 	return bindModel
 }
 
-func GetProjectListByWorkspaceId(tx *pop.Connection, wsId string) *models.MCIamWsProjectMappings {
-	bindModel := &models.MCIamWsProjectMappings{}
+func GetProjectListByWorkspaceId(wsId string) (*models.MCIamMappingWorkspaceProjects, error) {
+	bindModel := &models.MCIamMappingWorkspaceProjects{}
 	query := models.DB.Where("ws_id = " + wsId)
 	err := query.All(bindModel)
 
 	if err != nil {
-
+		return nil, err
 	}
 
-	return bindModel
+	return bindModel, err
 }
 
 func GetProject(tx *pop.Connection, projectId string) *models.MCIamProject {
