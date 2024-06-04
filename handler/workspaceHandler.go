@@ -225,7 +225,7 @@ func DeleteProjectFromWorkspace(paramWsId string, paramPjId string, tx *pop.Conn
 
 	model := &models.MCIamMappingWorkspaceProject{}
 
-	err := tx.Eager().Where("ws_id = ? and project_id =?", paramWsId, paramPjId).First(model)
+	err := tx.Eager().Where("workspace_id = ? and project_id =?", paramWsId, paramPjId).First(model)
 
 	if err != nil {
 		cblogger.Info(err)

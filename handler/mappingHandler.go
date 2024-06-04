@@ -127,7 +127,7 @@ func AttachProjectToWorkspace(tx *pop.Connection, bindModel models.MCIamMappingW
 		wsPjModel.ProjectID = obj.ProjectID
 		wsPjModel.WorkspaceID = obj.WorkspaceID
 
-		q := tx.Eager().Where("ws_id = ?", wsPjModel.WorkspaceID)
+		q := tx.Eager().Where("workspace_id = ?", wsPjModel.WorkspaceID)
 		q = q.Where("project_id = ?", wsPjModel.ProjectID)
 		b, err := q.Exists(wsPjModel)
 		if err != nil {
@@ -152,7 +152,7 @@ func AttachProjectToWorkspace(tx *pop.Connection, bindModel models.MCIamMappingW
 		projectQuery := models.DB.Where("id = ?", obj.ProjectID)
 		existPj, err := projectQuery.Exists(models.MCIamProject{})
 		if !existPj {
-			cblogger.Error("Project not exist, PjId : ", wsPjModel.WorkspaceID)
+			cblogger.Error("Project not exist, PjId : ", wsPjModel.ProjectID)
 			return nil, errors.New("Project not exist, PjId : " + wsPjModel.ProjectID)
 		}
 
@@ -172,7 +172,7 @@ func GetMappingProjectByWorkspace(wsId string) (models.MCIamMappingWorkspaceProj
 	ws := &models.MCIamMappingWorkspaceProjects{}
 	parsingWs := models.MCIamMappingWorkspaceProjects{}
 	cblogger.Info("wsId : ", wsId)
-	wsQuery := models.DB.Eager().Where("ws_id =?", wsId)
+	wsQuery := models.DB.Eager().Where("workspace_id =?", wsId)
 	projects, err := wsQuery.Exists(ws)
 
 	cblogger.Info("projects:", projects)
