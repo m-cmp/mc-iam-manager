@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"github.com/gobuffalo/pop/v6"
 	"github.com/sirupsen/logrus"
 	"log"
 	"mc_iam_manager/handler"
@@ -9,7 +10,6 @@ import (
 
 	cblog "github.com/cloud-barista/cb-log"
 	"github.com/gobuffalo/buffalo"
-	"github.com/gobuffalo/pop/v6"
 )
 
 var cblogger *logrus.Logger
@@ -23,22 +23,23 @@ func init() {
 
 // Workspace 단건 조회	GET	/api/ws	/workspace/{workspaceId}	GetWorkspace
 func GetWorkspace(c buffalo.Context) error {
-
-	//tx := c.Value("tx").(*pop.Connection)
 	paramWsId := c.Param("workspaceId")
+	resp, err := handler.GetWorkspace(paramWsId)
 
-	resp := handler.GetWorkspace(paramWsId)
+	if err != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
 
-	return c.Render(http.StatusOK, r.JSON(resp))
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, resp)))
 }
 
 // Workspace 목록	GET	/api/ws	/workspace	GetWorkspaceList
 func GetWorkspaceList(c buffalo.Context) error {
-	//tx := c.Value("tx").(*pop.Connection)
-
-	resp := handler.GetWorkspaceList("")
-
-	return c.Render(http.StatusOK, r.JSON(resp))
+	resp, err := handler.GetWorkspaceList("")
+	if err != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, resp)))
 }
 
 // Workspace 목록	GET	/api/ws	/workspace	CreateWorkspace
@@ -48,16 +49,18 @@ func CreateWorkspace(c buffalo.Context) error {
 
 	if err != nil {
 		log.Println(err)
-		return c.Render(http.StatusBadRequest, r.JSON(map[string]interface{}{
-			"error": err,
-		}))
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	log.Println("Workspace request data:", workspaceParam)
 
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.CreateWorkspace(tx, workspaceParam)
-	return c.Render(http.StatusOK, r.JSON(resp))
+	resp, err2 := handler.CreateWorkspace(tx, workspaceParam)
+	if err2 != nil {
+		log.Println(err2)
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err2.Error())))
+	}
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, resp)))
 }
 
 func UpdateWorkspace(c buffalo.Context) error {
@@ -66,16 +69,18 @@ func UpdateWorkspace(c buffalo.Context) error {
 	err := c.Bind(workspaceParam)
 	if err != nil {
 		log.Println("Error binding workspaceParam:", err)
-		return c.Render(http.StatusBadRequest, r.JSON(map[string]interface{}{
-			"error": err.Error(), // 에러를 문자열로 반환하도록 수정
-		}))
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	log.Println("Workspace request data:", workspaceParam)
 
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.UpdateWorkspace(tx, *workspaceParam)
-	return c.Render(http.StatusOK, r.JSON(resp))
+	resp, err2 := handler.UpdateWorkspace(tx, *workspaceParam)
+	if err2 != nil {
+		log.Println(err2)
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err2.Error())))
+	}
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, resp)))
 }
 
 // Workspace 삭제	DELETE	/api/ws	/workspace/{workspaceId}	DeleteWorkspace
@@ -84,17 +89,23 @@ func DeleteWorkspace(c buffalo.Context) error {
 
 	tx := c.Value("tx").(*pop.Connection)
 	resp := handler.DeleteWorkspace(tx, paramWsId)
-	return c.Render(http.StatusOK, r.JSON(resp))
+	if resp != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, resp.Error())))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, "Delete Wrokspace Successfully")))
 }
 
 // Workspace에 할당된 project 조회	GET	/api/ws	/workspace/{workspaceId}/project	AttachedProjectByWorkspace
 func AttachedProjectByWorkspace(c buffalo.Context) error {
 	paramWsId := c.Param("workspaceId")
+	resp, err := handler.AttachedProjectByWorkspace(paramWsId)
 
-	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.AttachedProjectByWorkspace(tx, paramWsId)
+	if err != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
 
-	return c.Render(http.StatusOK, r.JSON(resp))
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, resp)))
 }
 
 // Workspace에 Project 할당 해제	DELELTE	/api/ws	/workspace/{workspaceId}/attachproject/{projectId}	DeleteProjectFromWorkspace
@@ -104,15 +115,24 @@ func DeleteProjectFromWorkspace(c buffalo.Context) error {
 	paramPjId := c.Param("projectId")
 	cblogger.Info("wsId:" + paramWsId)
 	cblogger.Info("pjId:" + paramPjId)
-	handler.DeleteProjectFromWorkspace(paramWsId, paramPjId, tx)
-	return c.Render(http.StatusOK, r.JSON(""))
+	err := handler.DeleteProjectFromWorkspace(paramWsId, paramPjId, tx)
+
+	if err != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, "Attach Delete Success")))
 }
 
 // 유저에게 할당된 Workspace 목록	GET	/api/ws	/user/{userId}	GetWorkspaceListByUser
 func GetWorkspaceListByUser(c buffalo.Context) error {
 	userId := c.Param("userId")
-	resp := handler.GetWorkspaceListByUserId(userId)
+	resp, err := handler.GetWorkspaceListByUserId(userId)
 
-	return c.Render(http.StatusOK, r.JSON(resp))
+	if err != nil {
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, resp)))
 
 }

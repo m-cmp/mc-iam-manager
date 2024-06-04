@@ -12,13 +12,13 @@ import (
 // MCIamWsUserRoleMapping is used by pop to map your mc_iam_ws_user_role_mappings database table to your go code.
 type MCIamWsUserRoleMapping struct {
 	ID        uuid.UUID       `json:"id" db:"id"`
-	WsID      uuid.UUID       `json:"ws_id" db:"ws_id"`
+	WsID      uuid.UUID       `json:"workspaceId" db:"ws_id"`
 	Ws        *MCIamWorkspace `belongs_to:"mc_iam_workspaces"`
-	UserID    string          `json:"user_id" db:"user_id"`
-	RoleID    uuid.UUID       `json:"role_id" db:"role_id"`
+	UserID    string          `json:"userId" db:"user_id"`
+	RoleID    uuid.UUID       `json:"roleId" db:"role_id"`
 	Role      *MCIamRole      `belongs_to:"mc_iam_role"`
-	CreatedAt time.Time       `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at" db:"updated_at"`
+	CreatedAt time.Time       `json:"createdAt" db:"created_at"`
+	UpdatedAt time.Time       `json:"updatedAt" db:"updated_at"`
 }
 
 // String is not required by pop and may be deleted

@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"github.com/gobuffalo/pop/v6"
 	"mc_iam_manager/handler"
 	"mc_iam_manager/iammodels"
 	"net/http"
@@ -8,7 +9,7 @@ import (
 	"github.com/gobuffalo/buffalo"
 )
 
-func GetUserRole(c buffalo.Context) error {
+func GetUserRoleType(c buffalo.Context) error {
 	roleName := c.Param("roleName")
 	resp, err := handler.GetRole(c, roleName)
 
@@ -27,7 +28,7 @@ func GetUserRole(c buffalo.Context) error {
 // 	return c.Render(http.StatusOK,r.JSON(resp))
 // }
 
-func GetUserRoleList(c buffalo.Context) error {
+func GetUserRoleTypeList(c buffalo.Context) error {
 	resp, err := handler.GetRoles(c, "")
 	if err != nil {
 		cblogger.Error(err)
@@ -37,22 +38,21 @@ func GetUserRoleList(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, resp)))
 }
 
-func UpdateUserRole(c buffalo.Context) error {
-
-	roleBind := &iammodels.RoleReq{}
+func UpdateUserRoleType(c buffalo.Context) error {
+	roleBind := &iammodels.RoleTypeReq{}
 	if err := c.Bind(roleBind); err != nil {
-		handler.LogPrintHandler("role bind error", err)
+		handler.LogPrintHandler("role Type bind error", err)
 		return c.Render(http.StatusBadRequest, r.JSON(err))
 	}
-
-	resp, err := handler.UpdateRole(c, *roleBind)
+	tx := c.Value("tx").(*pop.Connection)
+	resp, err := handler.UpdateRoleType(tx, *roleBind)
 	if err != nil {
 		cblogger.Error(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
 	}
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
-func CreateUserRole(c buffalo.Context) error {
+func CreateUserRoleType(c buffalo.Context) error {
 	roleReq := &iammodels.RoleReq{}
 	//roleBind := &models.MCIamRole{}
 	if err := c.Bind(roleReq); err != nil {
@@ -72,7 +72,7 @@ func CreateUserRole(c buffalo.Context) error {
 	return c.Render(http.StatusAccepted, r.JSON(CommonResponseStatus(http.StatusOK, resp)))
 }
 
-func DeleteUserRole(c buffalo.Context) error {
+func DeleteUserRoleType(c buffalo.Context) error {
 	paramRoleId := c.Param("roleId")
 
 	deleteErr := handler.DeleteRole(c, paramRoleId)
@@ -80,22 +80,4 @@ func DeleteUserRole(c buffalo.Context) error {
 		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, deleteErr)))
 	}
 	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, "Deleted role successfully")))
-}
-
-// POST	/api/auth	/usergroup/{groupId}/assignuser	AssignUserToUserGroup
-func AssignUserToUserGroup(c buffalo.Context) error {
-	userRoleInfo := &iammodels.UserRoleInfo{}
-	err := c.Bind(userRoleInfo)
-	if err != nil {
-		cblogger.Error(err)
-		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
-	}
-
-	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, "")))
-}
-
-// UPDATE	/api/auth	/usergroup/{groupId}/unassign	UnassignUserFromUserGroup
-func UnassignUserFromUserGroup(c buffalo.Context) error {
-
-	return nil
 }
