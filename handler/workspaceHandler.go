@@ -92,7 +92,7 @@ func UpdateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceInfo) (iam
 
 func GetWorkspaceList(userId string) (iammodels.WorkspaceInfos, error) {
 	var bindModel models.MCIamWorkspaces
-	cblogger.Info("userId : " + userId)
+	cblogger.Debug("userId : " + userId)
 	err := models.DB.All(&bindModel)
 
 	if err != nil {
@@ -111,7 +111,7 @@ func GetWorkspaceList(userId string) (iammodels.WorkspaceInfos, error) {
 
 func GetWorkspaceListByUserId(userId string) (iammodels.WorkspaceInfos, error) {
 	wsUserMapping := &models.MCIamMappingWorkspaceUserRoles{}
-	cblogger.Info("userId : " + userId)
+	cblogger.Debug("userId : " + userId)
 	query := models.DB.Where("user_id=?", userId)
 
 	err := query.All(wsUserMapping)
