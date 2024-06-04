@@ -9,13 +9,14 @@
 package iammodels
 
 import (
-	models "mc_iam_manager/models_bak"
+	"github.com/gobuffalo/nulls"
+	"mc_iam_manager/models"
 )
 
 type ProjectInfo struct {
-	ProjectId   string `json:"projectId,omitempty"`
-	ProjectName string `json:"projectName,omitempty"`
-	Description string `json:"description,omitempty"`
+	ProjectId   string       `json:"projectId,omitempty"`
+	ProjectName string       `json:"projectName,omitempty"`
+	Description nulls.String `json:"description,omitempty"`
 }
 type ProjectInfos []ProjectInfo
 

@@ -10,32 +10,31 @@ import (
 	"github.com/pkg/errors"
 )
 
-func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMappings) map[string]interface{} {
+func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamMappingWorkspaceUserRoles) (models.MCIamMappingWorkspaceUserRoles, error) {
 	if bindModel != nil {
-		for _, mapping := range *bindModel {
-			wsUserProjectModel := &models.MCIamWsUserRoleMapping{}
+		cblogger.Info("bindModel")
+		cblogger.Info(bindModel)
 
-			wsId := mapping.WsID
-			roleId := mapping.RoleID
+		for _, mapping := range *bindModel {
+			wsUserMapper := &models.MCIamMappingWorkspaceUserRole{}
+
+			wsId := mapping.WorkspaceID
+			roleId := mapping.RoleName
 			userId := mapping.UserID
 
-			q := tx.Eager().Where("ws_id = ?", wsId)
-			q = q.Where("role_id = ?", roleId)
+			q := tx.Eager().Where("workspace_id = ?", wsId)
+			q = q.Where("role_name = ?", roleId)
 			q = q.Where("user_id = ?", userId)
 
-			b, err := q.Exists(wsUserProjectModel)
+			b, err := q.Exists(wsUserMapper)
 			if err != nil {
-				return map[string]interface{}{
-					"error":  "something query error",
-					"status": "301",
-				}
+				cblogger.Errorf("Error bind, %s, %s, %s", wsId, userId, roleId)
+				return nil, err
 			}
 
 			if b {
-				return map[string]interface{}{
-					"error":  "already Exists",
-					"status": "301",
-				}
+				cblogger.Error("Already mapped ws user, ?, ?, ?", wsId, userId, roleId)
+				return nil, errors.Wrap(err, "Already mapped ws user")
 			}
 		}
 
@@ -44,62 +43,58 @@ func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamWsUserRoleMapp
 		err := tx.Create(bindModel)
 
 		if err != nil {
-			return map[string]interface{}{
-				"message": err,
-				"status":  http.StatusBadRequest,
-			}
+			cblogger.Error("Create Err, ?", err)
+			return nil, err
 		}
 	}
 
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
+	return *bindModel, nil
+
 }
 
-func MappingWsUser(tx *pop.Connection, bindModel *models.MCIamWsUserMapping) map[string]interface{} {
-	if bindModel != nil {
-		wsUserModel := &models.MCIamWsUserMapping{}
+//func MappingWsUser(tx *pop.Connection, bindModel *models.MCIamWsUserMapping) map[string]interface{} {
+//	if bindModel != nil {
+//		wsUserModel := &models.MCIamWsUserRoleMapping{}
+//
+//		wsId := bindModel.WsID
+//		userId := bindModel.UserID
+//
+//		q := tx.Eager().Where("ws_id = ?", wsId)
+//		q = q.Where("user_id = ?", userId)
+//
+//		b, err := q.Exists(wsUserModel)
+//		if err != nil {
+//			return map[string]interface{}{
+//				"error":  "something query error",
+//				"status": "301",
+//			}
+//		}
+//
+//		if b {
+//			return map[string]interface{}{
+//				"error":  "already Exists",
+//				"status": "301",
+//			}
+//		}
+//	}
+//	LogPrintHandler("mapping ws user bind model", bindModel)
+//	err := tx.Create(bindModel)
+//
+//	if err != nil {
+//		return map[string]interface{}{
+//			"message": err,
+//			"status":  http.StatusBadRequest,
+//		}
+//	}
+//	return map[string]interface{}{
+//		"message": "success",
+//		"status":  http.StatusOK,
+//	}
+//}
 
-		wsId := bindModel.WsID
-		userId := bindModel.UserID
+func GetWsUserRole(tx *pop.Connection, userId string) *models.MCIamMappingWorkspaceUserRole {
 
-		q := tx.Eager().Where("ws_id = ?", wsId)
-		q = q.Where("user_id = ?", userId)
-
-		b, err := q.Exists(wsUserModel)
-		if err != nil {
-			return map[string]interface{}{
-				"error":  "something query error",
-				"status": "301",
-			}
-		}
-
-		if b {
-			return map[string]interface{}{
-				"error":  "already Exists",
-				"status": "301",
-			}
-		}
-	}
-	LogPrintHandler("mapping ws user bind model", bindModel)
-	err := tx.Create(bindModel)
-
-	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
-	}
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
-}
-
-func GetWsUserRole(tx *pop.Connection, userId string) *models.MCIamWsUserRoleMappings {
-
-	respModel := &models.MCIamWsUserRoleMappings{}
+	respModel := &models.MCIamMappingWorkspaceUserRole{}
 
 	if userId != "" {
 		q := tx.Eager().Where("user_id = ?", userId)
@@ -126,52 +121,40 @@ func GetWsUserRole(tx *pop.Connection, userId string) *models.MCIamWsUserRoleMap
 	return respModel
 }
 
-func AttachProjectToWorkspace(tx *pop.Connection, bindModel models.MCIamWsProjectMappings) map[string]interface{} {
+func AttachProjectToWorkspace(tx *pop.Connection, bindModel models.MCIamMappingWorkspaceProjects) (models.MCIamMappingWorkspaceProjects, error) {
 
-	wsPjModel := &models.MCIamWsProjectMapping{}
+	wsPjModel := &models.MCIamMappingWorkspaceProject{}
 	for _, obj := range bindModel {
 		wsPjModel.ProjectID = obj.ProjectID
-		wsPjModel.WsID = obj.WsID
+		wsPjModel.WorkspaceID = obj.WorkspaceID
 
-		q := tx.Eager().Where("ws_id = ?", obj.WsID)
-		q = q.Where("project_id = ?", obj.ProjectID)
+		q := tx.Eager().Where("workspace_id = ?", wsPjModel.WorkspaceID)
+		q = q.Where("project_id = ?", wsPjModel.ProjectID)
 		b, err := q.Exists(wsPjModel)
 		if err != nil {
-			return map[string]interface{}{
-				"message": "something query error",
-				"status":  "301",
-			}
+			return nil, errors.New("something query error")
 		}
 
 		if b {
-			return map[string]interface{}{
-				"message": "already Exists",
-				"status":  "301",
-			}
+			return nil, errors.New("already Exists")
 		}
 
 		LogPrintHandler("mapping ws project bind model", wsPjModel)
 
 		//workspace 존재 여부 체크
-		wsQuery := models.DB.Where("id = ?", obj.WsID)
+		wsQuery := models.DB.Where("id = ?", wsPjModel.WorkspaceID)
 		existWs, err := wsQuery.Exists(models.MCIamWorkspace{})
 		if !existWs {
-			cblogger.Error("Workspace not exist, WSID : ", obj.WsID)
-			return map[string]interface{}{
-				"message": "Workspace not exist, WSID : " + obj.WsID.String(),
-				"status":  http.StatusBadRequest,
-			}
+			cblogger.Error("Workspace not exist, WSID : ", wsPjModel.WorkspaceID)
+			return nil, errors.New("Workspace not exist, WSID : " + obj.WorkspaceID)
 		}
 
 		//project 존재 여부 체크
 		projectQuery := models.DB.Where("id = ?", obj.ProjectID)
 		existPj, err := projectQuery.Exists(models.MCIamProject{})
 		if !existPj {
-			cblogger.Error("Project not exist, PjId : ", obj.ProjectID)
-			return map[string]interface{}{
-				"message": "Project not exist, PjId : " + obj.ProjectID.String(),
-				"status":  http.StatusBadRequest,
-			}
+			cblogger.Error("Project not exist, PjId : ", wsPjModel.ProjectID)
+			return nil, errors.New("Project not exist, PjId : " + wsPjModel.ProjectID)
 		}
 
 		err2 := tx.Create(wsPjModel)
@@ -179,47 +162,44 @@ func AttachProjectToWorkspace(tx *pop.Connection, bindModel models.MCIamWsProjec
 		if err2 != nil {
 			LogPrintHandler("mapping ws project error", err)
 
-			return map[string]interface{}{
-				"message": err,
-				"Mapping": wsPjModel,
-				"status":  http.StatusBadRequest,
-			}
+			return nil, err2
 		}
 	}
 
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
+	return bindModel, nil
 }
 
-func MappingGetProjectByWorkspace(wsId string) models.ParserWsProjectMapping {
-	ws := &models.MCIamWsProjectMappings{}
-	parsingWs := &models.ParserWsProjectMapping{}
+func GetMappingProjectByWorkspace(wsId string) (models.MCIamMappingWorkspaceProjects, error) {
+	ws := &models.MCIamMappingWorkspaceProjects{}
+	parsingWs := models.MCIamMappingWorkspaceProjects{}
 	cblogger.Info("wsId : ", wsId)
-	wsQuery := models.DB.Eager().Where("ws_id =?", wsId)
+	wsQuery := models.DB.Eager().Where("workspace_id =?", wsId)
 	projects, err := wsQuery.Exists(ws)
 
 	cblogger.Info("projects:", projects)
 
 	if err != nil {
 		cblogger.Error(err)
+		return models.MCIamMappingWorkspaceProjects{}, err
 	}
 
 	if projects {
-		err := wsQuery.All(ws)
-		if err != nil {
+		err2 := wsQuery.All(ws)
+
+		if err2 != nil {
 			cblogger.Error(err)
+			return models.MCIamMappingWorkspaceProjects{}, err
 		}
+
 		parsingWs = ParserWsProjectByWs(*ws, wsId)
 	}
 
-	return *parsingWs
+	return parsingWs, nil
 
 }
 
 func MappingWsProjectValidCheck(tx *pop.Connection, wsId string, projectId string) map[string]interface{} {
-	ws := &models.MCIamWsProjectMapping{}
+	ws := &models.MCIamMappingWorkspaceProject{}
 
 	q := tx.Eager().Where("ws_id =?", wsId)
 	q = q.Where("project_id =?", projectId)
@@ -247,26 +227,32 @@ func MappingWsProjectValidCheck(tx *pop.Connection, wsId string, projectId strin
 
 }
 
-func ParserWsProjectByWs(bindModels []models.MCIamWsProjectMapping, ws_id string) *models.ParserWsProjectMapping {
-	parserWsProject := &models.ParserWsProjectMapping{}
-	projectArray := models.MCIamProjects{}
-	wsUuid, _ := uuid.FromString(ws_id)
+func ParserWsProjectByWs(bindModels models.MCIamMappingWorkspaceProjects, wsId string) models.MCIamMappingWorkspaceProjects {
+	parserWsProjects := models.MCIamMappingWorkspaceProjects{}
+	parserWsProject := models.MCIamMappingWorkspaceProject{}
+	//projectArray := models.MCIamProjects{}
+
 	cblogger.Info("#### bindmodels ####", bindModels)
 	for _, obj := range bindModels {
-		cblogger.Info("#### wsuuid ####", obj.WsID)
-		if wsUuid == obj.WsID {
-			parserWsProject.WsID = obj.WsID
-			parserWsProject.Ws = obj.Ws
-			if obj.ProjectID != uuid.Nil {
-				projectArray = append(projectArray, *obj.Project)
-				parserWsProject.Projects = projectArray
+		cblogger.Info("#### wsuuid ####", obj.WorkspaceID)
+		if wsId == obj.WorkspaceID {
+			parserWsProject.WorkspaceID = obj.WorkspaceID
+			parserWsProject.Workspace = obj.Workspace
+			parserWsProject.Project = obj.Project
+
+			if obj.ProjectID != "" {
+				//projectArray = append(projectArray, *obj.Project)
+				//parserWsProject.Project = projectArray
+
+				parserWsProject.Project = obj.Project
 			}
 		}
 
+		parserWsProjects = append(parserWsProjects, parserWsProject)
 	}
 
 	cblogger.Info("parserWsProject : ", parserWsProject)
-	return parserWsProject
+	return parserWsProjects
 }
 
 // func ParserWsProject(tx *pop.Connection, bindModels []models.MCIamWorkspace) *models.ParserWsProjectMappings {
@@ -278,14 +264,14 @@ func ParserWsProjectByWs(bindModels []models.MCIamWsProjectMapping, ws_id string
 // 	return parserWsProject
 // }
 
-func MappingUserRole(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping) map[string]interface{} {
+func MappingUserRole(tx *pop.Connection, bindModel *models.MCIamMappingWorkspaceUserRole) map[string]interface{} {
 	if bindModel.ID != uuid.Nil {
-		userRoleModel := &models.MCIamUserRoleMapping{}
+		userRoleModel := &models.MCIamMappingWorkspaceUserRole{}
 
-		roleId := bindModel.RoleID
+		roleId := bindModel.RoleName
 		userId := bindModel.UserID
 
-		q := tx.Eager().Where("role_id = ?", roleId)
+		q := tx.Eager().Where("role_name = ?", roleId)
 		q = q.Where("user_id = ?", userId)
 
 		b, err := q.Exists(userRoleModel)
@@ -318,7 +304,7 @@ func MappingUserRole(tx *pop.Connection, bindModel *models.MCIamUserRoleMapping)
 	}
 }
 
-func MappingDeleteWsProject(tx *pop.Connection, bindModel *models.MCIamWsProjectMapping) map[string]interface{} {
+func MappingDeleteWsProject(tx *pop.Connection, bindModel *models.MCIamMappingWorkspaceProject) map[string]interface{} {
 	err := tx.Destroy(bindModel)
 	if err != nil {
 		return map[string]interface{}{
