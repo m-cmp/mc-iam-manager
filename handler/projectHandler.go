@@ -1,10 +1,11 @@
 package handler
 
 import (
-	"github.com/gobuffalo/nulls"
 	"mc_iam_manager/iammodels"
-	models "mc_iam_manager/models_bak"
+	models "mc_iam_manager/models"
 	"net/http"
+
+	"github.com/gobuffalo/nulls"
 
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"

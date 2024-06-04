@@ -3,7 +3,7 @@ package actions
 import (
 	"mc_iam_manager/handler"
 	"mc_iam_manager/iammodels"
-	models "mc_iam_manager/models_bak"
+	models "mc_iam_manager/models"
 	"net/http"
 
 	"github.com/gobuffalo/buffalo"

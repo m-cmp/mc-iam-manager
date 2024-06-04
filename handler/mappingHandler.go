@@ -1,7 +1,7 @@
 package handler
 
 import (
-	models "mc_iam_manager/models_bak"
+	models "mc_iam_manager/models"
 
 	"net/http"
 
@@ -49,7 +49,6 @@ func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamMappingWorkspa
 	}
 
 	return *bindModel, nil
-
 }
 
 //func MappingWsUser(tx *pop.Connection, bindModel *models.MCIamWsUserMapping) map[string]interface{} {
