@@ -1,46 +1,46 @@
-##############################################################
-## Stage 1 - Go Build
-##############################################################
-FROM golang:1.21.6-alpine AS builder
+# This is a multi-stage Dockerfile and requires >= Docker 17.05
+# https://docs.docker.com/engine/userguide/eng-image/multistage-build/
+FROM gobuffalo/buffalo:v0.18.14 as builder
 
-RUN apk add --no-cache build-base
-
+ENV GOPROXY http://proxy.golang.org
 
 RUN mkdir -p /src/mc-iam-manager
 WORKDIR /src/mc-iam-manager
+
+# Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
-
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
 RUN go mod download
-
-RUN wget https://github.com/gobuffalo/cli/releases/download/v0.18.14/buffalo_0.18.14_Linux_x86_64.tar.gz
-RUN tar -xvzf buffalo_0.18.14_Linux_x86_64.tar.gz
-RUN mv buffalo /usr/local/bin/buffalo
 
 ADD . .
 RUN buffalo build --static -o /bin/app
 
-FROM alpine
-RUN apk add --no-cache bash
-RUN apk add --no-cache ca-certificates
+# FROM alpine
+# RUN apk add --no-cache bash
+# RUN apk add --no-cache ca-certificates
+FROM debian:buster-slim
 
 WORKDIR /bin/
-ADD conf /bin/conf
-
-ENV CBSPIDER_ROOT=/bin \
-    CBSTORE_ROOT=/bin \
-    CBLOG_ROOT=/bin
-
+COPY conf /bin/conf
 COPY --from=builder /bin/app .
 
 # Uncomment to run the binary in "production" mode:
 # ENV GO_ENV=production
-ENV GO_ENV=development
 
 # Bind the app to 0.0.0.0 so it can be seen from outside the container
-ENV ADDR=0.0.0.0
+ENV ADDR=0.0.0.0 \
+    PORT=3000
+
+ENV DEV_DATABASE_URL=postgres://mciamadmin:password@postgres:5432/mciamdb \
+    DATABASE_URL=postgres://mciamadmin:password@postgres:5432/mciamdb 
+
+ENV CBLOG_ROOT=/bin \
+    MCIAMMANAGER_ROOT=/bin
+
 EXPOSE 3000
 
 # Uncomment to run the migrations before running the binary:
-# CMD /bin/app migrate; /bin/app
-CMD exec /bin/app
+CMD /bin/app migrate; /bin/app
+# CMD exec /bin/app
