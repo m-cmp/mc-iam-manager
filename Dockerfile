@@ -17,22 +17,30 @@ RUN go mod download
 ADD . .
 RUN buffalo build --static -o /bin/app
 
-FROM alpine
-RUN apk add --no-cache bash
-RUN apk add --no-cache ca-certificates
+# FROM alpine
+# RUN apk add --no-cache bash
+# RUN apk add --no-cache ca-certificates
+FROM debian:buster-slim
 
 WORKDIR /bin/
-
+COPY conf /bin/conf
 COPY --from=builder /bin/app .
 
 # Uncomment to run the binary in "production" mode:
 # ENV GO_ENV=production
 
 # Bind the app to 0.0.0.0 so it can be seen from outside the container
-ENV ADDR=0.0.0.0
+ENV ADDR=0.0.0.0 \
+    PORT=3000
+
+ENV DEV_DATABASE_URL=postgres://mciamadmin:password@postgres:5432/mciamdb \
+    DATABASE_URL=postgres://mciamadmin:password@postgres:5432/mciamdb 
+
+ENV CBLOG_ROOT=/bin \
+    MCIAMMANAGER_ROOT=/bin
 
 EXPOSE 3000
 
 # Uncomment to run the migrations before running the binary:
-# CMD /bin/app migrate; /bin/app
-CMD exec /bin/app
+CMD /bin/app migrate; /bin/app
+# CMD exec /bin/app

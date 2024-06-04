@@ -1,6 +1,6 @@
 module mc_iam_manager
 
-go 1.21.4
+go 1.18
 
 require (
 	github.com/Nerzal/gocloak/v13 v13.9.0
