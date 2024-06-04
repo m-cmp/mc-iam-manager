@@ -31,7 +31,7 @@ func RegistUser(c buffalo.Context) error {
 	user, createErr := handler.CreateUser(c, userInfo)
 	if createErr != nil {
 		cblogger.Error(createErr)
-		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, err)))
+		return c.Render(http.StatusInternalServerError, r.JSON(CommonResponseStatus(http.StatusInternalServerError, createErr)))
 	}
 
 	return c.Render(http.StatusOK, r.JSON(CommonResponseStatus(http.StatusOK, user)))

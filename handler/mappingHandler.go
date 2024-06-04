@@ -11,6 +11,9 @@ import (
 
 func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamMappingWorkspaceUserRoles) (models.MCIamMappingWorkspaceUserRoles, error) {
 	if bindModel != nil {
+		cblogger.Info("bindModel")
+		cblogger.Info(bindModel)
+
 		for _, mapping := range *bindModel {
 			wsUserMapper := &models.MCIamMappingWorkspaceUserRole{}
 
@@ -18,13 +21,13 @@ func MappingWsUserRole(tx *pop.Connection, bindModel *models.MCIamMappingWorkspa
 			roleId := mapping.RoleName
 			userId := mapping.UserID
 
-			q := tx.Eager().Where("ws_id = ?", wsId)
-			q = q.Where("role_id = ?", roleId)
+			q := tx.Eager().Where("workspace_id = ?", wsId)
+			q = q.Where("role_name = ?", roleId)
 			q = q.Where("user_id = ?", userId)
 
 			b, err := q.Exists(wsUserMapper)
 			if err != nil {
-				cblogger.Error("Error bind, ?, ?, ?", wsId, userId, roleId)
+				cblogger.Errorf("Error bind, %s, %s, %s", wsId, userId, roleId)
 				return nil, err
 			}
 
