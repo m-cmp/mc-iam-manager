@@ -14,7 +14,6 @@ services:
       ADMINUSERID: mcpuser
       ADMINUSERPASSWORD: mcpuserpassword
       KEYCLOAK_USE: "true"
-      # KEYCLOAK_HOST: https://${DOMAIN}
       KEYCLOAK_HOST: http://keycloak:8080
       KEYCLAOK_ADMIN: admin
       KEYCLAOK_ADMIN_PASSWORD: admin
