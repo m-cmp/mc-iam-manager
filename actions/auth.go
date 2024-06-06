@@ -18,33 +18,23 @@ import (
 )
 
 var (
-	//default set of console Admin var
-	ADMINUSERID       string
-	ADMINUSERPASSWORD string
-
 	//IDP use bool
-	KEYCLOAK_HOST           string
-	KEYCLOAK                *gocloak.GoCloak
-	KEYCLAOK_ADMIN          string
-	KEYCLAOK_ADMIN_PASSWORD string
-	KEYCLAOK_REALM          string
-	KEYCLAOK_CLIENT         string
-	KEYCLAOK_CLIENT_SECRET  string
+	KEYCLOAK_HOST string
+	KEYCLOAK      *gocloak.GoCloak
+
+	KEYCLAOK_REALM         string
+	KEYCLAOK_CLIENT        string
+	KEYCLAOK_CLIENT_SECRET string
 )
 
 func init() {
-	//default set of console Admin var
-	ADMINUSERID = envy.Get("ADMINUSERID", "mcpuser")
-	ADMINUSERPASSWORD = envy.Get("ADMINUSERPASSWORD", "mcpuserpassword")
-
 	//default set of console KEYCLOAK
 	KEYCLOAK_HOST = envy.Get("KEYCLOAK_HOST", "")
 	KEYCLOAK = gocloak.NewClient(KEYCLOAK_HOST)
 	KEYCLAOK_REALM = envy.Get("KEYCLAOK_REALM", "mciam")
 	KEYCLAOK_CLIENT = envy.Get("KEYCLAOK_CLIENT", "mciammanager")
 	KEYCLAOK_CLIENT_SECRET = envy.Get("KEYCLAOK_CLIENT_SECRET", "mciammanagerclientsecret")
-	KEYCLAOK_ADMIN = envy.Get("KEYCLAOK_ADMIN", "admin")
-	KEYCLAOK_ADMIN_PASSWORD = envy.Get("KEYCLAOK_ADMIN_PASSWORD", "admin")
+
 }
 
 func AuthLoginHandler(c buffalo.Context) error {

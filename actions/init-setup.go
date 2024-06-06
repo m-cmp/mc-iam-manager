@@ -4,14 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/envy"
 )
 
 var (
-	KEYCLOAK_USE bool
+	KEYCLOAK_USE            bool
+	KEYCLAOK_ADMIN          string
+	KEYCLAOK_ADMIN_PASSWORD string
+	//default set of console Admin var
+	ADMINUSERID       string
+	ADMINUSERPASSWORD string
 )
 
 func init() {
@@ -20,6 +27,21 @@ func init() {
 	if err != nil {
 		panic(errors.New("environment variable file setting error : KEYCLOAK_USE :" + err.Error()))
 	}
+	//default set of console Admin var
+	ADMINUSERID = envy.Get("ADMINUSERID", "mcpuser")
+	ADMINUSERPASSWORD = envy.Get("ADMINUSERPASSWORD", "mcpuserpassword")
+	KEYCLAOK_ADMIN = envy.Get("KEYCLAOK_ADMIN", "admin")
+	KEYCLAOK_ADMIN_PASSWORD = envy.Get("KEYCLAOK_ADMIN_PASSWORD", "admin")
+}
+
+func InitApi(c buffalo.Context) error {
+	err := CreateDefaultAdminUserOnIdp()
+	if err != nil {
+		panicErr := errors.New("KeycloakCreateDefaultAdminUser() error :" + err.Error())
+		fmt.Println(panicErr)
+		return c.Render(http.StatusOK, r.JSON(panicErr))
+	}
+	return c.Render(http.StatusOK, r.JSON("InitApi done"))
 }
 
 func CreateDefaultAdminUserOnIdp() error {
