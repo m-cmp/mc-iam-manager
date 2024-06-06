@@ -37,11 +37,9 @@ func init() {
 func InitApi(c buffalo.Context) error {
 	err := CreateDefaultAdminUserOnIdp()
 	if err != nil {
-		panicErr := errors.New("KeycloakCreateDefaultAdminUser() error :" + err.Error())
-		fmt.Println(panicErr)
-		return c.Render(http.StatusOK, r.JSON(panicErr))
+		return c.Render(http.StatusOK, r.JSON(err))
 	}
-	return c.Render(http.StatusOK, r.JSON("InitApi done"))
+	return c.Render(http.StatusOK, r.JSON("Init done"))
 }
 
 func CreateDefaultAdminUserOnIdp() error {
@@ -52,6 +50,7 @@ func CreateDefaultAdminUserOnIdp() error {
 			panicErr := errors.New("KeycloakCreateDefaultAdminUser() error :" + err.Error())
 			// panic(errors.New("KeycloakCreateDefaultAdminUser() error :" + err.Error()))
 			fmt.Println(panicErr)
+			return panicErr
 		}
 	}
 	return nil
