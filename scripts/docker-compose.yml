@@ -5,19 +5,25 @@ services:
     build: ../
     depends_on:
       - postgresdb
+      - keycloak
     environment:
       GO_ENV: development # production | development
       GODEBUG: netdns=go
       DEV_DATABASE_URL: postgres://mciamadmin:mciammanagerpassword@postgresdb:5432/mciamdb
       DATABASE_URL: postgres://mciamadmin:mciammanagerpassword@postgresdb:5432/mciamdb
-      KEYCLOAK_HOST: https://${DOMAIN}
-      KEYCLAOK_REALM: mciammanager
+      ADMINUSERID: mcpuser
+      ADMINUSERPASSWORD: mcpuserpassword
+      KEYCLOAK_USE: "true"
+      # KEYCLOAK_HOST: https://${DOMAIN}
+      KEYCLOAK_HOST: http://keycloak:8080
       KEYCLAOK_ADMIN: admin
       KEYCLAOK_ADMIN_PASSWORD: admin
-      KEYCLAOK_CLIENT: mciammanagerclient
+      KEYCLAOK_REALM: mciam
+      KEYCLAOK_CLIENT: mciammanager
       KEYCLAOK_CLIENT_SECRET: mciammanagerclientsecret
     networks:
       - mciammanagernet
+    restart: always
 
   postgresdb:
     image: postgres:14-alpine
@@ -94,9 +100,6 @@ services:
       - keycloak
     networks:
       - mciammanagernet
-
-# volumes:
-#   postgres_data:
 
 networks:
   mciammanagernet:
