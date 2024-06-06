@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  mciammanager:
+    build: ../
+    depends_on:
+      - postgresdb
+    environment:
+      GO_ENV: development # production | development
+      GODEBUG: netdns=go
+      DEV_DATABASE_URL: postgres://mciamadmin:mciammanagerpassword@postgresdb:5432/mciamdb
+      DATABASE_URL: postgres://mciamadmin:mciammanagerpassword@postgresdb:5432/mciamdb
+      KEYCLOAK_HOST: https://${DOMAIN}
+      KEYCLAOK_REALM: mciammanager
+      KEYCLAOK_ADMIN: admin
+      KEYCLAOK_ADMIN_PASSWORD: admin
+      KEYCLAOK_CLIENT: mciammanagerclient
+      KEYCLAOK_CLIENT_SECRET: mciammanagerclientsecret
+    networks:
+      - mciammanagernet
+
+  postgresdb:
+    image: postgres:14-alpine
+    volumes:
+      - ~/.m-cmp/data/postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: mciamdb
+      POSTGRES_USER: mciamadmin
+      POSTGRES_PASSWORD: mciammanagerpassword
+    networks:
+      - mciammanagernet
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.4
+    environment:
+      DB_VENDOR: POSTGRES
+      DB_ADDR: postgresdb
+      DB_DATABASE: mciamdb
+      DB_USER: mciamadmin
+      DB_PASSWORD: mciammanagerpassword
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTPS_CERTIFICATE_FILE: /etc/letsencrypt/live/${DOMAIN}/fullchain.pem
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /etc/letsencrypt/live/${DOMAIN}/privkey.pem
+      KC_HOSTNAME: ${DOMAIN}
+      KC_PROXY_HEADERS: xforwarded
+      KC_FEATURES: recovery-codes:v1,scripts:v1
+    volumes:
+      - ~/.m-cmp/data/certbot/conf:/etc/letsencrypt
+      - ./realm-export.json:/opt/keycloak/data/import/realm-export.json
+    depends_on:
+      - postgresdb
+    user: root
+    command: start-dev --import-realm --verbose
+    networks:
+      - mciammanagernet
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ~/.m-cmp/data/certbot/conf:/etc/letsencrypt  
+      - ~/.m-cmp/data/certbot/www:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c '
+        echo $DOMAIN
+        if [ ! -d "/etc/letsencrypt/live/${DOMAIN}" ]; then
+          certbot certonly --webroot --webroot-path=/var/www/certbot --email ${EMAIL} --agree-tos --no-eff-email -d ${DOMAIN} --preferred-challenges http --debug;
+        fi;
+        trap exit TERM;
+        while :; do
+          certbot renew --webroot -w /var/www/certbot --preferred-challenges http --debug;
+          sleep 12h & wait $${!};
+        done;'
+    env_file:
+      - .env
+    networks:
+      - mciammanagernet
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ~/.m-cmp/data/certbot/conf:/etc/letsencrypt
+      - ~/.m-cmp/data/certbot/www:/var/www/certbot
+    ports:
+      - "80:80"
+      - "443:443"
+      - "5000:5000"
+    depends_on:
+      - mciammanager
+      - certbot
+      - keycloak
+    networks:
+      - mciammanagernet
+
+# volumes:
+#   postgres_data:
+
+networks:
+  mciammanagernet:
