@@ -31,3 +31,5 @@ generated/
 !.yarn/sdks
 !.yarn/versions
 database.yml
+
+scripts/nginx/
