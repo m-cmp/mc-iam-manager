@@ -149,6 +149,8 @@ func App() *buffalo.App {
 		// debugPath.GET("/getrealmrolebyid/{roleid}", DebugGetRealmRoleByID)
 		// debugPath.GET("/kc/kchomehandler", KcHomeHandler)
 		// debugPath.GET("/kc/kccreateuserhandler", KcCreateUserHandler)
+		debugPath := app.Group("/debug")
+		debugPath.GET("/createdefaultadminuseronidp", InitApi)
 	})
 
 	return app
