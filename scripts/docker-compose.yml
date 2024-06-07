@@ -52,7 +52,7 @@ services:
       KC_FEATURES: recovery-codes:v1,scripts:v1
     volumes:
       - ~/.m-cmp/data/certbot/conf:/etc/letsencrypt
-      - ./realm-export.json:/opt/keycloak/data/import/realm-export.json
+      - ./realm-import.json:/opt/keycloak/data/import/realm-import.json
     depends_on:
       - postgresdb
     user: root
