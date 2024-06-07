@@ -44,7 +44,6 @@ var (
 // declared after it to never be called.
 func App() *buffalo.App {
 	appOnce.Do(func() {
-		CreateDefaultAdminUserOnIdp()
 		app = buffalo.New(buffalo.Options{
 			Env:          ENV,
 			SessionStore: sessions.Null{},
@@ -149,8 +148,8 @@ func App() *buffalo.App {
 		// debugPath.GET("/getrealmrolebyid/{roleid}", DebugGetRealmRoleByID)
 		// debugPath.GET("/kc/kchomehandler", KcHomeHandler)
 		// debugPath.GET("/kc/kccreateuserhandler", KcCreateUserHandler)
-		debugPath := app.Group("/debug")
-		debugPath.GET("/init", InitApi)
+		// debugPath := app.Group("/debug")
+		// debugPath.GET("/init", InitApi)
 	})
 
 	return app
