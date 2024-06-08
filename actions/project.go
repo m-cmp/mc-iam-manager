@@ -4,66 +4,110 @@ import (
 	"log"
 	"mc_iam_manager/handler"
 	"mc_iam_manager/iammodels"
+	"mc_iam_manager/models"
 	"net/http"
 
-	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/v6"
+
+	"github.com/gobuffalo/buffalo"
 )
 
-// ProjectGetProject default implementation.
-func GetProject(c buffalo.Context) error {
-	tx := c.Value("tx").(*pop.Connection)
-	paramProjectId := c.Param("projectId")
+func CreateProject(c buffalo.Context) error {
+	project := &models.MCIamProject{}
+	err := c.Bind(project)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+		)
+	}
+	project.ProjectID = project.Name // TODO : ID, Name 모두 필요한가?
 
-	resp := handler.GetProject(tx, paramProjectId)
-	return c.Render(http.StatusOK, r.JSON(resp))
+	tx := c.Value("tx").(*pop.Connection)
+	createdProject, err := handler.CreateProject(tx, project)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, createdProject)),
+	)
 }
 
 func GetProjectList(c buffalo.Context) error {
-
 	tx := c.Value("tx").(*pop.Connection)
-
-	resp := handler.GetProjectList(tx)
-	return c.Render(http.StatusOK, r.JSON(resp))
-}
-
-func CreateProject(c buffalo.Context) error {
-
-	pjr := &iammodels.ProjectReq{}
-	err := c.Bind(pjr)
+	projectList, err := handler.GetProjectList(tx)
 	if err != nil {
 		log.Println(err)
-		return c.Render(http.StatusBadRequest, r.JSON(map[string]interface{}{
-			"error": err,
-		}))
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
+
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, projectList)),
+	)
+}
+
+func GetProject(c buffalo.Context) error {
+	projectId := c.Param("projectId")
+
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.CreateProject(tx, pjr)
-	return c.Render(http.StatusOK, r.JSON(resp))
+	projectList, err := handler.GetProject(tx, projectId)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, projectList)),
+	)
 }
 
 func UpdateProject(c buffalo.Context) error {
-	projectInfo := &iammodels.ProjectInfo{}
-	err := c.Bind(projectInfo)
-
+	project := &models.MCIamProject{}
+	err := c.Bind(project)
 	if err != nil {
 		log.Println(err)
-		return c.Render(http.StatusBadRequest, r.JSON(map[string]interface{}{
-			"error": err,
-		}))
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+		)
 	}
 
-	cblogger.Info(projectInfo)
+	project.ProjectID = c.Param("projectId")
 
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.UpdateProject(tx, projectInfo)
-	return c.Render(http.StatusOK, r.JSON(resp))
+	ProjectList, err := handler.UpdateProject(tx, project)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, ProjectList)),
+	)
 }
 
 func DeleteProject(c buffalo.Context) error {
-	paramPjId := c.Param("projectId")
-
+	projectId := c.Param("projectId")
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.DeleteProject(tx, paramPjId)
-	return c.Render(http.StatusOK, r.JSON(resp))
+	err := handler.DeleteProject(tx, projectId)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, nil)),
+	)
 }

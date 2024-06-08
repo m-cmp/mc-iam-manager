@@ -12,23 +12,33 @@ import (
 
 // MCIamMappingWorkspaceProject is used by pop to map your mc_iam_mapping_workspace_projects database table to your go code.
 type MCIamMappingWorkspaceProject struct {
-	ID          uuid.UUID       `json:"id" db:"id"`
-	WorkspaceID string          `json:"workspace_id" db:"workspace_id"`
-	Workspace   *MCIamWorkspace `belongs_to:"mc_iam_workspaces"`
-	ProjectID   string          `json:"project_id" db:"project_id"`
-	Project     *MCIamProject   `belongs_to:"mc_iam_projects"`
-	CreatedAt   time.Time       `json:"created_at" db:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at" db:"updated_at"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	WorkspaceID string    `json:"workspace_id" db:"workspace_id"`
+	ProjectID   string    `json:"project_id" db:"project_id"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }
+
+// MCIamMappingWorkspaceProjects is not required by pop and may be deleted
+type MCIamMappingWorkspaceProjects []MCIamMappingWorkspaceProject
+
+type MCIamMappingWorkspaceProjectRequest struct {
+	WorkspaceID string
+	Projects    []string `json:"projects"`
+}
+
+type MCIamMappingWorkspaceProjectResponse struct {
+	Workspace MCIamWorkspace `json:"workspace"`
+	Projects  []MCIamProject `json:"projects"`
+}
+
+type MCIamMappingWorkspaceProjectResponses []MCIamMappingWorkspaceProjectResponse
 
 // String is not required by pop and may be deleted
 func (m MCIamMappingWorkspaceProject) String() string {
 	jm, _ := json.Marshal(m)
 	return string(jm)
 }
-
-// MCIamMappingWorkspaceProjects is not required by pop and may be deleted
-type MCIamMappingWorkspaceProjects []MCIamMappingWorkspaceProject
 
 // String is not required by pop and may be deleted
 func (m MCIamMappingWorkspaceProjects) String() string {

@@ -67,89 +67,56 @@ func App() *buffalo.App {
 		// Remove to disable this.
 		app.Use(popmw.Transaction(models.DB))
 
-		apiPath := "/api/"
-
 		app.GET("/alive", alive)
+
+		apiPath := "/api/"
 
 		auth := app.Group(apiPath + "auth")
 		auth.POST("/login", AuthLoginHandler)
 		auth.POST("/login/refresh", AuthLoginRefreshHandler)
 		auth.POST("/logout", AuthLogoutHandler)
-
-		auth.GET("/validate", AuthGetUserValidate)
 		auth.GET("/userinfo", AuthGetUserInfo)
-
+		auth.GET("/validate", AuthGetUserValidate)
 		auth.GET("/securitykey", AuthGetSecurityKeyHandler)
 
-		auth.GET("/validate", AuthGetUserInfo)
+		rolePath := app.Group(apiPath + "/role")
+		rolePath.POST("/", CreateRole)
+		rolePath.GET("/", GetRoleList)
+		rolePath.GET("/{roleId}", GetRole)
+		// rolePath.PUT("/{roleId}", UpdateRole)
+		rolePath.DELETE("/{roleId}", DeleteRole)
 
-		auth.POST("/user", RegistUser)
-		auth.DELETE("/user/{userId}", UnRegistUser)
-		auth.GET("/user", GetUserList)
-		auth.GET("/user/{userId}", GetUser)
-		auth.PATCH("/user/{userId}", UpdateUserProfile)
-
-		auth.POST("/usergroup", CreateUserGroup)
-		auth.PATCH("/usergroup/{groupId}", UpdateUserGroup)
-		auth.GET("/usergroup", GetUserGroupList)
-		auth.GET("/usergroup/{groupId}", GetUserGroup)
-		auth.DELETE("/usergroup/{groupId}", DeleteUserGroup)
-
-		// manage := app.Group(apiPath + "manage")
-		// manage.POST("/login", GetWorkspace)
-		// manage.GET("/logout", GetWorkspace)
-
-		// auth := app.Group(apiPath)
-		// auth.Middleware.Skip(IsAuth, IamLoginApi)
-		// auth.POST("/login", IamLoginApi)
-
-		// userPath := app.Group(apiPath + "users")
-		// userPath.GET("/", GetUsersList)
-
-		rolePath := app.Group(apiPath + "/auth/role")
-		rolePath.GET("/", GetUserRoleList)
-		rolePath.GET("/{roleId}", GetUserRole)
-		rolePath.PATCH("/{roleId}", UpdateUserRole)
-		rolePath.POST("/", CreateUserRole)
-		rolePath.DELETE("/{roleId}", DeleteUserRole)
-
-		workspacePath := app.Group(apiPath + "/ws/workspace")
-		workspacePath.GET("/", GetWorkspaceList)
-		workspacePath.GET("/{workspaceId}", GetWorkspace)
+		workspacePath := app.Group(apiPath + "/ws")
 		workspacePath.POST("/", CreateWorkspace)
-		workspacePath.DELETE("/{workspaceId}", DeleteWorkspace)
-		workspacePath.PATCH("/{workspaceId}", UpdateWorkspace)
-		workspacePath.GET("/{workspaceId}/project", AttachedProjectByWorkspace)
+		workspacePath.GET("/", GetWorkspaceList)
+		workspacePath.GET("/workspace/{workspaceId}", GetWorkspace)
+		workspacePath.PUT("/workspace/{workspaceId}", UpdateWorkspace)
+		workspacePath.DELETE("/workspace/{workspaceId}", DeleteWorkspace)
 
-		workspacePath.POST("/{workspaceId}/attachproject", AttachProjectToWorkspace)
-		workspacePath.DELETE("/{workspaceId}/attachproject/{projectId}", DeleteProjectFromWorkspace)
-		workspacePath.POST("/{workspaceId}/assigneduser", AssignUserToWorkspace)
-
-		workspaceUserPath := app.Group(apiPath + "/ws/user")
-		workspaceUserPath.GET("/{userId}", GetWorkspaceListByUser)
-
-		// mappingPath := app.Group(apiPath + "mapping")
-		// mappingPath.POST("/ws/user", MappingWsUser)
-		// mappingPath.POST("/ws/user/role", MappingWsUserRole)
-		// mappingPath.POST("/ws/project", AttachProjectToWorkspace)
-		// mappingPath.GET("/ws/id/{workspaceId}/project", MappingGetProjectByWorkspace)
-		// mappingPath.GET("/ws/id/{workspaceId}/project/id/{projectId}", MappingWsProjectValidCheck)
-		// mappingPath.DELETE("/ws/project", MappingDeleteWsProject)
-		// mappingPath.GET("/user/id/{userId}/workspace", MappingGetWsUserRole)
-
-		projectPath := app.Group(apiPath + "/ws/project")
-		projectPath.GET("/{projectId}", GetProject)
-		projectPath.GET("/", GetProjectList)
+		projectPath := app.Group(apiPath + "/prj")
 		projectPath.POST("/", CreateProject)
-		projectPath.DELETE("/{projectId}", DeleteProject)
-		projectPath.PATCH("/{projectId}", UpdateProject)
+		projectPath.GET("/", GetProjectList)
+		projectPath.GET("/project/{projectId}", GetProject)
+		projectPath.PUT("/project/{projectId}", UpdateProject)
+		projectPath.DELETE("/project/{projectId}", DeleteProject)
 
-		// debugPath := app.Group("/debug")
-		// debugPath.GET("/getrealmrolebyid/{roleid}", DebugGetRealmRoleByID)
-		// debugPath.GET("/kc/kchomehandler", KcHomeHandler)
-		// debugPath.GET("/kc/kccreateuserhandler", KcCreateUserHandler)
-		// debugPath := app.Group("/debug")
-		// debugPath.GET("/init", InitApi)
+		workspaceProjectMappingPath := app.Group(apiPath + "/wsprj")
+		workspaceProjectMappingPath.POST("/workspace/{workspaceId}", CreateWorkspaceProjectMapping)
+		workspaceProjectMappingPath.GET("/", GetWorkspaceProjectMappingList)
+		workspaceProjectMappingPath.GET("/workspace/{workspaceId}", GetWorkspaceProjectMappingByWorkspace)
+		workspaceProjectMappingPath.PUT("/workspace/{workspaceId}", UpdateWorkspaceProjectMapping)
+		workspaceProjectMappingPath.DELETE("/workspace/{workspaceId}/project/{projectId}", DeleteWorkspaceProjectMapping)
+		workspaceProjectMappingPath.DELETE("/workspace/{workspaceId}", DeleteWorkspaceProjectMappingAllByWorkspace)
+		workspaceProjectMappingPath.DELETE("/project/{projectId}", DeleteWorkspaceProjectMappingByProject)
+
+		// workspaceUserRoleMappingPath := app.Group(apiPath + "/wsuserrole")
+		// workspaceUserRoleMappingPath.POST("/workspace/{workspaceId}", CreateWorkspaceUserRoleMapping)
+		// workspaceUserRoleMappingPath.GET("/", GetWorkspaceUserRoleMappingList)
+		// workspaceUserRoleMappingPath.GET("/workspace/{workspaceId}", GetWorkspaceUserRoleMappingByWorkspace)
+		// workspaceUserRoleMappingPath.GET("/user/{userId}", GetWorkspaceUserRoleMappingByUser)
+		// workspaceUserRoleMappingPath.PUT("/workspace/{workspaceId}/user/{userId}", UpdateWorkspaceUserRoleMapping)
+		// workspaceUserRoleMappingPath.DELETE("/workspace/{workspaceId}/user/{userId}", DeleteWorkspaceUserRoleMapping)
+		// workspaceUserRoleMappingPath.DELETE("/workspace/{workspaceId}", DeleteWorkspaceProjectMappingAll)
 	})
 
 	return app

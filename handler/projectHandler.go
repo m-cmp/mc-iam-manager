@@ -1,108 +1,93 @@
 package handler
 
 import (
-	"mc_iam_manager/iammodels"
-	models "mc_iam_manager/models"
-	"net/http"
-
-	"github.com/gobuffalo/nulls"
+	"errors"
+	"mc_iam_manager/models"
+	"strings"
 
 	"github.com/gobuffalo/pop/v6"
-	"github.com/gofrs/uuid"
+	"github.com/opentracing/opentracing-go/log"
 )
 
-func CreateProject(tx *pop.Connection, bindModel *iammodels.ProjectReq) map[string]interface{} {
-
-	project := &models.MCIamProject{
-		Name:        bindModel.ProjectName,
-		Description: nulls.String{String: bindModel.Description, Valid: true},
-	}
-
-	err := tx.Create(project)
-
-	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
-	}
-	return map[string]interface{}{
-		"message": "success",
-		"project": project,
-		"status":  http.StatusOK,
-	}
-}
-
-func UpdateProject(tx *pop.Connection, bindModel *iammodels.ProjectInfo) map[string]interface{} {
-
-	project := &models.MCIamProject{
-		ID:          uuid.FromStringOrNil(bindModel.ProjectId),
-		Name:        bindModel.ProjectName,
-		Description: bindModel.Description,
-	}
-
-	err := tx.Update(project)
-
-	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
-	}
-	return map[string]interface{}{
-		"message": "success",
-		"project": project,
-		"status":  http.StatusOK,
-	}
-}
-
-func GetProjectList(tx *pop.Connection) *models.MCIamProjects {
-	bindModel := &models.MCIamProjects{}
-
-	err := tx.Eager().All(bindModel)
-
-	if err != nil {
-
-	}
-	return bindModel
-}
-
-func GetProjectListByWorkspaceId(wsId string) (*models.MCIamMappingWorkspaceProjects, error) {
-	bindModel := &models.MCIamMappingWorkspaceProjects{}
-	query := models.DB.Where("ws_id = " + wsId)
-	err := query.All(bindModel)
-
+func CreateProject(tx *pop.Connection, s *models.MCIamProject) (*models.MCIamProject, error) {
+	workspacExist, err := IsExistsProject(tx, s.ProjectID)
 	if err != nil {
 		return nil, err
 	}
-
-	return bindModel, err
-}
-
-func GetProject(tx *pop.Connection, projectId string) *models.MCIamProject {
-	ws := &models.MCIamProject{}
-
-	err := tx.Find(ws, projectId)
-	if err != nil {
-
+	if workspacExist {
+		return nil, errors.New("project is duplicated")
 	}
-	return ws
+	createerr := tx.Create(s)
+	if createerr != nil {
+		log.Error(createerr)
+		return nil, createerr
+	}
+	return s, nil
 }
 
-func DeleteProject(tx *pop.Connection, wsId string) map[string]interface{} {
-	ws := &models.MCIamProject{}
-	wsUuid, _ := uuid.FromString(wsId)
-	ws.ID = wsUuid
-
-	err := tx.Destroy(ws)
-	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
+func IsExistsProject(tx *pop.Connection, projectId string) (bool, error) {
+	var project models.MCIamProject
+	txerr := tx.Where("project_id = ?", projectId).First(&project)
+	if txerr != nil {
+		if strings.Contains(txerr.Error(), "no rows in result set") {
+			return false, nil
 		}
+		return false, txerr
 	}
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
+	return true, nil
+}
+
+func GetProjectList(tx *pop.Connection) (*models.MCIamProjects, error) {
+	var projects models.MCIamProjects
+	err := tx.All(&projects)
+	if err != nil {
+		log.Error(err)
+		return nil, err
 	}
+	return &projects, nil
+}
+
+func GetProject(tx *pop.Connection, ProjectId string) (*models.MCIamProject, error) {
+	var project models.MCIamProject
+	err := tx.Where("project_id = ?", ProjectId).First(&project)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	return &project, nil
+}
+
+func UpdateProject(tx *pop.Connection, Project *models.MCIamProject) (*models.MCIamProject, error) {
+	var targetProject models.MCIamProject
+	err := tx.Where("project_id = ?", Project.ProjectID).First(&targetProject)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	targetProject.Description = Project.Description
+	err = tx.Update(&targetProject)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	return &targetProject, nil
+}
+
+func DeleteProject(tx *pop.Connection, ProjectId string) error {
+	var Project models.MCIamProject
+	err := tx.Where("project_id = ?", ProjectId).First(&Project)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	err = tx.Destroy(&Project)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
 }
