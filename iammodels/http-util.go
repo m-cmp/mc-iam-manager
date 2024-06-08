@@ -1,4 +1,4 @@
-package actions
+package iammodels
 
 import "net/http"
 
@@ -14,7 +14,6 @@ type WebStatus struct {
 }
 
 func CommonResponseStatus(statusCode int, responseData interface{}) *CommonResponse {
-
 	webStatus := WebStatus{
 		StatusCode: statusCode,
 		Message:    http.StatusText(statusCode),

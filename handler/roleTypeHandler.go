@@ -1,91 +1,92 @@
 package handler
 
 import (
-	"github.com/gobuffalo/buffalo"
-	"github.com/gobuffalo/pop/v6"
-	"mc_iam_manager/iammodels"
+	"errors"
 	"mc_iam_manager/models"
+	"strings"
+
+	"github.com/gobuffalo/pop/v6"
+	"github.com/opentracing/opentracing-go/log"
 )
 
-func CreateRoleType(tx *pop.Connection, bindModel *iammodels.RoleTypeReq) (iammodels.RoleTypeInfo, error) {
-	roleType := iammodels.ConvertRoleTypeReqToRoleType(*bindModel)
-
-	err := tx.Create(roleType)
-
+func CreateRole(tx *pop.Connection, s *models.MCIamRoletype) (*models.MCIamRoletype, error) {
+	rolexist, err := IsExistsRole(tx, s.RoleID)
 	if err != nil {
-		cblogger.Info("workspace create : ")
-		cblogger.Error(err)
-		return iammodels.RoleTypeInfo{}, err
+		return nil, err
 	}
-
-	return iammodels.ConvertRoleTypeToRoleTypeInfo(roleType), nil
+	if rolexist {
+		return nil, errors.New("Role is duplicated")
+	}
+	createerr := tx.Create(s)
+	if createerr != nil {
+		log.Error(createerr)
+		return nil, createerr
+	}
+	return s, nil
 }
 
-func GetRoleTypes(ctx buffalo.Context, searchString string) (models.MCIamRoletypes, error) {
-	var bindModel models.MCIamRoletypes
+func IsExistsRole(tx *pop.Connection, roleId string) (bool, error) {
+	var role models.MCIamRoletype
+	txerr := tx.Where("role_id = ?", roleId).First(&role)
+	if txerr != nil {
+		if strings.Contains(txerr.Error(), "no rows in result set") {
+			return false, nil
+		}
+		return false, txerr
+	}
+	return true, nil
+}
 
-	err := models.DB.All(&bindModel)
-
+func GetRoleList(tx *pop.Connection) (*models.MCIamRoletypes, error) {
+	var roles models.MCIamRoletypes
+	err := tx.All(&roles)
 	if err != nil {
-		cblogger.Error(err)
+		log.Error(err)
+		return nil, err
+	}
+	return &roles, nil
+}
+
+func GetRole(tx *pop.Connection, RoleId string) (*models.MCIamRoletype, error) {
+	var Role models.MCIamRoletype
+	err := tx.Where("role_id = ?", RoleId).First(&Role)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	return &Role, nil
+}
+
+func UpdateRole(tx *pop.Connection, Role *models.MCIamRoletype) (*models.MCIamRoletype, error) {
+	var targetRole models.MCIamRoletype
+	err := tx.Where("role_id = ?", Role.RoleID).First(&targetRole)
+	if err != nil {
+		log.Error(err)
 		return nil, err
 	}
 
-	return bindModel, err
-
-}
-
-func GetRoleType(ctx buffalo.Context, roleName string) (iammodels.RoleTypeInfo, error) {
-	bindModel := &models.MCIamRoletype{}
-	bindModel.RoleName = roleName
-
-	err := models.DB.All(&bindModel)
-
+	targetRole.Type = Role.Type
+	err = tx.Update(&targetRole)
 	if err != nil {
-		cblogger.Error(err)
-		return iammodels.RoleTypeInfo{}, err
+		log.Error(err)
+		return nil, err
 	}
 
-	return iammodels.ConvertRoleTypeToRoleTypeInfo(*bindModel), err
+	return &targetRole, nil
 }
 
-func UpdateRoleType(tx *pop.Connection, model iammodels.RoleTypeReq) (iammodels.RoleTypeInfo, error) {
-	bindModel := iammodels.ConvertRoleTypeReqToRoleType(model)
-
-	roleType := &models.MCIamRoletype{}
-	err := tx.Select().Where("id = ? ", bindModel.ID).All(roleType)
+func DeleteRole(tx *pop.Connection, RoleId string) error {
+	var Role models.MCIamRoletype
+	err := tx.Where("role_id = ?", RoleId).First(&Role)
 	if err != nil {
-		return iammodels.RoleTypeInfo{}, err
-	}
-
-	roleType.RoleName = bindModel.RoleName
-	roleType.RoleID = bindModel.RoleID
-
-	updateErr := tx.Update(roleType)
-
-	if updateErr != nil {
-		cblogger.Error("RoleType update : ")
-		cblogger.Error(updateErr)
-		return iammodels.RoleTypeInfo{}, updateErr
-	}
-
-	return iammodels.ConvertRoleTypeToRoleTypeInfo(*roleType), nil
-}
-
-func DeleteRoleType(tx *pop.Connection, roleTypeId string) error {
-	model := &models.MCIamRoletype{}
-
-	err := tx.Eager().Where("id = ?", roleTypeId).First(model)
-
-	if err != nil {
-		cblogger.Info(err)
+		log.Error(err)
 		return err
 	}
 
-	err2 := tx.Destroy(model)
-	if err2 != nil {
-		cblogger.Info(err2)
-		return err2
+	err = tx.Destroy(&Role)
+	if err != nil {
+		log.Error(err)
+		return err
 	}
 
 	return nil

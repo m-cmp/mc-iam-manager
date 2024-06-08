@@ -2,7 +2,7 @@
 
 cblog:
   ## true | false
-  loopcheck: false # This temp method for development is busy wait. cf) cblogger.go:levelSetupLoop().
+  loopcheck: false # This temp method for development is busy wait. cf) log.go:levelSetupLoop().
 
   ## trace | debug | info | warn/warning | error | fatal | panic
   ## Default logging level: info
