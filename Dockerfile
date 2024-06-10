@@ -3,6 +3,7 @@
 FROM gobuffalo/buffalo:v0.18.14 as builder
 
 ENV GOPROXY http://proxy.golang.org
+ENV GO111MODULE on
 
 RUN mkdir -p /src/mc-iam-manager
 WORKDIR /src/mc-iam-manager
