@@ -1,106 +1,93 @@
 package handler
 
 import (
-	"mc_iam_manager/iammodels"
+	"errors"
 	"mc_iam_manager/models"
-	"net/http"
+	"strings"
 
 	"github.com/gobuffalo/pop/v6"
-	"github.com/gofrs/uuid"
+	"github.com/opentracing/opentracing-go/log"
 )
 
-func CreateProject(tx *pop.Connection, bindModel *iammodels.ProjectReq) map[string]interface{} {
-
-	project := &models.MCIamProject{
-		Name:        bindModel.ProjectName,
-		Description: bindModel.Description,
-	}
-
-	err := tx.Create(project)
-
+func CreateProject(tx *pop.Connection, s *models.MCIamProject) (*models.MCIamProject, error) {
+	workspacExist, err := IsExistsProject(tx, s.ProjectID)
 	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
+		return nil, err
+	}
+	if workspacExist {
+		return nil, errors.New("project is duplicated")
+	}
+	createerr := tx.Create(s)
+	if createerr != nil {
+		log.Error(createerr)
+		return nil, createerr
+	}
+	return s, nil
+}
+
+func IsExistsProject(tx *pop.Connection, projectId string) (bool, error) {
+	var project models.MCIamProject
+	txerr := tx.Where("project_id = ?", projectId).First(&project)
+	if txerr != nil {
+		if strings.Contains(txerr.Error(), "no rows in result set") {
+			return false, nil
 		}
+		return false, txerr
 	}
-	return map[string]interface{}{
-		"message": "success",
-		"project": project,
-		"status":  http.StatusOK,
-	}
+	return true, nil
 }
 
-func UpdateProject(tx *pop.Connection, bindModel *iammodels.ProjectInfo) map[string]interface{} {
-
-	project := &models.MCIamProject{
-		ID:          uuid.FromStringOrNil(bindModel.ProjectId),
-		Name:        bindModel.ProjectName,
-		Description: bindModel.Description,
-	}
-
-	err := tx.Update(project)
-
+func GetProjectList(tx *pop.Connection) (*models.MCIamProjects, error) {
+	var projects models.MCIamProjects
+	err := tx.All(&projects)
 	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
+		log.Error(err)
+		return nil, err
 	}
-	return map[string]interface{}{
-		"message": "success",
-		"project": project,
-		"status":  http.StatusOK,
-	}
+	return &projects, nil
 }
 
-func GetProjectList(tx *pop.Connection) *models.MCIamProjects {
-	bindModel := &models.MCIamProjects{}
-
-	err := tx.Eager().All(bindModel)
-
+func GetProject(tx *pop.Connection, ProjectId string) (*models.MCIamProject, error) {
+	var project models.MCIamProject
+	err := tx.Where("project_id = ?", ProjectId).First(&project)
 	if err != nil {
-
+		log.Error(err)
+		return nil, err
 	}
-	return bindModel
+	return &project, nil
 }
 
-func GetProjectListByWorkspaceId(tx *pop.Connection, wsId string) *models.MCIamWsProjectMappings {
-	bindModel := &models.MCIamWsProjectMappings{}
-	query := models.DB.Where("ws_id = " + wsId)
-	err := query.All(bindModel)
-
+func UpdateProject(tx *pop.Connection, Project *models.MCIamProject) (*models.MCIamProject, error) {
+	var targetProject models.MCIamProject
+	err := tx.Where("project_id = ?", Project.ProjectID).First(&targetProject)
 	if err != nil {
-
+		log.Error(err)
+		return nil, err
 	}
 
-	return bindModel
+	targetProject.Description = Project.Description
+	err = tx.Update(&targetProject)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	return &targetProject, nil
 }
 
-func GetProject(tx *pop.Connection, projectId string) *models.MCIamProject {
-	ws := &models.MCIamProject{}
-
-	err := tx.Find(ws, projectId)
+func DeleteProject(tx *pop.Connection, ProjectId string) error {
+	var Project models.MCIamProject
+	err := tx.Where("project_id = ?", ProjectId).First(&Project)
 	if err != nil {
-
+		log.Error(err)
+		return err
 	}
-	return ws
-}
 
-func DeleteProject(tx *pop.Connection, wsId string) map[string]interface{} {
-	ws := &models.MCIamProject{}
-	wsUuid, _ := uuid.FromString(wsId)
-	ws.ID = wsUuid
-
-	err := tx.Destroy(ws)
+	err = tx.Destroy(&Project)
 	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
+		log.Error(err)
+		return err
 	}
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
+
+	return nil
 }

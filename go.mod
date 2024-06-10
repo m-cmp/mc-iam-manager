@@ -1,6 +1,6 @@
 module mc_iam_manager
 
-go 1.21.4
+go 1.18
 
 require (
 	github.com/Nerzal/gocloak/v13 v13.9.0
@@ -50,11 +50,11 @@ require (
 	github.com/gobuffalo/logger v1.0.7 // indirect; indirect`
 	github.com/gobuffalo/meta v0.3.3 // indirect
 	github.com/gobuffalo/middleware v1.0.0 // indirect
-	github.com/gobuffalo/nulls v0.4.2 // indirect
+	github.com/gobuffalo/nulls v0.4.2
 	github.com/gobuffalo/plush/v4 v4.1.18 // indirect
 	github.com/gobuffalo/refresh v1.13.3 // indirect
 	github.com/gobuffalo/tags/v3 v3.1.4 // indirect
-	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect

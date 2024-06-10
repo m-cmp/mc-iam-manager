@@ -1,249 +1,93 @@
 package handler
 
 import (
-	cblog "github.com/cloud-barista/cb-log"
-	"github.com/gobuffalo/pop/v6"
-	"github.com/gofrs/uuid"
-	"github.com/sirupsen/logrus"
-	"mc_iam_manager/iammodels"
+	"errors"
 	"mc_iam_manager/models"
-	"net/http"
+	"strings"
+
+	"github.com/gobuffalo/pop/v6"
+	"github.com/opentracing/opentracing-go/log"
 )
 
-var cblogger *logrus.Logger
-
-func init() {
-	// cblog is a global variable.
-	cblogger = cblog.GetLogger("WorkspaceHandler Resource Test")
-	//cblog.SetLevel("info")
-	cblog.SetLevel("debug")
+func CreateWorkspace(tx *pop.Connection, s *models.MCIamWorkspace) (*models.MCIamWorkspace, error) {
+	workspacExist, err := IsExistsWorkspace(tx, s.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	if workspacExist {
+		return nil, errors.New("workspace is duplicated")
+	}
+	createerr := tx.Create(s)
+	if createerr != nil {
+		log.Error(createerr)
+		return nil, createerr
+	}
+	return s, nil
 }
 
-func CreateWorkspace(tx *pop.Connection, bindModel *iammodels.WorkspaceReq) map[string]interface{} {
-
-	workspace := &models.MCIamWorkspace{
-		Name:        bindModel.WorkspaceName,
-		Description: bindModel.Description,
-	}
-
-	err := tx.Create(workspace)
-
-	if err != nil {
-		cblogger.Info("workspace create : ")
-		cblogger.Error(err)
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
+func IsExistsWorkspace(tx *pop.Connection, workspaceId string) (bool, error) {
+	var workspace models.MCIamWorkspace
+	txerr := tx.Where("workspace_id = ?", workspaceId).First(&workspace)
+	if txerr != nil {
+		if strings.Contains(txerr.Error(), "no rows in result set") {
+			return false, nil
 		}
+		return false, txerr
 	}
-
-	return map[string]interface{}{
-		"message":     "success",
-		"workspaceId": workspace,
-		"status":      http.StatusOK,
-	}
+	return true, nil
 }
 
-func UpdateWorkspace(tx *pop.Connection, bindModel iammodels.WorkspaceInfo) map[string]interface{} {
-	workspace := &models.MCIamWorkspace{}
-	tx.Select().Where("id = ? ", bindModel.WorkspaceId).All(workspace)
-
-	workspace.Name = bindModel.WorkspaceName
-	workspace.Description = bindModel.Description
-
-	err := tx.Update(workspace)
-
+func GetWorkspaceList(tx *pop.Connection) (*models.MCIamWorkspaces, error) {
+	var workspaces models.MCIamWorkspaces
+	err := tx.All(&workspaces)
 	if err != nil {
-		cblogger.Info("workspace update : ")
-		cblogger.Error(err)
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
+		log.Error(err)
+		return nil, err
 	}
-
-	return map[string]interface{}{
-		"message":     "success",
-		"workspaceId": workspace,
-		"status":      http.StatusOK,
-	}
+	return &workspaces, nil
 }
 
-//func GetWorkspaceList(tx *pop.Connection) []models.ParserWsProjectMapping {
-//	bindModel := []models.MCIamWorkspace{}
-//	// projects := &models.MCIamProjects{}
-//	// wsProjectMapping := &models.MCIamWsProjectMappings{}
-//	err := tx.Eager().All(&bindModel)
-//
-//	parsingArray := []models.ParserWsProjectMapping{}
-//	if err != nil {
-//
-//	}
-//
-//	for _, obj := range bindModel {
-//		arr := MappingGetProjectByWorkspace(tx, obj.ID.String())
-//
-//		if arr.WsID != uuid.Nil {
-//			parsingArray = append(parsingArray, *arr)
-//
-//		} else {
-//
-//			md := models.ParserWsProjectMapping{}
-//			ws := models.MCIamWorkspace{}
-//			pj := []models.MCIamProject{}
-//			ws = obj
-//			md.Ws = &ws
-//			md.WsID = obj.ID
-//			md.Projects = pj
-//
-//			parsingArray = append(parsingArray, md)
-//
-//		}
-//	}
-//
-//	return parsingArray
-//}
-
-func GetWorkspaceList(tx *pop.Connection, userId string) iammodels.WorkspaceInfos {
-	var bindModel models.MCIamWorkspaces
-	cblogger.Info("userId : " + userId)
-	err := models.DB.All(&bindModel)
-
+func GetWorkspace(tx *pop.Connection, workspaceId string) (*models.MCIamWorkspace, error) {
+	var workspace models.MCIamWorkspace
+	err := tx.Where("workspace_id = ?", workspaceId).First(&workspace)
 	if err != nil {
-		cblogger.Error(err)
+		log.Error(err)
+		return nil, err
 	}
-
-	parsingArray := iammodels.WorkspaceInfos{}
-
-	for _, obj := range bindModel {
-		parsingArray = append(parsingArray, iammodels.WorkspaceToWorkspaceInfo(obj))
-	}
-
-	return parsingArray
+	return &workspace, nil
 }
 
-func GetWorkspaceListByUserId(userId string) iammodels.WorkspaceInfos {
-	wsUserMapping := &models.MCIamWsUserMappings{}
-	cblogger.Info("userId : " + userId)
-	query := models.DB.Where("user_id=?", userId)
-
-	err := query.All(wsUserMapping)
-
-	parsingArray := iammodels.WorkspaceInfos{}
-
-	cblogger.Info("bindModel :", wsUserMapping)
-
+func UpdateWorkspace(tx *pop.Connection, workspace *models.MCIamWorkspace) (*models.MCIamWorkspace, error) {
+	var targetworkspace models.MCIamWorkspace
+	err := tx.Where("workspace_id = ?", workspace.WorkspaceID).First(&targetworkspace)
 	if err != nil {
-		cblogger.Error(err)
+		log.Error(err)
+		return nil, err
 	}
 
-	for _, obj := range *wsUserMapping {
-		arr := MappingGetProjectByWorkspace(obj.WsID.String())
-
-		cblogger.Info("arr:", arr)
-
-		info := iammodels.WorkspaceToWorkspaceInfo(*arr.Ws)
-		cblogger.Info("Info : ")
-		cblogger.Info(info)
-		info.ProjectList = iammodels.ProjectsToProjectInfoList(arr.Projects)
-		parsingArray = append(parsingArray, info)
-
-	}
-
-	return parsingArray
-}
-
-func GetWorkspace(tx *pop.Connection, wsId string) iammodels.WorkspaceInfo {
-	ws := &models.MCIamWorkspace{}
-
-	err := tx.Eager().Find(ws, wsId)
+	targetworkspace.Description = workspace.Description
+	err = tx.Update(&targetworkspace)
 	if err != nil {
-
+		log.Error(err)
+		return nil, err
 	}
 
-	return iammodels.WorkspaceToWorkspaceInfo(*ws)
+	return &targetworkspace, nil
 }
 
-func DeleteWorkspace(tx *pop.Connection, wsId string) map[string]interface{} {
-	ws := &models.MCIamWorkspace{}
-	wsUuid, _ := uuid.FromString(wsId)
-	ws.ID = wsUuid
-
-	err := tx.Destroy(ws)
+func DeleteWorkspace(tx *pop.Connection, workspaceId string) error {
+	var workspace models.MCIamWorkspace
+	err := tx.Where("workspace_id = ?", workspaceId).First(&workspace)
 	if err != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
+		log.Error(err)
+		return err
 	}
-	//만약 삭제가 된다면 mapping table 도 삭제 해야 한다.
-	// mapping table 조회
-	mws := []models.MCIamWsProjectMapping{}
 
-	err2 := tx.Eager().Where("ws_id =?", wsId).All(&mws)
-	if err2 != nil {
-		LogPrintHandler("MappingGetProjectByWorkspace", wsId)
-	}
-	err3 := tx.Destroy(mws)
-	if err3 != nil {
-		return map[string]interface{}{
-			"message": err,
-			"status":  http.StatusBadRequest,
-		}
-	}
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
-}
-
-// Workspace에 할당된 project 조회	GET	/api/ws	/workspace/{workspaceId}/project	AttachedProjectByWorkspace
-func AttachedProjectByWorkspace(tx *pop.Connection, wsId string) iammodels.ProjectInfos {
-	arr := MappingGetProjectByWorkspace(wsId)
-
-	return iammodels.ProjectsToProjectInfoList(arr.Projects)
-}
-
-// Default Workspace 설정/해제 ( setDefault=true/false )	PUT	/api/ws
-func AttachedDefaultByWorkspace(tx *pop.Connection) error {
-	return nil
-}
-
-// Workspace에 Project 할당	POST	/api/ws	/workspace/{workspaceId}/attachproject/{projectId}
-//func AttachProjectToWorkspace(tx *pop.Connection, wsId string, pjId string) error {
-//	uuidPjId, _ := uuid.FromString(pjId)
-//	uuidWsId, _ := uuid.FromString(wsId)
-//
-//	mapping := models.MCIamWsProjectMapping{ProjectID: uuidPjId, WsID: uuidWsId}
-//
-//	return nil
-//}
-
-// Workspace에 Project 할당 해제	DELELTE	/api/ws	/workspace/{workspaceId}/attachproject/{projectId}
-func DeleteProjectFromWorkspace(paramWsId string, paramPjId string, tx *pop.Connection) map[string]interface{} {
-
-	models := &models.MCIamWsProjectMapping{}
-
-	err := tx.Eager().Where("ws_id = ? and project_id =?", paramWsId, paramPjId).First(models)
-
+	err = tx.Destroy(&workspace)
 	if err != nil {
-		cblogger.Info(err)
+		log.Error(err)
+		return err
 	}
 
-	err2 := tx.Destroy(models)
-	if err2 != nil {
-		return map[string]interface{}{
-			"message": err2,
-			"status":  http.StatusBadRequest,
-		}
-	}
-	return map[string]interface{}{
-		"message": "success",
-		"status":  http.StatusOK,
-	}
-}
-
-// Workspace 사용자 할당 (with Role)	POST	/api/ws	/workspace/{workspaceId}/assigneduser
-func AssignUserToWorkspace(tx *pop.Connection) error {
 	return nil
 }

@@ -1,0 +1,25 @@
+package middleware
+
+// func IsAuth(next buffalo.Handler) buffalo.Handler {
+// 	return func(c buffalo.Context) error {
+// 		// AccessToken := c.Session().Get("AccessToken")
+// 		AccessToken := c.Request().Header.Get("Authorization")
+
+// 		// 아래로 DecodeAccessToken 을 사용
+// 		token, _, err := KC_client.DecodeAccessToken(c, AccessToken, KC_realm)
+// 		// token 이 expire 되면 err 로그 출력 됨 : could not decode accessToken with custom claims: Token is expired
+// 		if err != nil {
+// 			return c.Render(http.StatusUnauthorized, r.JSON(map[string]interface{}{
+// 				"err": err.Error(),
+// 			}))
+// 		}
+// 		if !token.Valid {
+// 			return c.Render(http.StatusUnauthorized, r.JSON(map[string]interface{}{
+// 				"token.Valid": false,
+// 				"err":         err.Error(),
+// 			}))
+// 		}
+
+// 		return next(c)
+// 	}
+// }

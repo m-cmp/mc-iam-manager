@@ -1,3 +1,0 @@
-drop_foreign_key("mc_iam_ws_project_mappings", "mc_iam_fkey_workspace_id", {"if_exists": true})
-
-drop_foreign_key("mc_iam_ws_project_mappings", "mc_iam_fkey_project_id", {"if_exists": true})
