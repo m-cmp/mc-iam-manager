@@ -17,10 +17,6 @@ import (
 	"github.com/unrolled/secure"
 )
 
-// ENV is used to help switch settings based on where the
-// application is being run. Default is "development".
-// ENV is used to help switch settings based on where the
-// application is being run. Default is "development".
 var ENV = envy.Get("GO_ENV", "development")
 
 var (
@@ -29,19 +25,6 @@ var (
 	T       *i18n.Translator
 )
 
-// App is where all routes and middleware for buffalo
-// should be defined. This is the nerve center of your
-// application.
-//
-// Routing, middleware, groups, etc... are declared TOP -> DOWN.
-// This means if you add a middleware to `app` *after* declaring a
-// group, that group will NOT have that new middleware. The same
-// is true of resource declarations as well.
-//
-// It also means that routes are checked in the order they are declared.
-// `ServeFiles` is a CATCH-ALL route, so it should always be
-// placed last in the route declarations, as it will prevent routes
-// declared after it to never be called.
 func App() *buffalo.App {
 	appOnce.Do(func() {
 		app = buffalo.New(buffalo.Options{
@@ -53,132 +36,67 @@ func App() *buffalo.App {
 			SessionName: "_mc_iam_manager_session",
 		})
 
-		// Automatically redirect to SSL
 		app.Use(forceSSL())
-
-		// Log request parameters (filters apply).
 		app.Use(paramlogger.ParameterLogger)
-
-		// Set the request content type to JSON
 		app.Use(contenttype.Set("application/json"))
 
-		// Wraps each request in a transaction.
-		//   c.Value("tx").(*pop.Connection)
-		// Remove to disable this.
 		app.Use(popmw.Transaction(models.DB))
 
-		// kc := app.Group("/mcloak")
-		// kc.GET("/home", KcHomeHandler) // /mcloak/home
-		// kc.GET("/login", KcLoginHandler)
-		// kc.GET("/createuser", KcCreateUserHandler)
-
-		// bf := app.Group("/iam")
-		// bf.Use(IsAuth)
-		// bf.Middleware.Skip(IsAuth, IamLoginForm, IamLogin, NotAuthUserTestPageHandler)
-		// bf.GET("/login", IamLoginForm)
-		// bf.POST("/login", IamLogin)
-		// bf.GET("/authuser/not", NotAuthUserTestPageHandler)
-
-		// bf.GET("/", HomeHandler)
-		// bf.GET("/authuser", AuthUserTestPageHandler)
-
-		// app.Use(IsAuth)
-
-		// apiVersion := os.Getenv("apiVersion")
-		// apiPath := "/api/" + apiVersion + "/"
+		app.GET("/alive", alive)
 
 		apiPath := "/api/"
-
-		// app.GET("/", HomeHandler)/
-		app.GET("/alive", alive)
 
 		auth := app.Group(apiPath + "auth")
 		auth.POST("/login", AuthLoginHandler)
 		auth.POST("/login/refresh", AuthLoginRefreshHandler)
 		auth.POST("/logout", AuthLogoutHandler)
-
-		auth.GET("/validate", AuthGetUserValidate)
 		auth.GET("/userinfo", AuthGetUserInfo)
+		auth.GET("/validate", AuthGetUserValidate)
+		auth.GET("/securitykey", AuthGetSecurityKeyHandler)
 
-		auth.POST("/securitykey", AuthGetSecurityKeyHandler)
+		rolePath := app.Group(apiPath + "/role")
+		rolePath.POST("/", CreateRole)
+		rolePath.GET("/", GetRoleList)
+		rolePath.GET("/{roleId}", GetRole)
+		rolePath.DELETE("/{roleId}", DeleteRole)
 
-		auth.GET("/validate", AuthGetUserInfo)
-
-		auth.POST("/user", RegistUser)
-		auth.DELETE("/user/{userId}", UnRegistUser)
-		auth.GET("/user", GetUserList)
-		auth.GET("/user/{userId}", GetUser)
-		auth.PATCH("/user/{userId}", UpdateUserProfile)
-
-		auth.POST("/usergroup", CreateUserGroup)
-		auth.PATCH("/usergroup/{groupId}", UpdateUserGroup)
-		auth.GET("/usergroup", GetUserGroupList)
-		auth.GET("/usergroup/{groupId}", GetUserGroup)
-		auth.DELETE("/usergroup/{groupId}", DeleteUserGroup)
-
-		// manage := app.Group(apiPath + "manage")
-		// manage.POST("/login", GetWorkspace)
-		// manage.GET("/logout", GetWorkspace)
-
-		// auth := app.Group(apiPath)
-		// auth.Middleware.Skip(IsAuth, IamLoginApi)
-		// auth.POST("/login", IamLoginApi)
-
-		// userPath := app.Group(apiPath + "users")
-		// userPath.GET("/", GetUsersList)
-
-		rolePath := app.Group(apiPath + "/auth/role")
-		rolePath.GET("/", GetUserRoleList)
-		rolePath.GET("/{roleId}", GetUserRole)
-		rolePath.PATCH("/{roleId}", UpdateUserRole)
-		rolePath.POST("/", CreateUserRole)
-		rolePath.DELETE("/{roleId}", DeleteUserRole)
-
-		workspacePath := app.Group(apiPath + "/ws/workspace")
-		workspacePath.GET("/", GetWorkspaceList)
-		workspacePath.GET("/{workspaceId}", GetWorkspace)
+		workspacePath := app.Group(apiPath + "/ws")
 		workspacePath.POST("/", CreateWorkspace)
-		workspacePath.DELETE("/{workspaceId}", DeleteWorkspace)
-		workspacePath.PATCH("/{workspaceId}", UpdateWorkspace)
-		workspacePath.GET("/{workspaceId}/project", AttachedProjectByWorkspace)
+		workspacePath.GET("/", GetWorkspaceList)
+		workspacePath.GET("/workspace/{workspaceId}", GetWorkspace)
+		workspacePath.PUT("/workspace/{workspaceId}", UpdateWorkspace)
+		workspacePath.DELETE("/workspace/{workspaceId}", DeleteWorkspace)
 
-		workspacePath.POST("/{workspaceId}/attachproject", AttachProjectToWorkspace)
-		workspacePath.DELETE("/{workspaceId}/attachproject/{projectId}", DeleteProjectFromWorkspace)
-		workspacePath.POST("/{workspaceId}/assigneduser", AssignUserToWorkspace)
-
-		workspaceUserPath := app.Group(apiPath + "/ws/user")
-		workspaceUserPath.GET("/{userId}", GetWorkspaceListByUser)
-
-		// mappingPath := app.Group(apiPath + "mapping")
-		// mappingPath.POST("/ws/user", MappingWsUser)
-		// mappingPath.POST("/ws/user/role", MappingWsUserRole)
-		// mappingPath.POST("/ws/project", AttachProjectToWorkspace)
-		// mappingPath.GET("/ws/id/{workspaceId}/project", MappingGetProjectByWorkspace)
-		// mappingPath.GET("/ws/id/{workspaceId}/project/id/{projectId}", MappingWsProjectValidCheck)
-		// mappingPath.DELETE("/ws/project", MappingDeleteWsProject)
-		// mappingPath.GET("/user/id/{userId}/workspace", MappingGetWsUserRole)
-
-		projectPath := app.Group(apiPath + "/ws/project")
-		projectPath.GET("/{projectId}", GetProject)
-		projectPath.GET("/", GetProjectList)
+		projectPath := app.Group(apiPath + "/prj")
 		projectPath.POST("/", CreateProject)
-		projectPath.DELETE("/{projectId}", DeleteProject)
-		projectPath.PATCH("/{projectId}", UpdateProject)
-    
-		debugPath := app.Group("/debug")
-		debugPath.GET("/getrealmrolebyid/{roleid}", DebugGetRealmRoleByID)
+		projectPath.GET("/", GetProjectList)
+		projectPath.GET("/project/{projectId}", GetProject)
+		projectPath.PUT("/project/{projectId}", UpdateProject)
+		projectPath.DELETE("/project/{projectId}", DeleteProject)
 
+		workspaceProjectMappingPath := app.Group(apiPath + "/wsprj")
+		workspaceProjectMappingPath.POST("/workspace/{workspaceId}", CreateWorkspaceProjectMapping)
+		workspaceProjectMappingPath.GET("/", GetWorkspaceProjectMappingList)
+		workspaceProjectMappingPath.GET("/workspace/{workspaceId}", GetWorkspaceProjectMappingByWorkspace)
+		workspaceProjectMappingPath.PUT("/workspace/{workspaceId}", UpdateWorkspaceProjectMapping)
+		workspaceProjectMappingPath.DELETE("/workspace/{workspaceId}/project/{projectId}", DeleteWorkspaceProjectMapping)
+		workspaceProjectMappingPath.DELETE("/workspace/{workspaceId}", DeleteWorkspaceProjectMappingAllByWorkspace)
+		workspaceProjectMappingPath.DELETE("/project/{projectId}", DeleteWorkspaceProjectMappingByProject)
 
+		workspaceUserRoleMappingPath := app.Group(apiPath + "/wsuserrole")
+		workspaceUserRoleMappingPath.POST("/workspace/{workspaceId}", CreateWorkspaceUserRoleMapping)
+		workspaceUserRoleMappingPath.GET("/", GetWorkspaceUserRoleMapping)
+		workspaceUserRoleMappingPath.GET("/workspace/{workspaceId}", GetWorkspaceUserRoleMappingByWorkspace)
+		workspaceUserRoleMappingPath.GET("/workspace/{workspaceId}/user/{userId}", GetWorkspaceUserRoleMappingByWorkspaceUser)
+		workspaceUserRoleMappingPath.GET("/user/{userId}", GetWorkspaceUserRoleMappingByUser)
+		workspaceUserRoleMappingPath.PUT("/workspace/{workspaceId}/user/{userId}", UpdateWorkspaceUserRoleMapping)
+		workspaceUserRoleMappingPath.DELETE("/workspace/{workspaceId}/user/{userId}", DeleteWorkspaceUserRoleMapping)
+		workspaceUserRoleMappingPath.DELETE("/workspace/{workspaceId}", DeleteWorkspaceUserRoleMappingAll)
 	})
 
 	return app
 }
 
-// forceSSL will return a middleware that will redirect an incoming request
-// if it is not HTTPS. "http://example.com" => "https://example.com".
-// This middleware does **not** enable SSL. for your application. To do that
-// we recommend using a proxy: https://gobuffalo.io/en/docs/proxy
-// for more information: https://github.com/unrolled/secure/
 func forceSSL() buffalo.MiddlewareFunc {
 	return forcessl.Middleware(secure.Options{
 		SSLRedirect:     ENV == "production",

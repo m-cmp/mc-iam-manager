@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"github.com/Nerzal/gocloak/v13"
-	"github.com/gobuffalo/buffalo"
 	"os"
+
+	"github.com/Nerzal/gocloak/v13"
 )
 
 var KCAdmin = os.Getenv("keycloakAdmin")
@@ -17,22 +17,30 @@ var KCClient = gocloak.NewClient(KCUri)
 
 var adminToken gocloak.JWT
 
-func GetKeycloakAdminToken(c buffalo.Context) *gocloak.JWT {
-	//todo
-	// 1. admintoken expire chk
-	// 1-1. if expired
-	// 2-1. admin token refresh
-	// 3-1. return token
-	// 1-2. if not expired
-	// 2-2. return admin token
+// func GetKeycloakAdminToken(c buffalo.Context) (*gocloak.JWT, error) {
+// 	//todo
+// 	// 1. admintoken expire chk
+// 	// 1-1. if expired
+// 	// 2-1. admin token refresh
+// 	// 3-1. return token
+// 	// 1-2. if not expired
+// 	// 2-2. return admin token
 
-	token, kcLoginErr := KCClient.LoginAdmin(c, KCAdmin, KCPwd, KCAdminRealm)
-	adminToken = *token
-	if kcLoginErr != nil {
-		cblogger.Info(kcLoginErr)
-	}
+// 	token, kcLoginErr := KCClient.LoginAdmin(c, KCAdmin, KCPwd, KCAdminRealm)
+// 	adminToken = *token
+// 	if kcLoginErr != nil {
+// 		fmt.Println(kcLoginErr)
+// 	}
 
-	//cblogger.Info("Tokens : " + token.AccessToken)
+// 	//fmt.Println("Tokens : " + token.AccessToken)
 
-	return &adminToken
-}
+// 	return &adminToken, kcLoginErr
+// }
+
+// func ReturnErrorInterface(err error) map[string]interface{} {
+// 	log.Error(err)
+// 	return map[string]interface{}{
+// 		"error":  err,
+// 		"status": http.StatusInternalServerError,
+// 	}
+// }

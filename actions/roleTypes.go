@@ -5,74 +5,16 @@ import (
 	"mc_iam_manager/handler"
 	"mc_iam_manager/iammodels"
 	"mc_iam_manager/models"
+
 	"net/http"
 
-	"github.com/gobuffalo/pop/v6"
-
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/pop/v6"
 )
 
-func CreateProject(c buffalo.Context) error {
-	project := &models.MCIamProject{}
-	err := c.Bind(project)
-	if err != nil {
-		log.Println(err)
-		return c.Render(
-			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
-		)
-	}
-	project.ProjectID = project.Name // TODO : ID, Name 모두 필요한가?
-
-	tx := c.Value("tx").(*pop.Connection)
-	createdProject, err := handler.CreateProject(tx, project)
-	if err != nil {
-		log.Println(err)
-		return c.Render(
-			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
-	}
-
-	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, createdProject)),
-	)
-}
-
-func GetProjectList(c buffalo.Context) error {
-	tx := c.Value("tx").(*pop.Connection)
-	projectList, err := handler.GetProjectList(tx)
-	if err != nil {
-		log.Println(err)
-		return c.Render(
-			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
-	}
-
-	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, projectList)),
-	)
-}
-
-func GetProject(c buffalo.Context) error {
-	projectId := c.Param("projectId")
-
-	tx := c.Value("tx").(*pop.Connection)
-	projectList, err := handler.GetProject(tx, projectId)
-	if err != nil {
-		log.Println(err)
-		return c.Render(
-			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
-	}
-
-	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, projectList)),
-	)
-}
-
-func UpdateProject(c buffalo.Context) error {
-	project := &models.MCIamProject{}
-	err := c.Bind(project)
+func CreateRole(c buffalo.Context) error {
+	role := &models.MCIamRoletype{}
+	err := c.Bind(role)
 	if err != nil {
 		log.Println(err)
 		return c.Render(
@@ -81,10 +23,11 @@ func UpdateProject(c buffalo.Context) error {
 		)
 	}
 
-	project.ProjectID = c.Param("projectId")
+	role.Type = role.RoleName // TODO : 모두 필요한가?
+	role.RoleID = role.RoleName
 
 	tx := c.Value("tx").(*pop.Connection)
-	ProjectList, err := handler.UpdateProject(tx, project)
+	createdRole, err := handler.CreateRole(tx, role)
 	if err != nil {
 		log.Println(err)
 		return c.Render(
@@ -93,14 +36,73 @@ func UpdateProject(c buffalo.Context) error {
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, ProjectList)),
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, createdRole)),
 	)
 }
 
-func DeleteProject(c buffalo.Context) error {
-	projectId := c.Param("projectId")
+func GetRoleList(c buffalo.Context) error {
 	tx := c.Value("tx").(*pop.Connection)
-	err := handler.DeleteProject(tx, projectId)
+	roleList, err := handler.GetRoleList(tx)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, roleList)),
+	)
+}
+
+func GetRole(c buffalo.Context) error {
+	roleId := c.Param("roleId")
+
+	tx := c.Value("tx").(*pop.Connection)
+	roleList, err := handler.GetRole(tx, roleId)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, roleList)),
+	)
+}
+
+func UpdateRole(c buffalo.Context) error {
+	role := &models.MCIamRoletype{}
+	err := c.Bind(role)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+		)
+	}
+
+	role.RoleID = c.Param("roleId")
+
+	tx := c.Value("tx").(*pop.Connection)
+	RoleList, err := handler.UpdateRole(tx, role)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, RoleList)),
+	)
+}
+
+func DeleteRole(c buffalo.Context) error {
+	RoleId := c.Param("roleId")
+	tx := c.Value("tx").(*pop.Connection)
+	err := handler.DeleteRole(tx, RoleId)
 	if err != nil {
 		log.Println(err)
 		return c.Render(

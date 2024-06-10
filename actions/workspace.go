@@ -1,118 +1,113 @@
 package actions
 
 import (
-	"github.com/sirupsen/logrus"
 	"log"
 	"mc_iam_manager/handler"
 	"mc_iam_manager/iammodels"
+	"mc_iam_manager/models"
 	"net/http"
 
-	cblog "github.com/cloud-barista/cb-log"
-	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/v6"
+
+	"github.com/gobuffalo/buffalo"
 )
 
-var cblogger *logrus.Logger
-
-func init() {
-	// cblog is a global variable.
-	cblogger = cblog.GetLogger("WorkspaceController Test")
-	//cblog.SetLevel("info")
-	cblog.SetLevel("debug")
-}
-
-// Workspace 단건 조회	GET	/api/ws	/workspace/{workspaceId}	GetWorkspace
-func GetWorkspace(c buffalo.Context) error {
-
-	tx := c.Value("tx").(*pop.Connection)
-	paramWsId := c.Param("workspaceId")
-
-	resp := handler.GetWorkspace(tx, paramWsId)
-
-	return c.Render(http.StatusOK, r.JSON(resp))
-}
-
-// Workspace 목록	GET	/api/ws	/workspace	GetWorkspaceList
-func GetWorkspaceList(c buffalo.Context) error {
-	tx := c.Value("tx").(*pop.Connection)
-
-	resp := handler.GetWorkspaceList(tx, "")
-
-	return c.Render(http.StatusOK, r.JSON(resp))
-}
-
-// Workspace 목록	GET	/api/ws	/workspace	CreateWorkspace
 func CreateWorkspace(c buffalo.Context) error {
-	workspaceParam := &iammodels.WorkspaceReq{}
-	err := c.Bind(workspaceParam)
-
+	workspace := &models.MCIamWorkspace{}
+	err := c.Bind(workspace)
 	if err != nil {
 		log.Println(err)
-		return c.Render(http.StatusBadRequest, r.JSON(map[string]interface{}{
-			"error": err,
-		}))
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+		)
 	}
-
-	log.Println("Workspace request data:", workspaceParam)
+	workspace.WorkspaceID = workspace.Name // TODO : ID, Name 모두 필요한가?
 
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.CreateWorkspace(tx, workspaceParam)
-	return c.Render(http.StatusOK, r.JSON(resp))
+	createdWorkspace, err := handler.CreateWorkspace(tx, workspace)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, createdWorkspace)),
+	)
+}
+
+func GetWorkspaceList(c buffalo.Context) error {
+	tx := c.Value("tx").(*pop.Connection)
+	workspaceList, err := handler.GetWorkspaceList(tx)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, workspaceList)),
+	)
+}
+
+func GetWorkspace(c buffalo.Context) error {
+	workspaceId := c.Param("workspaceId")
+
+	tx := c.Value("tx").(*pop.Connection)
+	workspaceList, err := handler.GetWorkspace(tx, workspaceId)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, workspaceList)),
+	)
 }
 
 func UpdateWorkspace(c buffalo.Context) error {
-	workspaceParam := &iammodels.WorkspaceInfo{}
-	cblogger.Info(workspaceParam)
-	err := c.Bind(workspaceParam)
+	workspace := &models.MCIamWorkspace{}
+	err := c.Bind(workspace)
 	if err != nil {
-		log.Println("Error binding workspaceParam:", err)
-		return c.Render(http.StatusBadRequest, r.JSON(map[string]interface{}{
-			"error": err.Error(), // 에러를 문자열로 반환하도록 수정
-		}))
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+		)
 	}
 
-	log.Println("Workspace request data:", workspaceParam)
+	workspace.WorkspaceID = c.Param("workspaceId")
 
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.UpdateWorkspace(tx, *workspaceParam)
-	return c.Render(http.StatusOK, r.JSON(resp))
+	workspaceList, err := handler.UpdateWorkspace(tx, workspace)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, workspaceList)),
+	)
 }
 
-// Workspace 삭제	DELETE	/api/ws	/workspace/{workspaceId}	DeleteWorkspace
 func DeleteWorkspace(c buffalo.Context) error {
-	paramWsId := c.Param("workspaceId")
-
+	workspaceId := c.Param("workspaceId")
 	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.DeleteWorkspace(tx, paramWsId)
-	return c.Render(http.StatusOK, r.JSON(resp))
-}
-
-// Workspace에 할당된 project 조회	GET	/api/ws	/workspace/{workspaceId}/project	AttachedProjectByWorkspace
-func AttachedProjectByWorkspace(c buffalo.Context) error {
-	paramWsId := c.Param("workspaceId")
-
-	tx := c.Value("tx").(*pop.Connection)
-	resp := handler.AttachedProjectByWorkspace(tx, paramWsId)
-
-	return c.Render(http.StatusOK, r.JSON(resp))
-}
-
-// Workspace에 Project 할당 해제	DELELTE	/api/ws	/workspace/{workspaceId}/attachproject/{projectId}	DeleteProjectFromWorkspace
-func DeleteProjectFromWorkspace(c buffalo.Context) error {
-	tx := c.Value("tx").(*pop.Connection)
-	paramWsId := c.Param("workspaceId")
-	paramPjId := c.Param("projectId")
-	cblogger.Info("wsId:" + paramWsId)
-	cblogger.Info("pjId:" + paramPjId)
-	handler.DeleteProjectFromWorkspace(paramWsId, paramPjId, tx)
-	return c.Render(http.StatusOK, r.JSON(""))
-}
-
-// 유저에게 할당된 Workspace 목록	GET	/api/ws	/user/{userId}	GetWorkspaceListByUser
-func GetWorkspaceListByUser(c buffalo.Context) error {
-	userId := c.Param("userId")
-	resp := handler.GetWorkspaceListByUserId(userId)
-
-	return c.Render(http.StatusOK, r.JSON(resp))
-
+	err := handler.DeleteWorkspace(tx, workspaceId)
+	if err != nil {
+		log.Println(err)
+		return c.Render(
+			http.StatusInternalServerError,
+			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+	}
+	return c.Render(http.StatusOK,
+		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, nil)),
+	)
 }

@@ -1,1 +1,0 @@
-drop_foreign_key("mc_iam_user_role_mappings", "mc_iam_fkey_role_id", {"if_exists": true})

@@ -11,46 +11,48 @@ import (
 	"github.com/Nerzal/gocloak/v13"
 )
 
-var KC_admin = os.Getenv("KC_admin")
-var KC_passwd = os.Getenv("KC_passwd")
-var KC_uri = os.Getenv("KC_uri")
+var KC_admin = "admin"
+var KC_passwd = "admin"
+var KC_uri = os.Getenv("keycloakHost")
 var KC_clientID = os.Getenv("KC_clientID")
 var KC_clientSecret = os.Getenv("KC_clientSecret")
 var KC_realm = os.Getenv("KC_realm")
 var KC_client = gocloak.NewClient(KC_uri)
 
 func KcHomeHandler(c buffalo.Context) error {
-	c.Set("simplestr", "welcome mcloak home!")
-	return c.Render(http.StatusOK, r.HTML("kctest/index.html"))
+	return c.Render(http.StatusOK, r.JSON("OK"))
 }
 
 func KcCreateUserHandler(c buffalo.Context) error {
 	token, err := KC_client.LoginAdmin(c, KC_admin, KC_passwd, "master")
 	if err != nil {
-		c.Set("simplestr", err.Error()+"### Something wrong with the credentials or url ###")
-		return c.Render(http.StatusOK, r.HTML("kctest/index.html"))
-		// panic("Something wrong with the credentials or url")
+		fmt.Println(err)
+		return c.Render(http.StatusOK, r.JSON(err.Error()))
 	}
 
 	fmt.Println(token)
 
 	user := gocloak.User{
-		FirstName: gocloak.StringP("ra"),
-		LastName:  gocloak.StringP("ccoon"),
-		Email:     gocloak.StringP("mega@zone.cloud"),
+		FirstName: gocloak.StringP("MCPUSER"),
+		LastName:  gocloak.StringP("ADMIN"),
 		Enabled:   gocloak.BoolP(true),
-		Username:  gocloak.StringP("raccoon"),
+		Username:  gocloak.StringP("mcpuser"),
 	}
 
-	_, err = KC_client.CreateUser(c, token.AccessToken, "master", user)
+	userId, err := KC_client.CreateUser(c, token.AccessToken, "master", user)
 	if err != nil {
-		c.Set("simplestr", err.Error()+"### Oh no!, failed to create user :( ###")
-		return c.Render(http.StatusOK, r.HTML("kctest/index.html"))
-		// panic("Oh no!, failed to create user :(")
+		fmt.Println(err)
+		return c.Render(http.StatusOK, r.JSON(err.Error()))
 	}
 
-	c.Set("simplestr", "success")
-	return c.Render(http.StatusOK, r.HTML("kctest/index.html"))
+	// func (g *GoCloak) SetPassword(ctx context.Context, token, userID, realm, password string, temporary bool) error {
+	err = KC_client.SetPassword(c, token.AccessToken, userId, "master", "admin", false)
+	if err != nil {
+		fmt.Println(err)
+		return c.Render(http.StatusOK, r.JSON(err.Error()))
+	}
+
+	return c.Render(http.StatusOK, r.JSON("good"))
 }
 
 func KcLoginAdminHandler(c buffalo.Context) error {

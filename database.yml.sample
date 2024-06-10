@@ -1,9 +1,6 @@
 ---
 development:
-  url: {{envOr "TEST_DATABASE_URL" "postgres://postgres:postgres@127.0.0.1:5432/mc_iam_manager_test?sslmode=disable"}}
-
-test:
-  url: {{envOr "TEST_DATABASE_URL" "postgres://postgres:postgres@127.0.0.1:5432/mc_iam_manager_test?sslmode=disable"}}
+  url: {{envOr "DEV_DATABASE_URL" "postgres://postgres:postgres@db:5432/mc_iam_manager_development?sslmode=disable"}}
 
 production:
-  url: {{envOr "DATABASE_URL" "postgres://postgres:postgres@127.0.0.1:5432/mc_iam_manager_production?sslmode=disable"}}
+  url: {{envOr "DATABASE_URL" "postgres://postgres:postgres@db:5432/mc_iam_manager_production?sslmode=disable"}}
