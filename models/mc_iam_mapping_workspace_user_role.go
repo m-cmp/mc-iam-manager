@@ -20,6 +20,24 @@ type MCIamMappingWorkspaceUserRole struct {
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }
 
+type MCIamMappingWorkspaceUserRoleListResponse struct {
+	Workspace MCIamWorkspace            `json:"workspace"`
+	Users     []UserRoleMappingResponse `json:"users"`
+}
+
+type MCIamMappingWorkspaceUserRoleUserResponse struct {
+	RoleName  string         `json:"role"`
+	Workspace MCIamWorkspace `json:"workspace"`
+	Project   []MCIamProject `json:"projects"`
+}
+
+type MCIamMappingWorkspaceUserRoleUserResponses []MCIamMappingWorkspaceUserRoleUserResponse
+
+type UserRoleMappingResponse struct {
+	RoleName string `json:"role_name"`
+	UserID   string `json:"user_id"`
+}
+
 // String is not required by pop and may be deleted
 func (m MCIamMappingWorkspaceUserRole) String() string {
 	jm, _ := json.Marshal(m)
