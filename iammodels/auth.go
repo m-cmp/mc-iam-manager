@@ -6,7 +6,6 @@ type UserLogin struct {
 }
 
 type UserLoginRefresh struct {
-	AccessToken  string
 	RefreshToken string `json:"refresh_token"`
 }
 
