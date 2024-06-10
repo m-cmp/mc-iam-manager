@@ -3,7 +3,6 @@ package handler
 import (
 	"errors"
 	"mc_iam_manager/models"
-	"slices"
 
 	"strconv"
 	"strings"
@@ -139,7 +138,7 @@ func UpdateWorkspaceProjectMapping(tx *pop.Connection, mappingWorkspaceProjectRe
 	}
 
 	for _, prj := range workspaceProjectMapping.Projects {
-		if !slices.Contains(mappingWorkspaceProjectRequest.Projects, prj.ProjectID) {
+		if !IsSlicesContains(mappingWorkspaceProjectRequest.Projects, prj.ProjectID) {
 			err := DeleteWorkspaceProjectMapping(tx, mappingWorkspaceProjectRequest.WorkspaceID, prj.ProjectID)
 			if err != nil {
 				log.Error(err)
