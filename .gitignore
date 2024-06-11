@@ -33,3 +33,4 @@ generated/
 database.yml
 
 scripts/nginx/
+scripts/init/init.env
