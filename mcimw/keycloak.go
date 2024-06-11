@@ -26,43 +26,43 @@ type keycloak struct {
 
 type CustomClaims struct {
 	*jwt.StandardClaims
-	Exp            int      `json:"exp"`
-	Iat            int      `json:"iat"`
-	Jti            string   `json:"jti"`
-	Iss            string   `json:"iss"`
-	Aud            string   `json:"aud"`
-	Sub            string   `json:"sub"`
-	Typ            string   `json:"typ"`
-	Azp            string   `json:"azp"`
-	SessionState   string   `json:"session_state"`
-	Acr            string   `json:"acr"`
-	AllowedOrigins []string `json:"allowed-origins"`
-	RealmAccess    struct {
-		Roles []string `json:"roles"`
-	} `json:"realm_access"`
-	Scope             string   `json:"scope"`
-	Sid               string   `json:"sid"`
-	Upn               string   `json:"upn"`
-	EmailVerified     bool     `json:"email_verified"`
-	Name              string   `json:"name"`
-	Groups            []string `json:"groups"`
-	PreferredUsername string   `json:"preferred_username"`
-	RealmRole         []string `json:"realmRole"`
-	GivenName         string   `json:"given_name"`
-	FamilyName        string   `json:"family_name"`
-	Email             string   `json:"email"`
+	Exp int `json:"exp"`
+	// Iat            int      `json:"iat"`
+	// Jti            string   `json:"jti"`
+	// Iss            string   `json:"iss"`
+	// Aud            string   `json:"aud"`
+	// Sub            string   `json:"sub"`
+	// Typ            string   `json:"typ"`
+	// Azp            string   `json:"azp"`
+	// SessionState   string   `json:"session_state"`
+	// Acr            string   `json:"acr"`
+	// AllowedOrigins []string `json:"allowed-origins"`
+	//
+	//	RealmAccess    struct {
+	//		Roles []string `json:"roles"`
+	//	} `json:"realm_access"`
+	//
+	// Scope             string   `json:"scope"`
+	// Sid               string   `json:"sid"`
+	// Upn               string   `json:"upn"`
+	// EmailVerified     bool     `json:"email_verified"`
+	// Name              string   `json:"name"`
+	// Groups            []string `json:"groups"`
+	// PreferredUsername string   `json:"preferred_username"`
+	RealmRole []string `json:"realmRole"`
+	// GivenName         string   `json:"given_name"`
+	// FamilyName        string   `json:"family_name"`
+	// Email             string   `json:"email"`
 }
 
 var (
-	envKeycloak = keycloak{
+	EnvKeycloak = keycloak{
 		KEYCLOAK_HOST:          envy.Get("KEYCLOAK_HOST", ""),
 		KEYCLOAK:               gocloak.NewClient(envy.Get("KEYCLOAK_HOST", "")),
 		KEYCLAOK_REALM:         envy.Get("KEYCLAOK_REALM", "mciam"),
 		KEYCLAOK_CLIENT:        envy.Get("KEYCLAOK_CLIENT", "mciammanager"),
 		KEYCLAOK_CLIENT_SECRET: envy.Get("KEYCLAOK_CLIENT_SECRET", "mciammanagerclientsecret"),
-		KEYCLAOK_JWKSURL: envy.Get("KEYCLOAK_HOST", "") + "/realms/" +
-			envy.Get("KEYCLAOK_REALM", "mciam") +
-			"/protocol/openid-connect/certs",
+		KEYCLAOK_JWKSURL:       envy.Get("KEYCLOAK_HOST", "") + "/realms/" + envy.Get("KEYCLAOK_REALM", "mciam") + "/protocol/openid-connect/certs",
 	}
 )
 
