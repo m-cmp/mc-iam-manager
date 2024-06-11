@@ -9,6 +9,7 @@ import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/buffalo/render"
 	"github.com/golang-jwt/jwt"
+	"github.com/labstack/echo"
 	"github.com/lestrrat-go/jwx/jwk"
 )
 
@@ -75,7 +76,7 @@ func BuffaloMcimw(next buffalo.Handler) buffalo.Handler {
 
 func (mr mcimw) BuffaloMiddleware(next buffalo.Handler) buffalo.Handler {
 	return func(c buffalo.Context) error {
-		err := mr.istokenValid(c, strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer "))
+		err := mr.istokenValidBuffalo(c, strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer "))
 		if err != nil {
 			return c.Render(http.StatusInternalServerError,
 				render.JSON(map[string]string{"err": err.Error()}))
@@ -84,7 +85,7 @@ func (mr mcimw) BuffaloMiddleware(next buffalo.Handler) buffalo.Handler {
 	}
 }
 
-func (mr mcimw) istokenValid(c buffalo.Context, tokenString string) error {
+func (mr mcimw) istokenValidBuffalo(c buffalo.Context, tokenString string) error {
 	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, keyfunction)
 	if err != nil {
 		return fmt.Errorf("failed to parse token: %s", err.Error())
@@ -104,20 +105,41 @@ func (mr mcimw) istokenValid(c buffalo.Context, tokenString string) error {
 	}
 }
 
-func keyfunction(token *jwt.Token) (interface{}, error) {
-	if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-		return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+func EchoMcimw(next echo.HandlerFunc) echo.HandlerFunc {
+	mr := mcimw{
+		grantRoles: GrantedRoleList,
 	}
-	kid := token.Header["kid"].(string)
-	keys, nokey := jwkSet.LookupKeyID(kid)
-	if !nokey {
-		return nil, fmt.Errorf("no keys found for kid: %s", kid)
+	return mr.EchoMiddleware(next)
+}
+
+func (mr mcimw) EchoMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		err := mr.istokenValidEcho(c, strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer "))
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"err": err.Error()})
+		}
+		return next(c)
 	}
-	var raw interface{}
-	if err := keys.Raw(&raw); err != nil {
-		return nil, fmt.Errorf("failed to get key: %s", err)
+}
+
+func (mr mcimw) istokenValidEcho(c echo.Context, tokenString string) error {
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, keyfunction)
+	if err != nil {
+		return fmt.Errorf("failed to parse token: %s", err.Error())
 	}
-	return raw, nil
+
+	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
+		if len(mr.grantRoles) != 0 {
+			if !mr.isRoleContains(claims.RealmRole) {
+				return fmt.Errorf("role is invalid")
+			}
+		} else {
+			c.Set("roles", claims.RealmRole)
+		}
+		return nil
+	} else {
+		return fmt.Errorf("token is invalid")
+	}
 }
 
 func (mr mcimw) isRoleContains(arr []string) bool {
@@ -133,18 +155,18 @@ func (mr mcimw) isRoleContains(arr []string) bool {
 	return false
 }
 
-// func EchoMcimw(next echo.HandlerFunc) echo.HandlerFunc {
-// 	mr := mcimw{
-// 		roleNames: GrantedRoleList,
-// 	}
-// 	return mr.EchoMiddleware(next)
-// }
-
-// func (mr mcimw) EchoMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-// 	return func(c echo.Context) error {
-// 		defer func() {
-
-// 		}()
-// 		return next(c)
-// 	}
-// }
+func keyfunction(token *jwt.Token) (interface{}, error) {
+	if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+		return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+	}
+	kid := token.Header["kid"].(string)
+	keys, nokey := jwkSet.LookupKeyID(kid)
+	if !nokey {
+		return nil, fmt.Errorf("no keys found for kid: %s", kid)
+	}
+	var raw interface{}
+	if err := keys.Raw(&raw); err != nil {
+		return nil, fmt.Errorf("failed to get key: %s", err)
+	}
+	return raw, nil
+}

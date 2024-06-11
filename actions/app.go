@@ -48,17 +48,13 @@ func App() *buffalo.App {
 
 		alive := app.Group("/alive")
 		alive.GET("/", aliveSig)
-		mcimw.GrantedRoleList = []string{
-			"admin",
-		}
+		mcimw.GrantedRoleList = []string{"admin"}
 		alive.GET("/admin", mcimw.BuffaloMcimw(aliveSig))
-		mcimw.GrantedRoleList = []string{
-			"viewer",
-		}
+
+		mcimw.GrantedRoleList = []string{"viewer"}
 		alive.GET("/viewer", mcimw.BuffaloMcimw(aliveSig))
-		mcimw.GrantedRoleList = []string{
-			"operator",
-		}
+
+		mcimw.GrantedRoleList = []string{"operator"}
 		alive.GET("/operator", mcimw.BuffaloMcimw(aliveSig))
 
 		auth := app.Group(apiPath + "auth")
