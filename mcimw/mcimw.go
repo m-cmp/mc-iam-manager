@@ -75,7 +75,7 @@ func BuffaloMcimw(next buffalo.Handler) buffalo.Handler {
 
 func (mr mcimw) BuffaloMiddleware(next buffalo.Handler) buffalo.Handler {
 	return func(c buffalo.Context) error {
-		err := mr.istokenValid(strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer "))
+		err := mr.istokenValid(c, strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer "))
 		if err != nil {
 			return c.Render(http.StatusInternalServerError,
 				render.JSON(map[string]string{"err": err.Error()}))
@@ -84,15 +84,19 @@ func (mr mcimw) BuffaloMiddleware(next buffalo.Handler) buffalo.Handler {
 	}
 }
 
-func (mr mcimw) istokenValid(tokenString string) error {
+func (mr mcimw) istokenValid(c buffalo.Context, tokenString string) error {
 	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, keyfunction)
 	if err != nil {
 		return fmt.Errorf("failed to parse token: %s", err.Error())
 	}
 
 	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
-		if !mr.isRoleContains(claims.RealmRole) {
-			return fmt.Errorf("role is invalid")
+		if len(mr.grantRoles) != 0 {
+			if !mr.isRoleContains(claims.RealmRole) {
+				return fmt.Errorf("role is invalid")
+			}
+		} else {
+			c.Set("roles", claims.RealmRole)
 		}
 		return nil
 	} else {

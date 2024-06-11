@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"mc_iam_manager/iammodels"
 	"net/http"
 	"strings"
 
@@ -22,6 +21,20 @@ type keycloak struct {
 	KEYCLAOK_CLIENT        string
 	KEYCLAOK_CLIENT_SECRET string
 	KEYCLAOK_JWKSURL       string
+}
+
+type UserLogin struct {
+	Id       string `json:"id"`
+	Password string `json:"password"`
+}
+
+type UserLoginRefresh struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type UserLogout struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 type CustomClaims struct {
@@ -69,7 +82,7 @@ var (
 func (k keycloak) AuthLoginHandler(res http.ResponseWriter, req *http.Request) {
 
 	decoder := json.NewDecoder(req.Body)
-	user := &iammodels.UserLogin{}
+	user := &UserLogin{}
 	err := decoder.Decode(&user)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
@@ -111,7 +124,7 @@ func (k keycloak) AuthLoginHandler(res http.ResponseWriter, req *http.Request) {
 func (k keycloak) AuthLoginRefreshHandler(res http.ResponseWriter, req *http.Request) {
 
 	decoder := json.NewDecoder(req.Body)
-	user := &iammodels.UserLoginRefresh{}
+	user := &UserLoginRefresh{}
 	err := decoder.Decode(&user)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
@@ -152,7 +165,7 @@ func (k keycloak) AuthLoginRefreshHandler(res http.ResponseWriter, req *http.Req
 func (k keycloak) AuthLogoutHandler(res http.ResponseWriter, req *http.Request) {
 
 	decoder := json.NewDecoder(req.Body)
-	user := &iammodels.UserLogout{}
+	user := &UserLogout{}
 	err := decoder.Decode(&user)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
