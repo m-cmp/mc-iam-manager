@@ -45,12 +45,21 @@ func App() *buffalo.App {
 		apiPath := envy.Get("API_PATH", "/api/")
 
 		mcimw.AuthMethod = mcimw.EnvKeycloak
+
+		alive := app.Group("/alive")
+		alive.GET("/", aliveSig)
 		mcimw.GrantedRoleList = []string{
 			"admin",
 		}
-		alive := app.Group("/alive")
-		alive.GET("/", aliveSig)
-		alive.GET("/protected", mcimw.BuffaloMcimw(aliveSig))
+		alive.GET("/admin", mcimw.BuffaloMcimw(aliveSig))
+		mcimw.GrantedRoleList = []string{
+			"viewer",
+		}
+		alive.GET("/viewer", mcimw.BuffaloMcimw(aliveSig))
+		mcimw.GrantedRoleList = []string{
+			"operator",
+		}
+		alive.GET("/operator", mcimw.BuffaloMcimw(aliveSig))
 
 		auth := app.Group(apiPath + "auth")
 		auth.ANY("/{path:.+}", buffalo.WrapHandlerFunc(mcimw.BeginAuthHandler))

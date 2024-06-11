@@ -25,10 +25,29 @@
       "groups": []
     },
     {
-      "username": "mcpuser",
-      "firstName": "mcp",
+      "username": "mcpsuper",
+      "firstName": "super",
       "lastName": "user",
-      "email": "mcpuser@keycloak.org",
+      "email": "mcpsuper@keycloak.org",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mcpuserpassword"
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "operator",
+        "viewer"
+      ]
+    },
+    {
+      "username": "mcpadmin",
+      "firstName": "admin",
+      "lastName": "user",
+      "email": "mcpadmin@keycloak.org",
       "emailVerified": true,
       "enabled": true,
       "credentials": [
@@ -40,21 +59,55 @@
       "realmRoles": [
         "admin"
       ]
+    },
+    {
+      "username": "mcpviewer",
+      "firstName": "viewer",
+      "lastName": "user",
+      "email": "mcpviewer@keycloak.org",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mcpuserpassword"
+        }
+      ],
+      "realmRoles": [
+        "viewer"
+      ]
+    },
+    {
+      "username": "mcpoperator",
+      "firstName": "operator",
+      "lastName": "user",
+      "email": "mcpoperator@keycloak.org",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mcpuserpassword"
+        }
+      ],
+      "realmRoles": [
+        "operator"
+      ]
     }
   ],
   "roles": {
     "realm": [
       {
         "name": "admin",
-        "description": ""
+        "description": "default admin user"
       },
       {
         "name": "viewer",
-        "description": ""
+        "description": "default viewer user"
       },
       {
         "name": "operator",
-        "description": ""
+        "description": "default operator user"
       },
       {
         "name": "offline_access",
