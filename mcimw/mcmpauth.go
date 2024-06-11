@@ -8,38 +8,33 @@ import (
 	"github.com/gobuffalo/envy"
 )
 
-type mcmpauth struct{}
-
-var (
-	MCIAM_HOST string
-	proxy      *httputil.ReverseProxy
-)
-
-func init() {
-	MCIAM_HOST = envy.Get("MCIAM_HOST", "http://localhost:5000")
-	mciamHostUrl, err := url.Parse(MCIAM_HOST)
-	if err != nil {
-		panic(err)
-	}
-	proxy = httputil.NewSingleHostReverseProxy(mciamHostUrl)
+type mcmpauth struct {
+	proxy *httputil.ReverseProxy
 }
 
+var (
+	mciamHostUrl, _ = url.Parse(envy.Get("MCIAM_HOST", "http://localhost:5000"))
+	EnvMcmpauth     = mcmpauth{
+		proxy: httputil.NewSingleHostReverseProxy(mciamHostUrl),
+	}
+)
+
 func (m mcmpauth) AuthLoginHandler(res http.ResponseWriter, req *http.Request) {
-	proxy.ServeHTTP(res, req)
+	m.proxy.ServeHTTP(res, req)
 }
 
 func (m mcmpauth) AuthLoginRefreshHandler(res http.ResponseWriter, req *http.Request) {
-	proxy.ServeHTTP(res, req)
+	m.proxy.ServeHTTP(res, req)
 }
 
 func (m mcmpauth) AuthLogoutHandler(res http.ResponseWriter, req *http.Request) {
-	proxy.ServeHTTP(res, req)
+	m.proxy.ServeHTTP(res, req)
 }
 
 func (m mcmpauth) AuthGetUserInfo(res http.ResponseWriter, req *http.Request) {
-	proxy.ServeHTTP(res, req)
+	m.proxy.ServeHTTP(res, req)
 }
 
 func (m mcmpauth) AuthGetUserValidate(res http.ResponseWriter, req *http.Request) {
-	proxy.ServeHTTP(res, req)
+	m.proxy.ServeHTTP(res, req)
 }

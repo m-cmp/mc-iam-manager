@@ -44,14 +44,16 @@ func App() *buffalo.App {
 
 		apiPath := envy.Get("API_PATH", "/api/")
 
+		mcimw.AuthMethod = mcimw.EnvKeycloak
+		mcimw.GrantedRoleList = []string{
+			"admin",
+		}
+		alive := app.Group("/alive")
+		alive.GET("/", aliveSig)
+		alive.GET("/protected", mcimw.BuffaloMcimw(aliveSig))
+
 		auth := app.Group(apiPath + "auth")
 		auth.ANY("/{path:.+}", buffalo.WrapHandlerFunc(mcimw.BeginAuthHandler))
-
-		mcimw.McimwRoleList = []string{
-			"mcpuser",
-		}
-		app.Use(mcimw.BuffaloMcimw)
-		app.GET("/alive", alive)
 
 		sts := app.Group(apiPath + "sts")
 		sts.GET("/securitykey", AuthGetSecurityKeyHandler)
@@ -106,6 +108,6 @@ func forceSSL() buffalo.MiddlewareFunc {
 	})
 }
 
-func alive(c buffalo.Context) error {
+func aliveSig(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(map[string]string{"ststus": "ok"}))
 }

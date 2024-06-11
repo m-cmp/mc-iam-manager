@@ -20,43 +20,43 @@ type mcimwAuth interface {
 	AuthGetUserValidate(http.ResponseWriter, *http.Request)
 }
 type mcimw struct {
-	authMethod mcimwAuth
 	grantRoles []string
 }
 
 var (
-	jwkSet        jwk.Set
-	McimwRoleList = []string{}
+	jwkSet          jwk.Set
+	GrantedRoleList = []string{}
+	AuthMethod      mcimwAuth
 )
 
 func init() {
 	var err error
 	ctx := context.Background()
-	jwkSet, err = jwk.Fetch(ctx, envKeycloak.KEYCLAOK_JWKSURL)
+	jwkSet, err = jwk.Fetch(ctx, EnvKeycloak.KEYCLAOK_JWKSURL)
 	if err != nil {
 		panic("failed to fetch JWK: " + err.Error())
 	}
 }
 
-func (mw mcimw) BeginAuthHandler(res http.ResponseWriter, req *http.Request) {
+func BeginAuthHandler(res http.ResponseWriter, req *http.Request) {
 	reqUri := req.RequestURI
 	reqMethod := req.Method
 	res.Header().Set("Content-Type", "application/json")
 
 	if strings.HasSuffix(reqUri, "/login") && reqMethod == "POST" {
-		mw.authMethod.AuthLoginHandler(res, req)
+		AuthMethod.AuthLoginHandler(res, req)
 		return
 	} else if strings.HasSuffix(reqUri, "/login/refresh") && reqMethod == "POST" {
-		mw.authMethod.AuthLoginRefreshHandler(res, req)
+		AuthMethod.AuthLoginRefreshHandler(res, req)
 		return
 	} else if strings.HasSuffix(reqUri, "/logout") && reqMethod == "POST" {
-		mw.authMethod.AuthLogoutHandler(res, req)
+		AuthMethod.AuthLogoutHandler(res, req)
 		return
 	} else if strings.HasSuffix(reqUri, "/userinfo") && reqMethod == "GET" {
-		mw.authMethod.AuthGetUserInfo(res, req)
+		AuthMethod.AuthGetUserInfo(res, req)
 		return
 	} else if strings.HasSuffix(reqUri, "/validate") && reqMethod == "GET" {
-		mw.authMethod.AuthGetUserValidate(res, req)
+		AuthMethod.AuthGetUserValidate(res, req)
 		return
 	}
 
@@ -68,7 +68,7 @@ func (mw mcimw) BeginAuthHandler(res http.ResponseWriter, req *http.Request) {
 
 func BuffaloMcimw(next buffalo.Handler) buffalo.Handler {
 	mr := mcimw{
-		grantRoles: McimwRoleList,
+		grantRoles: GrantedRoleList,
 	}
 	return mr.BuffaloMiddleware(next)
 }
@@ -85,52 +85,42 @@ func (mr mcimw) BuffaloMiddleware(next buffalo.Handler) buffalo.Handler {
 }
 
 func (mr mcimw) istokenValid(tokenString string) error {
-	fmt.Println("istokenValid")
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		fmt.Println("1")
-
-		kid := token.Header["kid"].(string)
-		keys, nokey := jwkSet.LookupKeyID(kid)
-		if !nokey {
-			return nil, fmt.Errorf("no keys found for kid: %s", kid)
-		}
-		fmt.Println("2")
-
-		var raw interface{}
-		if err := keys.Raw(&raw); err != nil {
-			return nil, fmt.Errorf("failed to get key: %s", err)
-		}
-		fmt.Println("3")
-
-		return raw, nil
-	})
-	fmt.Println("ParseWithClaims")
-
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, keyfunction)
 	if err != nil {
-		return fmt.Errorf("failed to parse token: %s", err)
+		return fmt.Errorf("failed to parse token: %s", err.Error())
 	}
 
 	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
-		fmt.Printf("user: %s\n", claims.PreferredUsername)
 		if !mr.isRoleContains(claims.RealmRole) {
-			return fmt.Errorf("token is invalid: %s", err.Error())
+			return fmt.Errorf("role is invalid")
 		}
 		return nil
 	} else {
-		return fmt.Errorf("token is invalid: %s", err.Error())
+		return fmt.Errorf("token is invalid")
 	}
 }
 
+func keyfunction(token *jwt.Token) (interface{}, error) {
+	if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+		return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+	}
+	kid := token.Header["kid"].(string)
+	keys, nokey := jwkSet.LookupKeyID(kid)
+	if !nokey {
+		return nil, fmt.Errorf("no keys found for kid: %s", kid)
+	}
+	var raw interface{}
+	if err := keys.Raw(&raw); err != nil {
+		return nil, fmt.Errorf("failed to get key: %s", err)
+	}
+	return raw, nil
+}
+
 func (mr mcimw) isRoleContains(arr []string) bool {
-	fmt.Println("mr :", mr)
 	set := make(map[string]bool)
 	for _, v := range mr.grantRoles {
 		set[v] = true
 	}
-	fmt.Println(set)
 	for _, v := range arr {
 		if set[v] {
 			return true
@@ -141,7 +131,7 @@ func (mr mcimw) isRoleContains(arr []string) bool {
 
 // func EchoMcimw(next echo.HandlerFunc) echo.HandlerFunc {
 // 	mr := mcimw{
-// 		roleNames: McimwRoleList,
+// 		roleNames: GrantedRoleList,
 // 	}
 // 	return mr.EchoMiddleware(next)
 // }
