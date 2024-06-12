@@ -117,7 +117,8 @@ func (k keycloak) AuthLoginHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	res.WriteHeader(http.StatusBadRequest)
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
 	fmt.Fprintln(res, string(jsonData))
 }
 
@@ -158,7 +159,8 @@ func (k keycloak) AuthLoginRefreshHandler(res http.ResponseWriter, req *http.Req
 		return
 	}
 
-	res.WriteHeader(http.StatusBadRequest)
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
 	fmt.Fprintln(res, string(jsonData))
 }
 
@@ -193,6 +195,7 @@ func (k keycloak) AuthLogoutHandler(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
+	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
 	fmt.Fprintln(res, nil)
 }
@@ -227,6 +230,7 @@ func (k keycloak) AuthGetUserInfo(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
 	fmt.Fprintln(res, string(jsonData))
 }
@@ -253,6 +257,7 @@ func (k keycloak) AuthGetUserValidate(res http.ResponseWriter, req *http.Request
 		return
 	}
 
+	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
 	fmt.Fprintln(res, nil)
 }
