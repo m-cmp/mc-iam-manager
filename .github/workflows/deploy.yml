@@ -48,9 +48,7 @@ jobs:
         env:
           JEKYLL_ENV: production
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
-        with:
-          path: docs/wiki/_site
+        uses: actions/upload-pages-artifact@v3
 
   # Deployment job
   deploy:
