@@ -95,5 +95,5 @@ Just the Docs is committed to fostering a welcoming community.
 [GitHub Pages]: https://pages.github.com/
 [Template README]: https://github.com/just-the-docs/just-the-docs-template/blob/main/README.md
 [GitHub Pages / Actions workflow]: https://github.blog/changelog/2022-07-27-github-pages-custom-github-actions-workflows-beta/
-[customize]: {% link docs/customization.md %}
+[customize]: {% link wiki/docs/customization.md %}
 [use the template]: https://github.com/just-the-docs/just-the-docs-template/generate
