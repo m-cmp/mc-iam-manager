@@ -248,7 +248,7 @@ The theme docs are unversioned, and already reflect the above changes.
 
 Docs changes:
 
-- A [footnote]({% link {{ site.baseurl }} docs/configuration.md %}#fn:js-disabled) in the configuration docs explains how disabling JavaScript affects the display of navigation links when browsing folded collections.
+- A [footnote]({% link {{ site.baseurl }} wiki/docs/configuration.md %}#fn:js-disabled) in the configuration docs explains how disabling JavaScript affects the display of navigation links when browsing folded collections.
 - Invalid HTML has been removed from most documentation examples.
 
 ### New Contributors
