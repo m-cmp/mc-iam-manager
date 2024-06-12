@@ -42,8 +42,6 @@ func init() {
 func BeginAuthHandler(res http.ResponseWriter, req *http.Request) {
 	reqUri := req.RequestURI
 	reqMethod := req.Method
-	res.Header().Set("Content-Type", "application/json")
-
 	if strings.HasSuffix(reqUri, "/login") && reqMethod == "POST" {
 		AuthMethod.AuthLoginHandler(res, req)
 		return
