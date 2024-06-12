@@ -41,7 +41,7 @@ This document contains instructions on how to migrate and upgrade Just the Docs 
 > and pull the changes of a new release to your clone,
 > you may need to resolve merge conflicts.
 
-[CHANGELOG]: {% link CHANGELOG.md %}
+[CHANGELOG]: {% link wiki/CHANGELOG.md %}
 
 ## v0.6.x - v0.7.0
 
