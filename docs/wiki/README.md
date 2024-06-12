@@ -1,219 +1,110 @@
----
-layout: home
-title: Jekyll Gitbook Theme
-permalink: /
----
+<p align="right">
+    <a href="https://badge.fury.io/rb/just-the-docs"><img src="https://badge.fury.io/rb/just-the-docs.svg" alt="Gem version"></a> <a href="https://github.com/just-the-docs/just-the-docs/actions/workflows/ci.yml"><img src="https://github.com/just-the-docs/just-the-docs/actions/workflows/ci.yml/badge.svg" alt="CI Build status"></a> <a href="https://app.netlify.com/sites/just-the-docs/deploys"><img src="https://api.netlify.com/api/v1/badges/9dc0386d-c2a4-4077-ad83-f02c33a6c0ca/deploy-status" alt="Netlify Status"></a>
+</p>
+<br><br>
+<p align="center">
+    <h1 align="center">Just the Docs</h1>
+    <p align="center">A modern, highly customizable, and responsive Jekyll theme for documentation with built-in search.<br>Easily hosted on GitHub Pages with few dependencies.</p>
+    <p align="center"><strong><a href="https://just-the-docs.com/">See it in action!</a></strong></p>
+    <br><br><br>
+</p>
 
-Make Jelly site have a GitBook look!
+<p align="center">A video walkthrough of various Just the Docs features</p>
 
-## Demo
+https://user-images.githubusercontent.com/85418632/211225192-7e5d1116-2f4f-4305-bb9b-437fe47df071.mp4
 
-Live demo on Github Pages: [https://sighingnow.github.io/jekyll-gitbook](https://sighingnow.github.io/jekyll-gitbook)
+## Installation
 
-[![Jekyll Themes](https://img.shields.io/badge/featured%20on-JekyllThemes-red.svg)](https://jekyll-themes.com/jekyll-gitbook/)
+### Use the template
 
-## Why Jekyll with GitBook
+The [Just the Docs Template] provides the simplest, quickest, and easiest way to create a new website that uses the Just the Docs theme. To get started with creating a site, just click "[use the template]"!
 
-GitBook is an amazing frontend style to present and organize contents (such as book chapters
-and blogs) on Web. The typical to deploy GitBook at [Github Pages][1]
-is building HTML files locally and then push to Github repository, usually to the `gh-pages`
-branch. It's quite annoying to repeat such workload and make it hard for people do version
-control via git for when there are generated HTML files to be staged in and out.
+Note: To use the theme, you do ***not*** need to clone or fork the [Just the Docs repo]! You should do that only if you intend to browse the theme docs locally, contribute to the development of the theme, or develop a new theme based on Just the Docs.
 
-This theme takes style definition out of generated GitBook site and provided the template
-for Jekyll to rendering markdown documents to HTML, thus the whole site can be deployed
-to [Github Pages][1] without generating and uploading HTML bundle every time when there are
-changes to the original repo.
+You can easily set the site created by the template to be published on [GitHub Pages] – the [template README] file explains how to do that, along with other details.
 
-## How to Get Started
+If [Jekyll] is installed on your computer, you can also build and preview the created site *locally*. This lets you test changes before committing them, and avoids waiting for GitHub Pages.[^2] And you will be able to deploy your local build to a different platform than GitHub Pages.
 
-This theme can be used just as other [Jekyll themes][1] and support [remote theme][12],
-see [the official guide][13] as well.
+More specifically, the created site:
 
-You can introduce this jekyll theme into your own site by either
+- uses a gem-based approach, i.e. uses a `Gemfile` and loads the `just-the-docs` gem
+- uses the [GitHub Pages / Actions workflow] to build and publish the site on GitHub Pages
 
-- [Fork][3] this repository and add your markdown posts to the `_posts` folder.
-- Use as a remote theme in your [`_config.yml`][14](just like what we do for this
-  site itself),
+Other than that, you're free to customize sites that you create with the template, however you like. You can easily change the versions of `just-the-docs` and Jekyll it uses, as well as adding further plugins.
+
+### Use RubyGems
+
+Alternatively, you can install the theme as a Ruby Gem, without creating a new site.
+
+Add this line to your Jekyll site's `Gemfile`:
+
+```ruby
+gem "just-the-docs"
+```
+
+And add this line to your Jekyll site's `_config.yml`:
 
 ```yaml
-remote_theme: sighingnow/jekyll-gitbook
+theme: just-the-docs
 ```
 
-### Deploy Locally with Jekyll Serve
+And then execute:
 
-This theme can be ran locally using Ruby and Gemfiles.
+    $ bundle
 
-[Testing your GitHub Pages site locally with Jekyll](https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/testing-your-github-pages-site-locally-with-jekyll) - GitHub
+Or install it yourself as:
 
-## Full-text search
+    $ gem install just-the-docs
 
-The search functionality in jekyll-gitbook theme is powered by the [gitbook-plugin-search-pro][5] plugin and is enabled by default.
+Alternatively, you can run it inside Docker while developing your site
 
-[https://sighingnow.github.io/jekyll-gitbook/?q=generated](https://sighingnow.github.io/jekyll-gitbook/?q=generated)
+    $ docker-compose up
 
-## Code highlight
+## Usage
 
-The code highlight style is configurable the following entry in `_config.yaml`:
+[View the documentation][Just the Docs] for usage information.
 
-```yaml
-syntax_highlighter_style: colorful
-```
+## Contributing
 
-The default code highlight style is `colorful`, the full supported styles can be found from [the rouge repository][6]. Customized
-style can be added to [./assets/gitbook/rouge/](./assets/gitbook/rouge/).
+Bug reports, proposals of new features, and pull requests are welcome on GitHub at https://github.com/just-the-docs/just-the-docs. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
 
-## How to generate TOC
+### Submitting code changes:
 
-The jekyll-gitbook theme leverages [jekyll-toc][4] to generate the *Contents* for the page.
-The TOC feature is not enabled by default. To use the TOC feature, modify the TOC
-configuration in `_config.yml`:
+- Submit an [Issue](https://github.com/just-the-docs/just-the-docs/issues) that motivates the changes, using the appropriate template
+- Discuss the proposed changes with other users and the maintainers
+- Open a [Pull Request](https://github.com/just-the-docs/just-the-docs/pulls)
+- Ensure all CI tests pass
+- Provide instructions to check the effect of the changes
+- Await code review
 
-```yaml
-toc:
-    enabled: true
-    h_min: 1
-    h_max: 3
-```
+### Design and development principles of this theme:
 
-## Google Analytics, etc.
+1. As few dependencies as possible
+2. No build script needed
+3. First class mobile experience
+4. Make the content shine
 
-The jekyll-gitboook theme supports embedding the [Google Analytics][7], [CNZZ][8] and [Application Insights][9] website analytical tools with the following
-minimal configuration in `_config.yaml`:
+## Development
 
-```yaml
-tracker:
-  google_analytics: "<YOUR GOOGLE ANALYTICS KEY, e.g, UA-xxxxxx-x>"
-```
+To set up your environment to develop this theme: fork this repo, the run `bundle install` from the root directory.
 
-Similarly, CNZZ can be added with the following configuration in `_config.yaml`
+A modern [devcontainer configuration](https://code.visualstudio.com/docs/remote/containers) for VSCode is included.
 
-```yaml
-tracker:
-  cnzz: "<YOUR CNZZ ANALYTICS KEY, e.g., xxxxxxxx>"
-```
+Your theme is set up just like a normal Jekyll site! To test your theme, run `bundle exec jekyll serve` and open your browser at `http://localhost:4000`. This starts a Jekyll server using your theme. Add pages, documents, data, etc. like normal to test your theme's contents. As you make modifications to your theme and to your content, your site will regenerate and you should see the changes in the browser after a refresh, just like normal.
 
-Application Insights can be added with the following configuration in `_config.yaml`
-
-```yaml
-tracker:
-  application_insights: "<YOUR APPLICATION INSIGHTS CONNECTION STRING>"
-```
-
-## Disqus comments
-
-[Disqus](https://disqus.com/) comments can be enabled by adding the following configuration in `_config.yaml`:
-
-```yaml
-disqushandler: "<YOUR DISQUS SHORTNAME>"
-```
-
-## Jekyll collections
-
-Jekyll's [collections][15] is supported to organize the pages in a more fine-grained manner, e.g.,
-
-```yaml
-collections:
-  pages:
-    output: true
-    sort_by: date
-    permalink: /:collection/:year-:month-:day-:title:output_ext
-```
-
-## Extra StyleSheet or Javascript elements
-
-You can add extra CSS or JavaScript references using configuration collections:
-
-- extra_css: for additional style sheets. If the url does not start by http, the path must be relative to the root of the site, without a starting `/`.
-- extra_header_js: for additional scripts to be included in the `<head>` tag, after the `extra_css` has been added. If the url does not start by http, the path must be relative to the root of the site, without a starting `/`.
-- extra_footer_js: for additional scripts to be included at the end of the HTML document, just before the site tracking script. If the url does not start by http, the path must be relative to the root of the site, without a starting `/`.
-
-## Customizing font settings
-
-The fonts can be customized by modifying the `.book.font-family-0` and `.book.font-family-1` entry in [`./assets/gitbook/custom.css`][10],
-
-```css
-.book.font-family-0 {
-    font-family: Georgia, serif;
-}
-.book.font-family-1 {
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-}
-```
-
-## Tips, Warnings and Dangers blocks
-
-The jekyll-gitbook theme supports customized kramdown attributes (`{: .block-tip }`, `{: .block-warning }`,
-`{: .block-danger }`) like that displayed in [the discord.js website][11]. The marker can be used like
-
-```markdown
-> ##### TIP
->
-> This guide is last tested with @napi-rs/canvas^0.1.20, so make sure you have
-> this or a similar version after installation.
-{: .block-tip }
-```
-
-Rendered page can be previewed from
-
-[https://sighingnow.github.io/jekyll-gitbook/jekyll/2022-06-30-tips_warnings_dangers.html](https://sighingnow.github.io/jekyll-gitbook/jekyll/2022-06-30-tips_warnings_dangers.html)
-
-## Cover image inside pages
-
-The jekyll-gitbook theme supports adding a cover image to a specific page by adding
-a `cover` field to the page metadata:
-
-```diff
-  ---
-  title: Page with cover image
-  author: Tao He
-  date: 2022-05-24
-  category: Jekyll
-  layout: post
-+ cover: /assets/jekyll-gitbook/dinosaur.gif
-  ---
-```
-
-The effect can be previewed from
-
-[https://sighingnow.github.io/jekyll-gitbook/jekyll/2022-05-24-page_cover.html](https://sighingnow.github.io/jekyll-gitbook/jekyll/2022-05-24-page_cover.html)
-
-## Diagrams with mermaid.js
-
-This jekyll-theme supports [mermaid.js](https://mermaid.js.org/) to render diagrams
-in markdown.
-
-To enable the mermaid support, you need to set `mermaid: true` in the front matter
-of your post.
-
-```markdown
----
-mermaid: true
----
-```
-
-The example can be previewed from
-
-[https://sighingnow.github.io/jekyll-gitbook/jekyll/2023-08-31-mermaid.html](https://sighingnow.github.io/jekyll-gitbook/jekyll/2023-08-31-mermaid.html)
+When this theme is released, only the files in `_layouts`, `_includes`, and `_sass` tracked with Git will be included in the gem.
 
 ## License
 
-This work is open sourced under the Apache License, Version 2.0.
+The theme is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
 
-Copyright 2019 Tao He.
+[^2]: [It can take up to 10 minutes for changes to your site to publish after you push the changes to GitHub](https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/creating-a-github-pages-site-with-jekyll#creating-your-site).
 
-[1]: https://pages.github.com
-[2]: https://pages.github.com/themes
-[3]: https://github.com/sighingnow/jekyll-gitbook/fork
-[4]: https://github.com/allejo/jekyll-toc
-[5]: https://github.com/gitbook-plugins/gitbook-plugin-search-pro
-[6]: https://github.com/rouge-ruby/rouge/tree/master/lib/rouge/themes
-[7]: https://analytics.google.com/analytics/web/
-[8]: https://www.cnzz.com/
-[9]: https://docs.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview
-[10]: https://github.com/sighingnow/jekyll-gitbook/blob/master/gitbook/custom.css
-[11]: https://discordjs.guide/popular-topics/canvas.html#setting-up-napi-rs-canvas
-[12]: https://rubygems.org/gems/jekyll-remote-theme
-[13]: https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/adding-a-theme-to-your-github-pages-site-using-jekyll
-[14]: https://github.com/sighingnow/jekyll-gitbook/blob/master/_config.yml
-[15]: https://jekyllrb.com/docs/collections/
+[Jekyll]: https://jekyllrb.com
+[Just the Docs Template]: https://just-the-docs.github.io/just-the-docs-template/
+[Just the Docs]: https://just-the-docs.com
+[Just the Docs repo]: https://github.com/just-the-docs/just-the-docs
+[GitHub Pages]: https://pages.github.com/
+[Template README]: https://github.com/just-the-docs/just-the-docs-template/blob/main/README.md
+[GitHub Pages / Actions workflow]: https://github.blog/changelog/2022-07-27-github-pages-custom-github-actions-workflows-beta/
+[use the template]: https://github.com/just-the-docs/just-the-docs-template/generate
