@@ -41,7 +41,7 @@ This document contains instructions on how to migrate and upgrade Just the Docs 
 > and pull the changes of a new release to your clone,
 > you may need to resolve merge conflicts.
 
-[CHANGELOG]: {% link wiki/CHANGELOG.md %}
+[CHANGELOG]: {{ site.baseurl }}{% link CHANGELOG.md %}
 
 ## v0.6.x - v0.7.0
 
@@ -373,7 +373,7 @@ For changes since v0.3.3, the log usually references the merged PR that made the
 
 #### Configuration
 
-- Mermaid support: first-class support for [Mermaid](https://mermaid.js.org/) - a JavaScript-based diagram and charting tool supported by GitHub - has been added to the theme. **This feature is opt-in.** See the new doc subsections in [Configuration]({% link wiki/docs/configuration.md %}#mermaid-diagrams) and [Code]({% link wiki/docs/ui-components/code.md %}#mermaid-diagram-code-blocks) for more.
+- Mermaid support: first-class support for [Mermaid](https://mermaid.js.org/) - a JavaScript-based diagram and charting tool supported by GitHub - has been added to the theme. **This feature is opt-in.** See the new doc subsections in [Configuration]({% link docs/configuration.md %}#mermaid-diagrams) and [Code]({% link docs/ui-components/code.md %}#mermaid-diagram-code-blocks) for more.
 - Multiple Google Analytics tags are now supported. PR: [#1029]
 
 #### Customization
@@ -383,7 +383,7 @@ For changes since v0.3.3, the log usually references the merged PR that made the
 
 #### Custom Includes
 
-We've added several custom `_includes` to provide users with more customization options for different site elements. We've also added a section to [Configuration]({% link wiki/docs/customization.md %}#override-includes) to outline these.
+We've added several custom `_includes` to provide users with more customization options for different site elements. We've also added a section to [Configuration]({% link docs/customization.md %}#override-includes) to outline these.
 
 All of these are opt-in by default; however, **these may be breaking if you have existing `_includes` with the same name**.
 
@@ -401,7 +401,7 @@ In a future (version 1) release, we may rename the custom include files.
 
 We've broken up the default layout (`_layouts/default.html`) into multiple reusable components. This should have no impact on most users; however, it should make it easier to implement custom layouts.
 
-For more, see [Custom layouts and includes]({% link wiki/docs/customization.md %}#custom-layouts-and-includes). PR: [#1058].
+For more, see [Custom layouts and includes]({% link docs/customization.md %}#custom-layouts-and-includes). PR: [#1058].
 
 #### Navigation
 
@@ -414,14 +414,14 @@ For more, see [Custom layouts and includes]({% link wiki/docs/customization.md %
 
 #### Search
 
-In addition to customizing the search placeholder, we've also added the ability to provide custom content to the search index. for more, see [Custom content for search index]({% link wiki/docs/search.md %}#custom-content-for-search-index). PR: [#1068].
+In addition to customizing the search placeholder, we've also added the ability to provide custom content to the search index. for more, see [Custom content for search index]({% link docs/search.md %}#custom-content-for-search-index). PR: [#1068].
 
 #### Styling
 
 - Code copying: code blocks now allow users to easily copy their contents. PR: [#945]
 - Blockquote: shows vertical bar on left. PR: [#965]
 - Links wrap. PR: [#905]
-- Callouts: a new component similar to alerts or banners. See [UI Components - Callouts]({% link wiki/docs/ui-components/callouts.md %}). PR: [#466]
+- Callouts: a new component similar to alerts or banners. See [UI Components - Callouts]({% link docs/ui-components/callouts.md %}). PR: [#466]
 
 ----
 
