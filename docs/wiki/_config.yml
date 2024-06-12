@@ -16,7 +16,7 @@
 title: Just the Docs
 description: A Jekyll theme for documentation
 baseurl: "/wiki" # the subpath of your site, e.g. /blog
-url: "https://mzc-csc.github.io" # the base hostname & protocol for your site, e.g. http://example.com
+url: "https://mzc-csc.github.io/mc-iam-manager" # the base hostname & protocol for your site, e.g. http://example.com
 repository: just-the-docs/just-the-docs # for github-metadata
 
 permalink: pretty
