@@ -239,9 +239,9 @@ Currently, the navigation structure is limited to 3 levels: grandchild pages can
 
 ## Grouping pages with collections
 
-Pages can also be grouped together by using Jekyll's and Just the Docs's [collections]({% link docs/configuration.md %}#document-collections) feature. In contrast to using [pages with children](#pages-with-children), pages grouped by collection are grouped by a shared header (the name of the collection) instead of a page.
+Pages can also be grouped together by using Jekyll's and Just the Docs's [collections]({% link docs/wiki/docs/configuration.md %}#document-collections) feature. In contrast to using [pages with children](#pages-with-children), pages grouped by collection are grouped by a shared header (the name of the collection) instead of a page.
 
-The `nav_fold` configuration option works for collection-grouped pages. For more information, please refer to the [collections documentation]({% link docs/configuration.md %}#document-collections).
+The `nav_fold` configuration option works for collection-grouped pages. For more information, please refer to the [collections documentation]({% link docs/wiki/docs/configuration.md %}#document-collections).
 
 ### Example (grouping by collection)
 {: .no_toc }
@@ -273,7 +273,7 @@ _config.yml:
 
 ## Auxiliary Links
 
-To add auxiliary links to your site (in the upper right on all pages), add it to the `aux_links` [configuration option]({% link docs/configuration.md %}#aux-links) in your site's `_config.yml` file.
+To add auxiliary links to your site (in the upper right on all pages), add it to the `aux_links` [configuration option]({% link docs/wiki/docs/configuration.md %}#aux-links) in your site's `_config.yml` file.
 
 ### Example (auxiliary links)
 {: .no_toc }
@@ -293,7 +293,7 @@ aux_links:
 New (v0.4.0)
 {: .label .label-green }
 
-To add external links to the navigation, add them to the `nav_external_links` [configuration]({% link docs/configuration.md %}) option in your site's `_config.yml` file.
+To add external links to the navigation, add them to the `nav_external_links` [configuration]({% link docs/wiki/docs/configuration.md %}) option in your site's `_config.yml` file.
 External links will appear in the navigation after the links to ordinary pages, but before any collections.
 
 ### Example (external navigation links)
