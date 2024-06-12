@@ -35,13 +35,13 @@ jobs:
 
       - name: Install Dependencies
         run: bundle install
-        working-directory: docs/wiki
+        working-directory: /docs/wiki
 
       - name: Build with Jekyll
         run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
         env:
           JEKYLL_ENV: production
-        working-directory: docs/wiki
+        working-directory: /docs/wiki
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
