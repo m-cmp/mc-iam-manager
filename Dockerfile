@@ -34,8 +34,6 @@ COPY --from=builder /bin/app .
 ENV ADDR=0.0.0.0 \
     PORT=3000
 
-ENV JWKSURL=https://docker.csesmzc.com/realms/mciam/protocol/openid-connect/certs
-
 ENV DEV_DATABASE_URL=postgres://mciamadmin:password@postgres:5432/mciamdb \
     DATABASE_URL=postgres://mciamadmin:password@postgres:5432/mciamdb 
 
