@@ -6,18 +6,18 @@
   ],
   "users": [
     {
-      "username": "service-account-mciammanager",
+      "username": "service-account-mciam",
       "enabled": true,
       "totp": false,
       "emailVerified": false,
-      "serviceAccountClientId": "mciammanager",
+      "serviceAccountClientId": "mciam",
       "disableableCredentialTypes": [],
       "requiredActions": [],
       "realmRoles": [
-        "default-roles-mciammanager"
+        "default-roles-mciam"
       ],
       "clientRoles": {
-        "mciammanager": [
+        "mciam": [
           "uma_protection"
         ]
       },
@@ -25,10 +25,29 @@
       "groups": []
     },
     {
-      "username": "mcpuser",
-      "firstName": "mcp",
+      "username": "mcpsuper",
+      "firstName": "super",
       "lastName": "user",
-      "email": "mcpuser@keycloak.org",
+      "email": "mcpsuper@keycloak.org",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mcpuserpassword"
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "operator",
+        "viewer"
+      ]
+    },
+    {
+      "username": "mcpadmin",
+      "firstName": "admin",
+      "lastName": "user",
+      "email": "mcpadmin@keycloak.org",
       "emailVerified": true,
       "enabled": true,
       "credentials": [
@@ -40,36 +59,66 @@
       "realmRoles": [
         "admin"
       ]
+    },
+    {
+      "username": "mcpviewer",
+      "firstName": "viewer",
+      "lastName": "user",
+      "email": "mcpviewer@keycloak.org",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mcpuserpassword"
+        }
+      ],
+      "realmRoles": [
+        "viewer"
+      ]
+    },
+    {
+      "username": "mcpoperator",
+      "firstName": "operator",
+      "lastName": "user",
+      "email": "mcpoperator@keycloak.org",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mcpuserpassword"
+        }
+      ],
+      "realmRoles": [
+        "operator"
+      ]
     }
   ],
   "roles": {
     "realm": [
       {
-        "id": "55e15f4e-671a-4e27-a293-0c10d7aa8573",
         "name": "admin",
-        "description": ""
+        "description": "default admin user"
       },
       {
-        "id": "4e85dc17-0632-478a-b45e-9846f8f7cef0",
         "name": "viewer",
-        "description": ""
+        "description": "default viewer user"
       },
       {
         "name": "operator",
-        "description": ""
+        "description": "default operator user"
       },
       {
         "name": "offline_access",
         "description": "${role_offline-access}"
       },
       {
-        "id": "46e2d99f-5d19-4d50-a8be-b4f328c7d7e4",
         "name": "uma_authorization",
         "description": "${role_uma_authorization}"
       },
       {
-        "id": "2b7c6eba-0678-4fef-bff8-02dbbaa5a7f8",
-        "name": "default-roles-mciammanagerexport",
+        "name": "default-roles-mciam",
         "description": "${role_default-roles}",
         "composite": true,
         "composites": {
@@ -85,21 +134,18 @@
           }
         },
         "clientRole": false,
-        "containerId": "640a483b-1dd0-4195-8512-a6e4532c4116",
         "attributes": {}
       }
     ],
     "client": {
       "realm-management": [
         {
-          "id": "c98b7a2a-5ae4-476d-b215-a0e45c4e7c1d",
           "name": "query-groups",
           "description": "${role_query-groups}",
           "composite": false,
           "clientRole": true
         },
         {
-          "id": "c95a1fcb-1fad-4d41-b588-f96637e1729f",
           "name": "view-clients",
           "description": "${role_view-clients}",
           "composite": true,
@@ -247,12 +293,11 @@
           "clientRole": true
         }
       ],
-      "mciammanager": [
+      "mciam": [
         {
           "name": "uma_protection",
           "composite": false,
           "clientRole": true,
-          "containerId": "c054a49b-f92c-405e-805a-a6b0da80891c",
           "attributes": {}
         }
       ],
@@ -338,13 +383,13 @@
       "clientId": "account",
       "name": "${client_account}",
       "rootUrl": "${authBaseUrl}",
-      "baseUrl": "/realms/mciammanagerexport/account/",
+      "baseUrl": "/realms/mciam/account/",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "/realms/mciammanagerexport/account/*"
+        "/realms/mciam/account/*"
       ],
       "webOrigins": [],
       "notBefore": 0,
@@ -381,13 +426,13 @@
       "clientId": "account-console",
       "name": "${client_account-console}",
       "rootUrl": "${authBaseUrl}",
-      "baseUrl": "/realms/mciammanagerexport/account/",
+      "baseUrl": "/realms/mciam/account/",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "/realms/mciammanagerexport/account/*"
+        "/realms/mciam/account/*"
       ],
       "webOrigins": [],
       "notBefore": 0,
@@ -432,7 +477,6 @@
       ]
     },
     {
-      "id": "c93935d1-07ba-401d-be85-6e8a561b344a",
       "clientId": "admin-cli",
       "name": "${client_admin-cli}",
       "surrogateAuthRequired": false,
@@ -507,7 +551,7 @@
       ]
     },
     {
-      "clientId": "mciammanager",
+      "clientId": "mciam",
       "name": "",
       "description": "",
       "rootUrl": "",
@@ -517,7 +561,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "mciammanagerclientsecret",
+      "secret": "mciamclientsecret",
       "redirectUris": [
         "/*"
       ],
@@ -538,7 +582,6 @@
       "attributes": {
         "oidc.ciba.grant.enabled": "false",
         "oauth2.device.authorization.grant.enabled": "false",
-        "client.secret.creation.time": "1717721631",
         "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false"
       },
@@ -552,7 +595,7 @@
           "protocolMapper": "oidc-audience-mapper",
           "consentRequired": false,
           "config": {
-            "included.client.audience": "mciammanager",
+            "included.client.audience": "mciam",
             "id.token.claim": "false",
             "access.token.claim": "true",
             "introspection.token.claim": "true"
@@ -671,13 +714,13 @@
       "clientId": "security-admin-console",
       "name": "${client_security-admin-console}",
       "rootUrl": "${authAdminUrl}",
-      "baseUrl": "/admin/mciammanagerexport/console/",
+      "baseUrl": "/admin/mciam/console/",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "/admin/mciammanagerexport/console/*"
+        "/admin/mciam/console/*"
       ],
       "webOrigins": [
         "+"
@@ -701,7 +744,6 @@
       "nodeReRegistrationTimeout": 0,
       "protocolMappers": [
         {
-          "id": "f1c9fe2d-9207-4c43-bbdf-e46f7f0472e6",
           "name": "locale",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-attribute-mapper",

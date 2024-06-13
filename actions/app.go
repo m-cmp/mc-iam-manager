@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"mc_iam_manager/mcimw"
 	"mc_iam_manager/models"
 	"net/http"
 	"sync"
@@ -39,42 +40,50 @@ func App() *buffalo.App {
 		app.Use(forceSSL())
 		app.Use(paramlogger.ParameterLogger)
 		app.Use(contenttype.Set("application/json"))
-
 		app.Use(popmw.Transaction(models.DB))
 
-		app.GET("/alive", alive)
+		apiPath := envy.Get("API_PATH", "/api/")
 
-		apiPath := "/api/"
+		mcimw.AuthMethod = mcimw.EnvKeycloak
+
+		alive := app.Group("/alive")
+		alive.GET("/", aliveSig)
+		mcimw.GrantedRoleList = []string{"admin"}
+		alive.GET("/admin", mcimw.BuffaloMcimw(aliveSig))
+
+		mcimw.GrantedRoleList = []string{"viewer"}
+		alive.GET("/viewer", mcimw.BuffaloMcimw(aliveSig))
+
+		mcimw.GrantedRoleList = []string{"operator"}
+		alive.GET("/operator", mcimw.BuffaloMcimw(aliveSig))
 
 		auth := app.Group(apiPath + "auth")
-		auth.POST("/login", AuthLoginHandler)
-		auth.POST("/login/refresh", AuthLoginRefreshHandler)
-		auth.POST("/logout", AuthLogoutHandler)
-		auth.GET("/userinfo", AuthGetUserInfo)
-		auth.GET("/validate", AuthGetUserValidate)
-		auth.GET("/securitykey", AuthGetSecurityKeyHandler)
+		auth.ANY("/{path:.+}", buffalo.WrapHandlerFunc(mcimw.BeginAuthHandler))
 
-		rolePath := app.Group(apiPath + "/role")
+		sts := app.Group(apiPath + "sts")
+		sts.GET("/securitykey", AuthGetSecurityKeyHandler)
+
+		rolePath := app.Group(apiPath + "role")
 		rolePath.POST("/", CreateRole)
 		rolePath.GET("/", GetRoleList)
 		rolePath.GET("/{roleId}", GetRole)
 		rolePath.DELETE("/{roleId}", DeleteRole)
 
-		workspacePath := app.Group(apiPath + "/ws")
+		workspacePath := app.Group(apiPath + "ws")
 		workspacePath.POST("/", CreateWorkspace)
 		workspacePath.GET("/", GetWorkspaceList)
 		workspacePath.GET("/workspace/{workspaceId}", GetWorkspace)
 		workspacePath.PUT("/workspace/{workspaceId}", UpdateWorkspace)
 		workspacePath.DELETE("/workspace/{workspaceId}", DeleteWorkspace)
 
-		projectPath := app.Group(apiPath + "/prj")
+		projectPath := app.Group(apiPath + "prj")
 		projectPath.POST("/", CreateProject)
 		projectPath.GET("/", GetProjectList)
 		projectPath.GET("/project/{projectId}", GetProject)
 		projectPath.PUT("/project/{projectId}", UpdateProject)
 		projectPath.DELETE("/project/{projectId}", DeleteProject)
 
-		workspaceProjectMappingPath := app.Group(apiPath + "/wsprj")
+		workspaceProjectMappingPath := app.Group(apiPath + "wsprj")
 		workspaceProjectMappingPath.POST("/workspace/{workspaceId}", CreateWorkspaceProjectMapping)
 		workspaceProjectMappingPath.GET("/", GetWorkspaceProjectMappingList)
 		workspaceProjectMappingPath.GET("/workspace/{workspaceId}", GetWorkspaceProjectMappingByWorkspace)
@@ -83,7 +92,7 @@ func App() *buffalo.App {
 		workspaceProjectMappingPath.DELETE("/workspace/{workspaceId}", DeleteWorkspaceProjectMappingAllByWorkspace)
 		workspaceProjectMappingPath.DELETE("/project/{projectId}", DeleteWorkspaceProjectMappingByProject)
 
-		workspaceUserRoleMappingPath := app.Group(apiPath + "/wsuserrole")
+		workspaceUserRoleMappingPath := app.Group(apiPath + "wsuserrole")
 		workspaceUserRoleMappingPath.POST("/workspace/{workspaceId}", CreateWorkspaceUserRoleMapping)
 		workspaceUserRoleMappingPath.GET("/", GetWorkspaceUserRoleMapping)
 		workspaceUserRoleMappingPath.GET("/workspace/{workspaceId}", GetWorkspaceUserRoleMappingByWorkspace)
@@ -104,6 +113,6 @@ func forceSSL() buffalo.MiddlewareFunc {
 	})
 }
 
-func alive(c buffalo.Context) error {
+func aliveSig(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(map[string]string{"ststus": "ok"}))
 }

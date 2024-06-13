@@ -3,6 +3,7 @@
 FROM gobuffalo/buffalo:v0.18.14 as builder
 
 ENV GOPROXY http://proxy.golang.org
+ENV GO111MODULE on
 
 RUN mkdir -p /src/mc-iam-manager
 WORKDIR /src/mc-iam-manager
@@ -42,5 +43,6 @@ ENV CBLOG_ROOT=/bin \
 EXPOSE 3000
 
 # Uncomment to run the migrations before running the binary:
-CMD /bin/app migrate; /bin/app
+# CMD /bin/app migrate; /bin/app
+CMD bash -c 'until /bin/app migrate; do echo "Migration failed. Retrying in 10 seconds..."; sleep 10; done; /bin/app'
 # CMD exec /bin/app
