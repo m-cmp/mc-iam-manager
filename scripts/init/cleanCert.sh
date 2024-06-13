@@ -1,0 +1,1 @@
+sudo rm -rf ~/.m-cmp/data/certbot
