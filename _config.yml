@@ -10,4 +10,4 @@ aux_links:
 
 nav_external_links:
   - title: API Docs (swagger)
-    url: /mc-iam-manager/swagger/index.html
+    url: /swagger/
