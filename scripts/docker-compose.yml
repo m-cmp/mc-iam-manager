@@ -11,15 +11,12 @@ services:
       GODEBUG: netdns=go
       DEV_DATABASE_URL: postgres://mciamadmin:mciammanagerpassword@postgresdb:5432/mciamdb
       DATABASE_URL: postgres://mciamadmin:mciammanagerpassword@postgresdb:5432/mciamdb
-      ADMINUSERID: mcpuser
-      ADMINUSERPASSWORD: mcpuserpassword
-      KEYCLOAK_USE: "true"
       KEYCLOAK_HOST: http://keycloak:8080
       KEYCLAOK_ADMIN: admin
       KEYCLAOK_ADMIN_PASSWORD: admin
       KEYCLAOK_REALM: mciam
-      KEYCLAOK_CLIENT: mciammanager
-      KEYCLAOK_CLIENT_SECRET: mciammanagerclientsecret
+      KEYCLAOK_CLIENT: mciam
+      KEYCLAOK_CLIENT_SECRET: mciamclientsecret
     networks:
       - mciammanagernet
     restart: always
@@ -52,6 +49,7 @@ services:
       KC_FEATURES: recovery-codes:v1,scripts:v1
     volumes:
       - ~/.m-cmp/data/certbot/conf:/etc/letsencrypt
+      - ~/.m-cmp/data/keycloak/data/:/opt/keycloak/data/
       - ./realm-import.json:/opt/keycloak/data/import/realm-import.json
     depends_on:
       - postgresdb
