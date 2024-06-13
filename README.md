@@ -4,6 +4,8 @@
 [![Release Version](https://img.shields.io/github/v/release/m-cmp/mc-iam-manager)](https://github.com/m-cmp/mc-iam-manager/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/m-cmp/mc-iam-manager/blob/master/LICENSE)
 
+[M-CMP IAM Manager docs](https://m-cmp.github.io/mc-iam-manager/)
+
 # M-CMP IAM Manager
 
 This repository provides a Multi-Cloud IAM Management Framework.
