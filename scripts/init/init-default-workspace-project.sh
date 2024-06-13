@@ -34,6 +34,6 @@ curl -s -X POST -H "Content-Type: application/json" \
     $MCIAM_HOST/api/role
 
 curl -s -X POST -H "Content-Type: application/json" \
-    -d '{"user_id": "adminUser", "role_name": "admin"}' \
+    -d '{"user_id": "mcpadmin", "role_name": "admin"}' \
     $MCIAM_HOST/api/wsuserrole/workspace/default
 
