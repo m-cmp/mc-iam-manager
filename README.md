@@ -135,28 +135,28 @@ If `{"stststus":"ok"}` is received from the endpoint, it means that the service 
 You can get tokens issued and see the default Role created through some of the built-in accounts below. For more API information, check the following swagger link.
 
 ```bash
-$ curl --location 'https://docker.csesmzc.com:5000/api/auth/login' \
+$ curl --location 'https://yourdomain.com:5000/api/auth/login' \
 --header 'Content-Type: application/json' \
 --data '{
     "id":"mcpsuper",
     "password":"mcpuserpassword"
 }'
 
-$ curl --location 'https://docker.csesmzc.com:5000/api/auth/login' \
+$ curl --location 'https://yourdomain.com:5000/api/auth/login' \
 --header 'Content-Type: application/json' \
 --data '{
     "id":"mcpadmin",
     "password":"mcpuserpassword"
 }'
 
-$ curl --location 'https://docker.csesmzc.com:5000/api/auth/login' \
+$ curl --location 'https://yourdomain.com:5000/api/auth/login' \
 --header 'Content-Type: application/json' \
 --data '{
     "id":"mcpoperator",
     "password":"mcpuserpassword"
 }'
 
-$ curl --location 'https://docker.csesmzc.com:5000/api/auth/login' \
+$ curl --location 'https://yourdomain.com:5000/api/auth/login' \
 --header 'Content-Type: application/json' \
 --data '{
     "id":"mcpviewer",
@@ -175,6 +175,22 @@ $ curl --location 'https://docker.csesmzc.com:5000/api/auth/login' \
     "session_state": "xxxxx",
     "scope": "openid microprofile-jwt profile email"
 }
+```
+
+### Get CB-Tumblebug namespace Data
+
+You can run the following script to assign the configured existing data to the Default Workplace.
+
+```bash
+$ cd <yourfolder>/scripts/init
+$ nano ./init.env
+# TB_HOST=<tumblegub host>
+# TB_username=<TB_username>
+# TB_password=<TB_password>
+#
+# MCIAM_HOST=<https://yourdomain.com:5000>
+
+$ ./init-default-workspace-project.sh
 ```
 
 
