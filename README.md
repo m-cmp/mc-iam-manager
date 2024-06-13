@@ -195,16 +195,11 @@ $ ./init-default-workspace-project.sh
 
 
 
-## swagger docs
-https://m-cmp.github.io/mc-iam-manager/
+[## swagger docs](https://m-cmp.github.io/mc-iam-manager/)
 
-    ```
-    # https://m-cmp.github.io/mc-iam-manager/
-    ```
-
-## models
-- mc-iam-manager/buffalo/iammodels
-  - 요청 응답 모델 관리
+ ```
+ # https://m-cmp.github.io/mc-iam-manager/
+ ```
 
 ## How to Contribute
 - Issues/Discussions/Ideas: Utilize issue of mc-iam-manager
