@@ -177,6 +177,13 @@ $ curl --location 'https://yourdomain.com:5000/api/auth/login' \
 }
 ```
 
+### swagger docs
+https://m-cmp.github.io/mc-iam-manager/
+
+ ```
+ # https://m-cmp.github.io/mc-iam-manager/
+ ```
+
 ### Get CB-Tumblebug namespace Data
 
 You can run the following script to assign the configured existing data to the Default Workplace.
@@ -193,13 +200,8 @@ $ nano ./init.env
 $ ./init-default-workspace-project.sh
 ```
 
+---
 
-
-[## swagger docs](https://m-cmp.github.io/mc-iam-manager/)
-
- ```
- # https://m-cmp.github.io/mc-iam-manager/
- ```
 
 ## How to Contribute
 - Issues/Discussions/Ideas: Utilize issue of mc-iam-manager
