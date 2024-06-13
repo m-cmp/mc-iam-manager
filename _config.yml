@@ -7,4 +7,7 @@ url: https://mzc-csc.github.io/mc-iam-manager/
 aux_links:
   Github: https://github.com/m-cmp/mc-iam-manager
 
-# color_scheme: dark
+
+nav_external_links:
+  - title: API Docs (swagger)
+    url: /mc-iam-manager/swagger/index.html
