@@ -14,10 +14,39 @@
     "paths": {
         "/alive": {
             "get": {
+                "produces": [
+                    "application/json"
+                ],
                 "parameters": [],
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "success",
+                        "headers": {
+                            "Connection": {
+                                "type": "string"
+                            },
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Server": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "ststus": {
+                                    "example": "ok",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
                     }
                 },
                 "description": "mc-iam-manager가 정상적으로 작동중인지 확인합니다.",
@@ -40,7 +69,7 @@
                         "schema": {
                             "properties": {
                                 "id": {
-                                    "example": "mcpuser",
+                                    "example": "mcpadmin",
                                     "type": "string"
                                 },
                                 "password": {
@@ -129,7 +158,7 @@
                     }
                 },
                 "tags": [
-                    "[user] AUTH"
+                    "[user] Auth"
                 ],
                 "description": "ID/Password를 받아 JWT 세션 토큰을 반환",
                 "operationId": "login",
@@ -236,7 +265,7 @@
                     }
                 },
                 "tags": [
-                    "[user] AUTH"
+                    "[user] Auth"
                 ],
                 "description": "refresh_token과 기존 JWT를 받아, 새로운 JWT 토큰 발급",
                 "operationId": "loginrefresh",
@@ -303,85 +332,11 @@
                     }
                 },
                 "tags": [
-                    "[user] AUTH"
+                    "[user] Auth"
                 ],
                 "description": "AccessToken및 RefreshToken을 받아 해당 토큰 파기",
                 "operationId": "logout",
                 "summary": "Logout"
-            }
-        },
-        "/api/auth/securitykey": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [],
-                "responses": {
-                    "200": {
-                        "description": "Securitykey Success",
-                        "headers": {
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "AccessKeyId": {
-                                    "example": "xxxx",
-                                    "type": "string"
-                                },
-                                "Expiration": {
-                                    "example": "2024-04-09T00:51:43Z",
-                                    "type": "string"
-                                },
-                                "SecretAccessKey": {
-                                    "example": "xxxx",
-                                    "type": "string"
-                                },
-                                "SessionToken": {
-                                    "example": "xxxx",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "503": {
-                        "description": "Securitykey CSP err",
-                        "headers": {
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "err": {
-                                    "example": "provided CSP is not supported",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    }
-                },
-                "tags": [
-                    "[user] AUTH"
-                ],
-                "description": "임시보안자격증명 발급요청",
-                "operationId": "securitykey",
-                "summary": "Securitykey"
             }
         },
         "/api/auth/userinfo": {
@@ -439,7 +394,7 @@
                     }
                 },
                 "tags": [
-                    "[user] AUTH"
+                    "[user] Auth"
                 ],
                 "description": "유저 정보 조회",
                 "operationId": "getuserinfo",
@@ -501,7 +456,7 @@
                     }
                 },
                 "tags": [
-                    "[user] AUTH"
+                    "[user] Auth"
                 ],
                 "description": "유저 토큰의 사용가능 유무",
                 "operationId": "getusevalidate",
@@ -631,7 +586,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Project"
+                    "Project"
                 ],
                 "description": "project 전제 목록 조회",
                 "operationId": "getprojectlist",
@@ -727,7 +682,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Project"
+                    "Project"
                 ],
                 "description": "project 생성",
                 "operationId": "createproject",
@@ -787,7 +742,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Project"
+                    "Project"
                 ],
                 "description": "프로젝트 단건 삭제",
                 "operationId": "deleteproject",
@@ -862,7 +817,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Project"
+                    "Project"
                 ],
                 "description": "project 단건 조회",
                 "operationId": "getproject",
@@ -954,7 +909,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Project"
+                    "Project"
                 ],
                 "description": "project 단건 수정",
                 "operationId": "updateproject",
@@ -1060,7 +1015,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Roletype"
+                    "Roletype"
                 ],
                 "description": "role 전체 목록 조회",
                 "operationId": "getrolelist",
@@ -1152,7 +1107,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Roletype"
+                    "Roletype"
                 ],
                 "description": "role 생성",
                 "operationId": "createrole",
@@ -1212,7 +1167,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Roletype"
+                    "Roletype"
                 ],
                 "description": "role 삭제",
                 "operationId": "deleterole",
@@ -1287,11 +1242,85 @@
                     }
                 },
                 "tags": [
-                    "[admin] Roletype"
+                    "Roletype"
                 ],
                 "description": "role 단건 조회",
                 "operationId": "getrole",
                 "summary": "GetRole"
+            }
+        },
+        "/api/sts/securitykey": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "Securitykey Success",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "AccessKeyId": {
+                                    "example": "xxxx",
+                                    "type": "string"
+                                },
+                                "Expiration": {
+                                    "example": "2024-04-09T00:51:43Z",
+                                    "type": "string"
+                                },
+                                "SecretAccessKey": {
+                                    "example": "xxxx",
+                                    "type": "string"
+                                },
+                                "SessionToken": {
+                                    "example": "xxxx",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "503": {
+                        "description": "Securitykey CSP err",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "err": {
+                                    "example": "provided CSP is not supported",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "tags": [
+                    "[PoC]  STS"
+                ],
+                "description": "임시보안자격증명 발급요청",
+                "operationId": "securitykey",
+                "summary": "Securitykey"
             }
         },
         "/api/ws": {
@@ -1409,7 +1438,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Workspace"
+                    "Workspace"
                 ],
                 "description": "workspace 목록 조회",
                 "operationId": "getworkspacelist",
@@ -1505,7 +1534,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Workspace"
+                    "Workspace"
                 ],
                 "description": "workspace 생성",
                 "operationId": "createworkspace",
@@ -1601,7 +1630,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Workspace"
+                    "Workspace"
                 ],
                 "description": "workspace 삭제",
                 "operationId": "deleteworkspace",
@@ -1676,7 +1705,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Workspace"
+                    "Workspace"
                 ],
                 "description": "workspace 단건 조회",
                 "operationId": "getworkspace",
@@ -1768,7 +1797,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] Workspace"
+                    "Workspace"
                 ],
                 "description": "workspace 단건 수정",
                 "operationId": "updateworkspace",
@@ -1973,7 +2002,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceProjectMapping"
+                    "WorkspaceProjectMapping"
                 ],
                 "description": "workspace - projects mapping 모든 목록 조회",
                 "operationId": "getworkspaceprojectmapping",
@@ -2033,7 +2062,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceProjectMapping"
+                    "WorkspaceProjectMapping"
                 ],
                 "description": "workspace - projects mapping 해당 워크스페이스 모두 삭제",
                 "operationId": "deleteworkspaceprojectmappingallbyworkspace",
@@ -2155,7 +2184,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceProjectMapping"
+                    "WorkspaceProjectMapping"
                 ],
                 "description": "workspace - projects mapping 단건 조회",
                 "operationId": "getworkspaceprojectmappingbyworkspace",
@@ -2308,7 +2337,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceProjectMapping"
+                    "WorkspaceProjectMapping"
                 ],
                 "description": "workspace - projects mapping 생성",
                 "operationId": "createworkspaceprojectmapping",
@@ -2450,7 +2479,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceProjectMapping"
+                    "WorkspaceProjectMapping"
                 ],
                 "description": "workspace - projects mapping 단건 수정",
                 "operationId": "updateworkspaceprojectmapping",
@@ -2516,7 +2545,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceProjectMapping"
+                    "WorkspaceProjectMapping"
                 ],
                 "description": "workspace - projects mapping 단건 삭제",
                 "operationId": "deleteworkspaceprojectmapping",
@@ -2711,7 +2740,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceUserRoleMapping"
+                    "WorkspaceUserRoleMapping"
                 ],
                 "description": "workspace - user - role mapping 목록 전체 조회",
                 "operationId": "getworkspaceuserrolemapping",
@@ -2910,7 +2939,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceUserRoleMapping"
+                    "WorkspaceUserRoleMapping"
                 ],
                 "description": "workspace - user - role mapping 목록 workspace 및 user 로 조회",
                 "operationId": "getworkspaceuserrolemappingbyworkspaceuser",
@@ -2970,7 +2999,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceUserRoleMapping"
+                    "WorkspaceUserRoleMapping"
                 ],
                 "description": "workspace - user - role mapping 목록 workspace 및 user 로 삭제",
                 "operationId": "deleteworkspaceuserrolemappingall",
@@ -3054,7 +3083,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceUserRoleMapping"
+                    "WorkspaceUserRoleMapping"
                 ],
                 "description": "workspace - user - role mapping 목록 workspace 로 조회",
                 "operationId": "getworkspaceuserrolemappingbyworkspace",
@@ -3150,7 +3179,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceUserRoleMapping"
+                    "WorkspaceUserRoleMapping"
                 ],
                 "description": "workspace - user - role mapping 생성",
                 "operationId": "createworkspaceuserrolemapping",
@@ -3216,7 +3245,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceUserRoleMapping"
+                    "WorkspaceUserRoleMapping"
                 ],
                 "description": "workspace - user - role mapping workspace 및 user 로 삭제",
                 "operationId": "deleteworkspaceuserrolemapping",
@@ -3342,7 +3371,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceUserRoleMapping"
+                    "WorkspaceUserRoleMapping"
                 ],
                 "description": "workspace - user - role mapping 목록 user 로 조회",
                 "operationId": "getworkspaceuserrolemappingbyuser",
@@ -3493,7 +3522,7 @@
                     }
                 },
                 "tags": [
-                    "[admin] WorkspaceUserRoleMapping"
+                    "WorkspaceUserRoleMapping"
                 ],
                 "description": "workspace - user - role mapping workspace 및 user 로 수정",
                 "operationId": "updateworkspaceprojectmapping1",
@@ -3504,27 +3533,31 @@
     "tags": [
         {
             "description": "토큰 관리",
-            "name": "[user] AUTH"
-        },
-        {
-            "description": "role 관리",
-            "name": "[admin] Roletype"
+            "name": "[user] Auth"
         },
         {
             "description": "\\[Platform Admin\\] 워크스페이스 관리",
-            "name": "[admin] Workspace"
+            "name": "Workspace"
         },
         {
             "description": "\\[Platform Admin\\] 프로젝트 관리",
-            "name": "[admin] Project"
+            "name": "Project"
+        },
+        {
+            "description": "role 관리",
+            "name": "Roletype"
         },
         {
             "description": "워크스페이스 프로젝트 Mapping 관리",
-            "name": "[admin] WorkspaceProjectMapping"
+            "name": "WorkspaceProjectMapping"
         },
         {
             "description": "워크스페이스 User Role Mapping 관리",
-            "name": "[admin] WorkspaceUserRoleMapping"
+            "name": "WorkspaceUserRoleMapping"
+        },
+        {
+            "description": "CSP sts token 요청",
+            "name": "[PoC]  STS"
         }
     ]
 }
