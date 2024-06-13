@@ -2,7 +2,7 @@ title: mc-iam-manager
 description: docs for mc-iam-manager
 theme: just-the-docs
 
-url: https://mzc-csc.github.io/mc-iam-manager/
+url: https://mzc-csc.github.io/mc-iam-manager
 
 aux_links:
   Github: https://github.com/m-cmp/mc-iam-manager
@@ -10,4 +10,4 @@ aux_links:
 
 nav_external_links:
   - title: API Docs (swagger)
-    url: /swagger/
+    url: /swagger
