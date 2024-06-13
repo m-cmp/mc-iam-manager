@@ -29,14 +29,6 @@ It defines an access control reference model for multi-cloud, distinguishing bet
   - M-CMP 계정-멀티클라우드 계정간 권한 관리
   - 멀티클라우드 계정/접근제어 정보 통합 관리
 
-## How to Use
-  - [[설치 환경]](#설치-환경)
-  - [[의존성]](#의존성)
-  - [[소스 설치]](#소스-설치)
-  - [[환경 설정]](#환경-설정)
-  - [[mc-iam-manager 실행]](#mc-iam-manager-실행)
-
-
 ## Quick Start with docker
 
 Use this guide to start MC-IAM-MANAGER using the docker. The Quick Start guide sets the default Admin, Operator, Viewer account, and environment.
