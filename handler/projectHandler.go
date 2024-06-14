@@ -10,7 +10,7 @@ import (
 )
 
 func CreateProject(tx *pop.Connection, s *models.MCIamProject) (*models.MCIamProject, error) {
-	workspacExist, err := IsExistsProject(tx, s.ProjectID)
+	workspacExist, err := IsExistsProjectDB(tx, s.ProjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func CreateProject(tx *pop.Connection, s *models.MCIamProject) (*models.MCIamPro
 	return s, nil
 }
 
-func IsExistsProject(tx *pop.Connection, projectId string) (bool, error) {
+func IsExistsProjectDB(tx *pop.Connection, projectId string) (bool, error) {
 	var project models.MCIamProject
 	txerr := tx.Where("project_id = ?", projectId).First(&project)
 	if txerr != nil {

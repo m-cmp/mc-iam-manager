@@ -3,7 +3,6 @@ package actions
 import (
 	"log"
 	"mc_iam_manager/handler"
-	"mc_iam_manager/iammodels"
 	"mc_iam_manager/models"
 	"net/http"
 
@@ -23,7 +22,7 @@ func CreateWorkspaceProjectMapping(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+			r.JSON(handler.CommonResponseStatusInternalServerError(err.Error())),
 		)
 	}
 
@@ -35,11 +34,11 @@ func CreateWorkspaceProjectMapping(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, createdWorkspaceProjectMapping)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, createdWorkspaceProjectMapping)),
 	)
 }
 
@@ -50,11 +49,11 @@ func GetWorkspaceProjectMappingList(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, WorkspaceProjectMappingList)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, WorkspaceProjectMappingList)),
 	)
 }
 
@@ -67,11 +66,11 @@ func GetWorkspaceProjectMappingByWorkspace(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, WorkspaceProjectMappingList)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, WorkspaceProjectMappingList)),
 	)
 }
 
@@ -82,7 +81,7 @@ func UpdateWorkspaceProjectMapping(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+			r.JSON(handler.CommonResponseStatusInternalServerError(err.Error())),
 		)
 	}
 
@@ -94,11 +93,11 @@ func UpdateWorkspaceProjectMapping(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, createdWorkspaceProjectMapping)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, createdWorkspaceProjectMapping)),
 	)
 }
 
@@ -112,11 +111,11 @@ func DeleteWorkspaceProjectMapping(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, nil)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, nil)),
 	)
 }
 
@@ -129,11 +128,11 @@ func DeleteWorkspaceProjectMappingAllByWorkspace(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, nil)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, nil)),
 	)
 }
 
@@ -146,11 +145,11 @@ func DeleteWorkspaceProjectMappingByProject(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, nil)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, nil)),
 	)
 }
 
@@ -165,7 +164,7 @@ func CreateWorkspaceUserRoleMapping(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+			r.JSON(handler.CommonResponseStatusInternalServerError(err.Error())),
 		)
 	}
 
@@ -177,11 +176,11 @@ func CreateWorkspaceUserRoleMapping(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, createdWorkspaceProjectMapping)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, createdWorkspaceProjectMapping)),
 	)
 }
 
@@ -192,11 +191,11 @@ func GetWorkspaceUserRoleMapping(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, createdWorkspaceProjectMapping)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, createdWorkspaceProjectMapping)),
 	)
 }
 
@@ -210,11 +209,11 @@ func GetWorkspaceUserRoleMappingByWorkspace(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, workspaceUserRoleMapping)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, workspaceUserRoleMapping)),
 	)
 }
 
@@ -229,11 +228,11 @@ func GetWorkspaceUserRoleMappingByWorkspaceUser(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, workspaceUserRoleMapping)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, workspaceUserRoleMapping)),
 	)
 }
 
@@ -247,11 +246,11 @@ func GetWorkspaceUserRoleMappingByUser(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, workspaceUserRoleMapping)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, workspaceUserRoleMapping)),
 	)
 }
 
@@ -265,7 +264,7 @@ func UpdateWorkspaceUserRoleMapping(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+			r.JSON(handler.CommonResponseStatusInternalServerError(err.Error())),
 		)
 	}
 
@@ -275,11 +274,11 @@ func UpdateWorkspaceUserRoleMapping(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, workspaceUserRoleMapping)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, workspaceUserRoleMapping)),
 	)
 }
 
@@ -293,11 +292,11 @@ func DeleteWorkspaceUserRoleMapping(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, nil)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, nil)),
 	)
 }
 
@@ -309,10 +308,10 @@ func DeleteWorkspaceUserRoleMappingAll(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, nil)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, nil)),
 	)
 }

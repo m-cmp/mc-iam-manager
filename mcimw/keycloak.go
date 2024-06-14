@@ -261,3 +261,18 @@ func (k keycloak) AuthGetUserValidate(res http.ResponseWriter, req *http.Request
 	res.WriteHeader(http.StatusOK)
 	fmt.Fprintln(res, nil)
 }
+
+func (k keycloak) AuthGetCerts(res http.ResponseWriter, req *http.Request) {
+	ctx := context.Background()
+	cert, err := k.KEYCLOAK.GetCerts(ctx, k.KEYCLAOK_REALM)
+	if err != nil {
+		fmt.Println(err)
+		res.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(res, err)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	fmt.Fprintln(res, cert)
+}

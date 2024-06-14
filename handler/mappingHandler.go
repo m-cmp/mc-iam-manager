@@ -17,7 +17,7 @@ import (
 
 func CreateWorkspaceProjectMapping(tx *pop.Connection, mappingWorkspaceProjectRequest *models.MCIamMappingWorkspaceProjectRequest) (*models.MCIamMappingWorkspaceProjectResponse, error) {
 	for _, prjid := range mappingWorkspaceProjectRequest.Projects {
-		projectExist, err := IsExistsProject(tx, prjid)
+		projectExist, err := IsExistsProjectDB(tx, prjid)
 		if err != nil {
 			log.Error(err)
 			return nil, err
