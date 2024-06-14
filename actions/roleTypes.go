@@ -3,7 +3,6 @@ package actions
 import (
 	"log"
 	"mc_iam_manager/handler"
-	"mc_iam_manager/iammodels"
 	"mc_iam_manager/models"
 
 	"net/http"
@@ -19,7 +18,7 @@ func CreateRole(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+			r.JSON(handler.CommonResponseStatusInternalServerError(err.Error())),
 		)
 	}
 
@@ -32,11 +31,11 @@ func CreateRole(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, createdRole)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, createdRole)),
 	)
 }
 
@@ -47,11 +46,11 @@ func GetRoleList(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, roleList)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, roleList)),
 	)
 }
 
@@ -64,11 +63,11 @@ func GetRole(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, roleList)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, roleList)),
 	)
 }
 
@@ -79,7 +78,7 @@ func UpdateRole(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+			r.JSON(handler.CommonResponseStatusInternalServerError(err.Error())),
 		)
 	}
 
@@ -91,11 +90,11 @@ func UpdateRole(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, RoleList)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, RoleList)),
 	)
 }
 
@@ -107,9 +106,9 @@ func DeleteRole(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, nil)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, nil)),
 	)
 }
