@@ -3,7 +3,6 @@ package actions
 import (
 	"log"
 	"mc_iam_manager/handler"
-	"mc_iam_manager/iammodels"
 	"mc_iam_manager/models"
 	"net/http"
 
@@ -19,7 +18,7 @@ func CreateWorkspace(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+			r.JSON(handler.CommonResponseStatusInternalServerError(err.Error())),
 		)
 	}
 	workspace.WorkspaceID = workspace.Name // TODO : ID, Name 모두 필요한가?
@@ -30,11 +29,11 @@ func CreateWorkspace(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, createdWorkspace)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, createdWorkspace)),
 	)
 }
 
@@ -45,11 +44,11 @@ func GetWorkspaceList(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, workspaceList)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, workspaceList)),
 	)
 }
 
@@ -62,11 +61,11 @@ func GetWorkspace(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, workspaceList)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, workspaceList)),
 	)
 }
 
@@ -77,7 +76,7 @@ func UpdateWorkspace(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatusInternalServerError(err.Error())),
+			r.JSON(handler.CommonResponseStatusInternalServerError(err.Error())),
 		)
 	}
 
@@ -89,11 +88,11 @@ func UpdateWorkspace(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, workspaceList)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, workspaceList)),
 	)
 }
 
@@ -105,9 +104,9 @@ func DeleteWorkspace(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(
 			http.StatusInternalServerError,
-			r.JSON(iammodels.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
+			r.JSON(handler.CommonResponseStatus(http.StatusInternalServerError, err.Error())))
 	}
 	return c.Render(http.StatusOK,
-		r.JSON(iammodels.CommonResponseStatus(http.StatusOK, nil)),
+		r.JSON(handler.CommonResponseStatus(http.StatusOK, nil)),
 	)
 }
