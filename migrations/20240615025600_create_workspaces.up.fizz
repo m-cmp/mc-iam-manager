@@ -1,7 +1,8 @@
-create_table("mc_iam_projects") {
+create_table("workspaces") {
 	t.Column("id", "uuid", {primary: true})
-	t.Column("project_id", "text", {})
 	t.Column("name", "text", {})
 	t.Column("description", "text", {null: true})
 	t.Timestamps()
 }
+
+add_index("workspaces", "name", {"unique": true})

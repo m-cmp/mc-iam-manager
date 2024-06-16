@@ -1,7 +1,0 @@
-create_table("mc_iam_roletypes") {
-	t.Column("id", "uuid", {primary: true})
-	t.Column("type", "text", {})
-	t.Column("role_id", "text", {})
-	t.Column("role_name", "text", {})
-	t.Timestamps()
-}

@@ -10,49 +10,49 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-// MCIamRoletype is used by pop to map your mc_iam_roletypes database table to your go code.
-type MCIamRoletype struct {
+// Role is used by pop to map your roles database table to your go code.
+type Role struct {
 	ID        uuid.UUID `json:"id" db:"id"`
-	Type      string    `json:"type" db:"type"`
-	RoleID    string    `json:"role_id" db:"role_id"`
-	RoleName  string    `json:"role_name" db:"role_name"`
+	Name      string    `json:"name" db:"name"`
+	IdpUUID   string    `json:"idp_uuid" db:"idp_uuid"`
+	Idp       string    `json:"idp" db:"idp"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // String is not required by pop and may be deleted
-func (m MCIamRoletype) String() string {
-	jm, _ := json.Marshal(m)
-	return string(jm)
+func (r Role) String() string {
+	jr, _ := json.Marshal(r)
+	return string(jr)
 }
 
-// MCIamRoletypes is not required by pop and may be deleted
-type MCIamRoletypes []MCIamRoletype
+// Roles is not required by pop and may be deleted
+type Roles []Role
 
 // String is not required by pop and may be deleted
-func (m MCIamRoletypes) String() string {
-	jm, _ := json.Marshal(m)
-	return string(jm)
+func (r Roles) String() string {
+	jr, _ := json.Marshal(r)
+	return string(jr)
 }
 
 // Validate gets run every time you call a "pop.Validate*" (pop.ValidateAndSave, pop.ValidateAndCreate, pop.ValidateAndUpdate) method.
 // This method is not required and may be deleted.
-func (m *MCIamRoletype) Validate(tx *pop.Connection) (*validate.Errors, error) {
+func (r *Role) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
-		&validators.StringIsPresent{Field: m.Type, Name: "Type"},
-		&validators.StringIsPresent{Field: m.RoleID, Name: "RoleID"},
-		&validators.StringIsPresent{Field: m.RoleName, Name: "RoleName"},
+		&validators.StringIsPresent{Field: r.Name, Name: "Name"},
+		&validators.StringIsPresent{Field: r.IdpUUID, Name: "IdpUUID"},
+		&validators.StringIsPresent{Field: r.Idp, Name: "Idp"},
 	), nil
 }
 
 // ValidateCreate gets run every time you call "pop.ValidateAndCreate" method.
 // This method is not required and may be deleted.
-func (m *MCIamRoletype) ValidateCreate(tx *pop.Connection) (*validate.Errors, error) {
+func (r *Role) ValidateCreate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
 
 // ValidateUpdate gets run every time you call "pop.ValidateAndUpdate" method.
 // This method is not required and may be deleted.
-func (m *MCIamRoletype) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
+func (r *Role) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
