@@ -1,0 +1,18 @@
+create_table("mapping_workspace_projects") {
+	t.Column("id", "uuid", {primary: true})
+	t.Column("workspace_id", "uuid", {})
+	t.Column("project_id", "uuid", {})
+	t.Timestamps()
+}
+
+add_foreign_key("mapping_workspace_projects", "workspace_id", {"workspaces": ["id"]}, {
+	"on_delete": "CASCADE",
+	"on_update": "NO ACTION",
+})
+
+add_foreign_key("mapping_workspace_projects", "project_id", {"projects": ["id"]}, {
+	"on_delete": "CASCADE",
+	"on_update": "NO ACTION",
+})
+
+sql("ALTER TABLE mapping_workspace_projects ADD CONSTRAINT unique_workspace_id_project_id UNIQUE (workspace_id, project_id);")

@@ -11,10 +11,9 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-// MCIamWorkspace is used by pop to map your mc_iam_workspaces database table to your go code.
-type MCIamWorkspace struct {
+// Project is used by pop to map your projects database table to your go code.
+type Project struct {
 	ID          uuid.UUID    `json:"id" db:"id"`
-	WorkspaceID string       `json:"workspace_id" db:"workspace_id"`
 	Name        string       `json:"name" db:"name"`
 	Description nulls.String `json:"description" db:"description"`
 	CreatedAt   time.Time    `json:"created_at" db:"created_at"`
@@ -22,37 +21,36 @@ type MCIamWorkspace struct {
 }
 
 // String is not required by pop and may be deleted
-func (m MCIamWorkspace) String() string {
-	jm, _ := json.Marshal(m)
-	return string(jm)
+func (p Project) String() string {
+	jp, _ := json.Marshal(p)
+	return string(jp)
 }
 
-// MCIamWorkspaces is not required by pop and may be deleted
-type MCIamWorkspaces []MCIamWorkspace
+// Projects is not required by pop and may be deleted
+type Projects []Project
 
 // String is not required by pop and may be deleted
-func (m MCIamWorkspaces) String() string {
-	jm, _ := json.Marshal(m)
-	return string(jm)
+func (p Projects) String() string {
+	jp, _ := json.Marshal(p)
+	return string(jp)
 }
 
 // Validate gets run every time you call a "pop.Validate*" (pop.ValidateAndSave, pop.ValidateAndCreate, pop.ValidateAndUpdate) method.
 // This method is not required and may be deleted.
-func (m *MCIamWorkspace) Validate(tx *pop.Connection) (*validate.Errors, error) {
+func (p *Project) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
-		&validators.StringIsPresent{Field: m.WorkspaceID, Name: "WorkspaceID"},
-		&validators.StringIsPresent{Field: m.Name, Name: "Name"},
+		&validators.StringIsPresent{Field: p.Name, Name: "Name"},
 	), nil
 }
 
 // ValidateCreate gets run every time you call "pop.ValidateAndCreate" method.
 // This method is not required and may be deleted.
-func (m *MCIamWorkspace) ValidateCreate(tx *pop.Connection) (*validate.Errors, error) {
+func (p *Project) ValidateCreate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
 
 // ValidateUpdate gets run every time you call "pop.ValidateAndUpdate" method.
 // This method is not required and may be deleted.
-func (m *MCIamWorkspace) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
+func (p *Project) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
