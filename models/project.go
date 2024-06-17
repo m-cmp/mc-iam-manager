@@ -14,6 +14,7 @@ import (
 // Project is used by pop to map your projects database table to your go code.
 type Project struct {
 	ID          uuid.UUID    `json:"id" db:"id"`
+	NsID        string       `json:"ns_id" db:"ns_id"`
 	Name        string       `json:"name" db:"name"`
 	Description nulls.String `json:"description" db:"description"`
 	CreatedAt   time.Time    `json:"created_at" db:"created_at"`
@@ -39,6 +40,7 @@ func (p Projects) String() string {
 // This method is not required and may be deleted.
 func (p *Project) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
+		&validators.StringIsPresent{Field: p.NsID, Name: "NsID"},
 		&validators.StringIsPresent{Field: p.Name, Name: "Name"},
 	), nil
 }
