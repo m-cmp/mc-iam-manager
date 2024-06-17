@@ -1,9 +1,6 @@
 create_table("roles") {
 	t.Column("id", "uuid", {primary: true})
 	t.Column("name", "text", {})
-	t.Column("idp_uuid", "text", {})
-	t.Column("idp", "text", {})
+	t.Column("description", "text", {null: true})
 	t.Timestamps()
 }
-
-add_index("roles", "name", {"unique": true})

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/gobuffalo/nulls"
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gobuffalo/validate/v3"
 	"github.com/gobuffalo/validate/v3/validators"
@@ -12,12 +13,11 @@ import (
 
 // Role is used by pop to map your roles database table to your go code.
 type Role struct {
-	ID        uuid.UUID `json:"id" db:"id"`
-	Name      string    `json:"name" db:"name"`
-	IdpUUID   string    `json:"idp_uuid" db:"idp_uuid"`
-	Idp       string    `json:"idp" db:"idp"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+	ID          uuid.UUID    `json:"id" db:"id"`
+	Name        string       `json:"name" db:"name"`
+	Description nulls.String `json:"description" db:"description"`
+	CreatedAt   time.Time    `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at" db:"updated_at"`
 }
 
 // String is not required by pop and may be deleted
@@ -40,8 +40,6 @@ func (r Roles) String() string {
 func (r *Role) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
 		&validators.StringIsPresent{Field: r.Name, Name: "Name"},
-		&validators.StringIsPresent{Field: r.IdpUUID, Name: "IdpUUID"},
-		&validators.StringIsPresent{Field: r.Idp, Name: "Idp"},
 	), nil
 }
 

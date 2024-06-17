@@ -39,12 +39,30 @@ func CopyStruct(source interface{}, target interface{}) error {
 		srcFieldName := srcType.Field(i).Name
 
 		tgtField := tgtVal.FieldByName(srcFieldName)
-		if tgtField.IsValid() && tgtField.CanSet() && tgtField.Type() == srcField.Type() {
+		if tgtField.IsValid() && tgtField.CanSet() && tgtField.Type() == srcField.Type() && !isEmptyValue(srcField) {
 			tgtField.Set(srcField)
 		}
 	}
 
 	return nil
+}
+
+func isEmptyValue(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.String, reflect.Array, reflect.Slice, reflect.Map, reflect.Chan:
+		return v.Len() == 0
+	case reflect.Bool:
+		return !v.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return v.Float() == 0
+	case reflect.Interface, reflect.Ptr:
+		return v.IsNil()
+	}
+	return false
 }
 
 func IsErrorContainsThen(err error, containString string, errmsg string) error {

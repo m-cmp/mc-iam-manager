@@ -9,13 +9,13 @@ https://gobuffalo.io/documentation/guides/plugins/
 ```
 buffalo db generate model workspace name:text description:nulls.text
 
-buffalo db generate model project name:text description:nulls.text
+buffalo db generate model project nsId:text name:text description:nulls.text
 
-buffalo db generate model role name:text idp_uuid:text idp:text
+buffalo db generate model role name:text description:nulls.text
 
-buffalo db generate model mapping_workspace_project workspace_id:uuid project_id:uuid
+buffalo db generate model workspace_project_mapping workspace_id:uuid project_id:uuid
 
-buffalo db generate model mapping_workspace_user_role workspace_id:uuid user:uuid project_id:uuid
+buffalo db generate model workspace_user_role_mapping workspace_id:uuid user_id:text role_id:uuid
 ```
 **
 add_index("workspaces", "name", {"unique": true})

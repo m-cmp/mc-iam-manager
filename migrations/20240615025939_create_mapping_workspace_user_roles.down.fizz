@@ -1,1 +1,0 @@
-drop_table("mapping_workspace_user_roles")
