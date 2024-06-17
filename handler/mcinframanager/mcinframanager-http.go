@@ -48,7 +48,7 @@ func McInfraUpdateNamespace(mcInfraUpdateNamespaceRequest *McInfraUpdateNamespac
 	commonRequest := &handler.CommonRequest{
 		Request: mcInfraUpdateNamespaceRequest,
 		PathParams: map[string]string{
-			"nsId": mcInfraUpdateNamespaceRequest.Name,
+			"nsId": mcInfraUpdateNamespaceRequest.NsId,
 		},
 	}
 	resp, err := handler.CommonHttpCaller(http.MethodPut, handler.MCINFRAMANAGER, updateNamespace, commonRequest, mcinframanagerAuthentication())
@@ -59,10 +59,10 @@ func McInfraUpdateNamespace(mcInfraUpdateNamespaceRequest *McInfraUpdateNamespac
 }
 
 // Delete Namespace
-func McInfraDeleteNamespace(namespaceName string) ([]byte, error) {
+func McInfraDeleteNamespace(nsId string) ([]byte, error) {
 	commonRequest := &handler.CommonRequest{
 		PathParams: map[string]string{
-			"nsId": namespaceName,
+			"nsId": nsId,
 		},
 	}
 	resp, err := handler.CommonHttpCaller(http.MethodDelete, handler.MCINFRAMANAGER, deleteNamespace, commonRequest, mcinframanagerAuthentication())
