@@ -7,6 +7,7 @@ type McInfraCreateNamespaceRequest struct {
 	Description nulls.String `json:"description"`
 }
 type McInfraUpdateNamespaceRequest struct {
+	NsId        string
 	Name        string       `json:"name"`
 	Description nulls.String `json:"description"`
 }

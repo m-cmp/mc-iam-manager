@@ -3,6 +3,7 @@ package actions
 import (
 	"log"
 	"mc_iam_manager/handler"
+	"mc_iam_manager/handler/mcinframanager"
 	"mc_iam_manager/models"
 	"net/http"
 
@@ -42,6 +43,16 @@ func CreateProject(c buffalo.Context) error {
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "SQLSTATE 25P02", "Project is already exist..")
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	mcreq := &mcinframanager.McInfraCreateNamespaceRequest{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+	_, err = mcinframanager.McInfraCreateNamespace(mcreq)
+	if err != nil {
+		log.Println(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
 	}
 
@@ -122,6 +133,18 @@ func UpdateProjectByUUID(c buffalo.Context) error {
 		// err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Project is not exist..")
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
 	}
+
+	mcreq := &mcinframanager.McInfraUpdateNamespaceRequest{
+		NsId:        s.NsID,
+		Name:        req.Name,
+		Description: req.Description,
+	}
+	_, err = mcinframanager.McInfraUpdateNamespace(mcreq)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
@@ -141,5 +164,12 @@ func DeleteProjectByUUID(c buffalo.Context) error {
 		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Project is not exist..")
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
 	}
+
+	_, err = mcinframanager.McInfraDeleteNamespace(s.NsID)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
 	return c.Render(http.StatusOK, r.JSON(map[string]string{"message": "ID(" + s.ID.String() + ") / Name(" + s.Name + ") is delected.."}))
 }
