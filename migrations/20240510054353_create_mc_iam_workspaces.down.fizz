@@ -1,1 +1,0 @@
-drop_table("mc_iam_workspaces")
