@@ -70,11 +70,11 @@ func GetRoleList(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
-func GetRoleByUUID(c buffalo.Context) error {
+func GetRoleById(c buffalo.Context) error {
 	var err error
-	roleUUID := c.Param("roleUUID")
+	roleId := c.Param("roleId")
 	tx := c.Value("tx").(*pop.Connection)
-	res, err := handler.GetRoleByUUID(tx, uuid.FromStringOrNil(roleUUID))
+	res, err := handler.GetRoleById(tx, uuid.FromStringOrNil(roleId))
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Role is not exist..")
@@ -83,16 +83,16 @@ func GetRoleByUUID(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
-type updateRoleByUUIDRequest struct {
+type updateRoleByIdRequest struct {
 	Name        string       `json:"name" db:"name"`
 	Description nulls.String `json:"description" db:"description"`
 }
 
-func UpdateRoleByUUID(c buffalo.Context) error {
-	var req updateRoleByUUIDRequest
+func UpdateRoleById(c buffalo.Context) error {
+	var req updateRoleByIdRequest
 	var err error
 
-	roleUUID := c.Param("roleUUID")
+	roleId := c.Param("roleId")
 	err = c.Bind(&req)
 	if err != nil {
 		log.Println(err)
@@ -100,7 +100,7 @@ func UpdateRoleByUUID(c buffalo.Context) error {
 	}
 
 	tx := c.Value("tx").(*pop.Connection)
-	s, err := handler.GetRoleByUUID(tx, uuid.FromStringOrNil(roleUUID))
+	s, err := handler.GetRoleById(tx, uuid.FromStringOrNil(roleId))
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Role is not exist..")
@@ -122,11 +122,11 @@ func UpdateRoleByUUID(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
-func DeleteRoleByUUID(c buffalo.Context) error {
+func DeleteRoleById(c buffalo.Context) error {
 	var err error
-	roleUUID := c.Param("roleUUID")
+	roleId := c.Param("roleId")
 	tx := c.Value("tx").(*pop.Connection)
-	s, err := handler.GetRoleByUUID(tx, uuid.FromStringOrNil(roleUUID))
+	s, err := handler.GetRoleById(tx, uuid.FromStringOrNil(roleId))
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Role is not exist..")

@@ -52,14 +52,14 @@ func GetWPmappingListOrderbyWorkspace(tx *pop.Connection) (*getWPmappingListOrde
 	}
 	for _, ss := range s {
 		var res getWPmappingListOrderbyWorkspaceResp
-		ws, err := GetWorkspaceByUUID(tx, uuid.FromStringOrNil(ss.WorkspaceId))
+		ws, err := GetWorkspaceById(tx, uuid.FromStringOrNil(ss.WorkspaceId))
 		if err != nil {
 			log.Error(err)
 			return nil, err
 		}
 		res.Workspace = *ws
 		for _, projectid := range extractAndSplit(ss.ProjectIds) {
-			prj, err := GetProjectByUUID(tx, uuid.FromStringOrNil(projectid))
+			prj, err := GetProjectById(tx, uuid.FromStringOrNil(projectid))
 			if err != nil {
 				log.Error(err)
 				return nil, err
@@ -71,12 +71,12 @@ func GetWPmappingListOrderbyWorkspace(tx *pop.Connection) (*getWPmappingListOrde
 	return &resp, err
 }
 
-func GetWPmappingListByWorkspaceUUID(tx *pop.Connection, worksapceuuid uuid.UUID) (*getWPmappingListOrderbyWorkspaceResp, error) {
+func GetWPmappingListByWorkspaceId(tx *pop.Connection, worksapceId uuid.UUID) (*getWPmappingListOrderbyWorkspaceResp, error) {
 	var err error
 	var s models.WorkspaceProjectMappings
 	var resp getWPmappingListOrderbyWorkspaceResp
 
-	ws, err := GetWorkspaceByUUID(tx, worksapceuuid)
+	ws, err := GetWorkspaceById(tx, worksapceId)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -84,14 +84,14 @@ func GetWPmappingListByWorkspaceUUID(tx *pop.Connection, worksapceuuid uuid.UUID
 
 	resp.Workspace = *ws
 
-	err = tx.Where("workspace_id = ?", worksapceuuid).All(&s)
+	err = tx.Where("workspace_id = ?", worksapceId).All(&s)
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
 
 	for _, ss := range s {
-		prj, err := GetProjectByUUID(tx, ss.ProjectID)
+		prj, err := GetProjectById(tx, ss.ProjectID)
 		if err != nil {
 			log.Error(err)
 			return nil, err
@@ -101,7 +101,7 @@ func GetWPmappingListByWorkspaceUUID(tx *pop.Connection, worksapceuuid uuid.UUID
 	return &resp, nil
 }
 
-func GetWPmappingByUUID(tx *pop.Connection, workspaceId string, projectId string) (*models.WorkspaceProjectMapping, error) {
+func GetWPmappingById(tx *pop.Connection, workspaceId string, projectId string) (*models.WorkspaceProjectMapping, error) {
 	m := &models.WorkspaceProjectMapping{}
 	err := tx.Where("workspace_id = ? and project_id = ?", workspaceId, projectId).First(m)
 	if err != nil {
@@ -116,17 +116,17 @@ type updateWPmappings struct {
 	ProjectIds  string `db:"projects"`
 }
 
-func UpdateWPmappings(tx *pop.Connection, worksapceuuid string, projectuuids []string) (*getWPmappingListOrderbyWorkspaceResp, error) {
-	query := "SELECT workspace_id, array_agg(project_id) AS projects FROM workspace_project_mappings  WHERE workspace_id = '" + worksapceuuid + "' GROUP BY workspace_id;"
+func UpdateWPmappings(tx *pop.Connection, worksapceId string, projectIds []string) (*getWPmappingListOrderbyWorkspaceResp, error) {
+	query := "SELECT workspace_id, array_agg(project_id) AS projects FROM workspace_project_mappings  WHERE workspace_id = '" + worksapceId + "' GROUP BY workspace_id;"
 	var s updateWPmappings
 	err := tx.RawQuery(query).First(&s)
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
-	_, projectTodel, projectToCreate := compareStringArrays(extractAndSplit(s.ProjectIds), projectuuids)
+	_, projectTodel, projectToCreate := compareStringArrays(extractAndSplit(s.ProjectIds), projectIds)
 	for _, projectId := range projectTodel {
-		workspace, err := GetWPmappingByUUID(tx, worksapceuuid, projectId)
+		workspace, err := GetWPmappingById(tx, worksapceId, projectId)
 		if err != nil {
 			log.Error(err)
 			return nil, err
@@ -139,7 +139,7 @@ func UpdateWPmappings(tx *pop.Connection, worksapceuuid string, projectuuids []s
 	}
 	for _, projectId := range projectToCreate {
 		m := &models.WorkspaceProjectMapping{
-			WorkspaceID: uuid.FromStringOrNil(worksapceuuid),
+			WorkspaceID: uuid.FromStringOrNil(worksapceId),
 			ProjectID:   uuid.FromStringOrNil(projectId),
 		}
 		_, err := CreateWPmapping(tx, m)
@@ -148,7 +148,7 @@ func UpdateWPmappings(tx *pop.Connection, worksapceuuid string, projectuuids []s
 			return nil, err
 		}
 	}
-	resp, err := GetWPmappingListByWorkspaceUUID(tx, uuid.FromStringOrNil(worksapceuuid))
+	resp, err := GetWPmappingListByWorkspaceId(tx, uuid.FromStringOrNil(worksapceId))
 	if err != nil {
 		log.Error(err)
 		return nil, err

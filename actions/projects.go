@@ -84,11 +84,11 @@ func GetProjectList(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
-func GetProjectByUUID(c buffalo.Context) error {
+func GetProjectById(c buffalo.Context) error {
 	var err error
-	projectUUID := c.Param("projectUUID")
+	projectId := c.Param("projectId")
 	tx := c.Value("tx").(*pop.Connection)
-	res, err := handler.GetProjectByUUID(tx, uuid.FromStringOrNil(projectUUID))
+	res, err := handler.GetProjectById(tx, uuid.FromStringOrNil(projectId))
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Project is not exist..")
@@ -97,16 +97,16 @@ func GetProjectByUUID(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
-type updateProjectByUUIDRequest struct {
+type updateProjectByIdRequest struct {
 	Name        string       `json:"name" db:"name"`
 	Description nulls.String `json:"description" db:"description"`
 }
 
-func UpdateProjectByUUID(c buffalo.Context) error {
-	var req updateProjectByUUIDRequest
+func UpdateProjectById(c buffalo.Context) error {
+	var req updateProjectByIdRequest
 	var err error
 
-	projectUUID := c.Param("projectUUID")
+	projectId := c.Param("projectId")
 	err = c.Bind(&req)
 	if err != nil {
 		log.Println(err)
@@ -114,7 +114,7 @@ func UpdateProjectByUUID(c buffalo.Context) error {
 	}
 
 	tx := c.Value("tx").(*pop.Connection)
-	s, err := handler.GetProjectByUUID(tx, uuid.FromStringOrNil(projectUUID))
+	s, err := handler.GetProjectById(tx, uuid.FromStringOrNil(projectId))
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Project is not exist..")
@@ -148,11 +148,11 @@ func UpdateProjectByUUID(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
-func DeleteProjectByUUID(c buffalo.Context) error {
+func DeleteProjectById(c buffalo.Context) error {
 	var err error
-	projectUUID := c.Param("projectUUID")
+	projectId := c.Param("projectId")
 	tx := c.Value("tx").(*pop.Connection)
-	s, err := handler.GetProjectByUUID(tx, uuid.FromStringOrNil(projectUUID))
+	s, err := handler.GetProjectById(tx, uuid.FromStringOrNil(projectId))
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Project is not exist..")

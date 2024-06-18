@@ -27,9 +27,9 @@ func GetProjectList(tx *pop.Connection) (*models.Projects, error) {
 	return &s, nil
 }
 
-func GetProjectByUUID(tx *pop.Connection, uuid uuid.UUID) (*models.Project, error) {
+func GetProjectById(tx *pop.Connection, id uuid.UUID) (*models.Project, error) {
 	var s models.Project
-	err := tx.Find(&s, uuid)
+	err := tx.Find(&s, id)
 	if err != nil {
 		log.Error(err)
 		return nil, err

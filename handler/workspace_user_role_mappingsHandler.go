@@ -27,7 +27,7 @@ func GetWorkspaceUserRoleMappingListOrderbyWorkspace(tx *pop.Connection) (*[]Get
 	}
 	var resp []GetWorkspaceUserRoleMappingListResponse
 	for _, id := range workspaceIds {
-		res, err := GetWorkspaceUserRoleMappingListByWorkspaceUUID(tx, id)
+		res, err := GetWorkspaceUserRoleMappingListByWorkspaceId(tx, id)
 		if err != nil {
 			log.Error(err)
 			return nil, err
@@ -36,6 +36,21 @@ func GetWorkspaceUserRoleMappingListOrderbyWorkspace(tx *pop.Connection) (*[]Get
 	}
 
 	return &resp, nil
+}
+
+func GetWorkspaceUserRoleMappingById(tx *pop.Connection, workspaceId string, userId string) (*models.Role, error) {
+	var s models.WorkspaceUserRoleMapping
+	err := tx.Where("workspace_id = ? and user_id = ?", workspaceId, userId).First(&s)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	role, err := GetRoleById(tx, s.RoleID)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	return role, nil
 }
 
 type GetWorkspaceUserRoleMappingListResponse struct {
@@ -48,10 +63,10 @@ type userinfo struct {
 	Role   models.Role `json:"role"`
 }
 
-func GetWorkspaceUserRoleMappingListByWorkspaceUUID(tx *pop.Connection, workspaceUUID string) (*GetWorkspaceUserRoleMappingListResponse, error) {
+func GetWorkspaceUserRoleMappingListByWorkspaceId(tx *pop.Connection, workspaceId string) (*GetWorkspaceUserRoleMappingListResponse, error) {
 	var resp GetWorkspaceUserRoleMappingListResponse
 
-	ws, err := GetWorkspaceByUUID(tx, uuid.FromStringOrNil(workspaceUUID))
+	ws, err := GetWorkspaceById(tx, uuid.FromStringOrNil(workspaceId))
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -59,7 +74,7 @@ func GetWorkspaceUserRoleMappingListByWorkspaceUUID(tx *pop.Connection, workspac
 	resp.Workspace = *ws
 
 	var s models.WorkspaceUserRoleMappings
-	err = tx.Where("workspace_id = ? ", workspaceUUID).All(&s)
+	err = tx.Where("workspace_id = ? ", workspaceId).All(&s)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -68,7 +83,7 @@ func GetWorkspaceUserRoleMappingListByWorkspaceUUID(tx *pop.Connection, workspac
 	for _, wurm := range s {
 		var ui userinfo
 		ui.Userid = wurm.UserID
-		role, err := GetRoleByUUID(tx, wurm.RoleID)
+		role, err := GetRoleById(tx, wurm.RoleID)
 		if err != nil {
 			log.Error(err)
 			return nil, err
@@ -95,13 +110,13 @@ func GetWorkspaceUserRoleMappingListByUserId(tx *pop.Connection, userId string) 
 	var resp []GetWorkspaceUserRoleMappingListByUserIdResponse
 	for _, i := range s {
 		var res GetWorkspaceUserRoleMappingListByUserIdResponse
-		role, err := GetRoleByUUID(tx, i.RoleID)
+		role, err := GetRoleById(tx, i.RoleID)
 		if err != nil {
 			log.Error(err)
 			return nil, err
 		}
 		res.Role = *role
-		wpm, err := GetWPmappingListByWorkspaceUUID(tx, i.WorkspaceID)
+		wpm, err := GetWPmappingListByWorkspaceId(tx, i.WorkspaceID)
 		if err != nil {
 			log.Error(err)
 			return nil, err
@@ -113,9 +128,9 @@ func GetWorkspaceUserRoleMappingListByUserId(tx *pop.Connection, userId string) 
 	return &resp, nil
 }
 
-func DeleteWorkspaceUserRoleMapping(tx *pop.Connection, workspaceUUID string, userId string) error {
+func DeleteWorkspaceUserRoleMapping(tx *pop.Connection, workspaceId string, userId string) error {
 	var s models.WorkspaceUserRoleMapping
-	err := tx.Where("workspace_id = ? and user_id = ?", workspaceUUID, userId).First(&s)
+	err := tx.Where("workspace_id = ? and user_id = ?", workspaceId, userId).First(&s)
 	if err != nil {
 		log.Error(err)
 		return err

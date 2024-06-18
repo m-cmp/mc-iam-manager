@@ -27,9 +27,9 @@ func GetRoleList(tx *pop.Connection) (*models.Roles, error) {
 	return &s, nil
 }
 
-func GetRoleByUUID(tx *pop.Connection, uuid uuid.UUID) (*models.Role, error) {
+func GetRoleById(tx *pop.Connection, id uuid.UUID) (*models.Role, error) {
 	var s models.Role
-	err := tx.Find(&s, uuid)
+	err := tx.Find(&s, id)
 	if err != nil {
 		log.Error(err)
 		return nil, err

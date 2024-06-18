@@ -18,7 +18,6 @@ type createWPmappingRequest struct {
 
 func CreateWPmappings(c buffalo.Context) error {
 	var req createWPmappingRequest
-	var s models.WorkspaceProjectMapping
 	var err error
 
 	err = c.Bind(&req)
@@ -27,10 +26,12 @@ func CreateWPmappings(c buffalo.Context) error {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
 
-	s.WorkspaceID = uuid.FromStringOrNil(req.WorkspaceID)
+	tx := c.Value("tx").(*pop.Connection)
 	for _, projectId := range req.ProjectID {
+		var s models.WorkspaceProjectMapping
+		s.WorkspaceID = uuid.FromStringOrNil(req.WorkspaceID)
 		s.ProjectID = uuid.FromStringOrNil(projectId)
-		tx := c.Value("tx").(*pop.Connection)
+
 		_, err = handler.CreateWPmapping(tx, &s)
 		if err != nil {
 			log.Println(err)
@@ -39,8 +40,13 @@ func CreateWPmappings(c buffalo.Context) error {
 			return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 		}
 	}
+	resp, err := handler.GetWPmappingListByWorkspaceId(tx, uuid.FromStringOrNil(req.WorkspaceID))
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
+	}
 
-	return c.Render(http.StatusOK, r.JSON(nil))
+	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
 func GetWPmappingListOrderbyWorkspace(c buffalo.Context) error {
@@ -54,11 +60,11 @@ func GetWPmappingListOrderbyWorkspace(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
-func GetWPmappingListByWorkspaceUUID(c buffalo.Context) error {
+func GetWPmappingListByWorkspaceId(c buffalo.Context) error {
 	var err error
-	workspaceUUID := c.Param("workspaceUUID")
+	workspaceId := c.Param("workspaceId")
 	tx := c.Value("tx").(*pop.Connection)
-	res, err := handler.GetWPmappingListByWorkspaceUUID(tx, uuid.FromStringOrNil(workspaceUUID))
+	res, err := handler.GetWPmappingListByWorkspaceId(tx, uuid.FromStringOrNil(workspaceId))
 	if err != nil {
 		log.Println(err)
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
@@ -92,10 +98,10 @@ func UpdateWPmappings(c buffalo.Context) error {
 }
 
 func DeleteWPmapping(c buffalo.Context) error {
-	workspaceUUID := c.Param("workspaceUUID")
-	projectUUID := c.Param("projectUUID")
+	workspaceId := c.Param("workspaceId")
+	projectId := c.Param("projectId")
 	tx := c.Value("tx").(*pop.Connection)
-	workspace, err := handler.GetWPmappingByUUID(tx, workspaceUUID, projectUUID)
+	workspace, err := handler.GetWPmappingById(tx, workspaceId, projectId)
 	if err != nil {
 		log.Println(err)
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
