@@ -24,7 +24,6 @@ RUN buffalo build --static -o /bin/app
 FROM debian:buster-slim
 
 WORKDIR /bin/
-COPY conf /bin/conf
 COPY --from=builder /bin/app .
 
 # Uncomment to run the binary in "production" mode:

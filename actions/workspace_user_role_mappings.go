@@ -12,9 +12,9 @@ import (
 )
 
 type createWorkspaceUserRoleMappingRequest struct {
-	WorkspaceID string `json:"workspaceid" `
-	UserID      string `json:"userid" `
-	RoleID      string `json:"roleid" `
+	WorkspaceID string `json:"workspaceId" `
+	UserID      string `json:"userId" `
+	RoleID      string `json:"roleId" `
 }
 
 func CreateWorkspaceUserRoleMapping(c buffalo.Context) error {
@@ -54,10 +54,10 @@ func GetWorkspaceUserRoleMappingListOrderbyWorkspace(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
-func GetWorkspaceUserRoleMappingListByWorkspaceUUID(c buffalo.Context) error {
-	workspaceUUID := c.Param("workspaceUUID")
+func GetWorkspaceUserRoleMappingListByWorkspaceId(c buffalo.Context) error {
+	workspaceId := c.Param("workspaceId")
 	tx := c.Value("tx").(*pop.Connection)
-	resp, err := handler.GetWorkspaceUserRoleMappingListByWorkspaceUUID(tx, workspaceUUID)
+	resp, err := handler.GetWorkspaceUserRoleMappingListByWorkspaceId(tx, workspaceId)
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "SQLSTATE 25P02", "already exist..")
@@ -78,15 +78,24 @@ func GetWorkspaceUserRoleMappingListByUserId(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(resp))
 }
 
-// func UpdateWorkspaceUserRoleMapping(c buffalo.Context) error {
-// 	return nil
-// }
-
-func DeleteWorkspaceUserRoleMapping(c buffalo.Context) error {
-	workspaceUUID := c.Param("workspaceUUID")
+func GetWorkspaceUserRoleMappingById(c buffalo.Context) error {
+	workspaceId := c.Param("workspaceId")
 	userId := c.Param("userId")
 	tx := c.Value("tx").(*pop.Connection)
-	err := handler.DeleteWorkspaceUserRoleMapping(tx, workspaceUUID, userId)
+	resp, err := handler.GetWorkspaceUserRoleMappingById(tx, workspaceId, userId)
+	if err != nil {
+		log.Println(err)
+		err = handler.IsErrorContainsThen(err, "SQLSTATE 25P02", "already exist..")
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+	return c.Render(http.StatusOK, r.JSON(resp))
+}
+
+func DeleteWorkspaceUserRoleMapping(c buffalo.Context) error {
+	workspaceId := c.Param("workspaceId")
+	userId := c.Param("userId")
+	tx := c.Value("tx").(*pop.Connection)
+	err := handler.DeleteWorkspaceUserRoleMapping(tx, workspaceId, userId)
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "SQLSTATE 25P02", "already exist..")

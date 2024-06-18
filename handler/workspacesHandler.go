@@ -27,9 +27,9 @@ func GetWorkspaceList(tx *pop.Connection) (*models.Workspaces, error) {
 	return &s, nil
 }
 
-func GetWorkspaceByUUID(tx *pop.Connection, uuid uuid.UUID) (*models.Workspace, error) {
+func GetWorkspaceById(tx *pop.Connection, id uuid.UUID) (*models.Workspace, error) {
 	var s models.Workspace
-	err := tx.Find(&s, uuid)
+	err := tx.Find(&s, id)
 	if err != nil {
 		log.Error(err)
 		return nil, err

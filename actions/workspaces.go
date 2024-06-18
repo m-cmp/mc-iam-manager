@@ -70,11 +70,11 @@ func GetWorkspaceList(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
-func GetWorkspaceByUUID(c buffalo.Context) error {
+func GetWorkspaceById(c buffalo.Context) error {
 	var err error
-	workspaceUUID := c.Param("workspaceUUID")
+	workspaceId := c.Param("workspaceId")
 	tx := c.Value("tx").(*pop.Connection)
-	res, err := handler.GetWorkspaceByUUID(tx, uuid.FromStringOrNil(workspaceUUID))
+	res, err := handler.GetWorkspaceById(tx, uuid.FromStringOrNil(workspaceId))
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "workspace is not exist..")
@@ -83,16 +83,16 @@ func GetWorkspaceByUUID(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
-type updateWorkspaceByUUIDRequest struct {
+type updateWorkspaceByIdRequest struct {
 	Name        string       `json:"name" db:"name"`
 	Description nulls.String `json:"description" db:"description"`
 }
 
-func UpdateWorkspaceByUUID(c buffalo.Context) error {
-	var req updateWorkspaceByUUIDRequest
+func UpdateWorkspaceById(c buffalo.Context) error {
+	var req updateWorkspaceByIdRequest
 	var err error
 
-	workspaceUUID := c.Param("workspaceUUID")
+	workspaceId := c.Param("workspaceId")
 	err = c.Bind(&req)
 	if err != nil {
 		log.Println(err)
@@ -100,7 +100,7 @@ func UpdateWorkspaceByUUID(c buffalo.Context) error {
 	}
 
 	tx := c.Value("tx").(*pop.Connection)
-	s, err := handler.GetWorkspaceByUUID(tx, uuid.FromStringOrNil(workspaceUUID))
+	s, err := handler.GetWorkspaceById(tx, uuid.FromStringOrNil(workspaceId))
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "workspace is not exist..")
@@ -122,11 +122,11 @@ func UpdateWorkspaceByUUID(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
-func DeleteWorkspaceByUUID(c buffalo.Context) error {
+func DeleteWorkspaceById(c buffalo.Context) error {
 	var err error
-	workspaceUUID := c.Param("workspaceUUID")
+	workspaceId := c.Param("workspaceId")
 	tx := c.Value("tx").(*pop.Connection)
-	s, err := handler.GetWorkspaceByUUID(tx, uuid.FromStringOrNil(workspaceUUID))
+	s, err := handler.GetWorkspaceById(tx, uuid.FromStringOrNil(workspaceId))
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "workspace is not exist..")
