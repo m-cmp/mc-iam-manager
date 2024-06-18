@@ -1,0 +1,8 @@
+create_table("workspaces") {
+	t.Column("id", "uuid", {primary: true})
+	t.Column("name", "text", {})
+	t.Column("description", "text", {null: true})
+	t.Timestamps()
+}
+
+add_index("workspaces", "name", {"unique": true})
