@@ -19,6 +19,7 @@ type mcimwAuth interface {
 	AuthLogoutHandler(http.ResponseWriter, *http.Request)
 	AuthGetUserInfo(http.ResponseWriter, *http.Request)
 	AuthGetUserValidate(http.ResponseWriter, *http.Request)
+	AuthGetCerts(http.ResponseWriter, *http.Request)
 }
 type mcimw struct {
 	grantRoles []string
@@ -56,6 +57,9 @@ func BeginAuthHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	} else if strings.HasSuffix(reqUri, "/validate") && reqMethod == "GET" {
 		AuthMethod.AuthGetUserValidate(res, req)
+		return
+	} else if strings.HasSuffix(reqUri, "/certs") && reqMethod == "GET" {
+		AuthMethod.AuthGetCerts(res, req)
 		return
 	}
 

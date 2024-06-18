@@ -43,8 +43,8 @@ func App() *buffalo.App {
 		app.Use(popmw.Transaction(models.DB))
 
 		apiPath := envy.Get("API_PATH", "/api/")
-
-		mcimw.AuthMethod = mcimw.EnvKeycloak
+		auth := app.Group(apiPath + "auth")
+		auth.ANY("/{path:.+}", buffalo.WrapHandlerFunc(mcimw.BeginAuthHandler))
 
 		alive := app.Group("/alive")
 		alive.GET("/", aliveSig)
@@ -57,50 +57,53 @@ func App() *buffalo.App {
 		mcimw.GrantedRoleList = []string{"operator"}
 		alive.GET("/operator", mcimw.BuffaloMcimw(aliveSig))
 
-		auth := app.Group(apiPath + "auth")
-		auth.ANY("/{path:.+}", buffalo.WrapHandlerFunc(mcimw.BeginAuthHandler))
-
 		sts := app.Group(apiPath + "sts")
 		sts.GET("/securitykey", AuthGetSecurityKeyHandler)
 
+		mcimw.AuthMethod = mcimw.EnvKeycloak
+		mcimw.GrantedRoleList = []string{}
+		app.Use(mcimw.BuffaloMcimw)
 		rolePath := app.Group(apiPath + "role")
 		rolePath.POST("/", CreateRole)
 		rolePath.GET("/", GetRoleList)
-		rolePath.GET("/{roleId}", GetRole)
-		rolePath.DELETE("/{roleId}", DeleteRole)
+		rolePath.GET("/role/{roleName}", SearchRolesByName)
+		rolePath.GET("/role/id/{roleId}", GetRoleById)
+		rolePath.PUT("/role/id/{roleId}", UpdateRoleById)
+		rolePath.DELETE("/role/id/{roleId}", DeleteRoleById)
 
 		workspacePath := app.Group(apiPath + "ws")
 		workspacePath.POST("/", CreateWorkspace)
 		workspacePath.GET("/", GetWorkspaceList)
-		workspacePath.GET("/workspace/{workspaceId}", GetWorkspace)
-		workspacePath.PUT("/workspace/{workspaceId}", UpdateWorkspace)
-		workspacePath.DELETE("/workspace/{workspaceId}", DeleteWorkspace)
+		workspacePath.GET("/workspace/{workspaceName}", SearchWorkspacesByName)
+		workspacePath.GET("/workspace/id/{workspaceId}", GetWorkspaceById)
+		workspacePath.PUT("/workspace/id/{workspaceId}", UpdateWorkspaceById)
+		workspacePath.DELETE("/workspace/id/{workspaceId}", DeleteWorkspaceById)
 
 		projectPath := app.Group(apiPath + "prj")
 		projectPath.POST("/", CreateProject)
 		projectPath.GET("/", GetProjectList)
-		projectPath.GET("/project/{projectId}", GetProject)
-		projectPath.PUT("/project/{projectId}", UpdateProject)
-		projectPath.DELETE("/project/{projectId}", DeleteProject)
+		projectPath.GET("/project/{projectName}", SearchProjectsByName)
+		projectPath.GET("/project/id/{projectId}", GetProjectById)
+		projectPath.PUT("/project/id/{projectId}", UpdateProjectById)
+		projectPath.DELETE("/project/id/{projectId}", DeleteProjectById)
 
-		workspaceProjectMappingPath := app.Group(apiPath + "wsprj")
-		workspaceProjectMappingPath.POST("/workspace/{workspaceId}", CreateWorkspaceProjectMapping)
-		workspaceProjectMappingPath.GET("/", GetWorkspaceProjectMappingList)
-		workspaceProjectMappingPath.GET("/workspace/{workspaceId}", GetWorkspaceProjectMappingByWorkspace)
-		workspaceProjectMappingPath.PUT("/workspace/{workspaceId}", UpdateWorkspaceProjectMapping)
-		workspaceProjectMappingPath.DELETE("/workspace/{workspaceId}/project/{projectId}", DeleteWorkspaceProjectMapping)
-		workspaceProjectMappingPath.DELETE("/workspace/{workspaceId}", DeleteWorkspaceProjectMappingAllByWorkspace)
-		workspaceProjectMappingPath.DELETE("/project/{projectId}", DeleteWorkspaceProjectMappingByProject)
+		wpmappingPath := app.Group(apiPath + "wsprj")
+		wpmappingPath.POST("/", CreateWPmappings)
+		wpmappingPath.GET("/", GetWPmappingListOrderbyWorkspace)
+		wpmappingPath.GET("/workspace/id/{workspaceId}", GetWPmappingListByWorkspaceId)
+		wpmappingPath.PUT("/", UpdateWPmappings)
+		wpmappingPath.DELETE("/workspace/id/{workspaceId}/project/id/{projectId}", DeleteWPmapping)
 
 		workspaceUserRoleMappingPath := app.Group(apiPath + "wsuserrole")
-		workspaceUserRoleMappingPath.POST("/workspace/{workspaceId}", CreateWorkspaceUserRoleMapping)
-		workspaceUserRoleMappingPath.GET("/", GetWorkspaceUserRoleMapping)
-		workspaceUserRoleMappingPath.GET("/workspace/{workspaceId}", GetWorkspaceUserRoleMappingByWorkspace)
-		workspaceUserRoleMappingPath.GET("/workspace/{workspaceId}/user/{userId}", GetWorkspaceUserRoleMappingByWorkspaceUser)
-		workspaceUserRoleMappingPath.GET("/user/{userId}", GetWorkspaceUserRoleMappingByUser)
-		workspaceUserRoleMappingPath.PUT("/workspace/{workspaceId}/user/{userId}", UpdateWorkspaceUserRoleMapping)
-		workspaceUserRoleMappingPath.DELETE("/workspace/{workspaceId}/user/{userId}", DeleteWorkspaceUserRoleMapping)
-		workspaceUserRoleMappingPath.DELETE("/workspace/{workspaceId}", DeleteWorkspaceUserRoleMappingAll)
+		workspaceUserRoleMappingPath.POST("/", CreateWorkspaceUserRoleMapping)
+		workspaceUserRoleMappingPath.GET("/", GetWorkspaceUserRoleMappingListOrderbyWorkspace)
+		workspaceUserRoleMappingPath.GET("/workspace/id/{workspaceId}", GetWorkspaceUserRoleMappingListByWorkspaceId)
+		workspaceUserRoleMappingPath.GET("/user/id/{userId}", GetWorkspaceUserRoleMappingListByUserId)
+		workspaceUserRoleMappingPath.GET("/workspace/id/{workspaceId}/user/id/{userId}", GetWorkspaceUserRoleMappingById)
+		workspaceUserRoleMappingPath.DELETE("/workspace/id/{workspaceId}/user/id/{userId}", DeleteWorkspaceUserRoleMapping)
+
+		tool := app.Group(apiPath + "tool")
+		tool.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
 	})
 
 	return app
