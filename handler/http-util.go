@@ -105,8 +105,3 @@ func CommonHttp(url string, s interface{}, httpMethod string, auth string) ([]by
 
 	return respBody, nil
 }
-
-func isJSONResponse(body []byte) bool {
-	var js map[string]interface{}
-	return json.Unmarshal(body, &js) == nil
-}
