@@ -2,6 +2,7 @@
 layout: default
 title: Quick Start with docker
 parent: How to install
+order: 1
 ---
 
 ## Quick Start with docker
