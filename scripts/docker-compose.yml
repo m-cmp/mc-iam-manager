@@ -17,6 +17,11 @@ services:
       KEYCLAOK_REALM: mciam
       KEYCLAOK_CLIENT: mciam
       KEYCLAOK_CLIENT_SECRET: mciamclientsecret
+      MCINFRAMANAGER: ${MCINFRAMANAGER}
+      MCINFRAMANAGER_APIUSERNAME: ${MCINFRAMANAGER_APIUSERNAME}
+      MCINFRAMANAGER_APIPASSWORD: ${MCINFRAMANAGER_APIPASSWORD}
+    env_file:
+      - .env
     networks:
       - mciammanagernet
     restart: always
