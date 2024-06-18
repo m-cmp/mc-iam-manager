@@ -52,6 +52,51 @@
                 "tags": [
                     "Alive"
                 ],
+                "description": "mc-iam-manager가 정상적으로 작동중인지 단순 확인합니다.",
+                "operationId": "alive",
+                "summary": "Alive"
+            }
+        },
+        "/alive/admin": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "success",
+                        "headers": {
+                            "Connection": {
+                                "type": "string"
+                            },
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Server": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "ststus": {
+                                    "example": "ok",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "tags": [
+                    "Alive"
+                ],
                 "description": "mc-iam-manager가 정상적으로 작동중인지 단순 확인합니다.\n\n- admin 역할을 갖고 있어야 200 OK",
                 "operationId": "aliveAdmin",
                 "summary": "Alive admin"
@@ -1895,17 +1940,7 @@
                 "description": "workspace 단건 조회",
                 "operationId": "getworkspacebyid",
                 "summary": "GetWorkspaceById"
-            }
-        },
-        "/api/ws/workspace/id/{workspaceUUID}": {
-            "parameters": [
-                {
-                    "in": "path",
-                    "name": "workspaceUUID",
-                    "required": true,
-                    "type": "string"
-                }
-            ],
+            },
             "put": {
                 "consumes": [
                     "text/plain"
@@ -3118,7 +3153,7 @@
                 "parameters": [],
                 "responses": {
                     "200": {
-                        "description": "GetWorkspaceUserRoleMappingListByWorkspaceUUID",
+                        "description": "GetWorkspaceUserRoleMappingListByWorkspaceId",
                         "headers": {
                             "Content-Length": {
                                 "type": "string"
@@ -3244,6 +3279,43 @@
                     "type": "string"
                 }
             ],
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": "DeleteWorkspaceUserRoleMapping",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "message": {
+                                    "example": "done",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "tags": [
+                    "WorkspaceUserRoleMapping"
+                ],
+                "description": "workspace - user - role mapping 목록 workspace 와 user 로 mapping 삭제",
+                "operationId": "deleteworkspaceuserrolemapping",
+                "summary": "DeleteWorkspaceUserRoleMapping"
+            },
             "get": {
                 "produces": [
                     "application/json"
@@ -3296,59 +3368,6 @@
                 "description": "workspace - user - role mapping 목록 workspace 와 user 로 role 조회",
                 "operationId": "getworkspaceuserrolemappingbyid",
                 "summary": "GetWorkspaceUserRoleMappingById"
-            }
-        },
-        "/api/wsuserrole/workspace/id/{workspaceId}/user/id/{user}": {
-            "parameters": [
-                {
-                    "in": "path",
-                    "name": "workspaceId",
-                    "required": true,
-                    "type": "string"
-                },
-                {
-                    "in": "path",
-                    "name": "user",
-                    "required": true,
-                    "type": "string"
-                }
-            ],
-            "delete": {
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [],
-                "responses": {
-                    "200": {
-                        "description": "DeleteWorkspaceUserRoleMapping",
-                        "headers": {
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "message": {
-                                    "example": "done",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    }
-                },
-                "tags": [
-                    "WorkspaceUserRoleMapping"
-                ],
-                "description": "workspace - user - role mapping 목록 workspace 와 user 로 mapping 삭제",
-                "operationId": "deleteworkspaceuserrolemapping",
-                "summary": "DeleteWorkspaceUserRoleMapping"
             }
         }
     },
