@@ -22,14 +22,14 @@ func McInfraCreateNamespace(mcInfraCreateNamespaceRequest *McInfraCreateNamespac
 }
 
 // List all namespaces
-// func McInfraListAllNamespaces(c buffalo.Context) ([]byte, error) {
-// 	commonRequest := &handler.CommonRequest{}
-// 	resp, err := handler.CommonHttpCaller(http.MethodGet, handler.MCINFRAMANAGER, listAllNamespaces, commonRequest, mcinframanagerAuthentication())
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return resp, nil
-// }
+func McInfraListAllNamespaces() ([]byte, error) {
+	commonRequest := &handler.CommonRequest{}
+	resp, err := handler.CommonHttpCaller(http.MethodGet, handler.MCINFRAMANAGER, listAllNamespaces, commonRequest, mcinframanagerAuthentication())
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
 
 // Get namespace
 // func McInfraGetNamespace(mcInfraGetNamespaceRequest map[string]string) ([]byte, error) {

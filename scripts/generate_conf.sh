@@ -2,6 +2,9 @@
 
 read -p ">.env (DOMAIN): " DOMAIN
 read -p ">.env (EMAIL): " EMAIL
+read -p ">.env (MCINFRAMANAGER): " MCINFRAMANAGER
+read -p ">.env (MCINFRAMANAGER_APIUSERNAME): " MCINFRAMANAGER_APIUSERNAME
+read -p ">.env (MCINFRAMANAGER_APIPASSWORD): " MCINFRAMANAGER_APIPASSWORD
 
 if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ]; then
     echo -e "================================================"
@@ -20,6 +23,9 @@ fi
 
 echo "DOMAIN=${DOMAIN}" > .env
 echo "EMAIL=${EMAIL}" >> .env
+echo "MCINFRAMANAGER=${MCINFRAMANAGER}" >> .env
+echo "MCINFRAMANAGER_APIUSERNAME=${MCINFRAMANAGER_APIUSERNAME}" >> .env
+echo "MCINFRAMANAGER_APIPASSWORD=${MCINFRAMANAGER_APIPASSWORD}" >> .env
 
 echo -e "================================================"
 echo -e " * DOMAIN = ${DOMAIN}\n * EMAIL = ${EMAIL}"

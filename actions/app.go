@@ -101,6 +101,9 @@ func App() *buffalo.App {
 		workspaceUserRoleMappingPath.GET("/user/id/{userId}", GetWorkspaceUserRoleMappingListByUserId)
 		workspaceUserRoleMappingPath.GET("/workspace/id/{workspaceId}/user/id/{userId}", GetWorkspaceUserRoleMappingById)
 		workspaceUserRoleMappingPath.DELETE("/workspace/id/{workspaceId}/user/id/{userId}", DeleteWorkspaceUserRoleMapping)
+
+		tool := app.Group(apiPath + "tool")
+		tool.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
 	})
 
 	return app
