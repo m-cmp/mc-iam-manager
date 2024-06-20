@@ -1,37 +1,10 @@
 #!/bin/bash
 
-read -p ">.env (DOMAIN): " DOMAIN
-read -p ">.env (EMAIL): " EMAIL
-read -p ">.env (MCINFRAMANAGER): " MCINFRAMANAGER
-read -p ">.env (MCINFRAMANAGER_APIUSERNAME): " MCINFRAMANAGER_APIUSERNAME
-read -p ">.env (MCINFRAMANAGER_APIPASSWORD): " MCINFRAMANAGER_APIPASSWORD
-
-if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ]; then
-    echo -e "================================================"
-    echo "Use existing settings because there is no input."
-
-    set -o allexport
-    source .env
-    set +o allexport
-
-    if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ]; then
-        echo -e "================================================"
-        echo "DOMAIN and EMAIL must be set in the .env file."
-        exit 1
-    fi
-fi
-
-echo "DOMAIN=${DOMAIN}" > .env
-echo "EMAIL=${EMAIL}" >> .env
-echo "MCINFRAMANAGER=${MCINFRAMANAGER}" >> .env
-echo "MCINFRAMANAGER_APIUSERNAME=${MCINFRAMANAGER_APIUSERNAME}" >> .env
-echo "MCINFRAMANAGER_APIPASSWORD=${MCINFRAMANAGER_APIPASSWORD}" >> .env
+source ./.env
 
 echo -e "================================================"
 echo -e " * DOMAIN = ${DOMAIN}\n * EMAIL = ${EMAIL}"
 echo -e "================================================"
-
-
 
 mkdir -p ./nginx
 cat > ./nginx/nginx.conf <<EOL
