@@ -61,8 +61,8 @@ type CustomClaims struct {
 	// EmailVerified     bool     `json:"email_verified"`
 	// Name              string   `json:"name"`
 	// Groups            []string `json:"groups"`
-	// PreferredUsername string   `json:"preferred_username"`
-	RealmRole []string `json:"realmRole"`
+	PreferredUsername string   `json:"preferred_username"`
+	RealmRole         []string `json:"realmRole"`
 	// GivenName         string   `json:"given_name"`
 	// FamilyName        string   `json:"family_name"`
 	// Email             string   `json:"email"`

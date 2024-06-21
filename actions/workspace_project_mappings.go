@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"fmt"
 	"log"
 	"mc_iam_manager/handler"
 	"mc_iam_manager/models"
@@ -31,6 +32,18 @@ func CreateWPmappings(c buffalo.Context) error {
 		var s models.WorkspaceProjectMapping
 		s.WorkspaceID = uuid.FromStringOrNil(req.WorkspaceID)
 		s.ProjectID = uuid.FromStringOrNil(projectId)
+
+		// Project is the only mapping that does not belong to another workspace. START
+		orgWPMapping, _ := handler.GetWPmappingByProjectId(tx, projectId)
+		fmt.Println(orgWPMapping)
+		if orgWPMapping != nil {
+			err = handler.DeleteWPmapping(tx, orgWPMapping)
+			if err != nil {
+				log.Println(err)
+				return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
+			}
+		}
+		// Project is the only mapping that does not belong to another workspace. END
 
 		_, err = handler.CreateWPmapping(tx, &s)
 		if err != nil {
