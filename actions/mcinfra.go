@@ -39,11 +39,8 @@ func SyncProjectListWithMcInfra(c buffalo.Context) error {
 				}
 				_, err := handler.CreateProject(tx, &s)
 				if err != nil {
-					log.Fatal(err)
-					if err != nil {
-						log.Println(err)
-						return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
-					}
+					log.Println(err)
+					return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 				}
 			}
 		}

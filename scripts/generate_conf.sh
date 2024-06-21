@@ -2,6 +2,13 @@
 
 source ./.env
 
+if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ]; then
+    echo -e "================================================"
+    echo "please, make sure you fill up the './.env'"
+    echo -e "================================================"
+    exit
+fi
+
 echo -e "================================================"
 echo -e " * DOMAIN = ${DOMAIN}\n * EMAIL = ${EMAIL}"
 echo -e "================================================"
@@ -80,5 +87,5 @@ http {
 EOL
 
 echo 
-echo "** Nginx configuration file has been created at ./nginx/nginx.conf **"
+echo "** Nginx configuration file has been created at ./nginx **"
 echo 

@@ -11,4 +11,6 @@ add_foreign_key("workspace_project_mappings", "workspace_id", {"workspaces": ["i
 add_foreign_key("workspace_project_mappings", "project_id", {"projects": ["id"]}, {
 	"on_delete": "CASCADE",
 })
+
 sql("ALTER TABLE workspace_project_mappings ADD CONSTRAINT unique_workspace_project_mappings_row UNIQUE (workspace_id, project_id);")
+sql("ALTER TABLE workspace_project_mappings ADD CONSTRAINT unique_project_row UNIQUE (project_id);")

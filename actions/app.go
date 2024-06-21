@@ -58,8 +58,8 @@ func App() *buffalo.App {
 		alive.GET("/operator", mcimw.BuffaloMcimw(aliveSig))
 
 		sts := app.Group(apiPath + "poc" + "/sts")
-		mcimw.GrantedRoleList = []string{""}
-		sts.GET("/securitykey", mcimw.BuffaloMcimw(AuthGetSecurityKeyHandler))
+		mcimw.GrantedRoleList = []string{}
+		sts.GET("/securitykey", mcimw.BuffaloMcimw(AuthSecuritykeyProviderHandler))
 
 		mcimw.AuthMethod = mcimw.EnvKeycloak
 		mcimw.GrantedRoleList = []string{}
@@ -105,7 +105,6 @@ func App() *buffalo.App {
 
 		tool := app.Group(apiPath + "tool")
 		tool.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
-
 	})
 
 	return app

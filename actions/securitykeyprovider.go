@@ -11,7 +11,7 @@ import (
 	"github.com/gobuffalo/buffalo"
 )
 
-func AuthGetSecurityKeyHandler(c buffalo.Context) error {
+func AuthSecuritykeyProviderHandler(c buffalo.Context) error {
 	providers := c.Param("providers")
 	var providerarr []string
 	if providers != "" {
