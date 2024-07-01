@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   mciammanager:
+    container_name: mciammanager
     build: ../
     depends_on:
       - postgresdb
@@ -27,6 +28,7 @@ services:
     restart: always
 
   postgresdb:
+    container_name: mciammanager-postgresdb
     image: postgres:14-alpine
     volumes:
       - ~/.m-cmp/data/postgres_data:/var/lib/postgresql/data
@@ -38,6 +40,7 @@ services:
       - mciammanagernet
 
   keycloak:
+    container_name: mciammanager-keycloak
     image: quay.io/keycloak/keycloak:24.0.4
     environment:
       DB_VENDOR: POSTGRES
@@ -65,7 +68,7 @@ services:
 
   certbot:
     image: certbot/certbot
-    container_name: certbot
+    container_name: mciammanager-certbot
     volumes:
       - ~/.m-cmp/data/certbot/conf:/etc/letsencrypt  
       - ~/.m-cmp/data/certbot/www:/var/www/certbot
@@ -87,7 +90,7 @@ services:
 
   nginx:
     image: nginx:latest
-    container_name: nginx
+    container_name: mciammanager-nginx
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ~/.m-cmp/data/certbot/conf:/etc/letsencrypt
