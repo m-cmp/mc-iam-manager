@@ -8,23 +8,12 @@ services:
       - postgresdb
       - keycloak
     environment:
-      GO_ENV: development # production | development
+      GO_ENV: production # production | development
       GODEBUG: netdns=go
       DEV_DATABASE_URL: postgres://mciamadmin:mciammanagerpassword@postgresdb:5432/mciamdb
       DATABASE_URL: postgres://mciamadmin:mciammanagerpassword@postgresdb:5432/mciamdb
-      KEYCLOAK_HOST: http://keycloak:8080
-      KEYCLAOK_ADMIN: admin
-      KEYCLAOK_ADMIN_PASSWORD: admin
-      KEYCLAOK_REALM: mciam
-      KEYCLAOK_CLIENT: mciam
-      KEYCLAOK_CLIENT_SECRET: mciamclientsecret
-      MCINFRAMANAGER: ${MCINFRAMANAGER}
-      MCINFRAMANAGER_APIUSERNAME: ${MCINFRAMANAGER_APIUSERNAME}
-      MCINFRAMANAGER_APIPASSWORD: ${MCINFRAMANAGER_APIPASSWORD}
     env_file:
       - .env
-    networks:
-      - mciammanagernet
     restart: always
 
   postgresdb:
@@ -36,8 +25,7 @@ services:
       POSTGRES_DB: mciamdb
       POSTGRES_USER: mciamadmin
       POSTGRES_PASSWORD: mciammanagerpassword
-    networks:
-      - mciammanagernet
+
 
   keycloak:
     container_name: mciammanager-keycloak
@@ -54,17 +42,17 @@ services:
       KC_HTTPS_CERTIFICATE_KEY_FILE: /etc/letsencrypt/live/${DOMAIN}/privkey.pem
       KC_HOSTNAME: ${DOMAIN}
       KC_PROXY_HEADERS: xforwarded
-      KC_FEATURES: recovery-codes:v1,scripts:v1
+      # KC_FEATURES: hostname:v2
     volumes:
       - ~/.m-cmp/data/certbot/conf:/etc/letsencrypt
       - ~/.m-cmp/data/keycloak/data/:/opt/keycloak/data/
       - ./realm-import.json:/opt/keycloak/data/import/realm-import.json
+    env_file:
+      - .env
     depends_on:
       - postgresdb
     user: root
     command: start-dev --import-realm --verbose
-    networks:
-      - mciammanagernet
 
   certbot:
     image: certbot/certbot
@@ -85,8 +73,6 @@ services:
         done;'
     env_file:
       - .env
-    networks:
-      - mciammanagernet
 
   nginx:
     image: nginx:latest
@@ -103,8 +89,3 @@ services:
       - mciammanager
       - certbot
       - keycloak
-    networks:
-      - mciammanagernet
-
-networks:
-  mciammanagernet:

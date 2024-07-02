@@ -9,7 +9,6 @@ import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/buffalo/render"
 	"github.com/golang-jwt/jwt"
-	"github.com/labstack/echo"
 	"github.com/lestrrat-go/jwx/jwk"
 )
 
@@ -94,50 +93,9 @@ func (mr mcimw) istokenValidBuffalo(c buffalo.Context, tokenString string) error
 	}
 
 	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
-		if len(mr.grantRoles) != 0 {
-			if !mr.isRoleContains(claims.RealmRole) {
-				return fmt.Errorf("role is invalid")
-			}
-		} else {
-			c.Set("roles", claims.RealmRole)
-		}
-		return nil
-	} else {
-		return fmt.Errorf("token is invalid")
-	}
-}
-
-func EchoMcimw(next echo.HandlerFunc) echo.HandlerFunc {
-	mr := mcimw{
-		grantRoles: GrantedRoleList,
-	}
-	return mr.EchoMiddleware(next)
-}
-
-func (mr mcimw) EchoMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		err := mr.istokenValidEcho(c, strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer "))
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"err": err.Error()})
-		}
-		return next(c)
-	}
-}
-
-func (mr mcimw) istokenValidEcho(c echo.Context, tokenString string) error {
-	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, keyfunction)
-	if err != nil {
-		return fmt.Errorf("failed to parse token: %s", err.Error())
-	}
-
-	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
-		if len(mr.grantRoles) != 0 {
-			if !mr.isRoleContains(claims.RealmRole) {
-				return fmt.Errorf("role is invalid")
-			}
-		} else {
-			c.Set("roles", claims.RealmRole)
-		}
+		c.Set("roles", claims.RealmRole)
+		c.Set("preferredUsername", claims.PreferredUsername)
+		c.Set("accessToken", tokenString)
 		return nil
 	} else {
 		return fmt.Errorf("token is invalid")
