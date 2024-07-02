@@ -111,6 +111,16 @@ func GetWPmappingById(tx *pop.Connection, workspaceId string, projectId string) 
 	return m, nil
 }
 
+func GetWPmappingByProjectId(tx *pop.Connection, projectId string) (*models.WorkspaceProjectMapping, error) {
+	var s models.WorkspaceProjectMapping
+	err := tx.Where("project_id = ? ", projectId).First(&s)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	return &s, nil
+}
+
 type updateWPmappings struct {
 	WorkspaceId string `db:"workspace_id"`
 	ProjectIds  string `db:"projects"`
