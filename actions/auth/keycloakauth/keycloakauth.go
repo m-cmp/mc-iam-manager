@@ -1,9 +1,10 @@
-package mcimw
+package keycloakauth
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -11,73 +12,34 @@ import (
 	"github.com/gobuffalo/envy"
 	"github.com/gobuffalo/validate/v3"
 	"github.com/gobuffalo/validate/v3/validators"
-	"github.com/golang-jwt/jwt"
 )
 
 type keycloak struct {
+	KEYCLOAK               *gocloak.GoCloak
 	KEYCLOAK_HOST          string
 	KEYCLAOK_REALM         string
-	KEYCLOAK               *gocloak.GoCloak
 	KEYCLAOK_CLIENT        string
 	KEYCLAOK_CLIENT_SECRET string
-	KEYCLAOK_JWKSURL       string
-}
-
-type UserLogin struct {
-	Id       string `json:"id"`
-	Password string `json:"password"`
-}
-
-type UserLoginRefresh struct {
-	RefreshToken string `json:"refresh_token"`
-}
-
-type UserLogout struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
-type CustomClaims struct {
-	*jwt.StandardClaims
-	Exp int `json:"exp"`
-	// Iat            int      `json:"iat"`
-	// Jti            string   `json:"jti"`
-	// Iss            string   `json:"iss"`
-	// Aud            string   `json:"aud"`
-	// Sub            string   `json:"sub"`
-	// Typ            string   `json:"typ"`
-	// Azp            string   `json:"azp"`
-	// SessionState   string   `json:"session_state"`
-	// Acr            string   `json:"acr"`
-	// AllowedOrigins []string `json:"allowed-origins"`
-	//
-	//	RealmAccess    struct {
-	//		Roles []string `json:"roles"`
-	//	} `json:"realm_access"`
-	//
-	// Scope             string   `json:"scope"`
-	// Sid               string   `json:"sid"`
-	// Upn               string   `json:"upn"`
-	// EmailVerified     bool     `json:"email_verified"`
-	// Name              string   `json:"name"`
-	// Groups            []string `json:"groups"`
-	PreferredUsername string   `json:"preferred_username"`
-	RealmRole         []string `json:"realmRole"`
-	// GivenName         string   `json:"given_name"`
-	// FamilyName        string   `json:"family_name"`
-	// Email             string   `json:"email"`
 }
 
 var (
+	EnvKeycloak keycloak
+)
+
+func init() {
 	EnvKeycloak = keycloak{
 		KEYCLOAK_HOST:          envy.Get("KEYCLOAK_HOST", ""),
 		KEYCLOAK:               gocloak.NewClient(envy.Get("KEYCLOAK_HOST", "")),
 		KEYCLAOK_REALM:         envy.Get("KEYCLAOK_REALM", "mciam"),
 		KEYCLAOK_CLIENT:        envy.Get("KEYCLAOK_CLIENT", "mciammanager"),
 		KEYCLAOK_CLIENT_SECRET: envy.Get("KEYCLAOK_CLIENT_SECRET", "mciammanagerclientsecret"),
-		KEYCLAOK_JWKSURL:       envy.Get("KEYCLOAK_HOST", "") + "/realms/" + envy.Get("KEYCLAOK_REALM", "mciam") + "/protocol/openid-connect/certs",
 	}
-)
+}
+
+type UserLogin struct {
+	Id       string `json:"id"`
+	Password string `json:"password"`
+}
 
 func (k keycloak) AuthLoginHandler(res http.ResponseWriter, req *http.Request) {
 
@@ -86,7 +48,9 @@ func (k keycloak) AuthLoginHandler(res http.ResponseWriter, req *http.Request) {
 	err := decoder.Decode(&user)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, err)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 	defer req.Body.Close()
@@ -98,7 +62,9 @@ func (k keycloak) AuthLoginHandler(res http.ResponseWriter, req *http.Request) {
 	if validateErr.HasAny() {
 		fmt.Println(validateErr)
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, validateErr.Error())
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": validateErr.Error(),
+		})
 		return
 	}
 
@@ -107,19 +73,29 @@ func (k keycloak) AuthLoginHandler(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, err)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
 	jsonData, err := json.Marshal(accessTokenResponse)
 	if err != nil {
 		fmt.Println("JSON 변환 오류:", err)
+		res.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
 	fmt.Fprintln(res, string(jsonData))
+}
+
+type UserLoginRefresh struct {
+	RefreshToken string `json:"refresh_token"`
 }
 
 func (k keycloak) AuthLoginRefreshHandler(res http.ResponseWriter, req *http.Request) {
@@ -129,7 +105,9 @@ func (k keycloak) AuthLoginRefreshHandler(res http.ResponseWriter, req *http.Req
 	err := decoder.Decode(&user)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, err)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 	defer req.Body.Close()
@@ -140,7 +118,9 @@ func (k keycloak) AuthLoginRefreshHandler(res http.ResponseWriter, req *http.Req
 	if validateErr.HasAny() {
 		fmt.Println(validateErr)
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, validateErr.Error())
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
@@ -149,13 +129,19 @@ func (k keycloak) AuthLoginRefreshHandler(res http.ResponseWriter, req *http.Req
 	if err != nil {
 		fmt.Println(err)
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, err)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
 	jsonData, err := json.Marshal(accessTokenResponse)
 	if err != nil {
 		fmt.Println("JSON 변환 오류:", err)
+		res.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
@@ -164,14 +150,22 @@ func (k keycloak) AuthLoginRefreshHandler(res http.ResponseWriter, req *http.Req
 	fmt.Fprintln(res, string(jsonData))
 }
 
+type UserLogout struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
 func (k keycloak) AuthLogoutHandler(res http.ResponseWriter, req *http.Request) {
 
 	decoder := json.NewDecoder(req.Body)
 	user := &UserLogout{}
 	err := decoder.Decode(&user)
 	if err != nil {
+		log.Println(err.Error())
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, err)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 	defer req.Body.Close()
@@ -180,18 +174,22 @@ func (k keycloak) AuthLogoutHandler(res http.ResponseWriter, req *http.Request) 
 		&validators.StringIsPresent{Field: user.RefreshToken, Name: "refresh_token"},
 	)
 	if validateErr.HasAny() {
-		fmt.Println(validateErr)
+		log.Println(err.Error())
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, validateErr.Error())
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": validateErr.Error(),
+		})
 		return
 	}
 
 	ctx := context.Background()
 	err = k.KEYCLOAK.Logout(ctx, k.KEYCLAOK_CLIENT, k.KEYCLAOK_CLIENT_SECRET, k.KEYCLAOK_REALM, user.RefreshToken)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err.Error())
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, err)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
@@ -206,9 +204,11 @@ func (k keycloak) AuthGetUserInfo(res http.ResponseWriter, req *http.Request) {
 		&validators.StringIsPresent{Field: accessToken, Name: "Authorization"},
 	)
 	if validateErr.HasAny() {
-		fmt.Println(validateErr)
+		log.Println(validateErr.Error())
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, validateErr.Error())
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": validateErr.Error(),
+		})
 		return
 	}
 
@@ -216,17 +216,21 @@ func (k keycloak) AuthGetUserInfo(res http.ResponseWriter, req *http.Request) {
 
 	userinfo, err := k.KEYCLOAK.GetUserInfo(ctx, accessToken, k.KEYCLAOK_REALM)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err.Error())
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, err)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
 	jsonData, err := json.Marshal(userinfo)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err.Error())
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, err)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
@@ -241,9 +245,11 @@ func (k keycloak) AuthGetUserValidate(res http.ResponseWriter, req *http.Request
 		&validators.StringIsPresent{Field: accessToken, Name: "Authorization"},
 	)
 	if validateErr.HasAny() {
-		fmt.Println(validateErr)
+		log.Println(validateErr.Error())
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, validateErr.Error())
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": validateErr.Error(),
+		})
 		return
 	}
 
@@ -251,9 +257,11 @@ func (k keycloak) AuthGetUserValidate(res http.ResponseWriter, req *http.Request
 
 	_, err := k.KEYCLOAK.GetUserInfo(ctx, accessToken, k.KEYCLAOK_REALM)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err.Error())
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, err)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
@@ -266,9 +274,11 @@ func (k keycloak) AuthGetCerts(res http.ResponseWriter, req *http.Request) {
 	ctx := context.Background()
 	cert, err := k.KEYCLOAK.GetCerts(ctx, k.KEYCLAOK_REALM)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err.Error())
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, err)
+		json.NewEncoder(res).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
 		return
 	}
 
