@@ -1,4 +1,4 @@
-module iamtokenvalidator
+module github.com/m-cmp/mc-iam-manager/iamtokenvalidator/v1
 
 go 1.22.3
 

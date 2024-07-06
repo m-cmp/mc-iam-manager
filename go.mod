@@ -16,9 +16,9 @@ require (
 	github.com/gobuffalo/validate/v3 v3.3.3
 	github.com/gobuffalo/x v0.1.0
 	github.com/gofrs/uuid v4.4.0+incompatible
+	github.com/m-cmp/mc-iam-manager/iamtokenvalidator v1.0.0
 	github.com/rs/cors v1.11.0
 	github.com/unrolled/secure v1.14.0
-	github.com/m-cmp/mc-iam-manager/iamtokenvalidator v0.0.0-00010101000000-000000000000
 )
 
 require (
