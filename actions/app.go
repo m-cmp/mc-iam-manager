@@ -1,7 +1,9 @@
 package actions
 
 import (
-	"mc_iam_manager/mcimw"
+	"mc_iam_manager/actions/auth"
+	"mc_iam_manager/actions/auth/keycloakauth"
+	"mc_iam_manager/middleware"
 	"mc_iam_manager/models"
 	"net/http"
 	"sync"
@@ -42,29 +44,25 @@ func App() *buffalo.App {
 		app.Use(contenttype.Set("application/json"))
 		app.Use(popmw.Transaction(models.DB))
 
-		apiPath := envy.Get("API_PATH", "/api/")
-		auth := app.Group(apiPath + "auth")
-		auth.ANY("/{path:.+}", buffalo.WrapHandlerFunc(mcimw.BeginAuthHandler))
+		apiPath := envy.Get("API_PATH", "/api")
+
+		authPath := app.Group(apiPath + "/auth")
+		auth.AuthMethod = keycloakauth.EnvKeycloak
+		authPath.ANY("/{path:.+}", buffalo.WrapHandlerFunc(auth.BeginAuthHandler))
 
 		alive := app.Group("/alive")
 		alive.GET("/", aliveSig)
-		mcimw.GrantedRoleList = []string{"admin"}
-		alive.GET("/admin", mcimw.BuffaloMcimw(aliveSig))
 
-		mcimw.GrantedRoleList = []string{"viewer"}
-		alive.GET("/viewer", mcimw.BuffaloMcimw(aliveSig))
+		tokenTestPath := app.Group(apiPath + "/tokentest")
+		tokenTestPath.Use(middleware.IsAuthMiddleware)
+		tokenTestPath.Use(middleware.SetRolesMiddleware)
+		tokenTestPath.GET("/", aliveSig)
+		tokenTestPath.GET("/admin", middleware.SetGrantedRolesMiddleware([]string{"admin"})(aliveSig))
+		tokenTestPath.GET("/operator", middleware.SetGrantedRolesMiddleware([]string{"admin", "operator"})(aliveSig))
+		tokenTestPath.GET("/viewer", middleware.SetGrantedRolesMiddleware([]string{"admin", "operator", "viewer"})(aliveSig))
 
-		mcimw.GrantedRoleList = []string{"operator"}
-		alive.GET("/operator", mcimw.BuffaloMcimw(aliveSig))
-
-		sts := app.Group(apiPath + "poc" + "/sts")
-		mcimw.GrantedRoleList = []string{}
-		sts.GET("/securitykey", mcimw.BuffaloMcimw(AuthSecuritykeyProviderHandler))
-
-		mcimw.AuthMethod = mcimw.EnvKeycloak
-		mcimw.GrantedRoleList = []string{}
-		app.Use(mcimw.BuffaloMcimw)
-		rolePath := app.Group(apiPath + "role")
+		rolePath := app.Group(apiPath + "/role")
+		rolePath.Use(middleware.IsAuthMiddleware)
 		rolePath.POST("/", CreateRole)
 		rolePath.GET("/", GetRoleList)
 		rolePath.GET("/role/{roleName}", SearchRolesByName)
@@ -72,7 +70,8 @@ func App() *buffalo.App {
 		rolePath.PUT("/role/id/{roleId}", UpdateRoleById)
 		rolePath.DELETE("/role/id/{roleId}", DeleteRoleById)
 
-		workspacePath := app.Group(apiPath + "ws")
+		workspacePath := app.Group(apiPath + "/ws")
+		workspacePath.Use(middleware.IsAuthMiddleware)
 		workspacePath.POST("/", CreateWorkspace)
 		workspacePath.GET("/", GetWorkspaceList)
 		workspacePath.GET("/workspace/{workspaceName}", SearchWorkspacesByName)
@@ -80,7 +79,8 @@ func App() *buffalo.App {
 		workspacePath.PUT("/workspace/id/{workspaceId}", UpdateWorkspaceById)
 		workspacePath.DELETE("/workspace/id/{workspaceId}", DeleteWorkspaceById)
 
-		projectPath := app.Group(apiPath + "prj")
+		projectPath := app.Group(apiPath + "/prj")
+		projectPath.Use(middleware.IsAuthMiddleware)
 		projectPath.POST("/", CreateProject)
 		projectPath.GET("/", GetProjectList)
 		projectPath.GET("/project/{projectName}", SearchProjectsByName)
@@ -88,14 +88,16 @@ func App() *buffalo.App {
 		projectPath.PUT("/project/id/{projectId}", UpdateProjectById)
 		projectPath.DELETE("/project/id/{projectId}", DeleteProjectById)
 
-		wpmappingPath := app.Group(apiPath + "wsprj")
+		wpmappingPath := app.Group(apiPath + "/wsprj")
+		wpmappingPath.Use(middleware.IsAuthMiddleware)
 		wpmappingPath.POST("/", CreateWPmappings)
 		wpmappingPath.GET("/", GetWPmappingListOrderbyWorkspace)
 		wpmappingPath.GET("/workspace/id/{workspaceId}", GetWPmappingListByWorkspaceId)
 		wpmappingPath.PUT("/", UpdateWPmappings)
 		wpmappingPath.DELETE("/workspace/id/{workspaceId}/project/id/{projectId}", DeleteWPmapping)
 
-		workspaceUserRoleMappingPath := app.Group(apiPath + "wsuserrole")
+		workspaceUserRoleMappingPath := app.Group(apiPath + "/wsuserrole")
+		workspaceUserRoleMappingPath.Use(middleware.IsAuthMiddleware)
 		workspaceUserRoleMappingPath.POST("/", CreateWorkspaceUserRoleMapping)
 		workspaceUserRoleMappingPath.GET("/", GetWorkspaceUserRoleMappingListOrderbyWorkspace)
 		workspaceUserRoleMappingPath.GET("/workspace/id/{workspaceId}", GetWorkspaceUserRoleMappingListByWorkspaceId)
@@ -103,8 +105,13 @@ func App() *buffalo.App {
 		workspaceUserRoleMappingPath.GET("/workspace/id/{workspaceId}/user/id/{userId}", GetWorkspaceUserRoleMappingById)
 		workspaceUserRoleMappingPath.DELETE("/workspace/id/{workspaceId}/user/id/{userId}", DeleteWorkspaceUserRoleMapping)
 
-		tool := app.Group(apiPath + "tool")
-		tool.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
+		toolPath := app.Group(apiPath + "/tool")
+		toolPath.Use(middleware.IsAuthMiddleware)
+		toolPath.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
+
+		stsPath := app.Group(apiPath + "/poc" + "/sts")
+		stsPath.Use(middleware.IsAuthMiddleware)
+		stsPath.GET("/securitykey", AuthSecuritykeyProviderHandler)
 	})
 
 	return app
