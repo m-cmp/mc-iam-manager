@@ -53,14 +53,6 @@ func App() *buffalo.App {
 		alive := app.Group("/alive")
 		alive.GET("/", aliveSig)
 
-		tokenTestPath := app.Group(apiPath + "/tokentest")
-		tokenTestPath.Use(middleware.IsAuthMiddleware)
-		tokenTestPath.Use(middleware.SetRolesMiddleware)
-		tokenTestPath.GET("/", aliveSig)
-		tokenTestPath.GET("/admin", middleware.SetGrantedRolesMiddleware([]string{"admin"})(aliveSig))
-		tokenTestPath.GET("/operator", middleware.SetGrantedRolesMiddleware([]string{"admin", "operator"})(aliveSig))
-		tokenTestPath.GET("/viewer", middleware.SetGrantedRolesMiddleware([]string{"admin", "operator", "viewer"})(aliveSig))
-
 		rolePath := app.Group(apiPath + "/role")
 		rolePath.Use(middleware.IsAuthMiddleware)
 		rolePath.POST("/", CreateRole)
@@ -112,6 +104,14 @@ func App() *buffalo.App {
 		stsPath := app.Group(apiPath + "/poc" + "/sts")
 		stsPath.Use(middleware.IsAuthMiddleware)
 		stsPath.GET("/securitykey", AuthSecuritykeyProviderHandler)
+
+		tokenTestPath := app.Group(apiPath + "/tokentest")
+		tokenTestPath.Use(middleware.IsAuthMiddleware)
+		tokenTestPath.Use(middleware.SetRolesMiddleware)
+		tokenTestPath.GET("/", aliveSig)
+		tokenTestPath.GET("/admin", middleware.SetGrantedRolesMiddleware([]string{"admin"})(aliveSig))
+		tokenTestPath.GET("/operator", middleware.SetGrantedRolesMiddleware([]string{"admin", "operator"})(aliveSig))
+		tokenTestPath.GET("/viewer", middleware.SetGrantedRolesMiddleware([]string{"admin", "operator", "viewer"})(aliveSig))
 	})
 
 	return app

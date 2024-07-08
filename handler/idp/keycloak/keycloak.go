@@ -39,14 +39,6 @@ package keycloak
 // 	}
 // }
 
-// var KC_admin = "admin"
-// var KC_passwd = "admin"
-// var KC_uri = os.Getenv("keycloakHost")
-// var KC_clientID = os.Getenv("KC_clientID")
-// var KC_clientSecret = os.Getenv("KC_clientSecret")
-// var KC_realm = os.Getenv("KC_realm")
-// var KC_client = gocloak.NewClient(KC_uri)
-
 // func KcHomeHandler(c buffalo.Context) error {
 // 	return c.Render(http.StatusOK, r.JSON("OK"))
 // }
