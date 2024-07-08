@@ -1,6 +1,6 @@
 module mc_iam_manager
 
-go 1.22.3
+go 1.21.6
 
 require (
 	github.com/Nerzal/gocloak/v13 v13.9.0
@@ -16,7 +16,7 @@ require (
 	github.com/gobuffalo/validate/v3 v3.3.3
 	github.com/gobuffalo/x v0.1.0
 	github.com/gofrs/uuid v4.4.0+incompatible
-	github.com/m-cmp/mc-iam-manager/iamtokenvalidator v1.0.0
+	github.com/m-cmp/mc-iam-manager/iamtokenvalidator v0.2.1
 	github.com/rs/cors v1.11.0
 	github.com/unrolled/secure v1.14.0
 )
