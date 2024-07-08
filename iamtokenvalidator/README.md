@@ -3,7 +3,7 @@
 
 ## Overview
 
-`iamtokenvalidator` is a Go package designed to validate and decode JWT tokens using JSON Web Keys (JWK) fetched from a specified MC-IAM-MANAGER endpoint.
+`iamtokenvalidator` is a Go package designed to validate and decode JWT tokens using JSON Web Keys (JWK) fetched from a specified MC-IAM-MANAGER endpoint(https://example.com:5000/api/auth/certs).
 It provides functionality to verify tokens and extract claims, supporting the RS256, RS384, and RS512 signing methods.
 
 ## Installation
@@ -36,7 +36,7 @@ func GetPubkeyIamManager(host string) error
 
 **Parameters:**
 
-- `host`: The base URL of the MC-IAM-MANAGER service.
+- `host`: The URL of the MC-IAM-MANAGER service certs endpoint (https://example.com:5000/api/auth/certs).
 
 **Returns:**
 
