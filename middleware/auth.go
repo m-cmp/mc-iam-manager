@@ -9,7 +9,7 @@ import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/buffalo/render"
 
-	"github.com/m-cmp/mc-iam-manager/iamtokenvalidator"
+	iamtokenvalidator "mc-iam-manager/importiamtokenvalidator"
 )
 
 var r *render.Engine

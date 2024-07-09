@@ -1,4 +1,4 @@
-module github.com/m-cmp/mc-iam-manager
+module mc-iam-manager
 
 go 1.21.6
 
@@ -16,7 +16,6 @@ require (
 	github.com/gobuffalo/validate/v3 v3.3.3
 	github.com/gobuffalo/x v0.1.0
 	github.com/gofrs/uuid v4.4.0+incompatible
-	github.com/m-cmp/mc-iam-manager/iamtokenvalidator v0.0.0-00010101000000-000000000000
 	github.com/rs/cors v1.11.0
 	github.com/unrolled/secure v1.14.0
 )
@@ -37,6 +36,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	golang.org/x/mod v0.18.0 // indirect
+	mc-iam-manager/importiamtokenvalidator v0.0.0
 )
 
 require (
@@ -107,4 +107,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/m-cmp/mc-iam-manager/iamtokenvalidator => ./iamtokenvalidator
+replace mc-iam-manager/importiamtokenvalidator => ./iamtokenvalidator

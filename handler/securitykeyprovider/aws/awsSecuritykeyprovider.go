@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/m-cmp/mc-iam-manager/handler/securitykeyprovider"
+	"mc-iam-manager/handler/securitykeyprovider"
 
 	"github.com/gobuffalo/buffalo"
 )
