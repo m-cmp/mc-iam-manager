@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"mc_iam_manager/actions"
+	"github.com/m-cmp/mc-iam-manager/actions"
 )
 
 // main is the starting point for your Buffalo application.

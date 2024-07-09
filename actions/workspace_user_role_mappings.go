@@ -2,9 +2,10 @@ package actions
 
 import (
 	"log"
-	"mc_iam_manager/handler"
-	"mc_iam_manager/models"
 	"net/http"
+
+	"github.com/m-cmp/mc-iam-manager/handler"
+	"github.com/m-cmp/mc-iam-manager/models"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/v6"

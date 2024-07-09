@@ -21,7 +21,7 @@ func init() {
 
 	KEYCLOAKHOST := os.Getenv("KEYCLOAK_HOST")
 	KEYCLAOKREALM := os.Getenv("KEYCLAOK_REALM")
-	fmt.Println("Trying to fetch Pubkey URL :", KEYCLOAKHOST)
+	fmt.Println("Trying to fetch Pubkey : URL :", KEYCLOAKHOST)
 	err := iamtokenvalidator.GetPubkeyIamManager(KEYCLOAKHOST + "/realms/" + KEYCLAOKREALM + "/protocol/openid-connect/certs")
 	if err != nil {
 		panic(err)
