@@ -1,9 +1,9 @@
-module github.com/m-cmp/mc-iam-manager/iamtokenvalidator
+module iamtokenvalidator
 
 go 1.21.6
 
 require (
-	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/lestrrat-go/jwx v1.2.29
 )
 
