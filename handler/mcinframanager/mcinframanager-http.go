@@ -2,8 +2,9 @@ package mcinframanager
 
 import (
 	"encoding/base64"
-	"mc_iam_manager/handler"
 	"net/http"
+
+	"github.com/m-cmp/mc-iam-manager/handler"
 )
 
 ////// NameSpace Mng START

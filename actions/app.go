@@ -1,12 +1,13 @@
 package actions
 
 import (
-	"mc_iam_manager/actions/auth"
-	"mc_iam_manager/actions/auth/keycloakauth"
-	"mc_iam_manager/middleware"
-	"mc_iam_manager/models"
 	"net/http"
 	"sync"
+
+	"github.com/m-cmp/mc-iam-manager/actions/auth"
+	"github.com/m-cmp/mc-iam-manager/actions/auth/keycloakauth"
+	"github.com/m-cmp/mc-iam-manager/middleware"
+	"github.com/m-cmp/mc-iam-manager/models"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/buffalo-pop/v3/pop/popmw"
@@ -36,7 +37,7 @@ func App() *buffalo.App {
 			PreWares: []buffalo.PreWare{
 				cors.Default().Handler,
 			},
-			SessionName: "_mc_iam_manager_session",
+			SessionName: "_github.com/m-cmp/mc-iam-manager_session",
 		})
 
 		app.Use(forceSSL())

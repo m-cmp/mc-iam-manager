@@ -2,11 +2,12 @@ package actions
 
 import (
 	"log"
-	"mc_iam_manager/handler/securitykeyprovider"
-	"mc_iam_manager/handler/securitykeyprovider/alibaba"
-	"mc_iam_manager/handler/securitykeyprovider/aws"
 	"net/http"
 	"strings"
+
+	"github.com/m-cmp/mc-iam-manager/handler/securitykeyprovider"
+	"github.com/m-cmp/mc-iam-manager/handler/securitykeyprovider/alibaba"
+	"github.com/m-cmp/mc-iam-manager/handler/securitykeyprovider/aws"
 
 	"github.com/gobuffalo/buffalo"
 )

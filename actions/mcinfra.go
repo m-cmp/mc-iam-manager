@@ -3,10 +3,11 @@ package actions
 import (
 	"encoding/json"
 	"log"
-	"mc_iam_manager/handler"
-	"mc_iam_manager/handler/mcinframanager"
-	"mc_iam_manager/models"
 	"net/http"
+
+	"github.com/m-cmp/mc-iam-manager/handler"
+	"github.com/m-cmp/mc-iam-manager/handler/mcinframanager"
+	"github.com/m-cmp/mc-iam-manager/models"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/nulls"

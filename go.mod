@@ -1,4 +1,4 @@
-module mc_iam_manager
+module github.com/m-cmp/mc-iam-manager
 
 go 1.21.6
 
