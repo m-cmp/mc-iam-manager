@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/m-cmp/mc-iam-manager/handler"
-	"github.com/m-cmp/mc-iam-manager/models"
+	"mc-iam-manager/handler"
+	"mc-iam-manager/models"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/v6"

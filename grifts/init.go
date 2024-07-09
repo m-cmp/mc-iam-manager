@@ -1,7 +1,7 @@
 package grifts
 
 import (
-	"github.com/m-cmp/mc-iam-manager/actions"
+	"mc-iam-manager/actions"
 
 	"github.com/gobuffalo/buffalo"
 )

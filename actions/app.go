@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/m-cmp/mc-iam-manager/actions/auth"
-	"github.com/m-cmp/mc-iam-manager/actions/auth/keycloakauth"
-	"github.com/m-cmp/mc-iam-manager/middleware"
-	"github.com/m-cmp/mc-iam-manager/models"
+	"mc-iam-manager/actions/auth"
+	"mc-iam-manager/actions/auth/keycloakauth"
+	"mc-iam-manager/middleware"
+	"mc-iam-manager/models"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/buffalo-pop/v3/pop/popmw"

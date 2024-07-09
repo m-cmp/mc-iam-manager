@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/m-cmp/mc-iam-manager/models"
+	"mc-iam-manager/models"
 
 	"github.com/gobuffalo/pop/v6"
 	"github.com/gofrs/uuid"
