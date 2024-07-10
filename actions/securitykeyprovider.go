@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"mc-iam-manager/handler/securitykeyprovider"
-	"mc-iam-manager/handler/securitykeyprovider/alibaba"
-	"mc-iam-manager/handler/securitykeyprovider/aws"
+	"github.com/m-cmp/mc-iam-manager/handler/securitykeyprovider"
+	"github.com/m-cmp/mc-iam-manager/handler/securitykeyprovider/alibaba"
+	"github.com/m-cmp/mc-iam-manager/handler/securitykeyprovider/aws"
 
 	"github.com/gobuffalo/buffalo"
 )

@@ -104,3 +104,16 @@ func Keyfunction(token *jwt.Token) (interface{}, error) {
 	}
 	return raw, nil
 }
+
+func IsHasRoleInUserRolesArr(grandtedRoleArr []string, userRolesArr []string) bool {
+	userRolesArrSet := make(map[string]struct{}, len(userRolesArr))
+	for _, v := range userRolesArr {
+		userRolesArrSet[v] = struct{}{}
+	}
+	for _, v := range grandtedRoleArr {
+		if _, found := userRolesArrSet[v]; found {
+			return true
+		}
+	}
+	return false
+}
