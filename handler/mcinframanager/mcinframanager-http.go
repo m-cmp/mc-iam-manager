@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 
-	"mc-iam-manager/handler"
+	"github.com/m-cmp/mc-iam-manager/handler"
 )
 
 ////// NameSpace Mng START
