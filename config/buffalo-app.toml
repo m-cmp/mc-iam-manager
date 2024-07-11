@@ -1,4 +1,4 @@
-name = "mc-iam-manager"
+name = "github.com/m-cmp/mc-iam-manager"
 bin = "bin/mc-iam-manager"
 vcs = "git"
 with_pop = true
