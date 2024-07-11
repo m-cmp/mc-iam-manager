@@ -105,6 +105,7 @@ func Keyfunction(token *jwt.Token) (interface{}, error) {
 	return raw, nil
 }
 
+// IsHasRoleInUserRolesArr는 제공된 role string arr와 user roles arr 를 비교하여 한개라도 roles 에 있을시 True 를 반환합니다.
 func IsHasRoleInUserRolesArr(grandtedRoleArr []string, userRolesArr []string) bool {
 	userRolesArrSet := make(map[string]struct{}, len(userRolesArr))
 	for _, v := range userRolesArr {
