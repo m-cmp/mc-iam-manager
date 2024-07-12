@@ -126,5 +126,5 @@ func forceSSL() buffalo.MiddlewareFunc {
 }
 
 func aliveSig(c buffalo.Context) error {
-	return c.Render(http.StatusOK, r.JSON(map[string]string{"ststus": "ok"}))
+	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": "ok"}))
 }
