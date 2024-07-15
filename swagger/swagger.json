@@ -4,12 +4,12 @@
         "contact": {},
         "description": "권한 및 접근제어와 워크스페이스 관리 프레임워크\n\n---\n\nThe Multi-Cloud Authorization and Access Control Framework provides platform account/role management, integrated management of cloud account/access control information, and workspace management functionalities. It offers features compatible with security policy determination, establishment, and enforcement for existing multi-cloud services. Additionally, it provides the capability to establish and manage independent security policies within the framework.\n\nIt defines an access control reference model for multi-cloud, distinguishing between user access control and service provider access control. This model adopts a prominent Role-Based Access Control (RBAC) approach and integrates it with existing policy management solutions for application and utilization.",
         "title": "mc-iam-manager",
-        "version": "0.2.7"
+        "version": "1.0.0"
     },
     "host": "localhost:5000",
     "basePath": "/",
     "schemes": [
-        "http"
+        "https"
     ],
     "paths": {
         "/alive": {
@@ -55,141 +55,6 @@
                 "description": "mc-iam-manager가 정상적으로 작동중인지 단순 확인합니다.",
                 "operationId": "alive",
                 "summary": "Alive"
-            }
-        },
-        "/alive/admin": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [],
-                "responses": {
-                    "200": {
-                        "description": "success",
-                        "headers": {
-                            "Connection": {
-                                "type": "string"
-                            },
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Server": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "ststus": {
-                                    "example": "ok",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    }
-                },
-                "tags": [
-                    "Alive"
-                ],
-                "description": "mc-iam-manager가 정상적으로 작동중인지 단순 확인합니다.\n\n- admin 역할을 갖고 있어야 200 OK",
-                "operationId": "aliveAdmin",
-                "summary": "Alive admin"
-            }
-        },
-        "/alive/operator": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [],
-                "responses": {
-                    "200": {
-                        "description": "success",
-                        "headers": {
-                            "Connection": {
-                                "type": "string"
-                            },
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Server": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "ststus": {
-                                    "example": "ok",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    }
-                },
-                "tags": [
-                    "Alive"
-                ],
-                "description": "mc-iam-manager가 정상적으로 작동중인지 단순 확인합니다.\n\n- operator 역할을 갖고 있어야 200 OK",
-                "operationId": "aliveOperator",
-                "summary": "Alive operator"
-            }
-        },
-        "/alive/viewer": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [],
-                "responses": {
-                    "200": {
-                        "description": "success",
-                        "headers": {
-                            "Connection": {
-                                "type": "string"
-                            },
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Server": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "ststus": {
-                                    "example": "ok",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    }
-                },
-                "tags": [
-                    "Alive"
-                ],
-                "description": "mc-iam-manager가 정상적으로 작동중인지 단순 확인합니다.\n\n- viewer 역할을 갖고 있어야 200 OK",
-                "operationId": "aliveViewer",
-                "summary": "Alive viewer"
             }
         },
         "/api/auth/certs": {
@@ -529,6 +394,7 @@
                     "application/json"
                 ],
                 "produces": [
+                    "text/plain",
                     "application/json"
                 ],
                 "parameters": [
@@ -712,6 +578,87 @@
                 "description": "유저 토큰의 사용가능 유무",
                 "operationId": "getusevalidate",
                 "summary": "GetUseValidate"
+            }
+        },
+        "/api/poc/sts/securitykey": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "description": "eg) aws,alibaba / aws / alibaba ",
+                        "in": "query",
+                        "name": "providers",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Securitykey Success",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "AccessKeyId": {
+                                    "example": "xxxx",
+                                    "type": "string"
+                                },
+                                "Expiration": {
+                                    "example": "2024-04-09T00:51:43Z",
+                                    "type": "string"
+                                },
+                                "SecretAccessKey": {
+                                    "example": "xxxx",
+                                    "type": "string"
+                                },
+                                "SessionToken": {
+                                    "example": "xxxx",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "503": {
+                        "description": "Securitykey CSP err",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "err": {
+                                    "example": "provided CSP is not supported",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "tags": [
+                    "[PoC]  STS"
+                ],
+                "description": "임시보안자격증명 발급요청\n\nPOC 단계.\n\nAWS / Alibaba OIDC 기반 Keyclaok IDP 사용으로 연결 설정 필요",
+                "operationId": "securitykey",
+                "summary": "Securitykey"
             }
         },
         "/api/prj": {
@@ -1597,78 +1544,68 @@
                 "summary": "SearchRolesByName"
             }
         },
-        "/api/sts/securitykey": {
+        "/api/tokentest": {
             "get": {
-                "produces": [
-                    "application/json"
-                ],
                 "parameters": [],
                 "responses": {
                     "200": {
-                        "description": "Securitykey Success",
-                        "headers": {
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "AccessKeyId": {
-                                    "example": "xxxx",
-                                    "type": "string"
-                                },
-                                "Expiration": {
-                                    "example": "2024-04-09T00:51:43Z",
-                                    "type": "string"
-                                },
-                                "SecretAccessKey": {
-                                    "example": "xxxx",
-                                    "type": "string"
-                                },
-                                "SessionToken": {
-                                    "example": "xxxx",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
-                    "503": {
-                        "description": "Securitykey CSP err",
-                        "headers": {
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "err": {
-                                    "example": "provided CSP is not supported",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
+                        "description": ""
                     }
                 },
                 "tags": [
-                    "[PoC]  STS"
+                    "Tool"
                 ],
-                "description": "임시보안자격증명 발급요청\n\nPOC 단계.\n\nAWS / Alibaba OIDC 기반 Keyclaok IDP 사용으로 연결 설정 필요",
-                "operationId": "securitykey",
-                "summary": "Securitykey"
+                "description": "토큰의 유효성을 확인합니다.",
+                "operationId": "tokentest",
+                "summary": "tokenTest"
+            }
+        },
+        "/api/tokentest/admin": {
+            "get": {
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Tool"
+                ],
+                "description": "토큰의 유효성과 역할에 Admin이 존재하는지 확인합니다.",
+                "operationId": "tokentestadmin",
+                "summary": "tokenTestAdmin"
+            }
+        },
+        "/api/tokentest/operator": {
+            "get": {
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Tool"
+                ],
+                "description": "토큰의 유효성과 역할에 Admin, Operator가 존재하는지 확인합니다.",
+                "operationId": "tokentestoperator",
+                "summary": "tokenTestOperator"
+            }
+        },
+        "/api/tokentest/viewer": {
+            "get": {
+                "parameters": [],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Tool"
+                ],
+                "description": "토큰의 유효성과 역할에 Admin, Operator, Viewer가 존재하는지 확인합니다.",
+                "operationId": "tokentestviewer",
+                "summary": "tokenTestViewer"
             }
         },
         "/api/tool/mcinfra/sync": {
@@ -1781,11 +1718,11 @@
                         "schema": {
                             "properties": {
                                 "description": {
-                                    "example": "workspace1 desc",
+                                    "example": "workspace3 desc",
                                     "type": "string"
                                 },
                                 "name": {
-                                    "example": "workspace1",
+                                    "example": "workspace3",
                                     "type": "string"
                                 }
                             },
@@ -2286,17 +2223,17 @@
                             "properties": {
                                 "projectIds": {
                                     "example": [
-                                        "5655e5c9-caaf-4c49-aa70-88a65e0cdcb1",
-                                        "3b4302cd-8359-4ec1-9dd3-4757d9ef9ba0"
+                                        "e997faba-3421-458e-b269-f8a26a5caa25",
+                                        "1e88f4ea-d052-4314-80a4-9ac3f6691feb"
                                     ],
                                     "items": {
-                                        "example": "5655e5c9-caaf-4c49-aa70-88a65e0cdcb1",
+                                        "example": "e997faba-3421-458e-b269-f8a26a5caa25",
                                         "type": "string"
                                     },
                                     "type": "array"
                                 },
                                 "workspaceId": {
-                                    "example": "bff56204-1a84-4acd-b4e6-40927cb409be",
+                                    "example": "0df98936-dda3-4df9-8ac4-09a047ec97e0",
                                     "type": "string"
                                 }
                             },
@@ -2895,7 +2832,7 @@
                         "schema": {
                             "properties": {
                                 "roleId": {
-                                    "example": "7e25efa5-a040-431b-bc5b-bd3a1d3aafdd",
+                                    "example": "ce69e6e7-57b8-42a6-a64b-1b60cbf84507",
                                     "type": "string"
                                 },
                                 "userId": {
@@ -2903,7 +2840,7 @@
                                     "type": "string"
                                 },
                                 "workspaceId": {
-                                    "example": "bff56204-1a84-4acd-b4e6-40927cb409be",
+                                    "example": "a92a74b6-7f82-42d9-9e74-f3d57b2234b3",
                                     "type": "string"
                                 }
                             },
