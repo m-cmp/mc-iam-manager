@@ -4,7 +4,7 @@
         "contact": {},
         "description": "권한 및 접근제어와 워크스페이스 관리 프레임워크\n\n---\n\nThe Multi-Cloud Authorization and Access Control Framework provides platform account/role management, integrated management of cloud account/access control information, and workspace management functionalities. It offers features compatible with security policy determination, establishment, and enforcement for existing multi-cloud services. Additionally, it provides the capability to establish and manage independent security policies within the framework.\n\nIt defines an access control reference model for multi-cloud, distinguishing between user access control and service provider access control. This model adopts a prominent Role-Based Access Control (RBAC) approach and integrates it with existing policy management solutions for application and utilization.",
         "title": "mc-iam-manager",
-        "version": "1.0.0"
+        "version": "0.2.7"
     },
     "host": "localhost:5000",
     "basePath": "/",
@@ -831,11 +831,11 @@
                         "schema": {
                             "properties": {
                                 "description": {
-                                    "example": "project5 desc",
+                                    "example": "coffeeshop desc",
                                     "type": "string"
                                 },
                                 "name": {
-                                    "example": "project5",
+                                    "example": "coffeeshop",
                                     "type": "string"
                                 }
                             },
@@ -1680,7 +1680,7 @@
                     }
                 },
                 "tags": [
-                    "tool"
+                    "Tool"
                 ],
                 "description": "연결된 TB(mcinframanager)의 NS 리스트를 Project List 로 등록.  \n  \n기존 등록된 project 와 중복이 발생하면 오류 발생. 새로운 환경에서 첫 회 실행하는 것을 추천.",
                 "operationId": "syncprojectlistwithmcinfra",
@@ -1781,11 +1781,11 @@
                         "schema": {
                             "properties": {
                                 "description": {
-                                    "example": "workspace3 desc",
+                                    "example": "workspace1 desc",
                                     "type": "string"
                                 },
                                 "name": {
-                                    "example": "workspace3",
+                                    "example": "workspace1",
                                     "type": "string"
                                 }
                             },
@@ -2286,17 +2286,17 @@
                             "properties": {
                                 "projectIds": {
                                     "example": [
-                                        "e997faba-3421-458e-b269-f8a26a5caa25",
-                                        "1e88f4ea-d052-4314-80a4-9ac3f6691feb"
+                                        "5655e5c9-caaf-4c49-aa70-88a65e0cdcb1",
+                                        "3b4302cd-8359-4ec1-9dd3-4757d9ef9ba0"
                                     ],
                                     "items": {
-                                        "example": "e997faba-3421-458e-b269-f8a26a5caa25",
+                                        "example": "5655e5c9-caaf-4c49-aa70-88a65e0cdcb1",
                                         "type": "string"
                                     },
                                     "type": "array"
                                 },
                                 "workspaceId": {
-                                    "example": "0df98936-dda3-4df9-8ac4-09a047ec97e0",
+                                    "example": "bff56204-1a84-4acd-b4e6-40927cb409be",
                                     "type": "string"
                                 }
                             },
@@ -2895,7 +2895,7 @@
                         "schema": {
                             "properties": {
                                 "roleId": {
-                                    "example": "ce69e6e7-57b8-42a6-a64b-1b60cbf84507",
+                                    "example": "7e25efa5-a040-431b-bc5b-bd3a1d3aafdd",
                                     "type": "string"
                                 },
                                 "userId": {
@@ -2903,7 +2903,7 @@
                                     "type": "string"
                                 },
                                 "workspaceId": {
-                                    "example": "a92a74b6-7f82-42d9-9e74-f3d57b2234b3",
+                                    "example": "bff56204-1a84-4acd-b4e6-40927cb409be",
                                     "type": "string"
                                 }
                             },
@@ -3401,7 +3401,7 @@
             "name": "WorkspaceUserRoleMapping"
         },
         {
-            "name": "tool"
+            "name": "Tool"
         },
         {
             "description": "CSP sts token 요청",
