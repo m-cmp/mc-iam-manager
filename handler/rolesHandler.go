@@ -37,6 +37,20 @@ func GetRoleById(tx *pop.Connection, id uuid.UUID) (*models.Role, error) {
 	return &s, nil
 }
 
+func GetRoleByPolicyId(tx *pop.Connection, id string) (*models.Role, error) {
+	table := "roles"
+	query := "SELECT * FROM " + table + " WHERE policy LIKE  '" + id + "';"
+
+	var s models.Role
+	err := tx.RawQuery(query).First(&s)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	return &s, nil
+}
+
 func SearchRolesByName(tx *pop.Connection, name string, option string) (*models.Roles, error) {
 	table := "roles"
 	var query string
