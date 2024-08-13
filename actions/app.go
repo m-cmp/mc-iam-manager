@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/m-cmp/mc-iam-manager/actions/auth"
-	"github.com/m-cmp/mc-iam-manager/actions/auth/keycloakauth"
 	"github.com/m-cmp/mc-iam-manager/middleware"
 	"github.com/m-cmp/mc-iam-manager/models"
 
@@ -48,18 +46,23 @@ func App() *buffalo.App {
 		apiPath := envy.Get("API_PATH", "/api")
 
 		authPath := app.Group(apiPath + "/auth")
-		auth.AuthMethod = keycloakauth.EnvKeycloak
-		authPath.ANY("/{path:.+}", buffalo.WrapHandlerFunc(auth.BeginAuthHandler))
+		authPath.POST("/login", AuthLoginHandler)
+		authPath.POST("/login/refresh", AuthLoginRefreshHandler)
+		authPath.POST("/logout", AuthLogoutHandler)
+		authPath.GET("/userinfo", AuthGetUserInfo)
+		authPath.GET("/validate", AuthGetUserValidate)
+		authPath.GET("/certs", AuthGetCerts)
 
 		alive := app.Group("/alive")
 		alive.GET("/", aliveSig)
 
 		rolePath := app.Group(apiPath + "/role")
-		rolePath.Use(middleware.IsAuthMiddleware)
+		// rolePath.Use(middleware.IsAuthMiddleware)
 		rolePath.POST("/", CreateRole)
 		rolePath.GET("/", GetRoleList)
 		rolePath.GET("/role/{roleName}", SearchRolesByName)
 		rolePath.GET("/role/id/{roleId}", GetRoleById)
+		rolePath.GET("/role/policyid/{policyId}", GetRoleByPolicyId)
 		rolePath.PUT("/role/id/{roleId}", UpdateRoleById)
 		rolePath.DELETE("/role/id/{roleId}", DeleteRoleById)
 
@@ -97,6 +100,22 @@ func App() *buffalo.App {
 		workspaceUserRoleMappingPath.GET("/user/id/{userId}", GetWorkspaceUserRoleMappingListByUserId)
 		workspaceUserRoleMappingPath.GET("/workspace/id/{workspaceId}/user/id/{userId}", GetWorkspaceUserRoleMappingById)
 		workspaceUserRoleMappingPath.DELETE("/workspace/id/{workspaceId}/user/id/{userId}", DeleteWorkspaceUserRoleMapping)
+
+		resourcePath := app.Group(apiPath + "/resource")
+		// resourcePath.Use(middleware.IsAuthMiddleware)
+		resourcePath.POST("/", CreateResources)
+		resourcePath.POST("/file/framework/{framework}", CreateResourcesBySwagger)
+		resourcePath.GET("/", GetResources)
+		resourcePath.PUT("/id/{resourceid}", UpdateResource)
+		resourcePath.DELETE("/id/{resourceid}", DeleteResource)
+
+		permissionPath := app.Group(apiPath + "/permission")
+		// resourcePath.Use(middleware.IsAuthMiddleware)
+		permissionPath.POST("/", CreatePermission)
+		permissionPath.GET("/", GetPermissions)
+		permissionPath.GET("/id/{permissionid}", GetPermission)
+		permissionPath.PUT("/id/{permissionid}", UpdatePermission)
+		permissionPath.DELETE("/id/{permissionid}", DeletePermission)
 
 		toolPath := app.Group(apiPath + "/tool")
 		toolPath.Use(middleware.IsAuthMiddleware)
