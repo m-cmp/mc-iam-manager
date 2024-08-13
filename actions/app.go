@@ -43,6 +43,9 @@ func App() *buffalo.App {
 		app.Use(contenttype.Set("application/json"))
 		app.Use(popmw.Transaction(models.DB))
 
+		alive := app.Group("/alive")
+		alive.GET("/", aliveSig)
+
 		apiPath := envy.Get("API_PATH", "/api")
 
 		authPath := app.Group(apiPath + "/auth")
@@ -53,8 +56,10 @@ func App() *buffalo.App {
 		authPath.GET("/validate", AuthGetUserValidate)
 		authPath.GET("/certs", AuthGetCerts)
 
-		alive := app.Group("/alive")
-		alive.GET("/", aliveSig)
+		userPath := app.Group(apiPath + "/user")
+		userPath.POST("/", CreateUser)
+		userPath.GET("/", GetUsers)
+		userPath.DELETE("/id/{userId}", DeleteUser)
 
 		rolePath := app.Group(apiPath + "/role")
 		// rolePath.Use(middleware.IsAuthMiddleware)

@@ -87,15 +87,56 @@ func KeycloakGetUserInfo(accessToken string) (*gocloak.UserInfo, error) {
 
 // Users Management
 
-func KeycloakCreateUser(accessToken string, password string) (*gocloak.JWT, error) {
+func KeycloakCreateUser(accessToken string, userId string, password string) error {
 	ctx := context.Background()
-	user := gocloak.User{}
-	accessTokenResponse, err := kc.KcClient.CreateUser(ctx, accessToken, kc.Realm, user)
+	enabled := true
+
+	user := gocloak.User{
+		Username: &userId,
+		Enabled:  &enabled,
+	}
+
+	userUUID, err := kc.KcClient.CreateUser(ctx, accessToken, kc.Realm, user)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = kc.KcClient.SetPassword(ctx, accessToken, userUUID, kc.Realm, password, false)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+func KeycloakGetUsers(accessToken string, userId string) ([]*gocloak.User, error) {
+	ctx := context.Background()
+
+	userInfo := gocloak.GetUsersParams{
+		Username: &userId,
+	}
+
+	users, err := kc.KcClient.GetUsers(ctx, accessToken, kc.Realm, userInfo)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
-	return accessTokenResponse, nil
+
+	return users, nil
+}
+
+func KeycloakDeleteUser(accessToken string, userId string) error {
+	ctx := context.Background()
+
+	err := kc.KcClient.DeleteUser(ctx, accessToken, kc.Realm, userId)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
 }
 
 // Resource Management
