@@ -3,6 +3,7 @@ package keycloak
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/Nerzal/gocloak/v13"
@@ -86,17 +87,27 @@ func KeycloakGetUserInfo(accessToken string) (*gocloak.UserInfo, error) {
 }
 
 // Users Management
+type CreateUserRequset struct {
+	Name      string `json:"name"`
+	Password  string `json:"password"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Email     string `json:"email"`
+}
 
-func KeycloakCreateUser(accessToken string, userId string, password string) error {
+func KeycloakCreateUser(accessToken string, user CreateUserRequset, password string) error {
 	ctx := context.Background()
-	enabled := true
 
-	user := gocloak.User{
-		Username: &userId,
-		Enabled:  &enabled,
+	enabled := true
+	userInfo := gocloak.User{
+		Username:  &user.Name,
+		Enabled:   &enabled,
+		FirstName: &user.FirstName,
+		LastName:  &user.LastName,
+		Email:     &user.Email,
 	}
 
-	userUUID, err := kc.KcClient.CreateUser(ctx, accessToken, kc.Realm, user)
+	userUUID, err := kc.KcClient.CreateUser(ctx, accessToken, kc.Realm, userInfo)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -131,6 +142,25 @@ func KeycloakDeleteUser(accessToken string, userId string) error {
 	ctx := context.Background()
 
 	err := kc.KcClient.DeleteUser(ctx, accessToken, kc.Realm, userId)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+func KeycloakUpdateUser(accessToken string, user CreateUserRequset, userUUID string) error {
+	ctx := context.Background()
+
+	userInfo := gocloak.User{
+		ID:        &userUUID,
+		FirstName: &user.FirstName,
+		LastName:  &user.LastName,
+		Email:     &user.Email,
+	}
+
+	err := kc.KcClient.UpdateUser(ctx, accessToken, kc.Realm, userInfo)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -260,6 +290,18 @@ func KeycloakGetRole(accessToken string, name string) (*gocloak.Role, error) {
 	return res, nil
 }
 
+func keycloakGetUserRoles(accessToken string, userUUID string) ([]*gocloak.Role, error) {
+	ctx := context.Background()
+
+	roles, err := kc.KcClient.GetRealmRolesByUserID(ctx, accessToken, kc.Realm, userUUID)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return roles, nil
+}
+
 func KeycloakUpdateRole(accessToken string, name string, desc string) error {
 	ctx := context.Background()
 
@@ -281,6 +323,74 @@ func KeycloakDeleteRole(accessToken string, name string) error {
 	ctx := context.Background()
 
 	err := kc.KcClient.DeleteRealmRole(ctx, accessToken, kc.Realm, name)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+func KeycloakMappingUserRole(accessToken string, userId string, roleReq string) error {
+	ctx := context.Background()
+
+	userInfo := gocloak.GetUsersParams{
+		Exact:    gocloak.BoolP(true),
+		Username: &userId,
+	}
+	user, err := kc.KcClient.GetUsers(ctx, accessToken, kc.Realm, userInfo)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if len(user) != 0 && *user[0].Username != userId {
+		err := fmt.Errorf("%s user not found ", userId)
+		log.Println(err)
+		return err
+	}
+
+	role, err := KeycloakGetRole(accessToken, roleReq)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	inputRoles := []gocloak.Role{*role}
+	err = kc.KcClient.AddRealmRoleToUser(ctx, accessToken, kc.Realm, *user[0].ID, inputRoles)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+func KeycloakUnMappingUserRole(accessToken string, userId string, roleReq string) error {
+	ctx := context.Background()
+
+	userInfo := gocloak.GetUsersParams{
+		Exact:    gocloak.BoolP(true),
+		Username: &userId,
+	}
+	user, err := kc.KcClient.GetUsers(ctx, accessToken, kc.Realm, userInfo)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if len(user) != 0 && *user[0].Username != userId {
+		err := fmt.Errorf("%s user not found ", userId)
+		log.Println(err)
+		return err
+	}
+
+	role, err := KeycloakGetRole(accessToken, roleReq)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	inputRoles := []gocloak.Role{*role}
+	err = kc.KcClient.DeleteRealmRoleFromUser(ctx, accessToken, kc.Realm, *user[0].ID, inputRoles)
 	if err != nil {
 		log.Println(err)
 		return err

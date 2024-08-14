@@ -1,10 +1,13 @@
 package actions
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/m-cmp/mc-iam-manager/handler"
+	"github.com/m-cmp/mc-iam-manager/handler/keycloak"
 	"github.com/m-cmp/mc-iam-manager/models"
 
 	"github.com/gobuffalo/buffalo"
@@ -19,6 +22,8 @@ type createWorkspaceUserRoleMappingRequest struct {
 }
 
 func CreateWorkspaceUserRoleMapping(c buffalo.Context) error {
+	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+
 	var req createWorkspaceUserRoleMappingRequest
 	var s models.WorkspaceUserRoleMapping
 	var err error
@@ -38,6 +43,19 @@ func CreateWorkspaceUserRoleMapping(c buffalo.Context) error {
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "SQLSTATE 25P02", "already exist..")
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	roleRes, err := handler.GetRoleById(tx, uuid.FromStringOrNil(s.RoleID.String()))
+	if err != nil {
+		log.Println(err)
+		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Role is not exist..")
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	err = keycloak.KeycloakMappingUserRole(accessToken, s.UserID, roleRes.Name)
+	if err != nil {
+		log.Println(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
 	}
 
@@ -93,14 +111,47 @@ func GetWorkspaceUserRoleMappingById(c buffalo.Context) error {
 }
 
 func DeleteWorkspaceUserRoleMapping(c buffalo.Context) error {
+	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+
 	workspaceId := c.Param("workspaceId")
+	fmt.Println("@@@@@ workspaceId", workspaceId)
+
 	userId := c.Param("userId")
 	tx := c.Value("tx").(*pop.Connection)
-	err := handler.DeleteWorkspaceUserRoleMapping(tx, workspaceId, userId)
+
+	targetRole, err := handler.GetWorkspaceUserRoleMappingById(tx, workspaceId, userId)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	err = handler.DeleteWorkspaceUserRoleMapping(tx, workspaceId, userId)
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "SQLSTATE 25P02", "already exist..")
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
 	}
+
+	roleWorkspaceMapping, err := handler.GetWorkspaceUserRoleMappingListByUserId(tx, userId)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	targetFind := false
+	for _, mapping := range *roleWorkspaceMapping {
+		if targetRole.ID == mapping.Role.ID {
+			targetFind = true
+		}
+	}
+
+	if !targetFind {
+		err = keycloak.KeycloakUnMappingUserRole(accessToken, userId, targetRole.Name)
+		if err != nil {
+			log.Println(err)
+			return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+		}
+	}
+
 	return c.Render(http.StatusOK, r.JSON(map[string]string{"message": "done"}))
 }
