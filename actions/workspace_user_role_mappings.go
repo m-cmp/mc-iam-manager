@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/m-cmp/mc-iam-manager/handler"
 	"github.com/m-cmp/mc-iam-manager/handler/keycloak"
@@ -22,7 +21,7 @@ type createWorkspaceUserRoleMappingRequest struct {
 }
 
 func CreateWorkspaceUserRoleMapping(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	var req createWorkspaceUserRoleMappingRequest
 	var s models.WorkspaceUserRoleMapping
@@ -111,7 +110,7 @@ func GetWorkspaceUserRoleMappingById(c buffalo.Context) error {
 }
 
 func DeleteWorkspaceUserRoleMapping(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	workspaceId := c.Param("workspaceId")
 	fmt.Println("@@@@@ workspaceId", workspaceId)

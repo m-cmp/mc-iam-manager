@@ -3,14 +3,13 @@ package actions
 import (
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/m-cmp/mc-iam-manager/handler/keycloak"
 )
 
 func CreateUser(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	createUserReq := &keycloak.CreateUserRequset{}
 	if err := c.Bind(createUserReq); err != nil {
@@ -28,7 +27,7 @@ func CreateUser(c buffalo.Context) error {
 }
 
 func GetUsers(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	userid := c.Param("userid")
 
@@ -42,7 +41,7 @@ func GetUsers(c buffalo.Context) error {
 }
 
 func DeleteUser(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	userId := c.Param("userId")
 
@@ -56,7 +55,7 @@ func DeleteUser(c buffalo.Context) error {
 }
 
 func UpdateUser(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	userId := c.Param("userId")
 

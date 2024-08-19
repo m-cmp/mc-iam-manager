@@ -3,7 +3,6 @@ package actions
 import (
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/gobuffalo/buffalo"
@@ -18,7 +17,7 @@ type createPermissionRequset struct {
 }
 
 func CreatePermission(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	permissionReq := &createPermissionRequset{}
 	if err := c.Bind(permissionReq); err != nil {
@@ -36,7 +35,7 @@ func CreatePermission(c buffalo.Context) error {
 }
 
 func GetPermissions(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	name := c.Param("name")
 	resource := c.Param("resource")
@@ -55,7 +54,7 @@ func GetPermissions(c buffalo.Context) error {
 }
 
 func GetPermission(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	permissionId := c.Param("permissionid")
 
@@ -69,7 +68,7 @@ func GetPermission(c buffalo.Context) error {
 }
 
 func UpdatePermission(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	permissionId := c.Param("permissionid")
 
@@ -89,7 +88,7 @@ func UpdatePermission(c buffalo.Context) error {
 }
 
 func DeletePermission(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	permissionId := c.Param("permissionid")
 
