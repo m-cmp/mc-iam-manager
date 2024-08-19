@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/validate/v3"
@@ -89,7 +88,7 @@ func AuthLogoutHandler(c buffalo.Context) error {
 }
 
 func AuthGetUserInfo(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	userinfo, err := keycloak.KeycloakGetUserInfo(accessToken)
 	if err != nil {
@@ -101,7 +100,7 @@ func AuthGetUserInfo(c buffalo.Context) error {
 }
 
 func AuthGetUserValidate(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	_, err := keycloak.KeycloakGetUserInfo(accessToken)
 	if err != nil {

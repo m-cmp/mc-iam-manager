@@ -4,7 +4,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/gobuffalo/buffalo"
@@ -13,7 +12,7 @@ import (
 )
 
 func CreateResources(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	resourcereq := &keycloak.CreateResourceRequestArr{}
 	if err := c.Bind(resourcereq); err != nil {
@@ -64,7 +63,7 @@ type Swagger struct {
 }
 
 func CreateResourcesBySwagger(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	framework := c.Param("framework")
 
@@ -107,7 +106,7 @@ func CreateResourcesBySwagger(c buffalo.Context) error {
 }
 
 func GetResources(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	uri := c.Param("uri")
 	name := c.Param("operationId")
@@ -126,7 +125,7 @@ func GetResources(c buffalo.Context) error {
 }
 
 func UpdateResource(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	resourceid := c.Param("resourceid")
 	resourcereq := &keycloak.CreateResourceRequest{}
@@ -145,7 +144,7 @@ func UpdateResource(c buffalo.Context) error {
 }
 
 func DeleteResource(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	resourceid := c.Param("resourceid")
 

@@ -88,7 +88,7 @@ func KeycloakGetUserInfo(accessToken string) (*gocloak.UserInfo, error) {
 
 // Users Management
 type CreateUserRequset struct {
-	Name      string `json:"name"`
+	Name      string `json:"id"`
 	Password  string `json:"password"`
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
@@ -98,10 +98,9 @@ type CreateUserRequset struct {
 func KeycloakCreateUser(accessToken string, user CreateUserRequset, password string) error {
 	ctx := context.Background()
 
-	enabled := true
 	userInfo := gocloak.User{
 		Username:  &user.Name,
-		Enabled:   &enabled,
+		Enabled:   gocloak.BoolP(true),
 		FirstName: &user.FirstName,
 		LastName:  &user.LastName,
 		Email:     &user.Email,
@@ -463,6 +462,12 @@ func KeycloakDeletePolicy(accessToken string, policyId string) error {
 
 // Permission Management
 
+type permissionDetail struct {
+	Permission *gocloak.PermissionRepresentation `json:"permission"`
+	Resources  []*gocloak.PermissionResource     `json:"resources"`
+	Policies   []*gocloak.PolicyRepresentation   `json:"rolePolicies"`
+}
+
 func KeycloakCreatePermission(accessToken string, name string, desc string, permissionResources []string, permissionPolicies []string) (*gocloak.PermissionRepresentation, error) {
 	ctx := context.Background()
 
@@ -511,12 +516,6 @@ func KeycloakGetPermissions(accessToken string, reqParam gocloak.GetPermissionPa
 	}
 
 	return res, nil
-}
-
-type permissionDetail struct {
-	Permission *gocloak.PermissionRepresentation `json:"permission"`
-	Resources  []*gocloak.PermissionResource     `json:"resources"`
-	Policies   []*gocloak.PolicyRepresentation   `json:"rolePolicies"`
 }
 
 func KeycloakGetPermissionDetail(accessToken string, id string) (*permissionDetail, error) {

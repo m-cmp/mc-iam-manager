@@ -3,7 +3,6 @@ package actions
 import (
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/m-cmp/mc-iam-manager/handler"
 	"github.com/m-cmp/mc-iam-manager/handler/keycloak"
@@ -21,7 +20,7 @@ type createRoleRequset struct {
 }
 
 func CreateRole(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	var req createRoleRequset
 	var s models.Role
@@ -119,7 +118,7 @@ type updateRoleByIdRequest struct {
 }
 
 func UpdateRoleById(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	var req updateRoleByIdRequest
 	var err error
@@ -161,7 +160,7 @@ func UpdateRoleById(c buffalo.Context) error {
 }
 
 func DeleteRoleById(c buffalo.Context) error {
-	accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+	accessToken := c.Value("accessToken").(string)
 
 	var err error
 	roleId := c.Param("roleId")
