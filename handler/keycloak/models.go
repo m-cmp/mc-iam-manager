@@ -30,5 +30,3 @@ type CreateResourceRequest struct {
 	URI         string `json:"uri"`
 }
 type CreateResourceRequestArr []CreateResourceRequest
-
-// https://keycloak.csesmzc.com/admin/realms/mciam/clients/e0630da2-f7ac-4486-a562-7c11bd075ef5/authz/resource-server/policy/be84304d-4392-4748-acce-c4d5296a1df1/associatedPolicies
