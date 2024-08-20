@@ -128,3 +128,45 @@ func DeleteWPmapping(c buffalo.Context) error {
 	}
 	return c.Render(http.StatusOK, r.JSON(map[string]string{"message": "done"}))
 }
+
+// func MapUnmappedProjectToWorkspace(c buffalo.Context) error {
+// 	tx := c.Value("tx").(*pop.Connection)
+// 	workspaces, err := handler.SearchWorkspacesByName(tx, "default", "")
+// 	if err != nil {
+// 		log.Println(err)
+// 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+// 	}
+
+// 	var defaultWorkspace *models.Workspace
+// 	if len(*workspaces) > 0 {
+// 		defaultWorkspace = &(*workspaces)[0]
+// 	} else {
+// 		var s models.Workspace
+// 		s.Name = "default"
+// 		s.Description.String = "This is default workspace for all projects."
+// 		defaultWorkspace, err = handler.CreateWorkspace(tx, &s)
+// 		if err != nil {
+// 			log.Println(err)
+// 			return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+// 		}
+// 	}
+
+// 	mapList, err := handler.GetWPmappingList(tx)
+// 	if err != nil {
+// 		log.Println(err)
+// 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
+// 	}
+
+// 	projects, err := handler.GetProjectList(tx)
+// 	if err != nil {
+// 		log.Println(err)
+// 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+// 	}
+
+// 	var unMapedProjects *models.Projects
+// 	for _, project := projects
+
+// 	fmt.Println("@@@@@@@@ mapList", mapList)
+
+// 	return c.Render(http.StatusOK, r.JSON(map[string]interface{}{"message": mapList}))
+// }
