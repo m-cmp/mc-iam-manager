@@ -37,6 +37,18 @@ func GetProjectById(tx *pop.Connection, id uuid.UUID) (*models.Project, error) {
 	return &s, nil
 }
 
+func IsExistProjectByNsId(tx *pop.Connection, nsid string) (*models.Project, error) {
+	table := "projects"
+	query := "SELECT * FROM " + table + " WHERE ns_id LIKE'" + nsid + "';"
+	var s models.Project
+	err := tx.RawQuery(query).First(&s)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	return &s, nil
+}
+
 func SearchProjectsByName(tx *pop.Connection, name string, option string) (*models.Projects, error) {
 	table := "projects"
 	var query string
