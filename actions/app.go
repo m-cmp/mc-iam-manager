@@ -49,12 +49,13 @@ func App() *buffalo.App {
 		apiPath := envy.Get("API_PATH", "/api")
 
 		authPath := app.Group(apiPath + "/auth")
-		authPath.Middleware.Skip(middleware.IsAuthMiddleware, AuthLoginHandler)
-		authPath.Middleware.Skip(middleware.SetContextMiddleware, AuthLoginHandler)
+		authPath.Middleware.Skip(middleware.IsAuthMiddleware, AuthLoginHandler, AuthGetCerts)
+		authPath.Middleware.Skip(middleware.SetContextMiddleware, AuthLoginHandler, AuthGetCerts)
 		authPath.POST("/login", AuthLoginHandler)
 		authPath.POST("/login/refresh", AuthLoginRefreshHandler)
 		authPath.POST("/logout", AuthLogoutHandler)
 		authPath.GET("/userinfo", AuthGetUserInfo)
+		authPath.GET("/tokeninfo", AuthGetTokenInfo)
 		authPath.GET("/validate", AuthGetUserValidate)
 		authPath.GET("/certs", AuthGetCerts)
 

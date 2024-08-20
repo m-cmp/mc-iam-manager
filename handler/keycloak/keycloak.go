@@ -86,6 +86,15 @@ func KeycloakGetUserInfo(accessToken string) (*gocloak.UserInfo, error) {
 	return userinfo, nil
 }
 
+func KeycloakTokenInfo(accessToken string) (*gocloak.IntroSpectTokenResult, error) {
+	ctx := context.Background()
+	userinfo, err := kc.KcClient.RetrospectToken(ctx, accessToken, kc.Client, kc.ClientSecret, kc.Realm)
+	if err != nil {
+		log.Println(err)
+	}
+	return userinfo, nil
+}
+
 // Users Management
 type CreateUserRequset struct {
 	Name      string `json:"id"`

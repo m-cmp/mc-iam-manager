@@ -99,6 +99,18 @@ func AuthGetUserInfo(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(userinfo))
 }
 
+func AuthGetTokenInfo(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+
+	tokeninfo, err := keycloak.KeycloakTokenInfo(accessToken)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"message": err.Error()}))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(tokeninfo))
+}
+
 func AuthGetUserValidate(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
 
