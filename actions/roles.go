@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/m-cmp/mc-iam-manager/handler"
+	"github.com/m-cmp/mc-iam-manager/handler/keycloak"
 	"github.com/m-cmp/mc-iam-manager/models"
 
 	"github.com/gobuffalo/buffalo"
@@ -19,6 +20,8 @@ type createRoleRequset struct {
 }
 
 func CreateRole(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+
 	var req createRoleRequset
 	var s models.Role
 	var err error
@@ -34,6 +37,19 @@ func CreateRole(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
+
+	_, err = keycloak.KeycloakCreateRole(accessToken, req.Name, req.Description.String)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	policy, err := keycloak.KeycloakCreatePolicy(accessToken, req.Name, req.Description.String)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+	s.Policy = *policy.ID
 
 	tx := c.Value("tx").(*pop.Connection)
 	res, err := handler.CreateRole(tx, &s)
@@ -84,12 +100,26 @@ func GetRoleById(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
+func GetRoleByPolicyId(c buffalo.Context) error {
+	var err error
+	policyId := c.Param("policyId")
+	tx := c.Value("tx").(*pop.Connection)
+	res, err := handler.GetRoleByPolicyId(tx, policyId)
+	if err != nil {
+		log.Println(err)
+		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Role is not exist..")
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+	return c.Render(http.StatusOK, r.JSON(res))
+}
+
 type updateRoleByIdRequest struct {
-	Name        string       `json:"name" db:"name"`
 	Description nulls.String `json:"description" db:"description"`
 }
 
 func UpdateRoleById(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+
 	var req updateRoleByIdRequest
 	var err error
 
@@ -117,13 +147,21 @@ func UpdateRoleById(c buffalo.Context) error {
 	res, err := handler.UpdateRole(tx, s)
 	if err != nil {
 		log.Println(err)
-		// err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Role is not exist..")
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
 	}
+
+	err = keycloak.KeycloakUpdateRole(accessToken, res.Name, res.Description.String)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
 	return c.Render(http.StatusOK, r.JSON(res))
 }
 
 func DeleteRoleById(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+
 	var err error
 	roleId := c.Param("roleId")
 	tx := c.Value("tx").(*pop.Connection)
@@ -139,5 +177,18 @@ func DeleteRoleById(c buffalo.Context) error {
 		err = handler.IsErrorContainsThen(err, "sql: no rows in result set", "Role is not exist..")
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
 	}
+
+	err = keycloak.KeycloakDeletePolicy(accessToken, s.Policy)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	err = keycloak.KeycloakDeleteRole(accessToken, s.Name)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
 	return c.Render(http.StatusOK, r.JSON(map[string]string{"message": "ID(" + s.ID.String() + ") / Name(" + s.Name + ") is delected.."}))
 }

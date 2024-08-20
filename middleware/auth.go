@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -21,11 +21,12 @@ func init() {
 
 	KEYCLOAKHOST := os.Getenv("KEYCLOAK_HOST")
 	KEYCLAOKREALM := os.Getenv("KEYCLAOK_REALM")
-	fmt.Println("Trying to fetch Pubkey : URL :", KEYCLOAKHOST)
+	log.Printf("Trying to fetch Pubkey %s/realms/%s/protocol/openid-connect/certs", KEYCLOAKHOST, KEYCLAOKREALM)
 	err := iamtokenvalidator.GetPubkeyIamManager(KEYCLOAKHOST + "/realms/" + KEYCLAOKREALM + "/protocol/openid-connect/certs")
 	if err != nil {
 		panic(err)
 	}
+
 }
 
 func IsAuthMiddleware(next buffalo.Handler) buffalo.Handler {
@@ -33,15 +34,17 @@ func IsAuthMiddleware(next buffalo.Handler) buffalo.Handler {
 		accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
 		err := iamtokenvalidator.IsTokenValid(accessToken)
 		if err != nil {
+			log.Println("IsAuthMiddleware :", err.Error())
 			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
 		}
 		return next(c)
 	}
 }
 
-func SetRolesMiddleware(next buffalo.Handler) buffalo.Handler {
+func SetContextMiddleware(next buffalo.Handler) buffalo.Handler {
 	return func(c buffalo.Context) error {
 		accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
+		c.Set("accessToken", accessToken)
 		claims, err := iamtokenvalidator.GetTokenClaimsByIamManagerClaims(accessToken)
 		if err != nil {
 			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
