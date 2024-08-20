@@ -14,6 +14,7 @@ import (
 // Role is used by pop to map your roles database table to your go code.
 type Role struct {
 	ID          uuid.UUID    `json:"id" db:"id"`
+	Policy      string       `json:"policy" db:"policy"`
 	Name        string       `json:"name" db:"name"`
 	Description nulls.String `json:"description" db:"description"`
 	CreatedAt   time.Time    `json:"created_at" db:"created_at"`
