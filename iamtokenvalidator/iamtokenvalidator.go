@@ -9,11 +9,11 @@ import (
 )
 
 type DefaultClaims struct {
-	*jwt.StandardClaims
+	*jwt.RegisteredClaims
 }
 
 type IamManagerClaims struct {
-	*jwt.StandardClaims
+	*jwt.RegisteredClaims
 	UserId            string `json:"upn"`
 	UserName          string `json:"name"`
 	PreferredUsername string `json:"preferred_username"`
@@ -46,6 +46,7 @@ func GetPubkeyIamManager(certUrl string) error {
 func IsTokenValid(tokenString string) error {
 	token, err := jwt.ParseWithClaims(tokenString, &DefaultClaims{}, Keyfunction)
 	if err != nil {
+		fmt.Println("@@@ ParseWithClaims", err.Error())
 		return fmt.Errorf("token is invalid : %s", err.Error())
 	}
 	if token.Valid {

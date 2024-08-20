@@ -64,7 +64,6 @@ func SearchProjectsByName(c buffalo.Context) error {
 	var err error
 	projectName := c.Param("projectName")
 	option := c.Request().URL.Query().Get("option")
-
 	tx := c.Value("tx").(*pop.Connection)
 	res, err := handler.SearchProjectsByName(tx, projectName, option)
 	if err != nil {

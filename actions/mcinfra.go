@@ -27,8 +27,9 @@ func SyncProjectListWithMcInfra(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
-
 	tx := c.Value("tx").(*pop.Connection)
+
+	var errs []error
 	if nsArray, ok := nsList["ns"].([]interface{}); ok {
 		for _, item := range nsArray {
 			if nsItem, ok := item.(map[string]interface{}); ok {
@@ -38,18 +39,32 @@ func SyncProjectListWithMcInfra(c buffalo.Context) error {
 				if description, ok := nsItem["description"].(nulls.String); ok {
 					s.Description = description
 				}
-				_, err := handler.CreateProject(tx, &s)
+				project, err := handler.IsExistProjectByNsId(tx, s.NsID)
 				if err != nil {
 					log.Println(err)
-					return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
+					errs = append(errs, err)
+				}
+
+				if project == nil {
+					_, err := handler.CreateProject(tx, &s)
+					if err != nil {
+						log.Println(err)
+						errs = append(errs, err)
+					}
 				}
 			}
 		}
 	}
+
 	projectList, err := handler.GetProjectList(tx)
 	if err != nil {
 		log.Println(err)
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	if len(errs) > 0 {
+		log.Println(errs)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]interface{}{"projectList": projectList, "errors": errs}))
 	}
 
 	return c.Render(http.StatusOK, r.JSON(projectList))
