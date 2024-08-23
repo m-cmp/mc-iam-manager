@@ -192,11 +192,42 @@ func KeycloakCreateResources(accessToken string, resources CreateResourceRequest
 	result := []gocloak.ResourceRepresentation{}
 	createResourceerrors := []error{}
 	for _, resource := range resources {
-		name := resource.Framework + ":" + resource.OperationId + ":" + resource.Method + ":" + resource.URI
+		name := resource.Framework + ":res:" + resource.OperationId + ":" + resource.Method + ":" + resource.URI
 		URIS := []string{resource.URI}
 		resreq := gocloak.ResourceRepresentation{
 			Name: &name,
 			URIs: &URIS,
+		}
+		res, err := kc.KcClient.CreateResource(ctx, accessToken, kc.Realm, *clinetResp.ID, resreq)
+		if err != nil {
+			log.Println(err)
+			createResourceerrors = append(createResourceerrors, err)
+			continue
+		}
+		result = append(result, *res)
+	}
+
+	if len(createResourceerrors) != 0 {
+		return nil, errors.Join(createResourceerrors...)
+	}
+
+	return &result, nil
+}
+
+func KeycloakCreateMenuResources(accessToken string, resources CreateMenuResourceRequestArr) (*[]gocloak.ResourceRepresentation, error) {
+	ctx := context.Background()
+
+	//realm-management manage-clients role 필요
+	clinetResp, err := KeycloakGetClientInfo(accessToken)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	result := []gocloak.ResourceRepresentation{}
+	createResourceerrors := []error{}
+	for _, resource := range resources {
+		resreq := gocloak.ResourceRepresentation{
+			Name: gocloak.StringP(resource.Framework + ":menu:" + resource.Id + ":" + resource.DisplayName + ":" + resource.ParentMenuId + ":" + resource.Priority + ":" + resource.IsAction),
 		}
 		res, err := kc.KcClient.CreateResource(ctx, accessToken, kc.Realm, *clinetResp.ID, resreq)
 		if err != nil {
@@ -248,7 +279,7 @@ func KeycloakUpdateResources(accessToken string, resourceid string, resource Cre
 	return nil
 }
 
-func KeycloakDeleteResources(accessToken string, resourceid string) error {
+func KeycloakDeleteResource(accessToken string, resourceid string) error {
 	ctx := context.Background()
 
 	//realm-management manage-clients role 필요
