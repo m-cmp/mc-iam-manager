@@ -24,9 +24,18 @@ type UserLogout struct {
 }
 
 type CreateResourceRequest struct {
+	Framework   string `json:"framework"`
 	OperationId string `json:"operationId"`
 	Method      string `json:"method"`
-	Framework   string `json:"framework"`
 	URI         string `json:"uri"`
 }
 type CreateResourceRequestArr []CreateResourceRequest
+type CreateMenuResourceRequest struct {
+	Framework    string `json:"framework"`
+	Id           string `json:"id"`
+	ParentMenuId string `json:"parentmenuId"`
+	DisplayName  string `json:"displaymame"`
+	IsAction     string `json:"isaction"`
+	Priority     string `json:"priority"`
+}
+type CreateMenuResourceRequestArr []CreateMenuResourceRequest
