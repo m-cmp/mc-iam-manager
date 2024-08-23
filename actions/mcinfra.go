@@ -39,11 +39,7 @@ func SyncProjectListWithMcInfra(c buffalo.Context) error {
 				if description, ok := nsItem["description"].(nulls.String); ok {
 					s.Description = description
 				}
-				project, err := handler.IsExistProjectByNsId(tx, s.NsID)
-				if err != nil {
-					log.Println(err)
-					errs = append(errs, err)
-				}
+				project, _ := handler.IsExistProjectByNsId(tx, s.NsID)
 
 				if project == nil {
 					_, err := handler.CreateProject(tx, &s)

@@ -44,31 +44,12 @@ func IsAuthMiddleware(next buffalo.Handler) buffalo.Handler {
 func SetContextMiddleware(next buffalo.Handler) buffalo.Handler {
 	return func(c buffalo.Context) error {
 		accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")
-		c.Set("accessToken", accessToken)
 		claims, err := iamtokenvalidator.GetTokenClaimsByIamManagerClaims(accessToken)
 		if err != nil {
 			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
 		}
+		c.Set("accessToken", accessToken)
 		c.Set("roles", claims.RealmAccess.Roles)
 		return next(c)
-	}
-}
-
-func SetGrantedRolesMiddleware(roles []string) buffalo.MiddlewareFunc {
-	return func(next buffalo.Handler) buffalo.Handler {
-		return func(c buffalo.Context) error {
-			userRoles := c.Value("roles")
-			userRolesArr := userRoles.([]string)
-			userRolesArrSet := make(map[string]struct{}, len(userRolesArr))
-			for _, v := range userRolesArr {
-				userRolesArrSet[v] = struct{}{}
-			}
-			for _, v := range roles {
-				if _, found := userRolesArrSet[v]; found {
-					return next(c)
-				}
-			}
-			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
-		}
 	}
 }
