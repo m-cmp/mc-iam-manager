@@ -42,9 +42,9 @@ func App() *buffalo.App {
 		app.Use(middleware.IsAuthMiddleware)
 		app.Use(middleware.SetContextMiddleware)
 
-		alive := app.Group("/alive")
-		alive.Middleware.Skip(middleware.IsAuthMiddleware, aliveSig)
-		alive.GET("/", aliveSig)
+		app.Middleware.Skip(middleware.IsAuthMiddleware, readyz)
+		app.Middleware.Skip(middleware.SetContextMiddleware, readyz)
+		app.ANY("/readyz", readyz)
 
 		apiPath := envy.Get("API_PATH", "/api")
 
@@ -107,10 +107,13 @@ func App() *buffalo.App {
 
 		resourcePath := app.Group(apiPath + "/resource")
 		resourcePath.POST("/", CreateResources)
+		resourcePath.POST("/file/framework/{framework}/menu", CreateMenuResourcesByYaml)
 		resourcePath.POST("/file/framework/{framework}", CreateResourcesBySwagger)
 		resourcePath.GET("/", GetResources)
+		resourcePath.GET("/menus", GetMenuResources)
 		resourcePath.PUT("/id/{resourceid}", UpdateResource)
 		resourcePath.DELETE("/id/{resourceid}", DeleteResource)
+		resourcePath.DELETE("/reset", ResetResource)
 
 		permissionPath := app.Group(apiPath + "/permission")
 		permissionPath.POST("/", CreatePermission)
@@ -119,24 +122,23 @@ func App() *buffalo.App {
 		permissionPath.PUT("/id/{permissionid}", UpdatePermission)
 		permissionPath.DELETE("/id/{permissionid}", DeletePermission)
 
+		ticketPath := app.Group(apiPath + "/ticket")
+		ticketPath.GET("/", GetAllPermissionTicket)
+		ticketPath.GET("/framework/{framework}/operationid/{operationid}", GetPermissionTicketByResourceName)
+		ticketPath.GET("/menus", GetAvailableMenus)
+		ticketPath.POST("/", TicketValidate)
+
 		toolPath := app.Group(apiPath + "/tool")
 		toolPath.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
 
 		stsPath := app.Group(apiPath + "/poc" + "/sts")
 		stsPath.Use(middleware.IsAuthMiddleware)
 		stsPath.GET("/securitykey", AuthSecuritykeyProviderHandler)
-
-		tokenTestPath := app.Group(apiPath + "/tokentest")
-		tokenTestPath.Use(middleware.IsAuthMiddleware)
-		tokenTestPath.GET("/", aliveSig)
-		tokenTestPath.GET("/admin", middleware.SetGrantedRolesMiddleware([]string{"admin"})(aliveSig))
-		tokenTestPath.GET("/operator", middleware.SetGrantedRolesMiddleware([]string{"admin", "operator"})(aliveSig))
-		tokenTestPath.GET("/viewer", middleware.SetGrantedRolesMiddleware([]string{"admin", "operator", "viewer"})(aliveSig))
 	})
 
 	return app
 }
 
-func aliveSig(c buffalo.Context) error {
+func readyz(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": "ok"}))
 }
