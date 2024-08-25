@@ -642,3 +642,110 @@ func KeycloakDeletePermission(accessToken string, id string) error {
 
 	return nil
 }
+
+// Ticket Management
+
+func KeycloakGetTicketByRequestUri(accessToken string, uri []string) (*gocloak.JWT, error) {
+	ctx := context.Background()
+
+	opt := gocloak.RequestingPartyTokenOptions{
+		GrantType:                     gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
+		Audience:                      gocloak.StringP(kc.Client),
+		Permissions:                   &uri,
+		PermissionResourceFormat:      gocloak.StringP("uri"),
+		PermissionResourceMatchingURI: gocloak.BoolP(true),
+	}
+
+	ticket, err := kc.KcClient.GetRequestingPartyToken(ctx, accessToken, kc.Realm, opt)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return ticket, nil
+}
+
+func KeycloakGetAvaliablePermission(accessToken string) (*[]gocloak.RequestingPartyPermission, error) {
+	ctx := context.Background()
+
+	opt := gocloak.RequestingPartyTokenOptions{
+		GrantType:    gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
+		Audience:     gocloak.StringP(kc.Client),
+		ResponseMode: gocloak.StringP("permissions"),
+	}
+
+	ticket, err := kc.KcClient.GetRequestingPartyPermissions(ctx, accessToken, kc.Realm, opt)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return ticket, nil
+}
+
+func KeycloakGetTicketByFrameworkResourceName(accessToken string, framework string, name string) (*gocloak.JWT, error) {
+	ctx := context.Background()
+
+	params := gocloak.GetResourceParams{
+		Name: gocloak.StringP(framework + ":res:" + name),
+	}
+	resources, err := KeycloakGetResources(accessToken, params)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	if len(resources) == 0 {
+		return nil, fmt.Errorf("resource Not Found")
+	}
+
+	nameArr := []string{*resources[0].Name}
+	opt := gocloak.RequestingPartyTokenOptions{
+		GrantType:   gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
+		Audience:    gocloak.StringP(kc.Client),
+		Permissions: &nameArr,
+		// PermissionResourceFormat: gocloak.StringP("id"),
+		// PermissionResourceMatchingURI: gocloak.BoolP(true),
+	}
+	ticket, err := kc.KcClient.GetRequestingPartyToken(ctx, accessToken, kc.Realm, opt)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return ticket, nil
+}
+
+func KeycloakGetAvailableMenus(accessToken string) (*[]gocloak.RequestingPartyPermission, error) {
+	ctx := context.Background()
+
+	params := gocloak.GetResourceParams{
+		Name: gocloak.StringP("web:menu:"),
+	}
+	resources, err := KeycloakGetResources(accessToken, params)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	if len(resources) == 0 {
+		return nil, fmt.Errorf("menu Not Found")
+	}
+
+	names := make([]string, len(resources))
+	for i, resource := range resources {
+		names[i] = *resource.Name
+	}
+
+	opt := gocloak.RequestingPartyTokenOptions{
+		GrantType:    gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
+		Audience:     gocloak.StringP(kc.Client),
+		ResponseMode: gocloak.StringP("permissions"),
+		Permissions:  &names,
+	}
+	ticket, err := kc.KcClient.GetRequestingPartyPermissions(ctx, accessToken, kc.Realm, opt)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return ticket, nil
+}
