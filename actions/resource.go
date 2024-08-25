@@ -122,10 +122,10 @@ func CreateMenuResourcesByYaml(c buffalo.Context) error {
 	framework := c.Param("framework")
 
 	f, err := c.File("yaml")
+
 	if err != nil {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
-
 	fileContent, err := io.ReadAll(f.File)
 	if err != nil {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
@@ -164,9 +164,10 @@ func GetResources(c buffalo.Context) error {
 
 	uri := c.Param("uri")
 	name := c.Param("operationId")
+	framework := c.Param("framework")
 	params := gocloak.GetResourceParams{
 		URI:  &uri,
-		Name: gocloak.StringP(":res:" + name),
+		Name: gocloak.StringP(framework + ":res:" + name),
 	}
 
 	resources, err := keycloak.KeycloakGetResources(accessToken, params)
