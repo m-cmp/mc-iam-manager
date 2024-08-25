@@ -1,10 +1,13 @@
 package actions
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/validate/v3"
+	"github.com/gobuffalo/validate/v3/validators"
 	"github.com/m-cmp/mc-iam-manager/handler/keycloak"
 )
 
@@ -15,6 +18,17 @@ func CreateUser(c buffalo.Context) error {
 	if err := c.Bind(createUserReq); err != nil {
 		log.Println(err)
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+	validateErr := validate.Validate(
+		&validators.StringIsPresent{Field: createUserReq.Name, Name: "id"},
+		&validators.StringIsPresent{Field: createUserReq.Password, Name: "password"},
+		&validators.StringIsPresent{Field: createUserReq.FirstName, Name: "firstName"},
+		&validators.StringIsPresent{Field: createUserReq.LastName, Name: "lastName"},
+		&validators.StringIsPresent{Field: createUserReq.Email, Name: "email"},
+	)
+	if validateErr.HasAny() {
+		fmt.Println(validateErr)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"message": validateErr.Error()}))
 	}
 
 	err := keycloak.KeycloakCreateUser(accessToken, *createUserReq, createUserReq.Password)
