@@ -26,7 +26,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-
 }
 
 func IsAuthMiddleware(next buffalo.Handler) buffalo.Handler {
