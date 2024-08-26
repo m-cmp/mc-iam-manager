@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/lestrrat-go/jwx/jwk"
 )
 
@@ -17,7 +17,13 @@ type IamManagerClaims struct {
 	UserId            string `json:"upn"`
 	UserName          string `json:"name"`
 	PreferredUsername string `json:"preferred_username"`
-	RealmAccess       struct {
+	Authorization     struct {
+		Permissions []struct {
+			Rsid   string `json:"rsid"`
+			Rsname string `json:"rsname"`
+		} `json:"permissions"`
+	}
+	RealmAccess struct {
 		Roles []string `json:"roles"`
 	} `json:"realm_access"`
 }
