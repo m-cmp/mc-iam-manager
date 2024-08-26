@@ -683,11 +683,11 @@ func KeycloakGetAvaliablePermissions(accessToken string) (*[]gocloak.RequestingP
 	return ticket, nil
 }
 
-func KeycloakGetTicketByFrameworkResourceName(accessToken string, framework string, name string) (*gocloak.JWT, error) {
+func KeycloakGetPermissionTicketByOperationid(accessToken string, framework string, operationid string) (*gocloak.JWT, error) {
 	ctx := context.Background()
 
 	params := gocloak.GetResourceParams{
-		Name: gocloak.StringP(framework + ":res:" + name),
+		Name: gocloak.StringP(framework + ":res:" + operationid),
 	}
 	resources, err := KeycloakGetResources(accessToken, params)
 	if err != nil {
