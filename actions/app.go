@@ -125,7 +125,7 @@ func App() *buffalo.App {
 		ticketPath := app.Group(apiPath + "/ticket")
 		ticketPath.GET("/", GetAllPermissions)
 		ticketPath.GET("/menus", GetAllAvailableMenus)
-		ticketPath.GET("/framework/{framework}/operationid/{operationid}", GetPermissionTicketByResourceName)
+		ticketPath.GET("/framework/{framework}/operationid/{operationid}", GetPermissionTicketByOperationid)
 
 		toolPath := app.Group(apiPath + "/tool")
 		toolPath.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
