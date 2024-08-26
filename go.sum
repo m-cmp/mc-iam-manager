@@ -81,8 +81,6 @@ github.com/gobuffalo/meta v0.3.3 h1:GwPWdbdnp4JrKASvMLa03OtmzISq7z/nE7T6aMqzoYM=
 github.com/gobuffalo/meta v0.3.3/go.mod h1:o4B099IUFUfK4555Guqxz1zHAqyuUQ/KtHXi8WvVeFE=
 github.com/gobuffalo/mw-contenttype v1.0.2 h1:lWWbhFOVmcipoOoxT28ycv6/YW2MsDpyk3sikAZIvGA=
 github.com/gobuffalo/mw-contenttype v1.0.2/go.mod h1:e1jSIN+sbPh7no/m8VX9InsBh2axYl+o8aQJZVGuraE=
-github.com/gobuffalo/mw-forcessl v1.0.2 h1:U3HIib5CJ17xpnKMuuzDs5kRuY9UrSuSUkuM611TJ3U=
-github.com/gobuffalo/mw-forcessl v1.0.2/go.mod h1:UnBEGxT9KxJYeV0jA6Sx35KqPYFv/Dg8irhFF7Fp/fI=
 github.com/gobuffalo/mw-i18n/v2 v2.0.3 h1:V0FFudOwdff0Cw0twyvVLacOvj5MoppRyqjRrwArct8=
 github.com/gobuffalo/mw-i18n/v2 v2.0.3/go.mod h1:i5tIdLmvpL3AuApv1h5xjX22J20UWLqa8DSQ766hoR8=
 github.com/gobuffalo/mw-paramlogger v1.0.2 h1:+NHJ7EeUx7cbTZstSTYtoQY1Lhs8xncltv69Sf3IpEA=
@@ -111,8 +109,6 @@ github.com/gofrs/uuid v4.2.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRx
 github.com/gofrs/uuid v4.3.1+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=
 github.com/gofrs/uuid v4.4.0+incompatible h1:3qXRTX8/NbyulANqlc0lchS1gqAVxRgsuW1YrTJupqA=
 github.com/gofrs/uuid v4.4.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=
-github.com/golang-jwt/jwt/v4 v4.5.0 h1:7cYmW1XlMY7h7ii7UhUyChSgS5wUJEnm9uZVTGqOWzg=
-github.com/golang-jwt/jwt/v4 v4.5.0/go.mod h1:m21LjoU+eqJr34lmDMbreY2eSTRJ1cv77w39/MY0Ch0=
 github.com/golang-jwt/jwt/v5 v5.2.1 h1:OuVbFODueb089Lh128TAcimifWaLhJwVflnrgM17wHk=
 github.com/golang-jwt/jwt/v5 v5.2.1/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
 github.com/google/go-cmp v0.5.4/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
@@ -324,9 +320,6 @@ github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/unrolled/secure v1.13.0/go.mod h1:BmF5hyM6tXczk3MpQkFf1hpKSRqCyhqcbiQtiAF7+40=
-github.com/unrolled/secure v1.14.0 h1:u9vJTU/pR4Bny0ntLUMxdfLtmIRGvQf2sEFuA0TG9AE=
-github.com/unrolled/secure v1.14.0/go.mod h1:BmF5hyM6tXczk3MpQkFf1hpKSRqCyhqcbiQtiAF7+40=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/zenazn/goji v0.9.0/go.mod h1:7S9M489iMyHBNxwZnk9/EHS098H4/F6TATF2mIxtB1Q=
 go.uber.org/atomic v1.3.2/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
