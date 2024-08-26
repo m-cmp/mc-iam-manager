@@ -665,7 +665,7 @@ func KeycloakGetTicketByRequestUri(accessToken string, uri []string) (*gocloak.J
 	return ticket, nil
 }
 
-func KeycloakGetAvaliablePermission(accessToken string) (*[]gocloak.RequestingPartyPermission, error) {
+func KeycloakGetAvaliablePermissions(accessToken string) (*[]gocloak.RequestingPartyPermission, error) {
 	ctx := context.Background()
 
 	opt := gocloak.RequestingPartyTokenOptions{
