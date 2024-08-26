@@ -1660,6 +1660,11 @@
                         "in": "query",
                         "name": "operationId",
                         "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "framework",
+                        "type": "string"
                     }
                 ],
                 "responses": {
@@ -5180,35 +5185,16 @@
         },
         "/api/ticket": {
             "get": {
-                "parameters": [],
-                "responses": {
-                    "200": {
-                        "description": ""
-                    }
-                },
-                "tags": [
-                    "Ticket"
-                ],
-                "description": "사용자는 uma_protection Role 을 가져야 한다.",
-                "operationId": "ticketvalidateNotuse",
-                "summary": "TicketValidate#notuse"
-            },
-            "post": {
                 "consumes": [
-                    "application/json"
+                    "text/plain"
                 ],
                 "parameters": [
                     {
                         "in": "body",
                         "name": "body",
                         "schema": {
-                            "properties": {
-                                "uri": {
-                                    "example": "/test/uri",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
+                            "format": "binary",
+                            "type": "string"
                         }
                     }
                 ],
@@ -5221,8 +5207,78 @@
                     "Ticket"
                 ],
                 "description": "사용자는 uma_protection Role 을 가져야 한다.",
-                "operationId": "getticketNotuse",
-                "summary": "GetTicket#notuse"
+                "operationId": "getallpermissions",
+                "summary": "GetAllPermissions"
+            }
+        },
+        "/api/ticket/framework/{framework}/operationid/{operationid}": {
+            "parameters": [
+                {
+                    "in": "path",
+                    "name": "framework",
+                    "required": true,
+                    "type": "string"
+                },
+                {
+                    "in": "path",
+                    "name": "operationid",
+                    "required": true,
+                    "type": "string"
+                }
+            ],
+            "get": {
+                "consumes": [
+                    "text/plain"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "schema": {
+                            "format": "binary",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Ticket"
+                ],
+                "description": "사용자는 uma_protection Role 을 가져야 한다.",
+                "operationId": "getpermissionticketbyoperationid",
+                "summary": "GetPermissionTicketByOperationid"
+            }
+        },
+        "/api/ticket/menus": {
+            "get": {
+                "consumes": [
+                    "text/plain"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "schema": {
+                            "format": "binary",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Ticket"
+                ],
+                "description": "사용자는 uma_protection Role 을 가져야 한다.",
+                "operationId": "getallavailablemenus",
+                "summary": "GetAllAvailableMenus"
             }
         },
         "/api/tool/mcinfra/sync": {
@@ -7350,18 +7406,18 @@
                     }
                 },
                 "tags": [
-                    "readyz"
+                    "Readyz"
                 ],
                 "description": "mc-iam-manager가 정상적으로 작동중인지 단순 확인합니다.",
                 "operationId": "readyz",
-                "summary": "readyz"
+                "summary": "Readyz"
             }
         }
     },
     "tags": [
         {
             "description": "동작상태 확인",
-            "name": "readyz"
+            "name": "Readyz"
         },
         {
             "description": "토큰 관리",
