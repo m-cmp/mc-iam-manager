@@ -108,12 +108,14 @@ func App() *buffalo.App {
 		resourcePath := app.Group(apiPath + "/resource")
 		resourcePath.POST("/", CreateResources)
 		resourcePath.POST("/file/framework/{framework}/menu", CreateMenuResourcesByYaml)
+		resourcePath.POST("/file/api", CreateResourcesByApiYaml)
 		resourcePath.POST("/file/framework/{framework}", CreateResourcesBySwagger)
 		resourcePath.GET("/", GetResources)
 		resourcePath.GET("/menus", GetMenuResources)
 		resourcePath.PUT("/id/{resourceid}", UpdateResource)
 		resourcePath.DELETE("/id/{resourceid}", DeleteResource)
 		resourcePath.DELETE("/reset", ResetResource)
+		resourcePath.DELETE("/reset/menu", ResetMenuResource)
 
 		permissionPath := app.Group(apiPath + "/permission")
 		permissionPath.POST("/", CreatePermission)
@@ -125,7 +127,7 @@ func App() *buffalo.App {
 		ticketPath := app.Group(apiPath + "/ticket")
 		ticketPath.GET("/", GetAllPermissions)
 		ticketPath.GET("/menus", GetAllAvailableMenus)
-		ticketPath.GET("/framework/{framework}/operationid/{operationid}", GetPermissionTicketByResourceName)
+		ticketPath.GET("/framework/{framework}/operationid/{operationid}", GetPermissionTicketByOperationid)
 
 		toolPath := app.Group(apiPath + "/tool")
 		toolPath.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
