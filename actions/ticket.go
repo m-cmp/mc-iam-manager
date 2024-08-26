@@ -8,15 +8,26 @@ import (
 	"github.com/m-cmp/mc-iam-manager/handler/keycloak"
 )
 
-func GetAllPermissionTicket(c buffalo.Context) error {
+func GetAllPermissions(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
 
-	ticket, err := keycloak.KeycloakGetAvaliablePermission(accessToken)
+	ticketPermissions, err := keycloak.KeycloakGetAvaliablePermissions(accessToken)
 	if err != nil {
 		log.Println(err)
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
-	return c.Render(http.StatusOK, r.JSON(map[string]interface{}{"status": ticket}))
+	return c.Render(http.StatusOK, r.JSON(ticketPermissions))
+}
+
+func GetAllAvailableMenus(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+
+	ticketMenusPermissions, err := keycloak.KeycloakGetAvailableMenus(accessToken)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
+	}
+	return c.Render(http.StatusOK, r.JSON(ticketMenusPermissions))
 }
 
 func GetPermissionTicketByResourceName(c buffalo.Context) error {
@@ -29,27 +40,5 @@ func GetPermissionTicketByResourceName(c buffalo.Context) error {
 		log.Println(err)
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
-	return c.Render(http.StatusOK, r.JSON(map[string]interface{}{"status": ticket}))
-}
-
-func GetAvailableMenus(c buffalo.Context) error {
-	accessToken := c.Value("accessToken").(string)
-
-	ticket, err := keycloak.KeycloakGetAvailableMenus(accessToken)
-	if err != nil {
-		log.Println(err)
-		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
-	}
-	return c.Render(http.StatusOK, r.JSON(map[string]interface{}{"menus": ticket}))
-}
-
-func TicketValidate(c buffalo.Context) error {
-	// accessToken := c.Value("accessToken").(string)
-
-	// resp, err := mcinframanager.McInfraListAllNamespaces()
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
-	// }
-	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": "OK"}))
+	return c.Render(http.StatusOK, r.JSON(ticket))
 }

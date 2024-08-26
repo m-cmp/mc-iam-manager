@@ -123,10 +123,9 @@ func App() *buffalo.App {
 		permissionPath.DELETE("/id/{permissionid}", DeletePermission)
 
 		ticketPath := app.Group(apiPath + "/ticket")
-		ticketPath.GET("/", GetAllPermissionTicket)
+		ticketPath.GET("/", GetAllPermissions)
+		ticketPath.GET("/menus", GetAllAvailableMenus)
 		ticketPath.GET("/framework/{framework}/operationid/{operationid}", GetPermissionTicketByResourceName)
-		ticketPath.GET("/menus", GetAvailableMenus)
-		ticketPath.POST("/", TicketValidate)
 
 		toolPath := app.Group(apiPath + "/tool")
 		toolPath.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
