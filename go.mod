@@ -9,17 +9,14 @@ require (
 	github.com/gobuffalo/envy v1.10.2
 	github.com/gobuffalo/grift v1.5.2
 	github.com/gobuffalo/mw-contenttype v1.0.2
-	github.com/gobuffalo/mw-forcessl v1.0.2
 	github.com/gobuffalo/mw-i18n/v2 v2.0.3
 	github.com/gobuffalo/mw-paramlogger v1.0.2
 	github.com/gobuffalo/pop/v6 v6.1.1
 	github.com/gobuffalo/validate/v3 v3.3.3
 	github.com/gobuffalo/x v0.1.0
 	github.com/gofrs/uuid v4.4.0+incompatible
-	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/lestrrat-go/jwx v1.2.29
 	github.com/rs/cors v1.11.0
-	github.com/unrolled/secure v1.14.0
 )
 
 require (
@@ -60,7 +57,7 @@ require (
 	github.com/gobuffalo/plush/v4 v4.1.20 // indirect
 	github.com/gobuffalo/refresh v1.13.3 // indirect
 	github.com/gobuffalo/tags/v3 v3.1.4 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
@@ -102,6 +99,6 @@ require (
 	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/term v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
