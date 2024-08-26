@@ -1,9 +1,11 @@
 package actions
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/gobuffalo/buffalo"
@@ -93,6 +95,63 @@ func CreateResourcesBySwagger(c buffalo.Context) error {
 				OperationId: item.OperationID,
 			}
 			resourcereq = append(resourcereq, resource)
+		}
+	}
+
+	resoruces, err := keycloak.KeycloakCreateResources(accessToken, resourcereq)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(resoruces))
+}
+
+type ApiYaml struct {
+	CLISpecVersion string `yaml:"cliSpecVersion"`
+	Services       map[string]struct {
+		BaseURL string `yaml:"baseurl"`
+		Auth    struct {
+			Type     string `yaml:"type"`
+			Username string `yaml:"username"`
+			Password string `yaml:"password"`
+		} `yaml:"auth"`
+	} `yaml:"services"`
+	ServiceActions map[string]map[string]struct {
+		Method       string `yaml:"method"`
+		ResourcePath string `yaml:"resourcePath"`
+		Description  string `yaml:"description"`
+	} `yaml:"serviceActions"`
+}
+
+func CreateResourcesByApiYaml(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+
+	f, err := c.File("apiyaml")
+	if err != nil {
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	fileContent, err := io.ReadAll(f.File)
+	if err != nil {
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	var apiYaml ApiYaml
+	err = yaml.Unmarshal(fileContent, &apiYaml)
+	if err != nil {
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	resourcereq := keycloak.CreateResourceRequestArr{}
+	for framework, resources := range apiYaml.ServiceActions {
+		for operationId, resource := range resources {
+			resourcereq = append(resourcereq, keycloak.CreateResourceRequest{
+				Framework:   framework,
+				URI:         resource.ResourcePath,
+				Method:      resource.Method,
+				OperationId: operationId,
+			})
 		}
 	}
 
@@ -229,21 +288,72 @@ func DeleteResource(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": "success"}))
 }
 
-func ResetResource(c buffalo.Context) error {
+func ResetMenuResource(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
 
-	resources, err := keycloak.KeycloakGetResources(accessToken, gocloak.GetResourceParams{})
-	if err != nil {
-		log.Println(err)
-		return c.Render(http.StatusBadRequest, r.JSON(err))
-	}
-	for _, resource := range resources {
-		err := keycloak.KeycloakDeleteResource(accessToken, *resource.ID)
+	framework := c.Request().URL.Query().Get("framework")
+	var errs []string
+	var resources []*gocloak.ResourceRepresentation
+	for {
+		resourcesFetch, err := keycloak.KeycloakGetResources(accessToken, gocloak.GetResourceParams{
+			Name: gocloak.StringP(framework + ":menu:"),
+		})
 		if err != nil {
 			log.Println(err)
-			return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+			return c.Render(http.StatusBadRequest, r.JSON(err))
+		}
+		resources = append(resources, resourcesFetch...)
+		for _, resource := range resourcesFetch {
+			err := keycloak.KeycloakDeleteResource(accessToken, *resource.ID)
+			if err != nil {
+				log.Println(err)
+				errs = append(errs, err.Error())
+			}
+		}
+		if len(resourcesFetch) < 100 {
+			break
 		}
 	}
 
-	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": "success"}))
+	msg := fmt.Sprintf("delete Success %d / %d", len(resources)-len(errs), len(resources))
+
+	if len(errs) > 0 {
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"status": msg, "errors": strings.Join(errs, "; ")}))
+	}
+	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": msg}))
+}
+
+func ResetResource(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+
+	framework := c.Request().URL.Query().Get("framework")
+	var errs []string
+	var resources []*gocloak.ResourceRepresentation
+	for {
+		resourcesFetch, err := keycloak.KeycloakGetResources(accessToken, gocloak.GetResourceParams{
+			Name: gocloak.StringP(framework + ":res:"),
+		})
+		if err != nil {
+			log.Println(err)
+			return c.Render(http.StatusBadRequest, r.JSON(err))
+		}
+		resources = append(resources, resourcesFetch...)
+		for _, resource := range resourcesFetch {
+			err := keycloak.KeycloakDeleteResource(accessToken, *resource.ID)
+			if err != nil {
+				log.Println(err)
+				errs = append(errs, err.Error())
+			}
+		}
+		if len(resourcesFetch) < 100 {
+			break
+		}
+	}
+
+	msg := fmt.Sprintf("delete Success %d / %d", len(resources)-len(errs), len(resources))
+
+	if len(errs) > 0 {
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"status": msg, "errors": strings.Join(errs, "; ")}))
+	}
+	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": msg}))
 }
