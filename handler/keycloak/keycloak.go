@@ -823,8 +823,6 @@ func KeycloakGetPermissionTicket(accessToken string, req RequestTicket) (*gocloa
 			GrantType:   gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
 			Audience:    gocloak.StringP(kc.Client),
 			Permissions: &nameArr,
-
-			PermissionResourceFormat: gocloak.StringP("uri"),
 		}
 		ticket, err := kc.KcClient.GetRequestingPartyToken(ctx, accessToken, kc.Realm, opt)
 		if err != nil {
