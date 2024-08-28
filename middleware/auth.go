@@ -40,6 +40,18 @@ func IsAuthMiddleware(next buffalo.Handler) buffalo.Handler {
 	}
 }
 
+func IsTicketValidMiddleware(next buffalo.Handler) buffalo.Handler {
+	return func(c buffalo.Context) error {
+		accessToken := c.Value("accessToken").(string)
+		err := iamtokenvalidator.IsTicketValidWithReqUri(accessToken, string(c.Request().RequestURI))
+		if err != nil {
+			log.Println("IsTicketValidMiddleware :", err.Error())
+			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
+		}
+		return next(c)
+	}
+}
+
 func SetContextMiddleware(next buffalo.Handler) buffalo.Handler {
 	return func(c buffalo.Context) error {
 		accessToken := strings.TrimPrefix(c.Request().Header.Get("Authorization"), "Bearer ")

@@ -3,6 +3,8 @@ package iamtokenvalidator
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/lestrrat-go/jwx/jwk"
@@ -60,6 +62,63 @@ func IsTokenValid(tokenString string) error {
 	} else {
 		return fmt.Errorf("token is invalid")
 	}
+}
+
+// IsTicketValidWithOperationId 함수는 주어진 JWT 토큰과 operationId를 검증합니다.
+// - JWT 토큰이 유효하고 operationId와 일치하면 nil을 반환합니다.
+// - 토큰이 유효하지 않거나 operationId와 일치하지 않으면 에러를 반환합니다.
+func IsTicketValidWithOperationId(tokenString string, operationId string) error {
+	token, err := jwt.ParseWithClaims(tokenString, &IamManagerClaims{}, Keyfunction)
+	if err != nil {
+		return fmt.Errorf("ticket is invalid : %s", err.Error())
+	}
+	if claims, ok := token.Claims.(*IamManagerClaims); ok && token.Valid {
+		for _, permission := range claims.Authorization.Permissions {
+			permissionParts := strings.Split(permission.Rsname, ":")
+			if len(permissionParts) < 4 {
+				continue
+			}
+			if strings.ToLower(permissionParts[2]) == strings.ToLower(operationId) {
+				return nil
+			}
+		}
+		return fmt.Errorf("ticket mismatch with operationId")
+	} else {
+		return fmt.Errorf("ticket is invalid")
+	}
+}
+
+// IsTicketValidWithReqUri 함수는 주어진 JWT 토큰과 요청 URI(requestUri)를 검증합니다.
+// - JWT 토큰이 유효하고 requestUri와 일치하면 nil을 반환합니다.
+// - 토큰이 유효하지 않거나 requestUri와 일치하지 않으면 에러를 반환합니다.
+func IsTicketValidWithReqUri(tokenString string, requestUri string) error {
+	token, err := jwt.ParseWithClaims(tokenString, &IamManagerClaims{}, Keyfunction)
+	if err != nil {
+		return fmt.Errorf("ticket is invalid : %s", err.Error())
+	}
+	if claims, ok := token.Claims.(*IamManagerClaims); ok && token.Valid {
+		for _, permission := range claims.Authorization.Permissions {
+			permissionParts := strings.Split(permission.Rsname, ":")
+			if len(permissionParts) < 4 {
+				continue
+			}
+			if isEqualUri(permissionParts[4], requestUri) {
+				return nil
+			}
+		}
+		return fmt.Errorf("ticket mismatch with requestUri")
+	} else {
+		return fmt.Errorf("ticket is invalid")
+	}
+}
+
+// isEqualUri 함수는 주어진 패턴과 문자열을 비교하여 일치 여부를 판단합니다.
+// - pattern: 비교할 URI 패턴 문자열 (예: "/path/{variable}/endpoint")
+// - str: 비교 대상이 되는 실제 URI 문자열
+func isEqualUri(pattern string, str string) bool {
+	regexPattern := regexp.MustCompile(`\{[^/]+\}`).ReplaceAllString(pattern, `[^/]+`)
+	regex := regexp.MustCompile("^" + regexPattern + "$")
+	return regex.MatchString(str)
 }
 
 // GetTokenInfoByIamManagerClaim는 GetPubkeyIamManager에서 설정된 jwkSet을 바탕으로
