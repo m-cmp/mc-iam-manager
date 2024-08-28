@@ -42,11 +42,12 @@ func App() *buffalo.App {
 		app.Use(middleware.IsAuthMiddleware)
 		app.Use(middleware.SetContextMiddleware)
 
+		//Readyz skip all middleware
 		app.Middleware.Skip(middleware.IsAuthMiddleware, readyz)
 		app.Middleware.Skip(middleware.SetContextMiddleware, readyz)
 		app.ANY("/readyz", readyz)
 
-		apiPath := envy.Get("API_PATH", "/api")
+		apiPath := "/api"
 
 		authPath := app.Group(apiPath + "/auth")
 		authPath.Middleware.Skip(middleware.IsAuthMiddleware, AuthLoginHandler, AuthGetCerts)
@@ -58,6 +59,11 @@ func App() *buffalo.App {
 		authPath.GET("/tokeninfo", AuthGetTokenInfo)
 		authPath.GET("/validate", AuthGetUserValidate)
 		authPath.GET("/certs", AuthGetCerts)
+
+		ticketPath := app.Group(apiPath + "/ticket")
+		ticketPath.POST("/", GetPermissionTicket)
+		ticketPath.GET("/", GetAllPermissions)
+		ticketPath.GET("/menus", GetAllAvailableMenus)
 
 		userPath := app.Group(apiPath + "/user")
 		userPath.POST("/", CreateUser)
@@ -109,7 +115,7 @@ func App() *buffalo.App {
 		resourcePath.POST("/", CreateResources)
 		resourcePath.POST("/file/framework/{framework}", CreateApiResourcesByApiYaml)
 		resourcePath.POST("/file/framework/{framework}/menu", CreateMenuResourcesByMenuYaml)
-		// resourcePath.POST("/file/framework/{framework}", CreateResourcesBySwagger) // deprecated : use  CreateResourcesByApiYaml
+		// resourcePath.POST("/file/framework/{framework}", CreateResourcesBySwagger) // deprecated : use CreateResourcesByApiYaml
 		resourcePath.GET("/", GetResources)
 		resourcePath.GET("/menus", GetMenuResources)
 		resourcePath.PUT("/id/{resourceid}", UpdateResource)
@@ -123,22 +129,16 @@ func App() *buffalo.App {
 		permissionPath.GET("/framewrok/{framework}/operationid/{operationid}", GetPermission)
 		// permissionPath.GET("/id/{permissionid}", GetPermission) // deprecated : permission is resource dependent
 		// permissionPath.PUT("/id/{permissionid}", UpdatePermission)// deprecated : permission is resource dependent
-		permissionPath.PUT("/framewrok/{framework}/operationid/{operationid}", UpdateResourcePermissionByOperationId)
+		permissionPath.PUT("/framewrok/{framework}/operationid/{operationid}", UpdateResourcePermissionByOperationId) // menu could use thie operation by menu Id
 		// permissionPath.PUT("/framewrok/{framework}/menu/{menu}", UpdateResourcePermissionByMenu)
-		// permissionPath.DELETE("/id/{permissionid}", DeletePermission) // deprecated : permission is resource dependent
+		// permissionPath.DELETE("/id/{permissionid}", DeletePermission) // deprecated : permission is resource dependent, When a resource is deleted, the permissions are also deleted.
 		permissionPath.GET("/file/framework/{framework}", GetCurrentPermissionCsv)
 		permissionPath.POST("/file/framework/{framework}", ImportPermissionByCsv)
-
-		ticketPath := app.Group(apiPath + "/ticket")
-		ticketPath.GET("/", GetAllPermissions)
-		ticketPath.GET("/menus", GetAllAvailableMenus)
-		ticketPath.GET("/framework/{framework}/operationid/{operationid}", GetPermissionTicketByOperationid)
 
 		toolPath := app.Group(apiPath + "/tool")
 		toolPath.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
 
 		stsPath := app.Group(apiPath + "/poc" + "/sts")
-		stsPath.Use(middleware.IsAuthMiddleware)
 		stsPath.GET("/securitykey", AuthSecuritykeyProviderHandler)
 	})
 

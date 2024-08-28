@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
+	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/m-cmp/mc-iam-manager/handler"
@@ -786,34 +788,90 @@ func KeycloakGetAvaliablePermissions(accessToken string) (*[]gocloak.RequestingP
 	return ticket, nil
 }
 
-func KeycloakGetPermissionTicketByOperationid(accessToken string, framework string, operationid string) (*gocloak.JWT, error) {
+type RequestTicket struct {
+	Framework   string `json:"framework"`
+	OperationId string `json:"operationid"`
+	Uri         string `json:"uri"`
+}
+
+// https://github.com/keycloak/keycloak/issues/28772
+// URI pattern 이 제대로 작동하지 않는 문제가 있음.
+func KeycloakGetPermissionTicket(accessToken string, req RequestTicket) (*gocloak.JWT, error) {
 	ctx := context.Background()
-
-	params := gocloak.GetResourceParams{
-		Name: gocloak.StringP(framework + ":res:" + operationid),
+	params := gocloak.GetResourceParams{}
+	if req.Framework != "" && req.OperationId != "" {
+		params.Name = gocloak.StringP(req.Framework + ":res:" + req.OperationId)
 	}
-	resources, err := KeycloakGetResources(accessToken, params)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	if len(resources) == 0 {
-		return nil, fmt.Errorf("resource Not Found")
+	if req.Uri != "" {
+		params.URI = gocloak.StringP(req.Uri)
 	}
 
-	nameArr := []string{*resources[0].Name}
-	opt := gocloak.RequestingPartyTokenOptions{
-		GrantType:   gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
-		Audience:    gocloak.StringP(kc.Client),
-		Permissions: &nameArr,
-	}
-	ticket, err := kc.KcClient.GetRequestingPartyToken(ctx, accessToken, kc.Realm, opt)
-	if err != nil {
-		log.Println(err)
-		return nil, err
+	if params.Name != nil {
+		resources, err := KeycloakGetResources(accessToken, params)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		if len(resources) == 0 {
+			return nil, fmt.Errorf("resource Not Found")
+		}
+		nameArr := []string{}
+		for _, resource := range resources {
+			nameArr = append(nameArr, *resource.Name)
+		}
+		opt := gocloak.RequestingPartyTokenOptions{
+			GrantType:   gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
+			Audience:    gocloak.StringP(kc.Client),
+			Permissions: &nameArr,
+
+			PermissionResourceFormat: gocloak.StringP("uri"),
+		}
+		ticket, err := kc.KcClient.GetRequestingPartyToken(ctx, accessToken, kc.Realm, opt)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		return ticket, nil
+	} else if params.URI != nil {
+		permissions, err := KeycloakGetAvaliablePermissions(accessToken)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		var targetRes []string
+		for _, permission := range *permissions {
+			permissionParts := strings.Split(*permission.ResourceName, ":")
+			if len(permissionParts) < 4 {
+				continue
+			}
+			if isEqualUri(permissionParts[4], req.Uri) {
+				targetRes = append(targetRes, *permission.ResourceName)
+				break
+			}
+		}
+		if len(targetRes) == 0 {
+			return nil, fmt.Errorf("resource Not Found")
+		}
+		opt := gocloak.RequestingPartyTokenOptions{
+			GrantType:   gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
+			Audience:    gocloak.StringP(kc.Client),
+			Permissions: &targetRes,
+		}
+		ticket, err := kc.KcClient.GetRequestingPartyToken(ctx, accessToken, kc.Realm, opt)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		return ticket, nil
 	}
 
-	return ticket, nil
+	return nil, fmt.Errorf("permission not found")
+}
+
+func isEqualUri(pattern string, str string) bool {
+	regexPattern := regexp.MustCompile(`\{[^/]+\}`).ReplaceAllString(pattern, `[^/]+`)
+	regex := regexp.MustCompile("^" + regexPattern + "$")
+	return regex.MatchString(str)
 }
 
 func KeycloakGetAvailableMenus(accessToken string) (*[]gocloak.RequestingPartyPermission, error) {
