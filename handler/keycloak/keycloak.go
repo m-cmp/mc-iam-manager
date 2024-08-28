@@ -192,10 +192,10 @@ func KeycloakCreateResources(accessToken string, resources CreateResourceRequest
 	result := []gocloak.ResourceRepresentation{}
 	createResourceerrors := []error{}
 	for _, resource := range resources {
-		name := resource.Framework + ":res:" + resource.OperationId + ":" + resource.Method + ":" + resource.URI
+		resname := resource.Framework + ":res:" + resource.OperationId + ":" + resource.Method + ":" + resource.URI
 		URIS := []string{resource.URI}
 		resreq := gocloak.ResourceRepresentation{
-			Name: &name,
+			Name: &resname,
 			URIs: &URIS,
 		}
 		res, err := kc.KcClient.CreateResource(ctx, accessToken, kc.Realm, *clinetResp.ID, resreq)
@@ -203,6 +203,13 @@ func KeycloakCreateResources(accessToken string, resources CreateResourceRequest
 			log.Println(err)
 			createResourceerrors = append(createResourceerrors, err)
 			continue
+		} else {
+			_, err := KeycloakCreatePermission(accessToken, resource.Framework, resource.OperationId, resource.OperationId, []string{resname}, []string{})
+			if err != nil {
+				log.Println(err)
+				createResourceerrors = append(createResourceerrors, err)
+				continue
+			}
 		}
 		result = append(result, *res)
 	}
@@ -226,14 +233,22 @@ func KeycloakCreateMenuResources(accessToken string, resources CreateMenuResourc
 	result := []gocloak.ResourceRepresentation{}
 	createResourceerrors := []error{}
 	for _, resource := range resources {
+		resName := resource.Framework + ":menu:" + resource.Id + ":" + resource.DisplayName + ":" + resource.ParentMenuId + ":" + resource.Priority + ":" + resource.IsAction
 		resreq := gocloak.ResourceRepresentation{
-			Name: gocloak.StringP(resource.Framework + ":menu:" + resource.Id + ":" + resource.DisplayName + ":" + resource.ParentMenuId + ":" + resource.Priority + ":" + resource.IsAction),
+			Name: gocloak.StringP(resName),
 		}
 		res, err := kc.KcClient.CreateResource(ctx, accessToken, kc.Realm, *clinetResp.ID, resreq)
 		if err != nil {
 			log.Println(err)
 			createResourceerrors = append(createResourceerrors, err)
 			continue
+		} else {
+			_, err := KeycloakCreatePermission(accessToken, resource.Framework, resource.Id, resource.Id, []string{resName}, []string{})
+			if err != nil {
+				log.Println(err)
+				createResourceerrors = append(createResourceerrors, err)
+				continue
+			}
 		}
 		result = append(result, *res)
 	}
@@ -247,12 +262,23 @@ func KeycloakCreateMenuResources(accessToken string, resources CreateMenuResourc
 
 func KeycloakGetResources(accessToken string, params gocloak.GetResourceParams) ([]*gocloak.ResourceRepresentation, error) {
 	ctx := context.Background()
-	resource, err := kc.KcClient.GetResourcesClient(ctx, accessToken, kc.Realm, params)
-	if err != nil {
-		log.Println(err)
-		return nil, err
+	lastNum := 0
+	var resources []*gocloak.ResourceRepresentation
+	for {
+		params.First = gocloak.IntP(lastNum)
+		resourcesFetch, err := kc.KcClient.GetResourcesClient(ctx, accessToken, kc.Realm, params)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		resources = append(resources, resourcesFetch...)
+		if len(resourcesFetch) < 100 {
+			break
+		} else {
+			lastNum = lastNum + len(resourcesFetch)
+		}
 	}
-	return resource, nil
+	return resources, nil
 }
 
 func KeycloakUpdateResources(accessToken string, resourceid string, resource CreateResourceRequest) error {
@@ -276,6 +302,7 @@ func KeycloakUpdateResources(accessToken string, resourceid string, resource Cre
 		log.Println(err)
 		return err
 	}
+
 	return nil
 }
 
@@ -294,6 +321,7 @@ func KeycloakDeleteResource(accessToken string, resourceid string) error {
 		log.Println(err)
 		return err
 	}
+
 	return nil
 }
 
@@ -500,15 +528,7 @@ func KeycloakDeletePolicy(accessToken string, policyId string) error {
 	return nil
 }
 
-// Permission Management
-
-type permissionDetail struct {
-	Permission *gocloak.PermissionRepresentation `json:"permission"`
-	Resources  []*gocloak.PermissionResource     `json:"resources"`
-	Policies   []*gocloak.PolicyRepresentation   `json:"rolePolicies"`
-}
-
-func KeycloakCreatePermission(accessToken string, name string, desc string, permissionResources []string, permissionPolicies []string) (*gocloak.PermissionRepresentation, error) {
+func KeycloakGetPolicies(accessToken string) ([]*gocloak.PolicyRepresentation, error) {
 	ctx := context.Background()
 
 	//realm-management manage-clients role 필요
@@ -518,7 +538,37 @@ func KeycloakCreatePermission(accessToken string, name string, desc string, perm
 		return nil, err
 	}
 
-	permissionName := name + "Permission"
+	policyreq := gocloak.GetPolicyParams{
+		Type: gocloak.StringP("role"),
+	}
+	res, err := kc.KcClient.GetPolicies(ctx, accessToken, kc.Realm, *clinetResp.ID, policyreq)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// Permission Management
+
+type permissionDetail struct {
+	Permission *gocloak.PermissionRepresentation `json:"permission"`
+	Resources  []*gocloak.PermissionResource     `json:"resources"`
+	Policies   []*gocloak.PolicyRepresentation   `json:"rolePolicies"`
+}
+
+func KeycloakCreatePermission(accessToken string, framework string, targetName string, desc string, permissionResources []string, permissionPolicies []string) (*gocloak.PermissionRepresentation, error) {
+	ctx := context.Background()
+
+	//realm-management manage-clients role 필요
+	clinetResp, err := KeycloakGetClientInfo(accessToken)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	permissionName := framework + ":" + targetName
 	permissionDesc := desc + " Permission"
 	permissionType := "resource"
 	permissionReq := gocloak.PermissionRepresentation{
@@ -549,13 +599,67 @@ func KeycloakGetPermissions(accessToken string, reqParam gocloak.GetPermissionPa
 		return nil, err
 	}
 
-	res, err := kc.KcClient.GetPermissions(ctx, accessToken, kc.Realm, *clinetResp.ID, reqParam)
+	lastNum := 0
+	reqParam.First = gocloak.IntP(lastNum)
+
+	var permissions []*gocloak.PermissionRepresentation
+	for {
+		reqParam.First = gocloak.IntP(lastNum)
+		permission, err := kc.KcClient.GetPermissions(ctx, accessToken, kc.Realm, *clinetResp.ID, reqParam)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		permissions = append(permissions, permission...)
+		if len(permission) < 100 {
+			break
+		}
+		lastNum = lastNum + len(permission)
+	}
+
+	return permissions, nil
+}
+
+func KeycloakGetPermissionDetailByName(accessToken string, framework string, operationid string) (*permissionDetail, error) {
+	ctx := context.Background()
+
+	//realm-management manage-clients role 필요
+	clinetResp, err := KeycloakGetClientInfo(accessToken)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
-	return res, nil
+	params := gocloak.GetPermissionParams{
+		Name: gocloak.StringP(framework + ":" + operationid),
+	}
+	permissionRes, err := KeycloakGetPermissions(accessToken, params)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	if (len(permissionRes) == 0) || (*permissionRes[0].Name != (framework + ":" + operationid)) {
+		return nil, fmt.Errorf("permission not Found")
+	}
+
+	resourcesRes, err := kc.KcClient.GetPermissionResources(ctx, accessToken, kc.Realm, *clinetResp.ID, *permissionRes[0].ID)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	policyRes, err := kc.KcClient.GetAuthorizationPolicyAssociatedPolicies(ctx, accessToken, kc.Realm, *clinetResp.ID, *permissionRes[0].ID)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	result := &permissionDetail{}
+	result.Permission = permissionRes[0]
+	result.Resources = resourcesRes
+	result.Policies = policyRes
+
+	return result, nil
 }
 
 func KeycloakGetPermissionDetail(accessToken string, id string) (*permissionDetail, error) {
@@ -594,7 +698,7 @@ func KeycloakGetPermissionDetail(accessToken string, id string) (*permissionDeta
 	return result, nil
 }
 
-func KeycloakUpdatePermission(accessToken string, id string, name string, desc string, permissionResources []string, permissionPolicies []string) error {
+func KeycloakUpdatePermission(accessToken string, id string, name string, desc string, permissionPolicies []string) error {
 	ctx := context.Background()
 
 	//realm-management manage-clients role 필요
@@ -604,15 +708,14 @@ func KeycloakUpdatePermission(accessToken string, id string, name string, desc s
 		return err
 	}
 
-	permissionType := "resource"
 	permissionReq := gocloak.PermissionRepresentation{
-		ID:               &id,
-		Name:             &name,
-		Description:      &desc,
-		Type:             &permissionType,
-		Resources:        &permissionResources,
-		Policies:         &permissionPolicies,
-		DecisionStrategy: gocloak.AFFIRMATIVE,
+		ID:          &id,
+		Name:        &name,
+		Description: &desc,
+		Type:        gocloak.StringP("resource"),
+		// Resources:        &permissionResources,
+		Policies: &permissionPolicies,
+		// DecisionStrategy: gocloak.AFFIRMATIVE,
 	}
 
 	err = kc.KcClient.UpdatePermission(ctx, accessToken, kc.Realm, *clinetResp.ID, permissionReq)
