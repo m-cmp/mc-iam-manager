@@ -127,7 +127,7 @@ func App() *buffalo.App {
 		// permissionPath.PUT("/framewrok/{framework}/menu/{menu}", UpdateResourcePermissionByMenu)
 		// permissionPath.DELETE("/id/{permissionid}", DeletePermission) // deprecated : permission is resource dependent
 		permissionPath.GET("/file/framework/{framework}", GetCurrentPermissionCsv)
-		permissionPath.POST("/file/framework/{framework}", GetCurrentPermissionCsv)
+		permissionPath.POST("/file/framework/{framework}", ImportPermissionByCsv)
 
 		ticketPath := app.Group(apiPath + "/ticket")
 		ticketPath.GET("/", GetAllPermissions)
