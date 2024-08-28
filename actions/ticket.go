@@ -10,7 +10,6 @@ import (
 
 func GetAllPermissions(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
-
 	ticketPermissions, err := keycloak.KeycloakGetAvaliablePermissions(accessToken)
 	if err != nil {
 		log.Println(err)
@@ -21,7 +20,6 @@ func GetAllPermissions(c buffalo.Context) error {
 
 func GetAllAvailableMenus(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
-
 	ticketMenusPermissions, err := keycloak.KeycloakGetAvailableMenus(accessToken)
 	if err != nil {
 		log.Println(err)
@@ -30,12 +28,14 @@ func GetAllAvailableMenus(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(ticketMenusPermissions))
 }
 
-func GetPermissionTicketByOperationid(c buffalo.Context) error {
+func GetPermissionTicket(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
-
-	framework := c.Param("framework")
-	operationid := c.Param("operationid")
-	ticket, err := keycloak.KeycloakGetPermissionTicketByOperationid(accessToken, framework, operationid)
+	requestTicketReq := &keycloak.RequestTicket{}
+	if err := c.Bind(requestTicketReq); err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+	ticket, err := keycloak.KeycloakGetPermissionTicket(accessToken, *requestTicketReq)
 	if err != nil {
 		log.Println(err)
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
