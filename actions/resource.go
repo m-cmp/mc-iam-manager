@@ -69,7 +69,7 @@ func CreateResourcesBySwagger(c buffalo.Context) error {
 
 	framework := c.Param("framework")
 
-	f, err := c.File("swagger")
+	f, err := c.File("file")
 	if err != nil {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
@@ -124,10 +124,12 @@ type ApiYaml struct {
 	} `yaml:"serviceActions"`
 }
 
-func CreateResourcesByApiYaml(c buffalo.Context) error {
+func CreateApiResourcesByApiYaml(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
 
-	f, err := c.File("apiyaml")
+	reqframework := c.Param("framework")
+
+	f, err := c.File("file")
 	if err != nil {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
@@ -146,12 +148,21 @@ func CreateResourcesByApiYaml(c buffalo.Context) error {
 	resourcereq := keycloak.CreateResourceRequestArr{}
 	for framework, resources := range apiYaml.ServiceActions {
 		for operationId, resource := range resources {
-			resourcereq = append(resourcereq, keycloak.CreateResourceRequest{
-				Framework:   framework,
-				URI:         resource.ResourcePath,
-				Method:      resource.Method,
-				OperationId: operationId,
-			})
+			if framework == reqframework {
+				resourcereq = append(resourcereq, keycloak.CreateResourceRequest{
+					Framework:   framework,
+					URI:         resource.ResourcePath,
+					Method:      resource.Method,
+					OperationId: operationId,
+				})
+			} else if reqframework == "all" {
+				resourcereq = append(resourcereq, keycloak.CreateResourceRequest{
+					Framework:   framework,
+					URI:         resource.ResourcePath,
+					Method:      resource.Method,
+					OperationId: operationId,
+				})
+			}
 		}
 	}
 
@@ -175,12 +186,12 @@ type Menu struct {
 	Menus        []Menu `json:"menus"`
 }
 
-func CreateMenuResourcesByYaml(c buffalo.Context) error {
+func CreateMenuResourcesByMenuYaml(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
 
 	framework := c.Param("framework")
 
-	f, err := c.File("yaml")
+	f, err := c.File("file")
 
 	if err != nil {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
