@@ -623,77 +623,16 @@
         },
         "/api/permission": {
             "get": {
-                "produces": [
-                    "application/json"
-                ],
                 "parameters": [
                     {
                         "in": "query",
                         "name": "name",
                         "type": "string"
-                    },
-                    {
-                        "in": "query",
-                        "name": "resource",
-                        "type": "string"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "GetPermissions",
-                        "headers": {
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "example": [
-                                {
-                                    "decisionStrategy": "AFFIRMATIVE",
-                                    "description": "myPermissionTest Permission",
-                                    "id": "b9342dd1-415d-4f98-9fac-53adf00176c4",
-                                    "logic": "POSITIVE",
-                                    "name": "myPermissionTestPermission",
-                                    "type": "resource"
-                                }
-                            ],
-                            "items": {
-                                "properties": {
-                                    "decisionStrategy": {
-                                        "example": "AFFIRMATIVE",
-                                        "type": "string"
-                                    },
-                                    "description": {
-                                        "example": "myPermissionTest Permission",
-                                        "type": "string"
-                                    },
-                                    "id": {
-                                        "example": "b9342dd1-415d-4f98-9fac-53adf00176c4",
-                                        "type": "string"
-                                    },
-                                    "logic": {
-                                        "example": "POSITIVE",
-                                        "type": "string"
-                                    },
-                                    "name": {
-                                        "example": "myPermissionTestPermission",
-                                        "type": "string"
-                                    },
-                                    "type": {
-                                        "example": "resource",
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            },
-                            "type": "array"
-                        }
+                        "description": ""
                     }
                 },
                 "tags": [
@@ -702,187 +641,73 @@
                 "description": "사용자는 uma_protection Role 을 가져야 한다.",
                 "operationId": "getpermissions",
                 "summary": "GetPermissions"
-            },
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "body",
-                        "schema": {
-                            "properties": {
-                                "desc": {
-                                    "example": "myPermissionTest",
-                                    "type": "string"
-                                },
-                                "name": {
-                                    "example": "myPermissionTest",
-                                    "type": "string"
-                                },
-                                "policies": {
-                                    "example": [
-                                        "adminPolicy"
-                                    ],
-                                    "items": {
-                                        "example": "adminPolicy",
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                "resources": {
-                                    "example": [
-                                        "testres2:/test/res2"
-                                    ],
-                                    "items": {
-                                        "example": "testres2:/test/res2",
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "CreatePermission",
-                        "headers": {
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "decisionStrategy": {
-                                    "example": "AFFIRMATIVE",
-                                    "type": "string"
-                                },
-                                "description": {
-                                    "example": "myPermissionTest Permission",
-                                    "type": "string"
-                                },
-                                "id": {
-                                    "example": "b9342dd1-415d-4f98-9fac-53adf00176c4",
-                                    "type": "string"
-                                },
-                                "logic": {
-                                    "example": "POSITIVE",
-                                    "type": "string"
-                                },
-                                "name": {
-                                    "example": "myPermissionTestPermission",
-                                    "type": "string"
-                                },
-                                "policies": {
-                                    "example": [
-                                        "28762d05-3681-421a-a685-ed2484ff8b3f"
-                                    ],
-                                    "items": {
-                                        "example": "28762d05-3681-421a-a685-ed2484ff8b3f",
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                "resources": {
-                                    "example": [
-                                        "303615cc-5732-4423-a580-ef9b8a6e356e"
-                                    ],
-                                    "items": {
-                                        "example": "303615cc-5732-4423-a580-ef9b8a6e356e",
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                "type": {
-                                    "example": "resource",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    }
-                },
-                "tags": [
-                    "Permission"
-                ],
-                "description": "사용자는 uma_protection Role 을 가져야 한다.",
-                "operationId": "createpermission",
-                "summary": "CreatePermission"
             }
         },
-        "/api/permission/id/{permissionId}": {
+        "/api/permission/file/framework/{framework}": {
             "parameters": [
                 {
+                    "description": "all / or framework name",
                     "in": "path",
-                    "name": "permissionId",
+                    "name": "framework",
                     "required": true,
                     "type": "string"
                 }
             ],
-            "delete": {
-                "produces": [
-                    "application/json"
-                ],
-                "parameters": [
-                    {
-                        "in": "query",
-                        "name": "uri",
-                        "type": "string"
-                    },
-                    {
-                        "in": "query",
-                        "name": "operationId",
-                        "type": "string"
-                    }
-                ],
+            "get": {
+                "parameters": [],
                 "responses": {
                     "200": {
-                        "description": "DeletePermission",
-                        "headers": {
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "status": {
-                                    "example": "success",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
+                        "description": ""
                     }
                 },
                 "tags": [
                     "Permission"
                 ],
                 "description": "사용자는 uma_protection Role 을 가져야 한다.",
-                "operationId": "deletepermission",
-                "summary": "DeletePermission"
+                "operationId": "getcurrentpermissioncsv",
+                "summary": "GetCurrentPermissionCsv"
             },
-            "get": {
-                "produces": [
-                    "application/json"
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
                 ],
+                "parameters": [
+                    {
+                        "format": "binary",
+                        "in": "formData",
+                        "name": "file",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                },
+                "tags": [
+                    "Permission"
+                ],
+                "description": "사용자는 uma_protection Role 을 가져야 한다.",
+                "operationId": "importpermissionbycsv",
+                "summary": "ImportPermissionByCsv"
+            }
+        },
+        "/api/permission/framewrok/{framework}/operationid/{operationid}": {
+            "parameters": [
+                {
+                    "in": "path",
+                    "name": "framework",
+                    "required": true,
+                    "type": "string"
+                },
+                {
+                    "in": "path",
+                    "name": "operationid",
+                    "required": true,
+                    "type": "string"
+                }
+            ],
+            "get": {
                 "parameters": [
                     {
                         "in": "query",
@@ -897,121 +722,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "GetPermission",
-                        "headers": {
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "permission": {
-                                    "properties": {
-                                        "decisionStrategy": {
-                                            "example": "AFFIRMATIVE",
-                                            "type": "string"
-                                        },
-                                        "description": {
-                                            "example": "myPermissionTest Permission",
-                                            "type": "string"
-                                        },
-                                        "id": {
-                                            "example": "b9342dd1-415d-4f98-9fac-53adf00176c4",
-                                            "type": "string"
-                                        },
-                                        "logic": {
-                                            "example": "POSITIVE",
-                                            "type": "string"
-                                        },
-                                        "name": {
-                                            "example": "myPermissionTestPermission",
-                                            "type": "string"
-                                        },
-                                        "type": {
-                                            "example": "resource",
-                                            "type": "string"
-                                        }
-                                    },
-                                    "type": "object"
-                                },
-                                "resources": {
-                                    "example": [
-                                        {
-                                            "_id": "303615cc-5732-4423-a580-ef9b8a6e356e",
-                                            "name": "testFw:res:testOperation:GET:/test/operation"
-                                        }
-                                    ],
-                                    "items": {
-                                        "properties": {
-                                            "_id": {
-                                                "example": "303615cc-5732-4423-a580-ef9b8a6e356e",
-                                                "type": "string"
-                                            },
-                                            "name": {
-                                                "example": "testFw:res:testOperation:GET:/test/operation",
-                                                "type": "string"
-                                            }
-                                        },
-                                        "type": "object"
-                                    },
-                                    "type": "array"
-                                },
-                                "rolePolicies": {
-                                    "example": [
-                                        {
-                                            "config": {},
-                                            "decisionStrategy": "UNANIMOUS",
-                                            "description": "admin Role Policy",
-                                            "id": "28762d05-3681-421a-a685-ed2484ff8b3f",
-                                            "logic": "POSITIVE",
-                                            "name": "adminPolicy",
-                                            "type": "role"
-                                        }
-                                    ],
-                                    "items": {
-                                        "properties": {
-                                            "config": {
-                                                "properties": {},
-                                                "type": "object"
-                                            },
-                                            "decisionStrategy": {
-                                                "example": "UNANIMOUS",
-                                                "type": "string"
-                                            },
-                                            "description": {
-                                                "example": "admin Role Policy",
-                                                "type": "string"
-                                            },
-                                            "id": {
-                                                "example": "28762d05-3681-421a-a685-ed2484ff8b3f",
-                                                "type": "string"
-                                            },
-                                            "logic": {
-                                                "example": "POSITIVE",
-                                                "type": "string"
-                                            },
-                                            "name": {
-                                                "example": "adminPolicy",
-                                                "type": "string"
-                                            },
-                                            "type": {
-                                                "example": "role",
-                                                "type": "string"
-                                            }
-                                        },
-                                        "type": "object"
-                                    },
-                                    "type": "array"
-                                }
-                            },
-                            "type": "object"
-                        }
+                        "description": ""
                     }
                 },
                 "tags": [
@@ -1025,9 +736,6 @@
                 "consumes": [
                     "application/json"
                 ],
-                "produces": [
-                    "application/json"
-                ],
                 "parameters": [
                     {
                         "in": "query",
@@ -1045,12 +753,19 @@
                         "schema": {
                             "properties": {
                                 "desc": {
-                                    "example": "myPermissionTest new desc",
+                                    "example": "permission new desc",
                                     "type": "string"
                                 },
-                                "name": {
-                                    "example": "myPermissionTest",
-                                    "type": "string"
+                                "role": {
+                                    "example": [
+                                        "admin",
+                                        "operator"
+                                    ],
+                                    "items": {
+                                        "example": "admin",
+                                        "type": "string"
+                                    },
+                                    "type": "array"
                                 }
                             },
                             "type": "object"
@@ -1059,35 +774,15 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "UpdatePermission",
-                        "headers": {
-                            "Content-Length": {
-                                "type": "string"
-                            },
-                            "Date": {
-                                "type": "string"
-                            },
-                            "Vary": {
-                                "type": "string"
-                            }
-                        },
-                        "schema": {
-                            "properties": {
-                                "status": {
-                                    "example": "success",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        }
+                        "description": ""
                     }
                 },
                 "tags": [
                     "Permission"
                 ],
                 "description": "사용자는 uma_protection Role 을 가져야 한다.",
-                "operationId": "updatepermission",
-                "summary": "UpdatePermission"
+                "operationId": "updateresourcepermissionbyoperationid",
+                "summary": "UpdateResourcePermissionByOperationId"
             }
         },
         "/api/poc/sts/securitykey": {
@@ -1164,11 +859,11 @@
                     }
                 },
                 "tags": [
-                    "[PoC]  STS"
+                    "SecurityToken"
                 ],
                 "description": "임시보안자격증명 발급요청\n\nPOC 단계.\n\nAWS / Alibaba OIDC 기반 Keyclaok IDP 사용으로 연결 설정 필요",
-                "operationId": "securitykey",
-                "summary": "Securitykey"
+                "operationId": "securitykeyNotuse",
+                "summary": "Securitykey#notuse"
             }
         },
         "/api/prj": {
@@ -1914,7 +1609,7 @@
                     {
                         "format": "binary",
                         "in": "formData",
-                        "name": "swagger",
+                        "name": "file",
                         "type": "string"
                     }
                 ],
@@ -4041,8 +3736,8 @@
                     "Resource"
                 ],
                 "description": "사용자는 uma_protection Role 을 가져야 한다.",
-                "operationId": "createresourcesbyswagger",
-                "summary": "CreateResourcesBySwagger"
+                "operationId": "createresourcesbyswaggerDeprecated",
+                "summary": "CreateResourcesBySwagger#deprecated"
             }
         },
         "/api/resource/file/framework/{framework}/menu": {
@@ -4065,7 +3760,7 @@
                     {
                         "format": "binary",
                         "in": "formData",
-                        "name": "yaml",
+                        "name": "file",
                         "type": "string"
                     }
                 ],
@@ -4243,8 +3938,8 @@
                     "Resource"
                 ],
                 "description": "사용자는 uma_protection Role 을 가져야 한다.",
-                "operationId": "createwebmenubyyaml",
-                "summary": "CreateWebMenuByYaml"
+                "operationId": "createmenuresourcesbymenuyaml",
+                "summary": "CreateMenuResourcesByMenuYaml"
             }
         },
         "/api/resource/id/{id}": {
@@ -4354,8 +4049,8 @@
                     "Resource"
                 ],
                 "description": "사용자는 uma_protection Role 을 가져야 한다.",
-                "operationId": "updateresource",
-                "summary": "UpdateResource"
+                "operationId": "updateresourceDeprecated",
+                "summary": "UpdateResource#deprecated"
             }
         },
         "/api/resource/menus": {
@@ -4664,7 +4359,13 @@
                 "produces": [
                     "application/json"
                 ],
-                "parameters": [],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "framework",
+                        "type": "string"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "ResetResource",
@@ -4693,9 +4394,54 @@
                 "tags": [
                     "Resource"
                 ],
-                "description": "ResetResource#notuse",
-                "operationId": "resetresourceNotuse",
-                "summary": "ResetResource#notuse"
+                "description": "ResetResource",
+                "operationId": "resetresource",
+                "summary": "ResetResource"
+            }
+        },
+        "/api/resource/reset/menu": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "framework",
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ResetResource",
+                        "headers": {
+                            "Content-Length": {
+                                "type": "string"
+                            },
+                            "Date": {
+                                "type": "string"
+                            },
+                            "Vary": {
+                                "type": "string"
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "status": {
+                                    "example": "success",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "tags": [
+                    "Resource"
+                ],
+                "description": "ResetMenuResource",
+                "operationId": "resetmenuresource",
+                "summary": "ResetMenuResource"
             }
         },
         "/api/role": {
@@ -5209,24 +4955,8 @@
                 "description": "사용자는 uma_protection Role 을 가져야 한다.",
                 "operationId": "getallpermissions",
                 "summary": "GetAllPermissions"
-            }
-        },
-        "/api/ticket/framework/{framework}/operationid/{operationid}": {
-            "parameters": [
-                {
-                    "in": "path",
-                    "name": "framework",
-                    "required": true,
-                    "type": "string"
-                },
-                {
-                    "in": "path",
-                    "name": "operationid",
-                    "required": true,
-                    "type": "string"
-                }
-            ],
-            "get": {
+            },
+            "post": {
                 "consumes": [
                     "text/plain"
                 ],
@@ -5249,8 +4979,8 @@
                     "Ticket"
                 ],
                 "description": "사용자는 uma_protection Role 을 가져야 한다.",
-                "operationId": "getpermissionticketbyoperationid",
-                "summary": "GetPermissionTicketByOperationid"
+                "operationId": "getpermissionticket",
+                "summary": "GetPermissionTicket"
             }
         },
         "/api/ticket/menus": {
@@ -7459,7 +7189,7 @@
         },
         {
             "description": "CSP sts token 요청",
-            "name": "[PoC]  STS"
+            "name": "SecurityToken"
         }
     ]
 }
