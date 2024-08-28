@@ -117,6 +117,7 @@ func App() *buffalo.App {
 
 		resourcePath := app.Group(apiPath + "/resource")
 		resourcePath.POST("/", CreateResources)
+		resourcePath.Middleware.Skip(middleware.IsTicketValidMiddleware, CreateApiResourcesByApiYaml, CreateMenuResourcesByMenuYaml)
 		resourcePath.POST("/file/framework/{framework}", CreateApiResourcesByApiYaml)
 		resourcePath.POST("/file/framework/{framework}/menu", CreateMenuResourcesByMenuYaml)
 		// resourcePath.POST("/file/framework/{framework}", CreateResourcesBySwagger) // deprecated : use CreateResourcesByApiYaml
@@ -136,6 +137,7 @@ func App() *buffalo.App {
 		permissionPath.PUT("/framewrok/{framework}/operationid/{operationid}", UpdateResourcePermissionByOperationId) // menu could use thie operation by menu Id
 		// permissionPath.PUT("/framewrok/{framework}/menu/{menu}", UpdateResourcePermissionByMenu)
 		// permissionPath.DELETE("/id/{permissionid}", DeletePermission) // deprecated : permission is resource dependent, When a resource is deleted, the permissions are also deleted.
+		permissionPath.Middleware.Skip(middleware.IsTicketValidMiddleware, GetCurrentPermissionCsv, ImportPermissionByCsv)
 		permissionPath.GET("/file/framework/{framework}", GetCurrentPermissionCsv)
 		permissionPath.POST("/file/framework/{framework}", ImportPermissionByCsv)
 
