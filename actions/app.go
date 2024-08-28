@@ -107,9 +107,9 @@ func App() *buffalo.App {
 
 		resourcePath := app.Group(apiPath + "/resource")
 		resourcePath.POST("/", CreateResources)
-		resourcePath.POST("/file/framework/{framework}/menu", CreateMenuResourcesByYaml)
-		resourcePath.POST("/file/api", CreateResourcesByApiYaml)
-		resourcePath.POST("/file/framework/{framework}", CreateResourcesBySwagger)
+		resourcePath.POST("/file/framework/{framework}", CreateApiResourcesByApiYaml)
+		resourcePath.POST("/file/framework/{framework}/menu", CreateMenuResourcesByMenuYaml)
+		// resourcePath.POST("/file/framework/{framework}", CreateResourcesBySwagger) // deprecated : use  CreateResourcesByApiYaml
 		resourcePath.GET("/", GetResources)
 		resourcePath.GET("/menus", GetMenuResources)
 		resourcePath.PUT("/id/{resourceid}", UpdateResource)
@@ -118,11 +118,16 @@ func App() *buffalo.App {
 		resourcePath.DELETE("/reset/menu", ResetMenuResource)
 
 		permissionPath := app.Group(apiPath + "/permission")
-		permissionPath.POST("/", CreatePermission)
+		// permissionPath.POST("/", CreatePermission)  // deprecated : permission is resource dependent
 		permissionPath.GET("/", GetPermissions)
-		permissionPath.GET("/id/{permissionid}", GetPermission)
-		permissionPath.PUT("/id/{permissionid}", UpdatePermission)
-		permissionPath.DELETE("/id/{permissionid}", DeletePermission)
+		permissionPath.GET("/framewrok/{framework}/operationid/{operationid}", GetPermission)
+		// permissionPath.GET("/id/{permissionid}", GetPermission) // deprecated : permission is resource dependent
+		// permissionPath.PUT("/id/{permissionid}", UpdatePermission)// deprecated : permission is resource dependent
+		permissionPath.PUT("/framewrok/{framework}/operationid/{operationid}", UpdateResourcePermissionByOperationId)
+		// permissionPath.PUT("/framewrok/{framework}/menu/{menu}", UpdateResourcePermissionByMenu)
+		// permissionPath.DELETE("/id/{permissionid}", DeletePermission) // deprecated : permission is resource dependent
+		permissionPath.GET("/file/framework/{framework}", GetCurrentPermissionCsv)
+		permissionPath.POST("/file/framework/{framework}", ImportPermissionByCsv)
 
 		ticketPath := app.Group(apiPath + "/ticket")
 		ticketPath.GET("/", GetAllPermissions)
