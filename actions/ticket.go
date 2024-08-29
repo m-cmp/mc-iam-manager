@@ -20,7 +20,9 @@ func GetAllPermissions(c buffalo.Context) error {
 
 func GetAllAvailableMenus(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
-	ticketMenusPermissions, err := keycloak.KeycloakGetAvailableMenus(accessToken)
+	framework := c.Param("framework")
+
+	ticketMenusPermissions, err := keycloak.KeycloakGetAvailableMenus(accessToken, framework)
 	if err != nil {
 		log.Println(err)
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
