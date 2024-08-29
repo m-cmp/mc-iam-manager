@@ -43,12 +43,23 @@ func IsAuthMiddleware(next buffalo.Handler) buffalo.Handler {
 
 func IsTicketValidMiddleware(next buffalo.Handler) buffalo.Handler {
 	return func(c buffalo.Context) error {
-		accessToken := c.Value("accessToken").(string)
 		requestURI := c.Request().RequestURI
 		if idx := strings.Index(requestURI, "?"); idx != -1 {
 			requestURI = requestURI[:idx]
 		}
-		err := iamtokenvalidator.IsTicketValidWithReqUri(accessToken, requestURI)
+		req := keycloak.RequestTicket{
+			Uri: requestURI,
+		}
+		accessToken := c.Value("accessToken").(string)
+		jwtToken, err := keycloak.KeycloakGetPermissionTicket(accessToken, req)
+		if err != nil {
+			log.Println("IsTicketValidMiddleware Error : ", err.Error(), requestURI)
+			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
+		}
+
+		accessToken = jwtToken.AccessToken
+		c.Set("accessToken", accessToken)
+		err = iamtokenvalidator.IsTicketValidWithReqUri(accessToken, requestURI)
 		if err != nil {
 			log.Println("IsTicketValidMiddleware :", err.Error())
 			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
@@ -64,21 +75,7 @@ func SetContextMiddleware(next buffalo.Handler) buffalo.Handler {
 		if err != nil {
 			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
 		}
-
-		requestURI := c.Request().RequestURI
-		if idx := strings.Index(requestURI, "?"); idx != -1 {
-			requestURI = requestURI[:idx]
-		}
-
-		req := keycloak.RequestTicket{
-			Uri: requestURI,
-		}
-		jwtToken, err := keycloak.KeycloakGetPermissionTicket(accessToken, req)
-		if err != nil {
-			log.Println("SetContextMiddleware Error : ", err.Error(), c.Request().RequestURI)
-			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
-		}
-		c.Set("accessToken", jwtToken.AccessToken)
+		c.Set("accessToken", accessToken)
 		c.Set("roles", claims.RealmAccess.Roles)
 		return next(c)
 	}
