@@ -111,7 +111,7 @@ func KeycloakCreateUser(accessToken string, user CreateUserRequset, password str
 
 	userInfo := gocloak.User{
 		Username:  &user.Name,
-		Enabled:   gocloak.BoolP(true),
+		Enabled:   gocloak.BoolP(false),
 		FirstName: &user.FirstName,
 		LastName:  &user.LastName,
 		Email:     &user.Email,
@@ -124,6 +124,83 @@ func KeycloakCreateUser(accessToken string, user CreateUserRequset, password str
 	}
 
 	err = kc.KcClient.SetPassword(ctx, accessToken, userUUID, kc.Realm, password, false)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+type UserEnableStatusRequest struct {
+	UserId string `json:"userid"`
+}
+
+func KeycloakActiveUser(accessToken string, userId string) error {
+	ctx := context.Background()
+	userInfo := gocloak.GetUsersParams{
+		Username: &userId,
+		Exact:    gocloak.BoolP(true),
+	}
+	users, err := kc.KcClient.GetUsers(ctx, accessToken, kc.Realm, userInfo)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if len(users) == 0 {
+		return fmt.Errorf("user Not Found")
+	}
+
+	users[0].Enabled = gocloak.BoolP(true)
+
+	err = kc.KcClient.UpdateUser(ctx, accessToken, kc.Realm, *users[0])
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	//realm-management manage-clients role 필요
+	clinetResp, err := KeycloakGetClientInfo(accessToken)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	res, err := kc.KcClient.GetClientRole(ctx, accessToken, kc.Realm, *clinetResp.ID, "uma_protection")
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	roles := []gocloak.Role{*res}
+	err = kc.KcClient.AddClientRolesToUser(ctx, accessToken, kc.Realm, *clinetResp.ID, *users[0].ID, roles)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+func KeycloakDeactiveUser(accessToken string, UserId string) error {
+	ctx := context.Background()
+
+	userInfo := gocloak.GetUsersParams{
+		Username: &UserId,
+		Exact:    gocloak.BoolP(true),
+	}
+	users, err := kc.KcClient.GetUsers(ctx, accessToken, kc.Realm, userInfo)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if len(users) == 0 {
+		return fmt.Errorf("user Not Found")
+	}
+
+	users[0].Enabled = gocloak.BoolP(false)
+
+	err = kc.KcClient.UpdateUser(ctx, accessToken, kc.Realm, *users[0])
 	if err != nil {
 		log.Println(err)
 		return err
@@ -716,8 +793,8 @@ func KeycloakUpdatePermission(accessToken string, id string, name string, desc s
 		Description: &desc,
 		Type:        gocloak.StringP("resource"),
 		// Resources:        &permissionResources,
-		Policies: &permissionPolicies,
-		// DecisionStrategy: gocloak.AFFIRMATIVE,
+		Policies:         &permissionPolicies,
+		DecisionStrategy: gocloak.AFFIRMATIVE,
 	}
 
 	err = kc.KcClient.UpdatePermission(ctx, accessToken, kc.Realm, *clinetResp.ID, permissionReq)
@@ -872,11 +949,11 @@ func isEqualUri(pattern string, str string) bool {
 	return regex.MatchString(str)
 }
 
-func KeycloakGetAvailableMenus(accessToken string) (*[]gocloak.RequestingPartyPermission, error) {
+func KeycloakGetAvailableMenus(accessToken string, framework string) (*[]gocloak.RequestingPartyPermission, error) {
 	ctx := context.Background()
 
 	params := gocloak.GetResourceParams{
-		Name: gocloak.StringP("web:menu:"),
+		Name: gocloak.StringP(framework + ":menu:"),
 	}
 	resources, err := KeycloakGetResources(accessToken, params)
 	if err != nil {
