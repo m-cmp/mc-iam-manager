@@ -35,3 +35,5 @@ database.yml
 scripts/nginx/
 scripts/init/init.env
 scripts/init/init.env
+
+debugconsole/assets/*

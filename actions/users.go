@@ -40,6 +40,56 @@ func CreateUser(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": "success"}))
 }
 
+func ActiveUser(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+
+	activeReq := &keycloak.UserEnableStatusRequest{}
+	if err := c.Bind(activeReq); err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+	validateErr := validate.Validate(
+		&validators.StringIsPresent{Field: activeReq.UserId, Name: "userId"},
+	)
+	if validateErr.HasAny() {
+		fmt.Println(validateErr)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"message": validateErr.Error()}))
+	}
+
+	err := keycloak.KeycloakActiveUser(accessToken, activeReq.UserId)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": "success"}))
+}
+
+func DeactiveUser(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+
+	deactiveReq := &keycloak.UserEnableStatusRequest{}
+	if err := c.Bind(deactiveReq); err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+	validateErr := validate.Validate(
+		&validators.StringIsPresent{Field: deactiveReq.UserId, Name: "userId"},
+	)
+	if validateErr.HasAny() {
+		fmt.Println(validateErr)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"message": validateErr.Error()}))
+	}
+
+	err := keycloak.KeycloakDeactiveUser(accessToken, deactiveReq.UserId)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": "success"}))
+}
+
 func GetUsers(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
 
