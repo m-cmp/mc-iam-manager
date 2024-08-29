@@ -9,6 +9,7 @@ import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/buffalo/render"
 
+	"github.com/m-cmp/mc-iam-manager/handler/keycloak"
 	"github.com/m-cmp/mc-iam-manager/iamtokenvalidator"
 )
 
@@ -42,8 +43,23 @@ func IsAuthMiddleware(next buffalo.Handler) buffalo.Handler {
 
 func IsTicketValidMiddleware(next buffalo.Handler) buffalo.Handler {
 	return func(c buffalo.Context) error {
+		requestURI := c.Request().RequestURI
+		if idx := strings.Index(requestURI, "?"); idx != -1 {
+			requestURI = requestURI[:idx]
+		}
+		req := keycloak.RequestTicket{
+			Uri: requestURI,
+		}
 		accessToken := c.Value("accessToken").(string)
-		err := iamtokenvalidator.IsTicketValidWithReqUri(accessToken, string(c.Request().RequestURI))
+		jwtToken, err := keycloak.KeycloakGetPermissionTicket(accessToken, req)
+		if err != nil {
+			log.Println("IsTicketValidMiddleware Error : ", err.Error(), requestURI)
+			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
+		}
+
+		accessToken = jwtToken.AccessToken
+		c.Set("accessToken", accessToken)
+		err = iamtokenvalidator.IsTicketValidWithReqUri(accessToken, requestURI)
 		if err != nil {
 			log.Println("IsTicketValidMiddleware :", err.Error())
 			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
