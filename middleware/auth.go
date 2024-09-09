@@ -27,6 +27,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	log.Printf("Pubkey fetch Success")
 }
 
 func IsAuthMiddleware(next buffalo.Handler) buffalo.Handler {
