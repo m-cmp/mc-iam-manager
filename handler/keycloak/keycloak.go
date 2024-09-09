@@ -79,9 +79,9 @@ func KeycloakLogout(refreshToken string) error {
 	return nil
 }
 
-func KeycloakGetUserInfo(accessToken string) (*gocloak.UserInfo, error) {
+func KeycloakGetUserInfo(accessToken string) (map[string]interface{}, error) {
 	ctx := context.Background()
-	userinfo, err := kc.KcClient.GetUserInfo(ctx, accessToken, kc.Realm)
+	userinfo, err := kc.KcClient.GetRawUserInfo(ctx, accessToken, kc.Realm)
 	if err != nil {
 		log.Println(err)
 	}

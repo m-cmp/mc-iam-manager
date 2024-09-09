@@ -41,7 +41,7 @@ func App() *buffalo.App {
 		app.Use(popmw.Transaction(models.DB))
 		app.Use(middleware.IsAuthMiddleware)
 		app.Use(middleware.SetContextMiddleware)
-		app.Use(middleware.IsTicketValidMiddleware)
+		// app.Use(middleware.IsTicketValidMiddleware)
 
 		//Readyz skip all middleware
 		app.Middleware.Skip(middleware.IsAuthMiddleware, readyz)
@@ -52,8 +52,8 @@ func App() *buffalo.App {
 		apiPath := "/api"
 
 		authPath := app.Group(apiPath + "/auth")
-		authPath.Middleware.Skip(middleware.IsAuthMiddleware, AuthLoginHandler, AuthLoginRefreshHandler, AuthLogoutHandler, AuthGetCerts, AuthGetTokenInfo, AuthGetUserValidate)
-		authPath.Middleware.Skip(middleware.SetContextMiddleware, AuthLoginHandler, AuthLoginRefreshHandler, AuthLogoutHandler, AuthGetCerts, AuthGetTokenInfo, AuthGetUserValidate)
+		authPath.Middleware.Skip(middleware.IsAuthMiddleware, AuthLoginHandler, AuthLoginRefreshHandler, AuthLogoutHandler, AuthGetCerts)
+		authPath.Middleware.Skip(middleware.SetContextMiddleware, AuthLoginHandler, AuthLoginRefreshHandler, AuthLogoutHandler, AuthGetCerts)
 		authPath.Middleware.Skip(middleware.IsTicketValidMiddleware, AuthLoginHandler, AuthLoginRefreshHandler, AuthLogoutHandler, AuthGetCerts, AuthGetTokenInfo, AuthGetUserValidate)
 		authPath.POST("/login", AuthLoginHandler)
 		authPath.POST("/login/refresh", AuthLoginRefreshHandler)

@@ -89,7 +89,6 @@ func AuthLogoutHandler(c buffalo.Context) error {
 
 func AuthGetUserInfo(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
-
 	userinfo, err := keycloak.KeycloakGetUserInfo(accessToken)
 	if err != nil {
 		log.Println(err)
@@ -101,7 +100,6 @@ func AuthGetUserInfo(c buffalo.Context) error {
 
 func AuthGetTokenInfo(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
-
 	tokeninfo, err := keycloak.KeycloakTokenInfo(accessToken)
 	if err != nil {
 		log.Println(err)
