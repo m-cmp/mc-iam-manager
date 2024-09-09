@@ -14,7 +14,7 @@ services:
         published: 8080
         protocol: tcp
     env_file:
-      - ../.env
+      - .env
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://mc-iam-manager-db:5432/${IAM_POSTGRES_DB}
@@ -47,7 +47,7 @@ services:
         published: 5432
         protocol: tcp
     env_file:
-      - ../.env
+      - .env
     volumes:
       - ./container-volume/mc-iam-manager/postgres/postgres_data:/var/lib/postgresql/data
     environment:
