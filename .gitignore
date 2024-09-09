@@ -32,5 +32,6 @@ generated/
 !.yarn/versions
 
 scripts/dockerfiles/import/realm-import.json
+!scripts/.env
 
 
