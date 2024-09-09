@@ -1,5 +1,5 @@
 {
-  "realm": "mciamKeycloakRealm",
+  "realm": "<<KEYCLAOK_REALM>>",
   "enabled": true,
   "requiredCredentials": [
     "password"
@@ -26,7 +26,7 @@
         "realm-management": [
           "realm-admin"
         ],
-        "mciamKeycloakClient": [
+        "<<KEYCLAOK_CLIENT>>": [
           "uma_protection"
         ]
       }
@@ -34,7 +34,7 @@
   ],
   "clients": [
     {
-      "clientId": "mciamKeycloakClient",
+      "clientId": "<<KEYCLAOK_CLIENT>>",
       "name": "",
       "surrogateAuthRequired": false,
       "enabled": true,
