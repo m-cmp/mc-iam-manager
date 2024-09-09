@@ -1,9 +1,9 @@
 #!/bin/bash
 
-input_file="realm-import.sample.json"
-output_file="realm-import.json"
+input_file="./dockerfiles/import/realm-import.sample.json"
+output_file="./dockerfiles/import/realm-import.json"
 
-source ./.mciammanager_init_env
+source ./.dockerenv
 
 if grep -q "<<[^>]*>>" "$input_file"; then
     echo

@@ -1,32 +1,32 @@
 {
-  "realm": "mciamRealm",
+  "realm": "mciamKeycloakRealm",
   "enabled": true,
   "requiredCredentials": [
     "password"
   ],
   "users": [
     {
-      "username": "mcpsuper",
+      "username": "<<MCIAMMANAGER_PLATFORM_ADMIN_USERID>>",
       "credentials": [
         {
           "type": "password",
-          "value": "mcpsuperPassword!@#"
+          "value": "<<MCIAMMANAGER_PLATFORM_ADMIN_PASSWORD>>"
         }
       ],
-      "firstName": "mcp",
-      "lastName": "super",
-      "email": "mcpsuper@mciammanager.test.com",
+      "firstName": "<<MCIAMMANAGER_PLATFORM_ADMIN_FIRST_NAME>>",
+      "lastName": "<<MCIAMMANAGER_PLATFORM_ADMIN_LAST_NAME>>",
+      "email": "<<MCIAMMANAGER_PLATFORM_ADMIN_EMAIL>>",
       "emailVerified": false,
       "enabled": true,
       "attributes": {
-        "company": "YOUR_COMPANY",
-        "description": "userDescription"
+        "company": "<<MCIAMMANAGER_PLATFORM_COMPANY_NAME>>",
+        "description": "<<MCIAMMANAGER_PLATFORM_ADMIN_DESCRIPTION>>"
       },
       "clientRoles": {
         "realm-management": [
           "realm-admin"
         ],
-        "mciam": [
+        "mciamKeycloakClient": [
           "uma_protection"
         ]
       }
@@ -34,13 +34,13 @@
   ],
   "clients": [
     {
-      "clientId": "mciamClient",
+      "clientId": "mciamKeycloakClient",
       "name": "",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "mciamclientsecret",
+      "secret": "<<KEYCLAOK_CLIENT_SECRET>>",
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -112,8 +112,6 @@
       ],
       "defaultClientScopes": [
         "openid",
-        "profile",
-        "roles",
         "microprofile-jwt",
         "email"
       ],
