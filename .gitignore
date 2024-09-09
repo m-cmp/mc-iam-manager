@@ -37,3 +37,5 @@ scripts/init/init.env
 scripts/init/init.env
 
 debugconsole/assets/*
+scripts/realm-import.json
+scripts/.mciammanager_init_env

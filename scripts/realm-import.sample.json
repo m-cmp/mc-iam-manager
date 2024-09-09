@@ -6,21 +6,21 @@
   ],
   "users": [
     {
-      "username": "mcpsuper",
+      "username": "<<MCIAMMANAGER_PALTFORM_ADMIN_USERID>>",
       "credentials": [
         {
           "type": "password",
-          "value": "mcpsuperPassword!@#"
+          "value": "<<MCIAMMANAGER_PALTFORM_ADMIN_PASSWORD>>"
         }
       ],
-      "firstName": "mcp",
-      "lastName": "super",
-      "email": "mcpsuper@mciammanager.test.com",
+      "firstName": "<<MCIAMMANAGER_PALTFORM_ADMIN_FIRST_NAME>>",
+      "lastName": "<<MCIAMMANAGER_PALTFORM_ADMIN_LAST_NAME>>",
+      "email": "<<MCIAMMANAGER_PALTFORM_ADMIN_EMAIL>>",
       "emailVerified": false,
       "enabled": true,
       "attributes": {
-        "company": "YOUR_COMPANY",
-        "description": "userDescription"
+        "company": "<<MCIAMMANAGER_PALTFORM_COMPANY_NAME>>",
+        "description": "<<MCIAMMANAGER_PALTFORM_ADMIN_DESCRIPTION>>"
       },
       "clientRoles": {
         "realm-management": [
