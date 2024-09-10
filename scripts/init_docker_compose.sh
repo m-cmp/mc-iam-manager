@@ -1,1 +1,0 @@
-sudo docker-compose --env-file ../.env -f docker-compose.keycloak.yaml up
