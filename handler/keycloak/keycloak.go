@@ -20,10 +20,13 @@ func init() {
 	kc = Keycloak{
 		KcClient:     gocloak.NewClient(handler.KEYCLOAK_HOST),
 		Host:         handler.KEYCLOAK_HOST,
-		Realm:        handler.KEYCLAOK_REALM,
-		Client:       handler.KEYCLAOK_CLIENT,
-		ClientSecret: handler.KEYCLAOK_CLIENT_SECRET,
+		Realm:        handler.KEYCLOAK_REALM,
+		Client:       handler.KEYCLOAK_CLIENT,
+		ClientSecret: handler.KEYCLOAK_CLIENT_SECRET,
 	}
+
+	fmt.Println("####### KEYCLOAK SETTING")
+	fmt.Println(kc)
 }
 
 func KeycloakGetCerts() (*gocloak.CertResponse, error) {
