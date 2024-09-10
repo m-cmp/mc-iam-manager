@@ -6,11 +6,11 @@
   ],
   "users": [
     {
-      "username": "mcpsuper",
+      "username": "<<MCIAMMANAGER_PLATFORM_ADMIN_USERID>>",
       "credentials": [
         {
           "type": "password",
-          "value": "mcpsuperPassword!"
+          "value": "<<MCIAMMANAGER_PLATFORM_ADMIN_PASSWORD>>"
         }
       ],
       "firstName": "<<MCIAMMANAGER_PLATFORM_ADMIN_FIRST_NAME>>",
@@ -43,184 +43,186 @@
             ]
           }
         }
-      },
-      {
-        "name": "view-users",
-        "description": "${role_view-users}",
-        "composite": true,
-        "composites": {
-          "client": {
-            "realm-management": [
-              "query-users",
-              "query-groups"
-            ]
-          }
-        },
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "manage-authorization",
-        "description": "${role_manage-authorization}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "query-users",
-        "description": "${role_query-users}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "view-clients",
-        "description": "${role_view-clients}",
-        "composite": true,
-        "composites": {
-          "client": {
-            "realm-management": [
-              "query-clients"
-            ]
-          }
-        },
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "create-client",
-        "description": "${role_create-client}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "query-realms",
-        "description": "${role_query-realms}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "query-groups",
-        "description": "${role_query-groups}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "view-realm",
-        "description": "${role_view-realm}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "manage-realm",
-        "description": "${role_manage-realm}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "manage-events",
-        "description": "${role_manage-events}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "manage-users",
-        "description": "${role_manage-users}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "manage-identity-providers",
-        "description": "${role_manage-identity-providers}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "impersonation",
-        "description": "${role_impersonation}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "view-events",
-        "description": "${role_view-events}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "manage-clients",
-        "description": "${role_manage-clients}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "view-authorization",
-        "description": "${role_view-authorization}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "view-identity-providers",
-        "description": "${role_view-identity-providers}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "query-clients",
-        "description": "${role_query-clients}",
-        "composite": false,
-        "clientRole": true,
-        "attributes": {}
-      },
-      {
-        "name": "realm-admin",
-        "description": "${role_realm-admin}",
-        "composite": true,
-        "composites": {
-          "client": {
-            "realm-management": [
-              "view-users",
-              "manage-authorization",
-              "query-users",
-              "view-clients",
-              "create-client",
-              "query-realms",
-              "query-groups",
-              "view-realm",
-              "manage-realm",
-              "manage-users",
-              "manage-events",
-              "manage-identity-providers",
-              "impersonation",
-              "view-events",
-              "view-identity-providers",
-              "view-authorization",
-              "manage-clients",
-              "query-clients"
-            ]
-          }
-        },
-        "clientRole": true,
-        "attributes": {}
       }
     ],
     "client": {
       "<<KEYCLOAK_CLIENT>>": [
         {
           "name": "uma_protection",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        }
+      ],
+      "realm-management": [
+        {
+          "name": "view-events",
+          "description": "${role_view-events}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "query-realms",
+          "description": "${role_query-realms}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "realm-admin",
+          "description": "${role_realm-admin}",
+          "composite": true,
+          "composites": {
+            "client": {
+              "realm-management": [
+                "view-events",
+                "query-realms",
+                "view-identity-providers",
+                "manage-identity-providers",
+                "view-authorization",
+                "manage-realm",
+                "manage-events",
+                "manage-users",
+                "query-groups",
+                "view-realm",
+                "view-clients",
+                "manage-clients",
+                "query-users",
+                "create-client",
+                "query-clients",
+                "view-users",
+                "manage-authorization",
+                "impersonation"
+              ]
+            }
+          },
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "view-identity-providers",
+          "description": "${role_view-identity-providers}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "manage-identity-providers",
+          "description": "${role_manage-identity-providers}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "manage-realm",
+          "description": "${role_manage-realm}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "view-authorization",
+          "description": "${role_view-authorization}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "manage-events",
+          "description": "${role_manage-events}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "manage-users",
+          "description": "${role_manage-users}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "query-groups",
+          "description": "${role_query-groups}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "manage-clients",
+          "description": "${role_manage-clients}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "view-clients",
+          "description": "${role_view-clients}",
+          "composite": true,
+          "composites": {
+            "client": {
+              "realm-management": [
+                "query-clients"
+              ]
+            }
+          },
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "view-realm",
+          "description": "${role_view-realm}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "query-users",
+          "description": "${role_query-users}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "create-client",
+          "description": "${role_create-client}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "query-clients",
+          "description": "${role_query-clients}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "manage-authorization",
+          "description": "${role_manage-authorization}",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "view-users",
+          "description": "${role_view-users}",
+          "composite": true,
+          "composites": {
+            "client": {
+              "realm-management": [
+                "query-users",
+                "query-groups"
+              ]
+            }
+          },
+          "clientRole": true,
+          "attributes": {}
+        },
+        {
+          "name": "impersonation",
+          "description": "${role_impersonation}",
           "composite": false,
           "clientRole": true,
           "attributes": {}
@@ -355,6 +357,30 @@
         ],
         "decisionStrategy": "UNANIMOUS"
       }
+    },
+    {
+      "clientId": "realm-management",
+      "name": "${client_realm-management}",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "notBefore": 0,
+      "bearerOnly": true,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {},
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": false,
+      "nodeReRegistrationTimeout": 0,
+      "defaultClientScopes": [],
+      "optionalClientScopes": []
     }
   ],
   "clientScopes": [
