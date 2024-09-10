@@ -1,6 +1,12 @@
 package keycloak
 
-import "github.com/Nerzal/gocloak/v13"
+import (
+	"os"
+
+	"github.com/Nerzal/gocloak/v13"
+)
+
+var COMPANY_NAME = os.Getenv("COMPANY_NAME")
 
 type Keycloak struct {
 	KcClient     *gocloak.GoCloak

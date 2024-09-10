@@ -102,11 +102,12 @@ func KeycloakTokenInfo(accessToken string) (*gocloak.IntroSpectTokenResult, erro
 
 // Users Management
 type CreateUserRequset struct {
-	Name      string `json:"id"`
-	Password  string `json:"password"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Email     string `json:"email"`
+	Name        string `json:"id"`
+	Password    string `json:"password"`
+	FirstName   string `json:"firstName"`
+	LastName    string `json:"lastName"`
+	Email       string `json:"email"`
+	Description string `json:"description"`
 }
 
 func KeycloakCreateUser(accessToken string, user CreateUserRequset, password string) error {
@@ -118,6 +119,10 @@ func KeycloakCreateUser(accessToken string, user CreateUserRequset, password str
 		FirstName: &user.FirstName,
 		LastName:  &user.LastName,
 		Email:     &user.Email,
+		Attributes: &map[string][]string{
+			"company":     {COMPANY_NAME},
+			"description": {user.Description},
+		},
 	}
 
 	userUUID, err := kc.KcClient.CreateUser(ctx, accessToken, kc.Realm, userInfo)
