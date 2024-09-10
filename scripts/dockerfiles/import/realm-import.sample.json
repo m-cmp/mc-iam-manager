@@ -1,16 +1,16 @@
 {
-  "realm": "<<KEYCLAOK_REALM>>",
+  "realm": "<<KEYCLOAK_REALM>>",
   "enabled": true,
   "requiredCredentials": [
     "password"
   ],
   "users": [
     {
-      "username": "<<MCIAMMANAGER_PLATFORM_ADMIN_USERID>>",
+      "username": "mcpsuper",
       "credentials": [
         {
           "type": "password",
-          "value": "<<MCIAMMANAGER_PLATFORM_ADMIN_PASSWORD>>"
+          "value": "mcpsuperPassword!"
         }
       ],
       "firstName": "<<MCIAMMANAGER_PLATFORM_ADMIN_FIRST_NAME>>",
@@ -19,28 +19,224 @@
       "emailVerified": false,
       "enabled": true,
       "attributes": {
-        "company": "<<MCIAMMANAGER_PLATFORM_COMPANY_NAME>>",
+        "company": "<<COMPANY_NAME>>",
         "description": "<<MCIAMMANAGER_PLATFORM_ADMIN_DESCRIPTION>>"
       },
-      "clientRoles": {
-        "realm-management": [
-          "realm-admin"
-        ],
-        "<<KEYCLAOK_CLIENT>>": [
-          "uma_protection"
-        ]
-      }
+      "realmRoles": [
+        "platformAdmin"
+      ]
     }
   ],
+  "roles": {
+    "realm": [
+      {
+        "name": "platformAdmin",
+        "description": "platformAdmin user",
+        "composite": true,
+        "composites": {
+          "client": {
+            "realm-management": [
+              "realm-admin"
+            ],
+            "<<KEYCLOAK_CLIENT>>": [
+              "uma_protection"
+            ]
+          }
+        }
+      },
+      {
+        "name": "view-users",
+        "description": "${role_view-users}",
+        "composite": true,
+        "composites": {
+          "client": {
+            "realm-management": [
+              "query-users",
+              "query-groups"
+            ]
+          }
+        },
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "manage-authorization",
+        "description": "${role_manage-authorization}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "query-users",
+        "description": "${role_query-users}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "view-clients",
+        "description": "${role_view-clients}",
+        "composite": true,
+        "composites": {
+          "client": {
+            "realm-management": [
+              "query-clients"
+            ]
+          }
+        },
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "create-client",
+        "description": "${role_create-client}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "query-realms",
+        "description": "${role_query-realms}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "query-groups",
+        "description": "${role_query-groups}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "view-realm",
+        "description": "${role_view-realm}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "manage-realm",
+        "description": "${role_manage-realm}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "manage-events",
+        "description": "${role_manage-events}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "manage-users",
+        "description": "${role_manage-users}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "manage-identity-providers",
+        "description": "${role_manage-identity-providers}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "impersonation",
+        "description": "${role_impersonation}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "view-events",
+        "description": "${role_view-events}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "manage-clients",
+        "description": "${role_manage-clients}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "view-authorization",
+        "description": "${role_view-authorization}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "view-identity-providers",
+        "description": "${role_view-identity-providers}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "query-clients",
+        "description": "${role_query-clients}",
+        "composite": false,
+        "clientRole": true,
+        "attributes": {}
+      },
+      {
+        "name": "realm-admin",
+        "description": "${role_realm-admin}",
+        "composite": true,
+        "composites": {
+          "client": {
+            "realm-management": [
+              "view-users",
+              "manage-authorization",
+              "query-users",
+              "view-clients",
+              "create-client",
+              "query-realms",
+              "query-groups",
+              "view-realm",
+              "manage-realm",
+              "manage-users",
+              "manage-events",
+              "manage-identity-providers",
+              "impersonation",
+              "view-events",
+              "view-identity-providers",
+              "view-authorization",
+              "manage-clients",
+              "query-clients"
+            ]
+          }
+        },
+        "clientRole": true,
+        "attributes": {}
+      }
+    ],
+    "client": {
+      "<<KEYCLOAK_CLIENT>>": [
+        {
+          "name": "uma_protection",
+          "composite": false,
+          "clientRole": true,
+          "attributes": {}
+        }
+      ]
+    }
+  },
   "clients": [
     {
-      "clientId": "<<KEYCLAOK_CLIENT>>",
+      "clientId": "<<KEYCLOAK_CLIENT>>",
       "name": "",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "<<KEYCLAOK_CLIENT_SECRET>>",
+      "secret": "<<KEYCLOAK_CLIENT_SECRET>>",
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -95,7 +291,7 @@
           }
         },
         {
-          "name": "User Realm Role",
+          "name": "UserRealmRoleMapper",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-usermodel-realm-role-mapper",
           "consentRequired": false,
@@ -108,14 +304,57 @@
             "claim.name": "roles",
             "jsonType.label": "String"
           }
+        },
+        {
+          "name": "userIdMapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "userid",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "fullNameMapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "introspection.token.claim": "true",
+            "claim.name": "username",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
         }
       ],
       "defaultClientScopes": [
         "openid",
-        "microprofile-jwt",
-        "email"
+        "roles"
       ],
-      "optionalClientScopes": []
+      "authorizationSettings": {
+        "allowRemoteResourceManagement": true,
+        "policyEnforcementMode": "ENFORCING",
+        "policies": [
+          {
+            "name": "platformAdminPolicy",
+            "description": "platformAdminPolicy Role Policy",
+            "type": "role",
+            "logic": "POSITIVE",
+            "decisionStrategy": "UNANIMOUS",
+            "config": {
+              "roles": "[{\"id\":\"platformAdmin\",\"required\":false}]"
+            }
+          }
+        ],
+        "decisionStrategy": "UNANIMOUS"
+      }
     }
   ],
   "clientScopes": [
@@ -131,53 +370,50 @@
       }
     },
     {
-      "name": "microprofile-jwt",
-      "description": "Microprofile - JWT built-in scope",
+      "name": "roles",
+      "description": "OpenID Connect scope for add user roles to the access token",
       "protocol": "openid-connect",
       "attributes": {
-        "include.in.token.scope": "true",
-        "display.on.consent.screen": "false"
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "${rolesScopeConsentText}"
       },
       "protocolMappers": [
         {
-          "name": "upn",
+          "name": "audience resolve",
           "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "protocolMapper": "oidc-audience-resolve-mapper",
           "consentRequired": false,
           "config": {
             "introspection.token.claim": "true",
-            "userinfo.token.claim": "true",
-            "user.attribute": "username",
-            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "client roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "multivalued": "true",
+            "user.attribute": "foo",
             "access.token.claim": "true",
-            "claim.name": "userid",
+            "claim.name": "resource_access.${client_id}.roles",
             "jsonType.label": "String"
           }
-        }
-      ]
-    },
-    {
-      "name": "email",
-      "description": "OpenID Connect built-in scope: email",
-      "protocol": "openid-connect",
-      "attributes": {
-        "include.in.token.scope": "true",
-        "display.on.consent.screen": "true",
-        "consent.screen.text": "${emailScopeConsentText}"
-      },
-      "protocolMappers": [
+        },
         {
-          "name": "email",
+          "name": "realm roles",
           "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
           "consentRequired": false,
           "config": {
             "introspection.token.claim": "true",
-            "userinfo.token.claim": "true",
-            "user.attribute": "email",
-            "id.token.claim": "true",
+            "multivalued": "true",
+            "user.attribute": "foo",
             "access.token.claim": "true",
-            "claim.name": "email",
+            "claim.name": "realm_access.roles",
             "jsonType.label": "String"
           }
         }
