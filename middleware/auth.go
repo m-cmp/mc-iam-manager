@@ -21,7 +21,7 @@ func init() {
 	})
 
 	KEYCLOAKHOST := os.Getenv("KEYCLOAK_HOST")
-	KEYCLAOKREALM := os.Getenv("KEYCLAOK_REALM")
+	KEYCLAOKREALM := os.Getenv("KEYCLOAK_REALM")
 	log.Printf("Trying to fetch Pubkey %s/realms/%s/protocol/openid-connect/certs", KEYCLOAKHOST, KEYCLAOKREALM)
 	err := iamtokenvalidator.GetPubkeyIamManager(KEYCLOAKHOST + "/realms/" + KEYCLAOKREALM + "/protocol/openid-connect/certs")
 	if err != nil {
@@ -76,8 +76,8 @@ func SetContextMiddleware(next buffalo.Handler) buffalo.Handler {
 		if err != nil {
 			return c.Render(http.StatusUnauthorized, r.JSON(map[string]string{"error": "Unauthorized"}))
 		}
+		log.Printf("User Claims : %+v\n", claims)
 		c.Set("accessToken", accessToken)
-		c.Set("roles", claims.RealmAccess.Roles)
 		return next(c)
 	}
 }
