@@ -13,10 +13,10 @@ var DB *pop.Connection
 
 func init() {
 	var err error
-	env := envy.Get("GO_ENV", "development")
+	env := envy.Get("MODE", "standalone")
 	DB, err = pop.Connect(env)
 	if err != nil {
 		log.Fatal(err)
 	}
-	pop.Debug = env == "development"
+	pop.Debug = true
 }

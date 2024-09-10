@@ -20,10 +20,13 @@ func init() {
 	kc = Keycloak{
 		KcClient:     gocloak.NewClient(handler.KEYCLOAK_HOST),
 		Host:         handler.KEYCLOAK_HOST,
-		Realm:        handler.KEYCLAOK_REALM,
-		Client:       handler.KEYCLAOK_CLIENT,
-		ClientSecret: handler.KEYCLAOK_CLIENT_SECRET,
+		Realm:        handler.KEYCLOAK_REALM,
+		Client:       handler.KEYCLOAK_CLIENT,
+		ClientSecret: handler.KEYCLOAK_CLIENT_SECRET,
 	}
+
+	fmt.Println("####### KEYCLOAK SETTING")
+	fmt.Println(kc)
 }
 
 func KeycloakGetCerts() (*gocloak.CertResponse, error) {
@@ -79,9 +82,9 @@ func KeycloakLogout(refreshToken string) error {
 	return nil
 }
 
-func KeycloakGetUserInfo(accessToken string) (*gocloak.UserInfo, error) {
+func KeycloakGetUserInfo(accessToken string) (map[string]interface{}, error) {
 	ctx := context.Background()
-	userinfo, err := kc.KcClient.GetUserInfo(ctx, accessToken, kc.Realm)
+	userinfo, err := kc.KcClient.GetRawUserInfo(ctx, accessToken, kc.Realm)
 	if err != nil {
 		log.Println(err)
 	}
@@ -99,11 +102,12 @@ func KeycloakTokenInfo(accessToken string) (*gocloak.IntroSpectTokenResult, erro
 
 // Users Management
 type CreateUserRequset struct {
-	Name      string `json:"id"`
-	Password  string `json:"password"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Email     string `json:"email"`
+	Name        string `json:"id"`
+	Password    string `json:"password"`
+	FirstName   string `json:"firstName"`
+	LastName    string `json:"lastName"`
+	Email       string `json:"email"`
+	Description string `json:"description"`
 }
 
 func KeycloakCreateUser(accessToken string, user CreateUserRequset, password string) error {
@@ -115,6 +119,10 @@ func KeycloakCreateUser(accessToken string, user CreateUserRequset, password str
 		FirstName: &user.FirstName,
 		LastName:  &user.LastName,
 		Email:     &user.Email,
+		Attributes: &map[string][]string{
+			"company":     {COMPANY_NAME},
+			"description": {user.Description},
+		},
 	}
 
 	userUUID, err := kc.KcClient.CreateUser(ctx, accessToken, kc.Realm, userInfo)
