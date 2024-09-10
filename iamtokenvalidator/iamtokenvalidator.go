@@ -16,10 +16,7 @@ type DefaultClaims struct {
 
 type IamManagerClaims struct {
 	*jwt.RegisteredClaims
-	UserId            string `json:"upn"`
-	UserName          string `json:"name"`
-	PreferredUsername string `json:"preferred_username"`
-	Authorization     struct {
+	Authorization struct {
 		Permissions []struct {
 			Rsid   string `json:"rsid"`
 			Rsname string `json:"rsname"`
@@ -28,6 +25,20 @@ type IamManagerClaims struct {
 	RealmAccess struct {
 		Roles []string `json:"roles"`
 	} `json:"realm_access"`
+	ResourceAccess struct {
+		RealmManagement struct {
+			Roles []string `json:"roles"`
+		} `json:"realm-management"`
+		MciamClient struct {
+			Roles []string `json:"roles"`
+		} `json:"mciamClient"`
+	} `json:"resource_access"`
+	Scope       string   `json:"scope"`
+	Roles       []string `json:"roles"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Company     string   `json:"company"`
+	UserID      string   `json:"userid"`
 }
 
 var (
@@ -78,7 +89,7 @@ func IsTicketValidWithOperationId(tokenString string, operationId string) error 
 			if len(permissionParts) < 4 {
 				continue
 			}
-			if strings.ToLower(permissionParts[2]) == strings.ToLower(operationId) {
+			if strings.EqualFold(permissionParts[2], operationId) {
 				return nil
 			}
 		}
