@@ -2,22 +2,21 @@ package actions
 
 import (
 	"net/http"
+	"strconv"
 	"sync"
 
+	"github.com/m-cmp/mc-iam-manager/handler"
 	"github.com/m-cmp/mc-iam-manager/middleware"
 	"github.com/m-cmp/mc-iam-manager/models"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/buffalo-pop/v3/pop/popmw"
-	"github.com/gobuffalo/envy"
 	contenttype "github.com/gobuffalo/mw-contenttype"
 	i18n "github.com/gobuffalo/mw-i18n/v2"
 	paramlogger "github.com/gobuffalo/mw-paramlogger"
 	"github.com/gobuffalo/x/sessions"
 	"github.com/rs/cors"
 )
-
-var ENV = envy.Get("GO_ENV", "development")
 
 var (
 	app     *buffalo.App
@@ -28,7 +27,6 @@ var (
 func App() *buffalo.App {
 	appOnce.Do(func() {
 		app = buffalo.New(buffalo.Options{
-			Env:          ENV,
 			SessionStore: sessions.Null{},
 			PreWares: []buffalo.PreWare{
 				cors.Default().Handler,
@@ -41,7 +39,11 @@ func App() *buffalo.App {
 		app.Use(popmw.Transaction(models.DB))
 		app.Use(middleware.IsAuthMiddleware)
 		app.Use(middleware.SetContextMiddleware)
-		app.Use(middleware.IsTicketValidMiddleware)
+
+		// Resources Permission MODE
+		if yn, _ := strconv.ParseBool(handler.USE_TICKET_VALID); yn {
+			app.Use(middleware.IsTicketValidMiddleware)
+		}
 
 		//Readyz skip all middleware
 		app.Middleware.Skip(middleware.IsAuthMiddleware, readyz)
@@ -52,8 +54,8 @@ func App() *buffalo.App {
 		apiPath := "/api"
 
 		authPath := app.Group(apiPath + "/auth")
-		authPath.Middleware.Skip(middleware.IsAuthMiddleware, AuthLoginHandler, AuthLoginRefreshHandler, AuthLogoutHandler, AuthGetCerts, AuthGetTokenInfo, AuthGetUserValidate)
-		authPath.Middleware.Skip(middleware.SetContextMiddleware, AuthLoginHandler, AuthLoginRefreshHandler, AuthLogoutHandler, AuthGetCerts, AuthGetTokenInfo, AuthGetUserValidate)
+		authPath.Middleware.Skip(middleware.IsAuthMiddleware, AuthLoginHandler, AuthLoginRefreshHandler, AuthLogoutHandler, AuthGetCerts)
+		authPath.Middleware.Skip(middleware.SetContextMiddleware, AuthLoginHandler, AuthLoginRefreshHandler, AuthLogoutHandler, AuthGetCerts)
 		authPath.Middleware.Skip(middleware.IsTicketValidMiddleware, AuthLoginHandler, AuthLoginRefreshHandler, AuthLogoutHandler, AuthGetCerts, AuthGetTokenInfo, AuthGetUserValidate)
 		authPath.POST("/login", AuthLoginHandler)
 		authPath.POST("/login/refresh", AuthLoginRefreshHandler)

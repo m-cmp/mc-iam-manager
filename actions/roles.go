@@ -3,6 +3,8 @@ package actions
 import (
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/m-cmp/mc-iam-manager/handler"
 	"github.com/m-cmp/mc-iam-manager/handler/keycloak"
@@ -15,9 +17,14 @@ import (
 )
 
 type createRoleRequset struct {
-	Name        string       `json:"name" db:"name"`
-	Description nulls.String `json:"description" db:"description"`
+	Name         string       `json:"name" db:"name"`
+	Description  nulls.String `json:"description" db:"description"`
+	PlatformRole string       `json:"platformRole"`
 }
+
+var (
+	platformRolePrefix = "platform-"
+)
 
 func CreateRole(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
@@ -38,13 +45,17 @@ func CreateRole(c buffalo.Context) error {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
 
-	_, err = keycloak.KeycloakCreateRole(accessToken, req.Name, req.Description.String)
+	if yn, _ := strconv.ParseBool(req.PlatformRole); yn {
+		s.Name = platformRolePrefix + req.Name
+	}
+
+	_, err = keycloak.KeycloakCreateRole(accessToken, s.Name, s.Description.String)
 	if err != nil {
 		log.Println(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
 	}
 
-	policy, err := keycloak.KeycloakCreatePolicy(accessToken, req.Name, req.Description.String)
+	policy, err := keycloak.KeycloakCreatePolicy(accessToken, s.Name, s.Description.String)
 	if err != nil {
 		log.Println(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
@@ -52,39 +63,64 @@ func CreateRole(c buffalo.Context) error {
 	s.Policy = *policy.ID
 
 	tx := c.Value("tx").(*pop.Connection)
-	res, err := handler.CreateRole(tx, &s)
+	roleRes, err := handler.CreateRole(tx, &s)
 	if err != nil {
 		log.Println(err)
 		err = handler.IsErrorContainsThen(err, "SQLSTATE 25P02", "Role is already exist..")
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
 	}
 
-	return c.Render(http.StatusOK, r.JSON(res))
+	return c.Render(http.StatusOK, r.JSON(roleRes))
+}
+
+func platformRoleParser(resRoles *models.Roles, isPlatformRole bool) models.Roles {
+	var resultRoles models.Roles
+	prefixCheck := strings.HasPrefix
+	if !isPlatformRole {
+		prefixCheck = func(s, prefix string) bool { return !strings.HasPrefix(s, prefix) }
+	}
+
+	for _, role := range *resRoles {
+		if prefixCheck(role.Name, platformRolePrefix) {
+			resultRoles = append(resultRoles, role)
+		}
+	}
+
+	return resultRoles
 }
 
 func SearchRolesByName(c buffalo.Context) error {
 	var err error
 	roleName := c.Param("roleName")
 	option := c.Request().URL.Query().Get("option")
+	platformRole, _ := strconv.ParseBool(c.Request().URL.Query().Get("platformRole"))
 
 	tx := c.Value("tx").(*pop.Connection)
-	res, err := handler.SearchRolesByName(tx, roleName, option)
+	resRoles, err := handler.SearchRolesByName(tx, roleName, option)
 	if err != nil {
 		log.Println(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
 	}
-	return c.Render(http.StatusOK, r.JSON(res))
+
+	resultRoles := platformRoleParser(resRoles, platformRole)
+
+	return c.Render(http.StatusOK, r.JSON(resultRoles))
 }
 
 func GetRoleList(c buffalo.Context) error {
 	var err error
 	tx := c.Value("tx").(*pop.Connection)
+	platformRole, _ := strconv.ParseBool(c.Request().URL.Query().Get("platformRole"))
+
 	res, err := handler.GetRoleList(tx)
 	if err != nil {
 		log.Println(err)
 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
 	}
-	return c.Render(http.StatusOK, r.JSON(res))
+
+	resultRoles := platformRoleParser(res, platformRole)
+
+	return c.Render(http.StatusOK, r.JSON(resultRoles))
 }
 
 func GetRoleById(c buffalo.Context) error {

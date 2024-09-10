@@ -1,6 +1,6 @@
 ---
-development:
-  url: {{envOr "DEV_DATABASE_URL" "postgres://postgres:postgres@db:5432/mc_iam_manager_development?sslmode=disable"}}
+standalone:
+  url: {{envOr "DATABASE_URL" "postgres://postgres:postgres@db:5432/mc_iam_manager_development?sslmode=disable"}}
 
-production:
-  url: {{envOr "DATABASE_URL" "postgres://postgres:postgres@db:5432/mc_iam_manager_production?sslmode=disable"}}
+docker:
+  url: {{envOr "DATABASE_URL" "postgres://postgres:postgres@db:5432/mc_iam_manager_development?sslmode=disable"}}
