@@ -2,8 +2,10 @@ package actions
 
 import (
 	"net/http"
+	"strconv"
 	"sync"
 
+	"github.com/m-cmp/mc-iam-manager/handler"
 	"github.com/m-cmp/mc-iam-manager/middleware"
 	"github.com/m-cmp/mc-iam-manager/models"
 
@@ -37,7 +39,11 @@ func App() *buffalo.App {
 		app.Use(popmw.Transaction(models.DB))
 		app.Use(middleware.IsAuthMiddleware)
 		app.Use(middleware.SetContextMiddleware)
-		// app.Use(middleware.IsTicketValidMiddleware)
+
+		// Resources Permission MODE
+		if yn, _ := strconv.ParseBool(handler.USE_TICKET_VALID); yn {
+			app.Use(middleware.IsTicketValidMiddleware)
+		}
 
 		//Readyz skip all middleware
 		app.Middleware.Skip(middleware.IsAuthMiddleware, readyz)
