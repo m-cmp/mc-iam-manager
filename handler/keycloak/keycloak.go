@@ -320,7 +320,7 @@ func KeycloakCreateMenuResources(accessToken string, resources CreateMenuResourc
 	result := []gocloak.ResourceRepresentation{}
 	createResourceerrors := []error{}
 	for _, resource := range resources {
-		resName := resource.Framework + ":menu:" + resource.Id + ":" + resource.DisplayName + ":" + resource.ParentMenuId + ":" + resource.Priority + ":" + resource.IsAction
+		resName := resource.Framework + ":" + resource.ResType + ":" + resource.Id + ":" + resource.DisplayName + ":" + resource.ParentId + ":" + resource.Priority + ":" + resource.IsAction
 		resreq := gocloak.ResourceRepresentation{
 			Name: gocloak.StringP(resName),
 		}
@@ -330,7 +330,7 @@ func KeycloakCreateMenuResources(accessToken string, resources CreateMenuResourc
 			createResourceerrors = append(createResourceerrors, err)
 			continue
 		} else {
-			_, err := KeycloakCreatePermission(accessToken, resource.Framework, resource.Id, resource.Id, []string{resName}, []string{})
+			_, err := KeycloakCreatePermission(accessToken, resource.Framework, resource.Id+resource.ResType, resource.Id, []string{resName}, []string{})
 			if err != nil {
 				log.Println(err)
 				createResourceerrors = append(createResourceerrors, err)
@@ -348,12 +348,14 @@ func KeycloakCreateMenuResources(accessToken string, resources CreateMenuResourc
 }
 
 func KeycloakGetResources(accessToken string, params gocloak.GetResourceParams) ([]*gocloak.ResourceRepresentation, error) {
+
 	ctx := context.Background()
 	lastNum := 0
 	var resources []*gocloak.ResourceRepresentation
 	for {
 		params.First = gocloak.IntP(lastNum)
 		resourcesFetch, err := kc.KcClient.GetResourcesClient(ctx, accessToken, kc.Realm, params)
+
 		if err != nil {
 			log.Println(err)
 			return nil, err
@@ -958,6 +960,7 @@ func isEqualUri(pattern string, str string) bool {
 }
 
 func KeycloakGetAvailableMenus(accessToken string, framework string) (*[]gocloak.RequestingPartyPermission, error) {
+
 	ctx := context.Background()
 
 	params := gocloak.GetResourceParams{

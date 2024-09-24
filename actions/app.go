@@ -124,9 +124,10 @@ func App() *buffalo.App {
 
 		resourcePath := app.Group(apiPath + "/resource")
 		resourcePath.POST("/", CreateResources)
-		resourcePath.Middleware.Skip(middleware.IsTicketValidMiddleware, CreateApiResourcesByApiYaml, CreateMenuResourcesByMenuYaml)
+		resourcePath.Middleware.Skip(middleware.IsTicketValidMiddleware, CreateApiResourcesByApiYaml, CreateWebResourceResourcesByMenuYaml)
+		// resourcePath.POST("/file", CreateApiResourcesByApiYaml)
 		resourcePath.POST("/file/framework/{framework}", CreateApiResourcesByApiYaml)
-		resourcePath.POST("/file/framework/{framework}/menu", CreateMenuResourcesByMenuYaml)
+		resourcePath.POST("/file/framework/{framework}/menu", CreateWebResourceResourcesByMenuYaml)
 		// resourcePath.POST("/file/framework/{framework}", CreateResourcesBySwagger) // deprecated : use CreateResourcesByApiYaml
 		resourcePath.GET("/", GetResources)
 		resourcePath.GET("/menus", GetMenuResources)
