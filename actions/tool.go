@@ -65,3 +65,24 @@ func SyncProjectListWithMcInfra(c buffalo.Context) error {
 
 	return c.Render(http.StatusOK, r.JSON(projectList))
 }
+
+// func SyncRoleListWithKeycloak(c buffalo.Context) error {
+// 	token := c.Value("accessToken").(string)
+
+// 	roles, err := keycloak.KeycloakGetRoles(token)
+// 	if err != nil {
+// 		log.Println(err)
+// 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+// 	}
+
+// 	tx := c.Value("tx").(*pop.Connection)
+// 	roleRes, err := handler.CreateRole(tx, &s)
+// 	if err != nil {
+// 		log.Println(err)
+// 		err = handler.IsErrorContainsThen(err, "SQLSTATE 25P02", "Role is already exist..")
+// 		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+// 	}
+
+// 	return c.Render(http.StatusOK, r.JSON(roles))
+
+// }
