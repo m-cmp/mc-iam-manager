@@ -141,11 +141,10 @@ func GetTokenClaimsByIamManagerClaims(tokenString string) (*IamManagerClaims, er
 	if err != nil {
 		return nil, fmt.Errorf("token is invalid : %s", err.Error())
 	}
-	if claims, ok := token.Claims.(*IamManagerClaims); ok && token.Valid {
+	if claims, ok := token.Claims.(*IamManagerClaims); ok {
 		return claims, nil
-	} else {
-		return nil, fmt.Errorf("token is invalid")
 	}
+	return nil, fmt.Errorf("token is not parse with IamManagerClaims")
 }
 
 // GetTokenClaimsByCustomClaims는 GetPubkeyIamManager에서 설정된 jwkSet을 바탕으로

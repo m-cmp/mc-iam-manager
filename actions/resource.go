@@ -175,27 +175,26 @@ func CreateApiResourcesByApiYaml(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(resoruces))
 }
 
-// web:menu:<Id>:<DisplayName>:<ParentMenuId>:<Priority>:<IsAction>
-// web:menu:settings:settings category::0:false
 type Menu struct {
-	Id           string `json:"id"` // for routing
-	ParentMenuId string `json:"parentmenuid"`
-	DisplayName  string `json:"displayname"` // for display
-	IsAction     string `json:"isaction"`    // maybe need type assertion..?
-	Priority     string `json:"priority"`
-	Menus        []Menu `json:"menus"`
+	Id          string `json:"id"` // for routing
+	ParentId    string `json:"parentid"`
+	DisplayName string `json:"displayname"` // for display
+	ResType     string `json:"restype"`
+	IsAction    string `json:"isaction"` // maybe need type assertion..?
+	Priority    string `json:"priority"`
+	Menus       []Menu `json:"menus"`
 }
 
-func CreateMenuResourcesByMenuYaml(c buffalo.Context) error {
+func CreateWebResourceResourcesByMenuYaml(c buffalo.Context) error {
 	accessToken := c.Value("accessToken").(string)
 
 	framework := c.Param("framework")
 
 	f, err := c.File("file")
-
 	if err != nil {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
+
 	fileContent, err := io.ReadAll(f.File)
 	if err != nil {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
@@ -210,12 +209,13 @@ func CreateMenuResourcesByMenuYaml(c buffalo.Context) error {
 	resourcereq := keycloak.CreateMenuResourceRequestArr{}
 	for _, menu := range menus.Menus {
 		resource := keycloak.CreateMenuResourceRequest{
-			Framework:    framework,
-			Id:           menu.Id,
-			ParentMenuId: menu.ParentMenuId,
-			DisplayName:  menu.DisplayName,
-			IsAction:     menu.IsAction,
-			Priority:     menu.Priority,
+			Framework:   framework,
+			Id:          menu.Id,
+			ParentId:    menu.ParentId,
+			DisplayName: menu.DisplayName,
+			ResType:     menu.ResType,
+			IsAction:    menu.IsAction,
+			Priority:    menu.Priority,
 		}
 		resourcereq = append(resourcereq, resource)
 	}
