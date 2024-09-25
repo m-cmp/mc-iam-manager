@@ -446,6 +446,28 @@ func KeycloakGetRole(accessToken string, name string) (*gocloak.Role, error) {
 	return res, nil
 }
 
+func KeycloakGetRoles(accessToken string) ([]*gocloak.Role, error) {
+	ctx := context.Background()
+	reqParam := gocloak.GetRoleParams{}
+
+	lastNum := 0
+	reqParam.First = gocloak.IntP(lastNum)
+	var roles []*gocloak.Role
+	for {
+		role, err := kc.KcClient.GetRealmRoles(ctx, accessToken, kc.Realm, reqParam)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		roles = append(roles, role...)
+		if len(role) < 100 {
+			break
+		}
+		lastNum = lastNum + len(role)
+	}
+	return roles, nil
+}
+
 func keycloakGetUserRoles(accessToken string, userUUID string) ([]*gocloak.Role, error) {
 	ctx := context.Background()
 
