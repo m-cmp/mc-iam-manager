@@ -37,6 +37,7 @@ func App() *buffalo.App {
 		app.Use(paramlogger.ParameterLogger)
 		app.Use(contenttype.Set("application/json"))
 		app.Use(popmw.Transaction(models.DB))
+
 		app.Use(middleware.IsAuthMiddleware)
 		app.Use(middleware.SetContextMiddleware)
 
@@ -72,9 +73,9 @@ func App() *buffalo.App {
 		ticketPath.GET("/framework/{framework}/menus", GetAllAvailableMenus)
 
 		userPath := app.Group(apiPath + "/user")
-		app.Middleware.Skip(middleware.IsAuthMiddleware, CreateUser)
-		app.Middleware.Skip(middleware.SetContextMiddleware, CreateUser)
-		app.Middleware.Skip(middleware.IsTicketValidMiddleware, CreateUser)
+		// userPath.Middleware.Skip(middleware.IsAuthMiddleware, CreateUser)
+		// userPath.Middleware.Skip(middleware.SetContextMiddleware, CreateUser)
+		// userPath.Middleware.Skip(middleware.IsTicketValidMiddleware, CreateUser)
 		userPath.POST("/", CreateUser)
 		userPath.POST("/active", ActiveUser)
 		userPath.POST("/deactive", DeactiveUser)
@@ -151,6 +152,7 @@ func App() *buffalo.App {
 
 		toolPath := app.Group(apiPath + "/tool")
 		toolPath.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
+		// toolPath.GET("/keycloak/role/sync", SyncRoleListWithKeycloak)
 
 		stsPath := app.Group(apiPath + "/poc" + "/sts")
 		stsPath.GET("/securitykey", AuthSecuritykeyProviderHandler)
