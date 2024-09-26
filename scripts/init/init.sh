@@ -72,6 +72,8 @@ show_menu() {
     echo "6. Update permission CSV "
     echo "  (./permission.csv)"
     echo
+    echo "99. auto init"
+    echo
     echo "--------------------"
     echo -n "select Number : "
 }
@@ -82,6 +84,21 @@ donePrint() {
     echo
     echo "Press anykey to continue..."
     echo
+}
+
+autoInit() {
+    login
+    initResourceDatafromApiYaml
+    initMenuDatafromMenuYaml
+    initRoleData
+    getPermissionCSV
+    
+    echo
+    echo "edit './permission.csv' and press any key to proceed.."
+    echo
+    read -n 1 -s
+
+    postPermissionCSV
 }
 
 
@@ -96,6 +113,7 @@ read_option() {
         4) initRoleData;;
         5) getPermissionCSV;;
         6) postPermissionCSV;;
+        99) autoInit;;
         *) echo "wrong selection"
     esac
 }
