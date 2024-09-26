@@ -33,5 +33,9 @@ generated/
 
 scripts/dockerfiles/import/realm-import.json
 !scripts/.env
+!scripts/init/.env
 
 
+scripts/init/permission.csv
+scripts/init/mcwebconsoleMenu.yaml
+scripts/init/api.yaml
