@@ -133,7 +133,6 @@ func UpdateWPmappings(tx *pop.Connection, worksapceId string, projectIds []strin
 	err := tx.RawQuery(query).First(&s)
 	if err != nil {
 		log.Error(err)
-		return nil, err
 	}
 	_, projectTodel, projectToCreate := compareStringArrays(extractAndSplit(s.ProjectIds), projectIds)
 	for _, projectId := range projectTodel {
@@ -148,6 +147,7 @@ func UpdateWPmappings(tx *pop.Connection, worksapceId string, projectIds []strin
 			return nil, err
 		}
 	}
+
 	for _, projectId := range projectToCreate {
 		m := &models.WorkspaceProjectMapping{
 			WorkspaceID: uuid.FromStringOrNil(worksapceId),
@@ -177,6 +177,9 @@ func DeleteWPmapping(tx *pop.Connection, s *models.WorkspaceProjectMapping) erro
 }
 
 func extractAndSplit(input string) []string {
+	if strings.TrimSpace(input) == "" {
+		return []string{}
+	}
 	input = strings.Trim(input, "{}")
 	result := strings.Split(input, ",")
 	return result
