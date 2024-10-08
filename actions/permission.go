@@ -184,6 +184,18 @@ func GetPermission(c buffalo.Context) error {
 	return c.Render(http.StatusOK, r.JSON(permissions))
 }
 
+func GetdependentPermissionsByPolicyId(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+	policyId := c.Param("policyId")
+	policyResourceRepresentation, err := keycloak.KeycloakGetDependentPermissions(accessToken, policyId)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusInternalServerError, r.JSON(map[string]string{"error": err.Error()}))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(policyResourceRepresentation))
+}
+
 // func UpdatePermission(c buffalo.Context) error {
 // 	accessToken := c.Value("accessToken").(string)
 // 	permissionId := c.Param("permissionid")
@@ -236,6 +248,134 @@ func UpdateResourcePermissionByOperationId(c buffalo.Context) error {
 	}
 
 	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": "success"}))
+}
+
+func AppendResourcePermissionPolicesByOperationId(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+
+	framework := c.Param("framework")
+	operationid := c.Param("operationid")
+
+	params := gocloak.GetPermissionParams{
+		Name: gocloak.StringP(framework + ":" + operationid),
+	}
+	permissions, err := keycloak.KeycloakGetPermissions(accessToken, params)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(err))
+	}
+	if (len(permissions) == 0) || (*permissions[0].Name != (framework + ":" + operationid)) {
+		errmsg := fmt.Errorf("permission not Found")
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": errmsg.Error()}))
+	}
+	permissionReq := &createPermissionRequset{}
+	if err := c.Bind(permissionReq); err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+
+	for i, v := range permissionReq.PermissionPolicies {
+		permissionReq.PermissionPolicies[i] = v + "Policy"
+	}
+
+	policyRes, err := keycloak.KeycloakGetAuthorizationPolicyAssociatedPoliciesByPermissionId(accessToken, *permissions[0].ID)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+	var policyNamesOrg []string
+	for _, policy := range policyRes {
+		policyNamesOrg = append(policyNamesOrg, *policy.Name)
+	}
+
+	mergedPoliciesArrays := mergePoliciesArrays(policyNamesOrg, permissionReq.PermissionPolicies)
+	err = keycloak.KeycloakUpdatePermission(accessToken, *permissions[0].ID, framework+":"+operationid, permissionReq.Desc, mergedPoliciesArrays)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": "success"}))
+}
+
+func DeleteResourcePermissionPolicesByOperationId(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+
+	framework := c.Param("framework")
+	operationid := c.Param("operationid")
+
+	params := gocloak.GetPermissionParams{
+		Name: gocloak.StringP(framework + ":" + operationid),
+	}
+	permissions, err := keycloak.KeycloakGetPermissions(accessToken, params)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(err))
+	}
+	if (len(permissions) == 0) || (*permissions[0].Name != (framework + ":" + operationid)) {
+		errmsg := fmt.Errorf("permission not Found")
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": errmsg.Error()}))
+	}
+	permissionReq := &createPermissionRequset{}
+	if err := c.Bind(permissionReq); err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+
+	for i, v := range permissionReq.PermissionPolicies {
+		permissionReq.PermissionPolicies[i] = v + "Policy"
+	}
+
+	policyRes, err := keycloak.KeycloakGetAuthorizationPolicyAssociatedPoliciesByPermissionId(accessToken, *permissions[0].ID)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+	var policyNamesOrg []string
+	for _, policy := range policyRes {
+		policyNamesOrg = append(policyNamesOrg, *policy.Name)
+	}
+
+	removedPoliciesArrays := removePoliciesByRequestArrays(policyNamesOrg, permissionReq.PermissionPolicies)
+	err = keycloak.KeycloakUpdatePermission(accessToken, *permissions[0].ID, framework+":"+operationid, permissionReq.Desc, removedPoliciesArrays)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"errors": err.Error()}))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(map[string]string{"status": "success"}))
+}
+
+func mergePoliciesArrays(arr1, arr2 []string) []string {
+	uniqueMap := make(map[string]bool)
+	var result []string
+	for _, str := range arr1 {
+		if !uniqueMap[str] {
+			uniqueMap[str] = true
+			result = append(result, str)
+		}
+	}
+	for _, str := range arr2 {
+		if !uniqueMap[str] {
+			uniqueMap[str] = true
+			result = append(result, str)
+		}
+	}
+	return result
+}
+
+func removePoliciesByRequestArrays(arr1, arr2 []string) []string {
+	set := make(map[string]bool)
+	for _, str := range arr2 {
+		set[str] = true
+	}
+	var result []string
+	for _, str := range arr1 {
+		if !set[str] {
+			result = append(result, str)
+		}
+	}
+	return result
 }
 
 func DeletePermission(c buffalo.Context) error {
