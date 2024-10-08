@@ -809,6 +809,38 @@ func KeycloakGetPermissionDetail(accessToken string, id string) (*permissionDeta
 	return result, nil
 }
 
+func KeycloakGetDependentPermissions(accessToken string, policyId string) ([]*gocloak.PermissionRepresentation, error) {
+	ctx := context.Background()
+	//realm-management manage-clients role 필요
+	clinetResp, err := KeycloakGetClientInfo(accessToken)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	dependentPermissions, err := kc.KcClient.GetDependentPermissions(ctx, accessToken, kc.Realm, *clinetResp.ID, policyId)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return dependentPermissions, nil
+}
+
+func KeycloakGetAuthorizationPolicyAssociatedPoliciesByPermissionId(accessToken string, permissionId string) ([]*gocloak.PolicyRepresentation, error) {
+	ctx := context.Background()
+	//realm-management manage-clients role 필요
+	clinetResp, err := KeycloakGetClientInfo(accessToken)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	policyRes, err := kc.KcClient.GetAuthorizationPolicyAssociatedPolicies(ctx, accessToken, kc.Realm, *clinetResp.ID, permissionId)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return policyRes, nil
+}
+
 func KeycloakUpdatePermission(accessToken string, id string, name string, desc string, permissionPolicies []string) error {
 	ctx := context.Background()
 

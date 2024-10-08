@@ -140,10 +140,13 @@ func App() *buffalo.App {
 		permissionPath := app.Group(apiPath + "/permission")
 		// permissionPath.POST("/", CreatePermission)  // deprecated : permission is resource dependent
 		permissionPath.GET("/", GetPermissions)
+		permissionPath.GET("/policyid/{policyId}", GetdependentPermissionsByPolicyId)
 		permissionPath.GET("/framewrok/{framework}/operationid/{operationid}", GetPermission)
 		// permissionPath.GET("/id/{permissionid}", GetPermission) // deprecated : permission is resource dependent
 		// permissionPath.PUT("/id/{permissionid}", UpdatePermission)// deprecated : permission is resource dependent
-		permissionPath.PUT("/framewrok/{framework}/operationid/{operationid}", UpdateResourcePermissionByOperationId) // menu could use thie operation by menu Id
+		permissionPath.PUT("/framewrok/{framework}/operationid/{operationid}", UpdateResourcePermissionByOperationId)                  // menu could use thie operation by menu Id
+		permissionPath.PUT("/framewrok/{framework}/operationid/{operationid}/append", AppendResourcePermissionPolicesByOperationId)    // menu could use thie operation by menu Id
+		permissionPath.DELETE("/framewrok/{framework}/operationid/{operationid}/remove", DeleteResourcePermissionPolicesByOperationId) // menu could use thie operation by menu Id
 		// permissionPath.PUT("/framewrok/{framework}/menu/{menu}", UpdateResourcePermissionByMenu)
 		// permissionPath.DELETE("/id/{permissionid}", DeletePermission) // deprecated : permission is resource dependent, When a resource is deleted, the permissions are also deleted.
 		permissionPath.Middleware.Skip(middleware.IsTicketValidMiddleware, GetCurrentPermissionCsv, ImportPermissionByCsv)
