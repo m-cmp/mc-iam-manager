@@ -155,7 +155,7 @@ func App() *buffalo.App {
 
 		toolPath := app.Group(apiPath + "/tool")
 		toolPath.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
-		// toolPath.GET("/keycloak/role/sync", SyncRoleListWithKeycloak)
+		toolPath.GET("/keycloak/role/sync", SyncRoleListWithKeycloak)
 
 		stsPath := app.Group(apiPath + "/poc" + "/sts")
 		stsPath.GET("/securitykey", AuthSecuritykeyProviderHandler)
