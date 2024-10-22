@@ -142,3 +142,18 @@ func DeleteWorkspaceUserRoleMapping(tx *pop.Connection, workspaceId string, user
 	}
 	return nil
 }
+
+func DeleteWorkspaceUserRoleMappingByRoleId(tx *pop.Connection, roleId string) error {
+	var s []models.WorkspaceUserRoleMapping
+	err := tx.Where("role_id = ?", roleId).All(&s)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	err = tx.Destroy(&s)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	return nil
+}
