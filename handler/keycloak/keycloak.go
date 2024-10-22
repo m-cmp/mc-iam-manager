@@ -639,6 +639,24 @@ func KeycloakDeletePolicy(accessToken string, policyId string) error {
 	return nil
 }
 
+func KeycloakGetPolicy(accessToken string, policyId string) (*gocloak.PolicyRepresentation, error) {
+	ctx := context.Background()
+
+	clinetResp, err := KeycloakGetClientInfo(accessToken)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	policies, err := kc.KcClient.GetPolicy(ctx, accessToken, kc.Realm, *clinetResp.ID, policyId)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return policies, nil
+}
+
 func KeycloakGetPolicies(accessToken string) ([]*gocloak.PolicyRepresentation, error) {
 	ctx := context.Background()
 
