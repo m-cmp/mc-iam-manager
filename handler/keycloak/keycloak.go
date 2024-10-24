@@ -320,7 +320,7 @@ func KeycloakCreateMenuResources(accessToken string, resources CreateMenuResourc
 	result := []gocloak.ResourceRepresentation{}
 	createResourceerrors := []error{}
 	for _, resource := range resources {
-		resName := resource.Framework + ":" + resource.ResType + ":" + resource.Id + ":" + resource.DisplayName + ":" + resource.ParentId + ":" + resource.Priority + ":" + resource.IsAction
+		resName := resource.Framework + ":" + resource.ResType + ":" + resource.Id + ":" + resource.DisplayName + ":" + resource.ParentId + ":" + resource.Priority + ":" + resource.MenuNumber + ":" + resource.IsAction
 		resreq := gocloak.ResourceRepresentation{
 			Name: gocloak.StringP(resName),
 		}
