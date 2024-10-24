@@ -182,7 +182,7 @@ type Menu struct {
 	ResType     string `json:"restype"`
 	IsAction    string `json:"isaction"` // maybe need type assertion
 	Priority    string `json:"priority"`
-	MenuNumber  string `json:"menuno"`
+	MenuNumber  string `json:"menunumber"`
 	Menus       []Menu `json:"menus"`
 }
 
@@ -207,6 +207,7 @@ func CreateWebResourceResourcesByMenuYaml(c buffalo.Context) error {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
 
+	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@ menus", menus)
 	resourcereq := keycloak.CreateMenuResourceRequestArr{}
 	for _, menu := range menus.Menus {
 		resource := keycloak.CreateMenuResourceRequest{
