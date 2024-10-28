@@ -44,5 +44,6 @@ type CreateMenuResourceRequest struct {
 	IsAction    string `json:"isaction"`
 	ResType     string `json:"restype"`
 	Priority    string `json:"priority"`
+	MenuNumber  string `json:"menunumber"`
 }
 type CreateMenuResourceRequestArr []CreateMenuResourceRequest

@@ -29,7 +29,7 @@ RUN buffalo build --static -o /bin/app
 ## Stage 2 - Application Deploy
 ##############################################################
 
-FROM debian:buster-slim
+FROM debian:buster-slim AS prod 
 WORKDIR /bin/
 COPY --from=builder /bin/app .
 # ENV GO_ENV=production

@@ -180,8 +180,9 @@ type Menu struct {
 	ParentId    string `json:"parentid"`
 	DisplayName string `json:"displayname"` // for display
 	ResType     string `json:"restype"`
-	IsAction    string `json:"isaction"` // maybe need type assertion..?
+	IsAction    string `json:"isaction"` // maybe need type assertion
 	Priority    string `json:"priority"`
+	MenuNumber  string `json:"menunumber"`
 	Menus       []Menu `json:"menus"`
 }
 
@@ -215,6 +216,7 @@ func CreateWebResourceResourcesByMenuYaml(c buffalo.Context) error {
 			DisplayName: menu.DisplayName,
 			ResType:     menu.ResType,
 			IsAction:    menu.IsAction,
+			MenuNumber:  menu.MenuNumber,
 			Priority:    menu.Priority,
 		}
 		resourcereq = append(resourcereq, resource)
@@ -255,6 +257,24 @@ func GetMenuResources(c buffalo.Context) error {
 
 	params := gocloak.GetResourceParams{
 		Name: gocloak.StringP(framework + ":menu:"),
+	}
+
+	resources, err := keycloak.KeycloakGetResources(accessToken, params)
+	if err != nil {
+		log.Println(err)
+		return c.Render(http.StatusBadRequest, r.JSON(err))
+	}
+
+	return c.Render(http.StatusOK, r.JSON(resources))
+}
+
+func GetMenuResourcesByType(c buffalo.Context) error {
+	accessToken := c.Value("accessToken").(string)
+	framework := c.Param("framework")
+	resourceType := c.Param("resourceType")
+
+	params := gocloak.GetResourceParams{
+		Name: gocloak.StringP(framework + ":" + resourceType + ":"),
 	}
 
 	resources, err := keycloak.KeycloakGetResources(accessToken, params)

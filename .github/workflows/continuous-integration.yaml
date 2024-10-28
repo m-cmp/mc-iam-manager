@@ -1,0 +1,65 @@
+# This workflow performs continuous integration (CI).
+# This workflow will build the container image for amd64 arch. (as a basic build test)
+name: Continuous Integration (CI)
+
+on:
+  # On pull-request event with detailed condition below.
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - ".gitignore"
+      - "LICENSE"
+      - "CODEOWNERS"
+      - "docs/**"
+      - "scripts/**"
+
+jobs:
+  # The job key (i.e., ID) is "build-source-code"
+  build-source-code-api-server:
+    # Job name is "Building source code"
+    # This job runs on Ubuntu-latest (Ubuntu 22.04 LTS checked on 2023-12-13)
+    # See https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+    name: Build source code for mciammanager api
+    strategy:
+      matrix:
+        go-version: ["1.23"]
+        os: [ubuntu-22.04]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{matrix.go-version}}
+
+      - name: Install Buffalo CLI
+        run: go install github.com/gobuffalo/cli/cmd/buffalo@v0.18.14
+
+      - name: Install Go dependencies
+        run: go mod download
+    
+      - name: Build Buffalo application
+        run: buffalo build --static
+
+
+  # The job key is "build-container-image"
+  build-container-image:
+    # Job name is "Build a container image"
+    name: Build a container image for mciammanager
+
+    # This job runs on Ubuntu-latest (Ubuntu 22.04 LTS checked on 2023-12-13)
+    # See https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
+    runs-on: ubuntu-22.04
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Build image
+        env:
+          IMAGE_NAME: ${{ github.event.repository.name }}
+        run: docker image build --file ./Dockerfile.mciammanager --tag $IMAGE_NAME .
