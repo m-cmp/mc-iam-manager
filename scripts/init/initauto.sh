@@ -27,21 +27,33 @@ login(){
 
 initRoleData(){
     IFS=',' read -r -a roles <<< "$PREDEFINED_ROLE"
+    local first_role=true
+
     for role in "${roles[@]}"; do
         json_data=$(jq -n --arg name "$role" --arg description "$role Role" \
         '{name: $name, description: $description}')
         
-        response=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+        local response=$(curl -s -w "\n%{http_code}" --location \
         --header 'Content-Type: application/json' \
         --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
         --data "$json_data" \
         "$MCIAMMANAGER_HOST/api/role")
 
-        if [ "$response" -ne 200 ]; then
+        local http_code=$(echo "$response" | tail -n1)
+        local json_data=$(echo "$response" | head -n -1)
+
+        if [ "$http_code" -ne 200 ]; then
             echo "Failed to create role: $role"
             $force_mode || exit 1
         else
             echo "Role created successfully: $role"
+            
+            # 첫 번째 요청에서만 ROLE_ID에 id 저장
+            if [ "$first_role" = true ]; then
+                ROLE_ID=$(echo "$json_data" | jq -r '.id')
+                echo "First Role ID saved as ROLE_ID: $ROLE_ID"
+                first_role=false
+            fi
         fi
     done
 }
@@ -90,7 +102,112 @@ initMenuPermissionCSV(){
     fi
 }
 
+createWorkspace() {
+    local response=$(curl -s -w "\n%{http_code}" --location \
+    "$MCIAMMANAGER_HOST/api/ws" \
+    --header "Content-Type: application/json" \
+    --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+    --data '{
+      "name": "workspace1",
+      "description": "workspace1 desc"
+    }')
+
+    local http_code=$(echo "$response" | tail -n1)
+    local json_data=$(echo "$response" | head -n -1)
+
+    echo $json_data $http_code
+    
+    # 상태 코드에 따른 처리
+    if [ "$http_code" -ne 200 ]; then
+        echo "Failed to create workspace"
+        $force_mode || exit 1
+    else
+        WORKSPACE_ID=$(echo "$json_data" | jq -r '.id')
+        echo "Workspace created successfully. ID: $WORKSPACE_ID"
+    fi
+}
+
+createProject() {
+    local response=$(curl -s -w "\n%{http_code}" --location \
+    "$MCIAMMANAGER_HOST/api/prj" \
+    --header "Content-Type: application/json" \
+    --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+    --data '{
+      "name": "project1",
+      "description": "project1 desc"
+    }')
+
+    local http_code=$(echo "$response" | tail -n1)
+    local json_data=$(echo "$response" | head -n -1)
+
+    echo $json_data $http_code
+
+    if [ "$http_code" -ne 200 ]; then
+        echo "Failed to create project"
+        $force_mode || exit 1
+    else
+        PROJECT_ID=$(echo "$json_data" | jq -r '.id')
+        echo "Project created successfully. ID: $PROJECT_ID"
+    fi
+}
+
+assignProjectToWorkspace() {
+    local workspace_id="$WORKSPACE_ID"
+    local project_id="$PROJECT_ID"
+
+    json_data=$(jq -n --arg workspaceId "$workspace_id" --arg projectId "$project_id" \
+    '{workspaceId: $workspaceId, projectIds: [$projectId]}')
+
+    local response=$(curl -s -w "\n%{http_code}" --location \
+    --location "$MCIAMMANAGER_HOST/api/wsprj" \
+    --header 'Content-Type: application/json' \
+    --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+    --data "$json_data")
+
+    local http_code=$(echo "$response" | tail -n1)
+    local json_data=$(echo "$response" | head -n -1)
+
+    echo $json_data $http_code
+
+    if [ "$http_code" -ne 200 ]; then
+        echo "Failed to create project"
+        $force_mode || exit 1
+    else
+        echo "Project Worksapce mapping created successfully. " 
+    fi
+}
+
+assignUserRoleToWorkspace() {
+    local workspace_id="$WORKSPACE_ID"
+    local role_id="$ROLE_ID"
+    local user_id="$MCIAMMANAGER_PLATFORMADMIN_ID"
+
+    json_data=$(jq -n --arg workspaceId "$workspace_id" --arg roleId "$role_id" --arg userId "$user_id" \
+    '{workspaceId: $workspaceId, roleId: $roleId, userId: $userId}')
+
+    response=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+    --header 'Content-Type: application/json' \
+    --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+    --data "$json_data" \
+    "$MCIAMMANAGER_HOST/api/wsuserrole")
+
+    if [ "$response" -ne 200 ]; then
+        echo "Failed to assign user role to workspace"
+        $force_mode || exit 1
+    else
+        echo "User role assigned to workspace successfully"
+    fi
+}
+
 login
+
 initRoleData
+
 initMenuDatafromMenuYaml
 initMenuPermissionCSV
+
+createWorkspace
+createProject
+
+assignProjectToWorkspace
+assignUserRoleToWorkspace
