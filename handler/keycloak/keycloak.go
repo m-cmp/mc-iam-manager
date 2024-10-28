@@ -320,7 +320,7 @@ func KeycloakCreateMenuResources(accessToken string, resources CreateMenuResourc
 	result := []gocloak.ResourceRepresentation{}
 	createResourceerrors := []error{}
 	for _, resource := range resources {
-		resName := resource.Framework + ":menu:" + resource.Id + ":" + resource.DisplayName + ":" + resource.ParentMenuId + ":" + resource.Priority + ":" + resource.IsAction
+		resName := resource.Framework + ":" + resource.ResType + ":" + resource.Id + ":" + resource.DisplayName + ":" + resource.ParentId + ":" + resource.Priority + ":" + resource.MenuNumber + ":" + resource.IsAction
 		resreq := gocloak.ResourceRepresentation{
 			Name: gocloak.StringP(resName),
 		}
@@ -330,7 +330,7 @@ func KeycloakCreateMenuResources(accessToken string, resources CreateMenuResourc
 			createResourceerrors = append(createResourceerrors, err)
 			continue
 		} else {
-			_, err := KeycloakCreatePermission(accessToken, resource.Framework, resource.Id, resource.Id, []string{resName}, []string{})
+			_, err := KeycloakCreatePermission(accessToken, resource.Framework, resource.Id+resource.ResType, resource.Id, []string{resName}, []string{})
 			if err != nil {
 				log.Println(err)
 				createResourceerrors = append(createResourceerrors, err)
@@ -348,12 +348,14 @@ func KeycloakCreateMenuResources(accessToken string, resources CreateMenuResourc
 }
 
 func KeycloakGetResources(accessToken string, params gocloak.GetResourceParams) ([]*gocloak.ResourceRepresentation, error) {
+
 	ctx := context.Background()
 	lastNum := 0
 	var resources []*gocloak.ResourceRepresentation
 	for {
 		params.First = gocloak.IntP(lastNum)
 		resourcesFetch, err := kc.KcClient.GetResourcesClient(ctx, accessToken, kc.Realm, params)
+
 		if err != nil {
 			log.Println(err)
 			return nil, err
@@ -442,6 +444,28 @@ func KeycloakGetRole(accessToken string, name string) (*gocloak.Role, error) {
 	}
 
 	return res, nil
+}
+
+func KeycloakGetRoles(accessToken string) ([]*gocloak.Role, error) {
+	ctx := context.Background()
+	reqParam := gocloak.GetRoleParams{}
+
+	lastNum := 0
+	reqParam.First = gocloak.IntP(lastNum)
+	var roles []*gocloak.Role
+	for {
+		role, err := kc.KcClient.GetRealmRoles(ctx, accessToken, kc.Realm, reqParam)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+		roles = append(roles, role...)
+		if len(role) < 100 {
+			break
+		}
+		lastNum = lastNum + len(role)
+	}
+	return roles, nil
 }
 
 func keycloakGetUserRoles(accessToken string, userUUID string) ([]*gocloak.Role, error) {
@@ -615,6 +639,24 @@ func KeycloakDeletePolicy(accessToken string, policyId string) error {
 	return nil
 }
 
+func KeycloakGetPolicy(accessToken string, policyId string) (*gocloak.PolicyRepresentation, error) {
+	ctx := context.Background()
+
+	clinetResp, err := KeycloakGetClientInfo(accessToken)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	policies, err := kc.KcClient.GetPolicy(ctx, accessToken, kc.Realm, *clinetResp.ID, policyId)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return policies, nil
+}
+
 func KeycloakGetPolicies(accessToken string) ([]*gocloak.PolicyRepresentation, error) {
 	ctx := context.Background()
 
@@ -783,6 +825,38 @@ func KeycloakGetPermissionDetail(accessToken string, id string) (*permissionDeta
 	result.Policies = policyRes
 
 	return result, nil
+}
+
+func KeycloakGetDependentPermissions(accessToken string, policyId string) ([]*gocloak.PermissionRepresentation, error) {
+	ctx := context.Background()
+	//realm-management manage-clients role 필요
+	clinetResp, err := KeycloakGetClientInfo(accessToken)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	dependentPermissions, err := kc.KcClient.GetDependentPermissions(ctx, accessToken, kc.Realm, *clinetResp.ID, policyId)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return dependentPermissions, nil
+}
+
+func KeycloakGetAuthorizationPolicyAssociatedPoliciesByPermissionId(accessToken string, permissionId string) ([]*gocloak.PolicyRepresentation, error) {
+	ctx := context.Background()
+	//realm-management manage-clients role 필요
+	clinetResp, err := KeycloakGetClientInfo(accessToken)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	policyRes, err := kc.KcClient.GetAuthorizationPolicyAssociatedPolicies(ctx, accessToken, kc.Realm, *clinetResp.ID, permissionId)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return policyRes, nil
 }
 
 func KeycloakUpdatePermission(accessToken string, id string, name string, desc string, permissionPolicies []string) error {
@@ -958,6 +1032,7 @@ func isEqualUri(pattern string, str string) bool {
 }
 
 func KeycloakGetAvailableMenus(accessToken string, framework string) (*[]gocloak.RequestingPartyPermission, error) {
+
 	ctx := context.Background()
 
 	params := gocloak.GetResourceParams{

@@ -37,6 +37,7 @@ func App() *buffalo.App {
 		app.Use(paramlogger.ParameterLogger)
 		app.Use(contenttype.Set("application/json"))
 		app.Use(popmw.Transaction(models.DB))
+
 		app.Use(middleware.IsAuthMiddleware)
 		app.Use(middleware.SetContextMiddleware)
 
@@ -72,9 +73,9 @@ func App() *buffalo.App {
 		ticketPath.GET("/framework/{framework}/menus", GetAllAvailableMenus)
 
 		userPath := app.Group(apiPath + "/user")
-		app.Middleware.Skip(middleware.IsAuthMiddleware, CreateUser)
-		app.Middleware.Skip(middleware.SetContextMiddleware, CreateUser)
-		app.Middleware.Skip(middleware.IsTicketValidMiddleware, CreateUser)
+		// userPath.Middleware.Skip(middleware.IsAuthMiddleware, CreateUser)
+		// userPath.Middleware.Skip(middleware.SetContextMiddleware, CreateUser)
+		// userPath.Middleware.Skip(middleware.IsTicketValidMiddleware, CreateUser)
 		userPath.POST("/", CreateUser)
 		userPath.POST("/active", ActiveUser)
 		userPath.POST("/deactive", DeactiveUser)
@@ -124,9 +125,10 @@ func App() *buffalo.App {
 
 		resourcePath := app.Group(apiPath + "/resource")
 		resourcePath.POST("/", CreateResources)
-		resourcePath.Middleware.Skip(middleware.IsTicketValidMiddleware, CreateApiResourcesByApiYaml, CreateMenuResourcesByMenuYaml)
+		resourcePath.Middleware.Skip(middleware.IsTicketValidMiddleware, CreateApiResourcesByApiYaml, CreateWebResourceResourcesByMenuYaml)
+		// resourcePath.POST("/file", CreateApiResourcesByApiYaml)
 		resourcePath.POST("/file/framework/{framework}", CreateApiResourcesByApiYaml)
-		resourcePath.POST("/file/framework/{framework}/menu", CreateMenuResourcesByMenuYaml)
+		resourcePath.POST("/file/framework/{framework}/menu", CreateWebResourceResourcesByMenuYaml)
 		// resourcePath.POST("/file/framework/{framework}", CreateResourcesBySwagger) // deprecated : use CreateResourcesByApiYaml
 		resourcePath.GET("/", GetResources)
 		resourcePath.GET("/menus", GetMenuResources)
@@ -138,10 +140,13 @@ func App() *buffalo.App {
 		permissionPath := app.Group(apiPath + "/permission")
 		// permissionPath.POST("/", CreatePermission)  // deprecated : permission is resource dependent
 		permissionPath.GET("/", GetPermissions)
+		permissionPath.GET("/policyid/{policyId}", GetdependentPermissionsByPolicyId)
 		permissionPath.GET("/framewrok/{framework}/operationid/{operationid}", GetPermission)
 		// permissionPath.GET("/id/{permissionid}", GetPermission) // deprecated : permission is resource dependent
 		// permissionPath.PUT("/id/{permissionid}", UpdatePermission)// deprecated : permission is resource dependent
-		permissionPath.PUT("/framewrok/{framework}/operationid/{operationid}", UpdateResourcePermissionByOperationId) // menu could use thie operation by menu Id
+		permissionPath.PUT("/framewrok/{framework}/operationid/{operationid}", UpdateResourcePermissionByOperationId)                  // menu could use thie operation by menu Id
+		permissionPath.PUT("/framewrok/{framework}/operationid/{operationid}/append", AppendResourcePermissionPolicesByOperationId)    // menu could use thie operation by menu Id
+		permissionPath.DELETE("/framewrok/{framework}/operationid/{operationid}/remove", DeleteResourcePermissionPolicesByOperationId) // menu could use thie operation by menu Id
 		// permissionPath.PUT("/framewrok/{framework}/menu/{menu}", UpdateResourcePermissionByMenu)
 		// permissionPath.DELETE("/id/{permissionid}", DeletePermission) // deprecated : permission is resource dependent, When a resource is deleted, the permissions are also deleted.
 		permissionPath.Middleware.Skip(middleware.IsTicketValidMiddleware, GetCurrentPermissionCsv, ImportPermissionByCsv)
@@ -150,6 +155,7 @@ func App() *buffalo.App {
 
 		toolPath := app.Group(apiPath + "/tool")
 		toolPath.GET("/mcinfra/sync", SyncProjectListWithMcInfra)
+		toolPath.GET("/keycloak/role/sync", SyncRoleListWithKeycloak)
 
 		stsPath := app.Group(apiPath + "/poc" + "/sts")
 		stsPath.GET("/securitykey", AuthSecuritykeyProviderHandler)

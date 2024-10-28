@@ -2,7 +2,9 @@ package iamtokenvalidator
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -53,6 +55,28 @@ func GetPubkeyIamManager(certUrl string) error {
 	var err error
 	ctx := context.Background()
 	jwkSet, err = jwk.Fetch(ctx, certUrl)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetPubkeyIamManager는 제공된 MC-IAM-MANAGER url을 통해 "/api/auth/certs" 의 인증서를 받아 공용키를 준비합니다.
+// 정상시 error 를 반환하지 않습니다.
+// jwkSet fetch 오류 발생시 에러를 반환합니다. (panic, fatal 권장) Tls 오류시 사용합니다. 개발환경에서만 권장됩니다.
+func GetPubkeyIamManagerTlsSkipped(certUrl string) error {
+	var err error
+	ctx := context.Background()
+
+	// Create a custom HTTP client that skips TLS verification
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true, // Skip verification
+		},
+	}
+	client := &http.Client{Transport: transport}
+
+	jwkSet, err = jwk.Fetch(ctx, certUrl, jwk.WithHTTPClient(client))
 	if err != nil {
 		return err
 	}
@@ -141,11 +165,10 @@ func GetTokenClaimsByIamManagerClaims(tokenString string) (*IamManagerClaims, er
 	if err != nil {
 		return nil, fmt.Errorf("token is invalid : %s", err.Error())
 	}
-	if claims, ok := token.Claims.(*IamManagerClaims); ok && token.Valid {
+	if claims, ok := token.Claims.(*IamManagerClaims); ok {
 		return claims, nil
-	} else {
-		return nil, fmt.Errorf("token is invalid")
 	}
+	return nil, fmt.Errorf("token is not parse with IamManagerClaims")
 }
 
 // GetTokenClaimsByCustomClaims는 GetPubkeyIamManager에서 설정된 jwkSet을 바탕으로
