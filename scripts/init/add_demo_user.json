@@ -1,0 +1,34 @@
+[
+    {
+        "id": "eric",
+        "password": "changeMe!",
+        "firstName": "Eric",
+        "lastName": "Schmidt",
+        "email": "eric@mcmpemail.com",
+        "description": "ericDesc"
+    },
+    {
+        "id": "elon",
+        "password": "changeMe!",
+        "firstName": "AlElonl",
+        "lastName": "Musk",
+        "email": "elon@mcmpemail.com",
+        "description": "elonDesc"
+    },
+    {
+        "id": "jeffrey",
+        "password": "changeMe!",
+        "firstName": "Jeffrey",
+        "lastName": "Preston",
+        "email": "jeffrey@mcmpemail.com",
+        "description": "jeffreyDesc"
+    },
+    {
+        "id": "gates",
+        "password": "changeMe!",
+        "firstName": "Bill",
+        "lastName": "Gates",
+        "email": "gates@mcmpemail.com",
+        "description": "gatesDesc"
+    }
+]
