@@ -10,7 +10,7 @@
     {
         "id": "elon",
         "password": "changeMe!",
-        "firstName": "AlElonl",
+        "firstName": "Elon",
         "lastName": "Musk",
         "email": "elon@mcmpemail.com",
         "description": "elonDesc"
@@ -19,7 +19,7 @@
         "id": "jeffrey",
         "password": "changeMe!",
         "firstName": "Jeffrey",
-        "lastName": "Preston",
+        "lastName": "PrestonBezos",
         "email": "jeffrey@mcmpemail.com",
         "description": "jeffreyDesc"
     },
