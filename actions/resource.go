@@ -207,7 +207,6 @@ func CreateWebResourceResourcesByMenuYaml(c buffalo.Context) error {
 		return c.Render(http.StatusBadRequest, r.JSON(map[string]string{"error": err.Error()}))
 	}
 
-	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@ menus", menus)
 	resourcereq := keycloak.CreateMenuResourceRequestArr{}
 	for _, menu := range menus.Menus {
 		resource := keycloak.CreateMenuResourceRequest{
