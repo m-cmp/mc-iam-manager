@@ -37,11 +37,13 @@ type CreateResourceRequest struct {
 }
 type CreateResourceRequestArr []CreateResourceRequest
 type CreateMenuResourceRequest struct {
-	Framework    string `json:"framework"`
-	Id           string `json:"id"`
-	ParentMenuId string `json:"parentmenuId"`
-	DisplayName  string `json:"displaymame"`
-	IsAction     string `json:"isaction"`
-	Priority     string `json:"priority"`
+	Framework   string `json:"framework"`
+	Id          string `json:"id"`
+	ParentId    string `json:"parentid"`
+	DisplayName string `json:"displaymame"`
+	IsAction    string `json:"isaction"`
+	ResType     string `json:"restype"`
+	Priority    string `json:"priority"`
+	MenuNumber  string `json:"menunumber"`
 }
 type CreateMenuResourceRequestArr []CreateMenuResourceRequest

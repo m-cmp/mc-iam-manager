@@ -8,5 +8,3 @@ create_table("workspace_user_role_mappings") {
 
 add_foreign_key("workspace_user_role_mappings", "workspace_id", {"workspaces": ["id"]}, {})
 add_foreign_key("workspace_user_role_mappings", "role_id", {"roles": ["id"]}, {})
-
-sql("ALTER TABLE workspace_user_role_mappings ADD CONSTRAINT unique_workspace_user_role_mappings_row UNIQUE (workspace_id, user_id);")
