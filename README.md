@@ -126,6 +126,65 @@ This section describes how to use scripts that made the process simple.
     
     This script automatically performs all procedures based on the user defined in the environment variables, but it cannot define detailed role-specific menus, and it is automatically imported to the version listed in GitHub.
     
+    The CSV files uploaded to GitHub are as follows. You can modify and reflect the corresponding permission file set (CSV) directly through init.sh .
+    
+    ```bash
+    framework,resource,adminPolicy,billadminPolicy,billviewerPolicy,operatorPolicy,viewerPolicy
+    mc-web-console,settingsmenu,TRUE,,,TRUE,TRUE
+    mc-web-console,accountnaccessmenu,TRUE,,,,
+    mc-web-console,organizationsmenu,TRUE,,,,
+    mc-web-console,companyinfomenu,TRUE,,,,
+    mc-web-console,usersmenu,TRUE,,,,
+    mc-web-console,approvalsmenu,TRUE,,,,
+    mc-web-console,accesscontrolsmenu,TRUE,,,,
+    mc-web-console,environmentmenu,TRUE,,,TRUE,TRUE
+    mc-web-console,cloudspsmenu,TRUE,,,TRUE,
+    mc-web-console,cloudoverviewmenu,TRUE,,,TRUE,
+    mc-web-console,regionsmenu,TRUE,,,TRUE,
+    mc-web-console,connectionsmenu,TRUE,,,,
+    mc-web-console,clouddriversmenu,TRUE,,,,
+    mc-web-console,credentialsmenu,TRUE,,,,
+    mc-web-console,cloudresourcesmenu,TRUE,,,TRUE,
+    mc-web-console,specsmenu,TRUE,,,TRUE,
+    mc-web-console,imagesmenu,TRUE,,,TRUE,
+    mc-web-console,networksmenu,TRUE,,,TRUE,
+    mc-web-console,securitysmenu,TRUE,,,TRUE,
+    mc-web-console,myimagesmenu,TRUE,,,TRUE,
+    mc-web-console,disksmenu,TRUE,,,TRUE,
+    mc-web-console,sshkeysmenu,TRUE,,,TRUE,
+    mc-web-console,cloudrescatalogsmenu,TRUE,,,TRUE,TRUE
+    mc-web-console,workspacessettingsmenu,TRUE,,,,
+    mc-web-console,allocatedprojectsmenu,TRUE,,,,
+    mc-web-console,sharemembersmenu,TRUE,,,,
+    mc-web-console,allocateroleswsmenu,TRUE,,,,
+    mc-web-console,operationsmenu,TRUE,TRUE,TRUE,TRUE,TRUE
+    mc-web-console,managemenu,TRUE,TRUE,,TRUE,
+    mc-web-console,workspacesmenu,TRUE,,,,
+    mc-web-console,projectsmenu,TRUE,,,,
+    mc-web-console,membersmenu,TRUE,,,,
+    mc-web-console,rolesmenu,TRUE,,,,
+    mc-web-console,projectboardmenu,TRUE,,,,
+    mc-web-console,workloadsmenu,TRUE,TRUE,,TRUE,
+    mc-web-console,mciworkloadsmenu,TRUE,TRUE,,TRUE,
+    mc-web-console,pmkworkloadsmenu,TRUE,,,TRUE,
+    mc-web-console,workflowsmenu,TRUE,,,TRUE,
+    mc-web-console,swcatalogsmenu,TRUE,,,TRUE,
+    mc-web-console,datamigrationsmenu,TRUE,,,TRUE,
+    mc-web-console,analyticsmenu,TRUE,TRUE,TRUE,TRUE,TRUE
+    mc-web-console,monitoringsmenu,TRUE,,,TRUE,TRUE
+    mc-web-console,mcismonitoringmenu,TRUE,,,TRUE,TRUE
+    mc-web-console,3rdpartymonitoringmenu,TRUE,,,TRUE,
+    mc-web-console,monitoringconfigmenu,TRUE,,,TRUE,
+    mc-web-console,eventsntracesmenu,TRUE,,,TRUE,TRUE
+    mc-web-console,alarmshistorymenu,TRUE,,,TRUE,TRUE
+    mc-web-console,thresholdconfigmenu,TRUE,,,TRUE,
+    mc-web-console,logmanagemenu,TRUE,,,TRUE,TRUE
+    mc-web-console,logconfigmenu,TRUE,,,TRUE,
+    mc-web-console,eventtracemenu,TRUE,,,TRUE,
+    mc-web-console,costanalysismenu,TRUE,TRUE,TRUE,,
+    
+    ```
+    
     If you want more detailed settings, we recommend init.sh .
     
 - add_demo_user.sh
