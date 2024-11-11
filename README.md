@@ -141,47 +141,7 @@ This section describes how to use scripts that made the process simple.
     mc-web-console,cloudspsmenu,TRUE,,,TRUE,
     mc-web-console,cloudoverviewmenu,TRUE,,,TRUE,
     mc-web-console,regionsmenu,TRUE,,,TRUE,
-    mc-web-console,connectionsmenu,TRUE,,,,
-    mc-web-console,clouddriversmenu,TRUE,,,,
-    mc-web-console,credentialsmenu,TRUE,,,,
-    mc-web-console,cloudresourcesmenu,TRUE,,,TRUE,
-    mc-web-console,specsmenu,TRUE,,,TRUE,
-    mc-web-console,imagesmenu,TRUE,,,TRUE,
-    mc-web-console,networksmenu,TRUE,,,TRUE,
-    mc-web-console,securitysmenu,TRUE,,,TRUE,
-    mc-web-console,myimagesmenu,TRUE,,,TRUE,
-    mc-web-console,disksmenu,TRUE,,,TRUE,
-    mc-web-console,sshkeysmenu,TRUE,,,TRUE,
-    mc-web-console,cloudrescatalogsmenu,TRUE,,,TRUE,TRUE
-    mc-web-console,workspacessettingsmenu,TRUE,,,,
-    mc-web-console,allocatedprojectsmenu,TRUE,,,,
-    mc-web-console,sharemembersmenu,TRUE,,,,
-    mc-web-console,allocateroleswsmenu,TRUE,,,,
-    mc-web-console,operationsmenu,TRUE,TRUE,TRUE,TRUE,TRUE
-    mc-web-console,managemenu,TRUE,TRUE,,TRUE,
-    mc-web-console,workspacesmenu,TRUE,,,,
-    mc-web-console,projectsmenu,TRUE,,,,
-    mc-web-console,membersmenu,TRUE,,,,
-    mc-web-console,rolesmenu,TRUE,,,,
-    mc-web-console,projectboardmenu,TRUE,,,,
-    mc-web-console,workloadsmenu,TRUE,TRUE,,TRUE,
-    mc-web-console,mciworkloadsmenu,TRUE,TRUE,,TRUE,
-    mc-web-console,pmkworkloadsmenu,TRUE,,,TRUE,
-    mc-web-console,workflowsmenu,TRUE,,,TRUE,
-    mc-web-console,swcatalogsmenu,TRUE,,,TRUE,
-    mc-web-console,datamigrationsmenu,TRUE,,,TRUE,
-    mc-web-console,analyticsmenu,TRUE,TRUE,TRUE,TRUE,TRUE
-    mc-web-console,monitoringsmenu,TRUE,,,TRUE,TRUE
-    mc-web-console,mcismonitoringmenu,TRUE,,,TRUE,TRUE
-    mc-web-console,3rdpartymonitoringmenu,TRUE,,,TRUE,
-    mc-web-console,monitoringconfigmenu,TRUE,,,TRUE,
-    mc-web-console,eventsntracesmenu,TRUE,,,TRUE,TRUE
-    mc-web-console,alarmshistorymenu,TRUE,,,TRUE,TRUE
-    mc-web-console,thresholdconfigmenu,TRUE,,,TRUE,
-    mc-web-console,logmanagemenu,TRUE,,,TRUE,TRUE
-    mc-web-console,logconfigmenu,TRUE,,,TRUE,
-    mc-web-console,eventtracemenu,TRUE,,,TRUE,
-    mc-web-console,costanalysismenu,TRUE,TRUE,TRUE,,
+    ....
     
     ```
     
