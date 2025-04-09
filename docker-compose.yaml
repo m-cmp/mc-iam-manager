@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  postgres:
+    build:
+      context: ./dockerfiles/postgres
+      dockerfile: dockerfile.postgres
+    environment:
+      POSTGRES_USER: ${IAM_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${IAM_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${IAM_POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - mc-iam-network
+
+  keycloak:
+    build:
+      context: ./dockerfiles/keycloak
+      dockerfile: dockerfile.keycloak
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${IAM_POSTGRES_USER}
+      KC_DB_PASSWORD: ${IAM_POSTGRES_PASSWORD}
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+    networks:
+      - mc-iam-network
+
+  nginx:
+    build:
+      context: ./dockerfiles/nginx
+      dockerfile: dockerfile.nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - mc-iam-manager
+    networks:
+      - mc-iam-network
+
+  mc-iam-manager:
+    build:
+      context: .
+      dockerfile: dockerfiles/mc-iam-manager/dockerfile.mc-iam-manager
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${IAM_POSTGRES_USER}
+      DB_PASSWORD: ${IAM_POSTGRES_PASSWORD}
+      DB_NAME: ${IAM_POSTGRES_DB}
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+    ports:
+      - "8082:8080"
+    depends_on:
+      - postgres
+      - keycloak
+    networks:
+      - mc-iam-network
+
+networks:
+  mc-iam-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

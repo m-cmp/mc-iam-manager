@@ -1,7 +1,0 @@
-create_table("roles") {
-	t.Column("id", "uuid", {primary: true})
-	t.Column("policy", "text",{})
-	t.Column("name", "text", {})
-	t.Column("description", "text", {null: true})
-	t.Timestamps()
-}

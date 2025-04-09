@@ -1,0 +1,32 @@
+@startuml Menu Management API
+
+skinparam componentStyle uml2
+skinparam component {
+    BackgroundColor LightBlue
+    BorderColor Black
+    ArrowColor Black
+}
+
+package "Menu Management" {
+    [Echo Server] as echo
+    [MenuHandler] as handler
+    [MenuService] as service
+    [MenuRepository] as repo
+    [Database] as db
+
+    note right of handler
+        GET /menus
+        GET /menus/:id
+        POST /menus
+        PUT /menus/:id
+        DELETE /menus/:id
+        GET /menus/workspace/:workspaceId
+    end note
+}
+
+echo --> handler : Menu Routes
+handler --> service : Uses
+service --> repo : Uses
+repo --> db : Persists
+
+@enduml 

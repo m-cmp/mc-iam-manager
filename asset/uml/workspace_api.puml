@@ -1,0 +1,34 @@
+@startuml Workspace Management API
+
+skinparam componentStyle uml2
+skinparam component {
+    BackgroundColor LightBlue
+    BorderColor Black
+    ArrowColor Black
+}
+
+package "Workspace Management" {
+    [Echo Server] as echo
+    [WorkspaceHandler] as handler
+    [WorkspaceService] as service
+    [WorkspaceRepository] as repo
+    [Database] as db
+
+    note right of handler
+        GET /workspaces
+        GET /workspaces/:id
+        POST /workspaces
+        PUT /workspaces/:id
+        DELETE /workspaces/:id
+        GET /workspaces/:id/users
+        POST /workspaces/:id/users
+        DELETE /workspaces/:id/users/:userId
+    end note
+}
+
+echo --> handler : Workspace Routes
+handler --> service : Uses
+service --> repo : Uses
+repo --> db : Persists
+
+@enduml 
