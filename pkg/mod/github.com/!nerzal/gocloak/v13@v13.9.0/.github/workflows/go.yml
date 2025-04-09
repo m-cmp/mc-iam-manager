@@ -1,0 +1,56 @@
+name: Tests
+on:
+  - push
+  - pull_request
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Go environment
+        uses: actions/setup-go@v3.0.0
+        with:
+          go-version: 1.19
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3.1.0
+      - name: WriteGoList
+        run: go list -json -m all > go.list
+      - name: nancy
+        uses: sonatype-nexus-community/nancy-github-action@main
+      - name: Run Keycloak
+        run: |
+          make start-keycloak
+          sleep 15
+      - name: Unit Tests
+        run: |
+          go test -failfast -race -cover -coverprofile=coverage.txt -covermode=atomic -p 100 -cpu 1,2 -bench . -benchmem > test.log
+          cat test.log
+      - name: Failed Logs
+        if: failure()
+        run: |
+          cat test.log
+          docker ps
+          docker logs keycloak
+      - name: CodeCov
+        uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+
+      # Publish benchmarks for the main branch only
+      - name: Store Benchmark Result
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: rhysd/github-action-benchmark@v1
+        with:
+          # What benchmark tool the output.txt came from
+          tool: "go"
+          # Where the output from the benchmark tool is stored
+          output-file-path: test.log
+          # Push and deploy GitHub pages branch automatically
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+
+      # Updating go report card for main branch only
+      - name: GoReportCard
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: curl --fail --request POST "https://goreportcard.com/checks" --data "repo=github.com/Nerzal/gocloak"
