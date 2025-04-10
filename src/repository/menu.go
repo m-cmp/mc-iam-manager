@@ -1,135 +1,150 @@
 package repository
 
 import (
-	"database/sql"
+	"errors"
+	"fmt"
+	"os"
 
 	"github.com/m-cmp/mc-iam-manager/model"
+	"gopkg.in/yaml.v3" // Use v3 as intended
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause" // For Upsert/OnConflict
 )
 
+var (
+	ErrMenuNotFound = errors.New("menu not found")
+	// ErrMenuAlreadyExists는 GORM의 기본 에러 처리(예: 제약 조건 위반)로 대체될 수 있음
+)
+
+// MenuRepository 데이터베이스에서 메뉴 데이터를 관리
 type MenuRepository struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
-func NewMenuRepository(db *sql.DB) *MenuRepository {
-	return &MenuRepository{
-		db: db,
-	}
+// NewMenuRepository 새 MenuRepository 인스턴스 생성
+func NewMenuRepository(db *gorm.DB) *MenuRepository {
+	return &MenuRepository{db: db}
 }
 
-// GetMenus 모든 메뉴 조회
+// GetMenus 데이터베이스에서 모든 메뉴 조회
 func (r *MenuRepository) GetMenus() ([]model.Menu, error) {
-	query := `
-		SELECT id, parent_id, display_name, res_type, is_action, priority, menu_number 
-		FROM menus 
-		ORDER BY priority, menu_number`
-
-	rows, err := r.db.Query(query)
-	if err != nil {
+	var menus []model.Menu
+	// GORM은 기본적으로 UpdatedAt DESC 정렬을 시도할 수 있으므로 명시적 정렬 추가
+	if err := r.db.Order("priority asc, menu_number asc").Find(&menus).Error; err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	var menus []model.Menu
-	for rows.Next() {
-		var menu model.Menu
-		var parentID sql.NullString
-
-		err := rows.Scan(
-			&menu.ID,
-			&parentID,
-			&menu.DisplayName,
-			&menu.ResType,
-			&menu.IsAction,
-			&menu.Priority,
-			&menu.MenuNumber,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		if parentID.Valid {
-			menu.ParentID = parentID.String
-		}
-
-		menus = append(menus, menu)
-	}
-
 	return menus, nil
 }
 
-// GetByID 메뉴 ID로 조회
+// GetByID 메뉴 ID로 데이터베이스에서 조회
 func (r *MenuRepository) GetByID(id string) (*model.Menu, error) {
-	query := `
-		SELECT id, parent_id, display_name, res_type, is_action, priority, menu_number 
-		FROM menus 
-		WHERE id = $1`
-
 	var menu model.Menu
-	var parentID sql.NullString
-
-	err := r.db.QueryRow(query, id).Scan(
-		&menu.ID,
-		&parentID,
-		&menu.DisplayName,
-		&menu.ResType,
-		&menu.IsAction,
-		&menu.Priority,
-		&menu.MenuNumber,
-	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
+	if err := r.db.Where("id = ?", id).First(&menu).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrMenuNotFound // 사용자 정의 에러 반환 또는 nil, nil 반환
+		}
 		return nil, err
 	}
-
-	if parentID.Valid {
-		menu.ParentID = parentID.String
-	}
-
 	return &menu, nil
 }
 
-// Create 새 메뉴 생성
+// Create 새 메뉴를 데이터베이스에 생성
 func (r *MenuRepository) Create(menu *model.Menu) error {
-	query := `
-		INSERT INTO menus (id, parent_id, display_name, res_type, is_action, priority, menu_number)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`
-
-	_, err := r.db.Exec(query,
-		menu.ID,
-		menu.ParentID,
-		menu.DisplayName,
-		menu.ResType,
-		menu.IsAction,
-		menu.Priority,
-		menu.MenuNumber,
-	)
-	return err
+	// GORM의 Create는 기본 키 충돌 시 에러 반환
+	if err := r.db.Create(menu).Error; err != nil {
+		// TODO: GORM/DB 드라이버의 특정 에러를 확인하여 ErrMenuAlreadyExists 반환 고려
+		return err
+	}
+	return nil
 }
 
-// Update 메뉴 정보 업데이트
-func (r *MenuRepository) Update(menu *model.Menu) error {
-	query := `
-		UPDATE menus 
-		SET parent_id = $2, display_name = $3, res_type = $4, is_action = $5, priority = $6, menu_number = $7
-		WHERE id = $1`
+// Update 기존 메뉴를 데이터베이스에서 부분 업데이트
+func (r *MenuRepository) Update(id string, updates map[string]interface{}) error {
+	if len(updates) == 0 {
+		return errors.New("no fields provided for update") // 업데이트할 필드가 없음
+	}
 
-	_, err := r.db.Exec(query,
-		menu.ID,
-		menu.ParentID,
-		menu.DisplayName,
-		menu.ResType,
-		menu.IsAction,
-		menu.Priority,
-		menu.MenuNumber,
-	)
-	return err
+	// GORM의 Updates 메서드는 map[string]interface{}를 사용하여 지정된 필드만 업데이트
+	result := r.db.Model(&model.Menu{}).Where("id = ?", id).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrMenuNotFound // 업데이트 대상 레코드가 없음
+	}
+	return nil
 }
 
-// Delete 메뉴 삭제
+// Delete 메뉴를 데이터베이스에서 삭제
 func (r *MenuRepository) Delete(id string) error {
-	query := `DELETE FROM menus WHERE id = $1`
-	_, err := r.db.Exec(query, id)
-	return err
+	// GORM의 Delete는 삭제된 행 수를 반환
+	result := r.db.Where("id = ?", id).Delete(&model.Menu{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrMenuNotFound
+	}
+	return nil
+}
+
+// LoadMenusFromYAML YAML 파일에서 메뉴 데이터를 로드 (내부 헬퍼)
+func (r *MenuRepository) LoadMenusFromYAML(filePath string) ([]model.Menu, error) {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		// 파일 없으면 빈 목록 반환 (에러 아님)
+		return []model.Menu{}, nil
+	}
+
+	yamlFile, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading menu file %s: %w", filePath, err)
+	}
+
+	var menuData struct { // 임시 구조체 사용 (model.MenuData 주석 처리됨)
+		Menus []model.Menu `yaml:"menus"`
+	}
+	err = yaml.Unmarshal(yamlFile, &menuData)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling menu file %s: %w", filePath, err)
+	}
+	return menuData.Menus, nil
+}
+
+// UpsertMenus 메뉴 목록을 DB에 Upsert (있으면 업데이트, 없으면 생성)
+// 외부에서 메뉴 목록을 받아 처리. 트랜잭션 내에서 실행하고 제약 조건 검사를 지연시킴.
+func (r *MenuRepository) UpsertMenus(menus []model.Menu) error {
+	if len(menus) == 0 {
+		return nil
+	}
+
+	// 트랜잭션 시작
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("failed to begin transaction: %w", tx.Error)
+	}
+
+	// 제약 조건 검사 지연 설정 (트랜잭션 내에서만 유효)
+	// PostgreSQL 기준. 다른 DB는 구문이 다를 수 있음.
+	if err := tx.Exec("SET CONSTRAINTS ALL DEFERRED").Error; err != nil {
+		tx.Rollback() // 롤백 시도
+		return fmt.Errorf("failed to set constraints deferred: %w", err)
+	}
+
+	// 모든 컬럼에 대해 충돌 시 업데이트 (ID 기준)
+	if err := tx.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"parent_id", "display_name", "res_type", "is_action", "priority", "menu_number"}),
+	}).Create(&menus).Error; err != nil {
+		tx.Rollback() // 롤백
+		return fmt.Errorf("failed to upsert menus in transaction: %w", err)
+	}
+
+	// 트랜잭션 커밋 (이 시점에 지연된 제약 조건 검사 발생)
+	if err := tx.Commit().Error; err != nil {
+		// 커밋 실패 시 롤백은 자동으로 처리될 수 있으나 명시적 롤백 시도도 가능
+		// tx.Rollback()
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }

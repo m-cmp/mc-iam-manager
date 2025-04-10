@@ -1,0 +1,417 @@
+menus:
+
+  - id: settings
+    parentid: home
+    displayname: Settings
+    restype: menu
+    isaction: false
+    priority: 4
+    menunumber: 1200
+
+  - id: accountnaccess
+    parentid: settings
+    displayname: Account & Access
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1201
+
+  - id: organizations
+    parentid: accountnaccess
+    displayname: Organizations
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1205
+
+  - id: companyinfo
+    parentid: organizations
+    displayname: Company Info
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1212
+
+  - id: users
+    parentid: organizations
+    displayname: Users
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1220
+
+  - id: approvals
+    parentid: organizations
+    displayname: Approvals
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1230
+
+  - id: accesscontrols
+    parentid: organizations
+    displayname: Access Controls
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1240
+
+  - id: environment
+    parentid: settings
+    displayname: Environment
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1301
+
+  - id: cloudsps
+    parentid: environment
+    displayname: Cloud SPs
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1305
+
+  - id: cloudoverview
+    parentid: cloudsps
+    displayname: Cloud Overview
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1310
+
+  - id: regions
+    parentid: cloudsps
+    displayname: Regions
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1320
+
+  - id: connections
+    parentid: cloudsps
+    displayname: Connections
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1330
+
+  - id: clouddrivers
+    parentid: cloudsps
+    displayname: Cloud Drivers
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1340
+
+  - id: credentials
+    parentid: cloudsps
+    displayname: Credentials
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1350
+
+  - id: cloudresources
+    parentid: environment
+    displayname: Cloud Resources
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1405
+
+  - id: specs
+    parentid: cloudresources
+    displayname: Specs
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1410
+
+  - id: images
+    parentid: cloudresources
+    displayname: Images
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1420
+
+  - id: networks
+    parentid: cloudresources
+    displayname: Networks
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1510
+
+  - id: securitys
+    parentid: cloudresources
+    displayname: Securitys
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1520
+
+  - id: myimages
+    parentid: cloudresources
+    displayname: MyImages
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1530
+
+  - id: disks
+    parentid: cloudresources
+    displayname: Disks
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1540
+
+  - id: sshkeys
+    parentid: cloudresources
+    displayname: SSH Keys
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1550
+
+  - id: cloudrescatalogs
+    parentid: environment
+    displayname: Cloud Res Catalogs
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1560
+
+  - id: workspacessettings
+    parentid: environment
+    displayname: Workspaces Settings
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1660
+
+  - id: allocatedprojects
+    parentid: workspacessettings
+    displayname: Allocated Projects
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1665
+
+  - id: sharemembers
+    parentid: workspacessettings
+    displayname: Share Members
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1666
+
+  - id: allocaterolesws
+    parentid: workspacessettings
+    displayname: Access Controls
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1667
+
+  - id: operations
+    parentid: home
+    displayname: Operations
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1700
+
+  - id: manage
+    parentid: operations
+    displayname: Manage
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1701
+
+  - id: workspaces
+    parentid: manage
+    displayname: Workspaces
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1710
+
+  - id: projects
+    parentid: workspaces
+    displayname: Projects
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1720
+
+  - id: members
+    parentid: workspaces
+    displayname: Members
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1730
+
+  - id: roles
+    parentid: workspaces
+    displayname: Roles
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1740
+
+  - id: projectboard
+    parentid: workspaces
+    displayname: Project board
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1728
+
+  - id: workloads
+    parentid: manage
+    displayname: Workloads
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1750
+
+  - id: mciworkloads
+    parentid: workloads
+    displayname: MCI Workloads
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1760
+
+  - id: pmkworkloads
+    parentid: workloads
+    displayname: PMK Workloads
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1790
+
+  - id: workflows
+    parentid: manage
+    displayname: Workflows
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1998
+
+  - id: swcatalogs
+    parentid: manage
+    displayname: SW Catalogs
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1998
+
+  - id: datamigrations
+    parentid: manage
+    displayname: Data Migrations
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1998
+
+  - id: analytics
+    parentid: operations
+    displayname: Analytics
+    restype: menu
+    isaction: false
+    priority: 3
+    menunumber: 1901
+
+  - id: monitorings
+    parentid: analytics
+    displayname: Monitorings
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1905
+
+  - id: mcismonitoring
+    parentid: monitorings
+    displayname: MCIs Monitoring
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1910
+
+  - id: 3rdpartymonitoring
+    parentid: monitorings
+    displayname: 3rd party Monitoring
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1930
+
+  - id: monitoringconfig
+    parentid: monitorings
+    displayname: Monitoring Config
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1940
+
+  - id: eventsntraces
+    parentid: analytics
+    displayname: Events & Traces
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1950
+
+  - id: alarmshistory
+    parentid: eventsntraces
+    displayname: Alarms History
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1960
+
+  - id: thresholdconfig
+    parentid: eventsntraces
+    displayname: Threshold Config
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1970
+
+  - id: logmanage
+    parentid: eventsntraces
+    displayname: Log Manage
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1980
+
+  - id: logconfig
+    parentid: eventsntraces
+    displayname: Log Config
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1990
+
+  - id: eventtrace
+    parentid: eventsntraces
+    displayname: Event Trace
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1996
+
+  - id: costanalysis
+    parentid: analytics
+    displayname: Cost Analysis
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1998
