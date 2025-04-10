@@ -77,18 +77,27 @@
 - 비밀번호 정책 적용 (Keycloak 설정)
 - 로컬 DB에는 Keycloak User ID (`kc_id`) 및 추가 정보 저장
 
-#### 4.2.2 역할 관리 (`mcmp_platform_roles`, `mcmp_workspace_roles` 테이블)
+#### 4.2.2 워크스페이스 관리 (`mcmp_workspaces` 테이블)
+- 워크스페이스 CRUD API 구현 (`/workspaces`, `/workspaces/{id}`)
+- 워크스페이스-프로젝트 연결/해제 API 구현 (`/workspaces/{id}/projects/{projectId}`)
+
+#### 4.2.3 프로젝트 관리 (`mcmp_projects` 테이블)
+- 프로젝트 CRUD API 구현 (`/projects`, `/projects/{id}`)
+- 프로젝트-워크스페이스 연결/해제 API 구현 (`/projects/{id}/workspaces/{workspaceId}`)
+- 워크스페이스와 프로젝트는 M:N 관계 (`mcmp_workspace_projects` 매핑 테이블 사용)
+
+#### 4.2.4 역할 관리 (`mcmp_platform_roles`, `mcmp_workspace_roles` 테이블)
 - 플랫폼 역할 CRUD API 구현
 - 워크스페이스 역할 CRUD API 구현
 - 사용자에게 플랫폼/워크스페이스 역할 할당/제거 API 구현 (`mcmp_user_platform_roles`, `mcmp_user_workspace_roles` 테이블 사용)
 - 역할 기반 접근 제어 (미들웨어 등에서 활용)
 
-#### 4.2.3 권한 관리 (`mcmp_permissions`, `mcmp_role_permissions` 테이블)
+#### 4.2.5 권한 관리 (`mcmp_permissions`, `mcmp_role_permissions` 테이블)
 - 권한 CRUD API 구현
 - 역할(플랫폼/워크스페이스)에 권한 할당/제거 API 구현 (`/api/roles/{roleType}/{roleId}/permissions/{permissionId}`)
 - 권한 검증 로직 구현
 
-#### 4.2.4 메뉴 관리 (`mcmp_menu` 테이블)
+#### 4.2.6 메뉴 관리 (`mcmp_menu` 테이블)
 - 메뉴 데이터는 PostgreSQL 데이터베이스의 `mcmp_menu` 테이블에 저장 및 관리됩니다.
 - **DB 직접 관리:** 메뉴 CRUD API (`GET /menus`, `GET /menus/{id}`, `POST /menus`, `PUT /menus/{id}`, `DELETE /menus/{id}`)를 통해 직접 관리할 수 있습니다. (PUT은 부분 업데이트 지원)
 - **YAML 파일/URL 등록/동기화:** `POST /menus/register-from-yaml` API를 호출합니다.

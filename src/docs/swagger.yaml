@@ -46,6 +46,45 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.Project:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      nsid:
+        description: Namespace ID
+        type: string
+      updated_at:
+        type: string
+      workspaces:
+        description: M:N relationship
+        items:
+          $ref: '#/definitions/model.Workspace'
+        type: array
+    type: object
+  model.Workspace:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      projects:
+        description: M:N relationship
+        items:
+          $ref: '#/definitions/model.Project'
+        type: array
+      updated_at:
+        type: string
+    type: object
 host: localhost:3000
 info:
   contact: {}
@@ -545,6 +584,538 @@ paths:
       summary: YAML 파일 또는 URL에서 메뉴 등록/업데이트
       tags:
       - menus
+  /projects:
+    get:
+      consumes:
+      - application/json
+      description: 모든 프로젝트 목록을 조회합니다 (연결된 워크스페이스 정보 포함).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Project'
+            type: array
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 모든 프로젝트 조회
+      tags:
+      - projects
+    post:
+      consumes:
+      - application/json
+      description: 새로운 프로젝트를 생성합니다.
+      parameters:
+      - description: 프로젝트 정보 (ID, CreatedAt, UpdatedAt, Workspaces 제외)
+        in: body
+        name: project
+        required: true
+        schema:
+          $ref: '#/definitions/model.Project'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Project'
+        "400":
+          description: 'error: 잘못된 요청 형식'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 프로젝트 생성
+      tags:
+      - projects
+  /projects/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 프로젝트를 삭제합니다. 연결된 워크스페이스와의 관계도 해제됩니다.
+      parameters:
+      - description: 프로젝트 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: 'error: 잘못된 프로젝트 ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: 프로젝트를 찾을 수 없습니다'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 프로젝트 삭제
+      tags:
+      - projects
+    get:
+      consumes:
+      - application/json
+      description: ID로 특정 프로젝트를 조회합니다 (연결된 워크스페이스 정보 포함).
+      parameters:
+      - description: 프로젝트 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Project'
+        "400":
+          description: 'error: 잘못된 프로젝트 ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: 프로젝트를 찾을 수 없습니다'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: ID로 프로젝트 조회
+      tags:
+      - projects
+    put:
+      consumes:
+      - application/json
+      description: 기존 프로젝트 정보를 부분적으로 수정합니다.
+      parameters:
+      - description: 프로젝트 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: '수정할 필드와 값 (예: {\'
+        in: body
+        name: updates
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 업데이트된 프로젝트 정보
+          schema:
+            $ref: '#/definitions/model.Project'
+        "400":
+          description: 'error: 잘못된 요청 형식 또는 ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: 프로젝트를 찾을 수 없습니다'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 프로젝트 수정
+      tags:
+      - projects
+  /projects/{id}/workspaces/{workspaceId}:
+    delete:
+      consumes:
+      - application/json
+      description: 특정 프로젝트에서 워크스페이스 연결을 해제합니다.
+      parameters:
+      - description: 프로젝트 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 워크스페이스 ID
+        in: path
+        name: workspaceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: 'error: 잘못된 ID 형식'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 프로젝트에서 워크스페이스 연결 해제
+      tags:
+      - projects
+    post:
+      consumes:
+      - application/json
+      description: 특정 프로젝트에 워크스페이스를 연결합니다.
+      parameters:
+      - description: 프로젝트 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 워크스페이스 ID
+        in: path
+        name: workspaceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: 'error: 잘못된 ID 형식'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: 프로젝트 또는 워크스페이스를 찾을 수 없습니다'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 프로젝트에 워크스페이스 연결
+      tags:
+      - projects
+  /workspaces:
+    get:
+      consumes:
+      - application/json
+      description: 모든 워크스페이스 목록을 조회합니다 (연결된 프로젝트 정보 포함).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Workspace'
+            type: array
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 모든 워크스페이스 조회
+      tags:
+      - workspaces
+    post:
+      consumes:
+      - application/json
+      description: 새로운 워크스페이스를 생성합니다.
+      parameters:
+      - description: 워크스페이스 정보 (ID, CreatedAt, UpdatedAt, Projects 제외)
+        in: body
+        name: workspace
+        required: true
+        schema:
+          $ref: '#/definitions/model.Workspace'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Workspace'
+        "400":
+          description: 'error: 잘못된 요청 형식'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 워크스페이스 생성
+      tags:
+      - workspaces
+  /workspaces/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 워크스페이스를 삭제합니다. 연결된 프로젝트와의 관계도 해제됩니다.
+      parameters:
+      - description: 워크스페이스 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: 'error: 잘못된 워크스페이스 ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: 워크스페이스를 찾을 수 없습니다'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 워크스페이스 삭제
+      tags:
+      - workspaces
+    get:
+      consumes:
+      - application/json
+      description: ID로 특정 워크스페이스를 조회합니다 (연결된 프로젝트 정보 포함).
+      parameters:
+      - description: 워크스페이스 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Workspace'
+        "400":
+          description: 'error: 잘못된 워크스페이스 ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: 워크스페이스를 찾을 수 없습니다'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: ID로 워크스페이스 조회
+      tags:
+      - workspaces
+    put:
+      consumes:
+      - application/json
+      description: 기존 워크스페이스 정보를 부분적으로 수정합니다.
+      parameters:
+      - description: 워크스페이스 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: '수정할 필드와 값 (예: {\'
+        in: body
+        name: updates
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 업데이트된 워크스페이스 정보
+          schema:
+            $ref: '#/definitions/model.Workspace'
+        "400":
+          description: 'error: 잘못된 요청 형식 또는 ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: 워크스페이스를 찾을 수 없습니다'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 워크스페이스 수정
+      tags:
+      - workspaces
+  /workspaces/{id}/projects/{projectId}:
+    delete:
+      consumes:
+      - application/json
+      description: 특정 워크스페이스에서 프로젝트 연결을 해제합니다.
+      parameters:
+      - description: 워크스페이스 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 프로젝트 ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: 'error: 잘못된 ID 형식'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 워크스페이스에서 프로젝트 연결 해제
+      tags:
+      - workspaces
+    post:
+      consumes:
+      - application/json
+      description: 특정 워크스페이스에 프로젝트를 연결합니다.
+      parameters:
+      - description: 워크스페이스 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 프로젝트 ID
+        in: path
+        name: projectId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: 'error: 잘못된 ID 형식'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: 워크스페이스 또는 프로젝트를 찾을 수 없습니다'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 워크스페이스에 프로젝트 연결
+      tags:
+      - workspaces
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.

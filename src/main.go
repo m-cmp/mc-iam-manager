@@ -80,9 +80,17 @@ func main() {
 	userHandler := handler.NewUserHandler(userService)
 
 	// 메뉴 핸들러 초기화 (DB 사용)
-	menuRepo := repository.NewMenuRepository(db) // DB 인스턴스 전달
+	menuRepo := repository.NewMenuRepository(db)
 	menuService := service.NewMenuService(menuRepo)
 	menuHandler := handler.NewMenuHandler(menuService)
+
+	// Workspace 및 Project 핸들러 초기화
+	workspaceRepo := repository.NewWorkspaceRepository(db)
+	projectRepo := repository.NewProjectRepository(db)
+	workspaceService := service.NewWorkspaceService(workspaceRepo, projectRepo) // Pass both repos
+	projectService := service.NewProjectService(projectRepo, workspaceRepo)     // Pass both repos
+	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
+	projectHandler := handler.NewProjectHandler(projectService)
 
 	// 라우트 설정
 	e.GET("/readyz", func(c echo.Context) error {
@@ -133,6 +141,24 @@ func main() {
 	api.POST("/workspace-roles", workspaceRoleHandler.Create)
 	api.PUT("/workspace-roles/:id", workspaceRoleHandler.Update)
 	api.DELETE("/workspace-roles/:id", workspaceRoleHandler.Delete)
+
+	// Workspace 라우트
+	api.POST("/workspaces", workspaceHandler.CreateWorkspace)
+	api.GET("/workspaces", workspaceHandler.ListWorkspaces)
+	api.GET("/workspaces/:id", workspaceHandler.GetWorkspaceByID)
+	api.PUT("/workspaces/:id", workspaceHandler.UpdateWorkspace)
+	api.DELETE("/workspaces/:id", workspaceHandler.DeleteWorkspace)
+	api.POST("/workspaces/:id/projects/:projectId", workspaceHandler.AddProjectToWorkspace)
+	api.DELETE("/workspaces/:id/projects/:projectId", workspaceHandler.RemoveProjectFromWorkspace)
+
+	// Project 라우트
+	api.POST("/projects", projectHandler.CreateProject)
+	api.GET("/projects", projectHandler.ListProjects)
+	api.GET("/projects/:id", projectHandler.GetProjectByID)
+	api.PUT("/projects/:id", projectHandler.UpdateProject)
+	api.DELETE("/projects/:id", projectHandler.DeleteProject)
+	api.POST("/projects/:id/workspaces/:workspaceId", projectHandler.AddWorkspaceToProject)
+	api.DELETE("/projects/:id/workspaces/:workspaceId", projectHandler.RemoveWorkspaceFromProject)
 
 	// ... existing code ...
 	// 권한 관리 API 라우트
