@@ -19,6 +19,7 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 }
 
 // GetUsers returns all users
+// @Security BearerAuth
 func (h *UserHandler) GetUsers(c echo.Context) error {
 	users, err := h.userService.GetUsers(c.Request().Context())
 	if err != nil {
@@ -29,6 +30,7 @@ func (h *UserHandler) GetUsers(c echo.Context) error {
 }
 
 // GetUser returns a user by ID
+// @Security BearerAuth
 func (h *UserHandler) GetUserByID(c echo.Context) error {
 	id := c.Param("id")
 	user, err := h.userService.GetUserByID(c.Request().Context(), id)
@@ -40,6 +42,7 @@ func (h *UserHandler) GetUserByID(c echo.Context) error {
 }
 
 // GetUserByUsername returns a user by username
+// @Security BearerAuth
 func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 	username := c.Param("username")
 	user, err := h.userService.GetUserByUsername(c.Request().Context(), username)
@@ -51,6 +54,7 @@ func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 }
 
 // CreateUser creates a new user
+// @Security BearerAuth
 func (h *UserHandler) CreateUser(c echo.Context) error {
 	var user model.User
 	if err := c.Bind(&user); err != nil {
@@ -65,6 +69,7 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 }
 
 // UpdateUser updates a user
+// @Security BearerAuth
 func (h *UserHandler) UpdateUser(c echo.Context) error {
 	id := c.Param("id")
 	var user model.User
@@ -85,6 +90,7 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 }
 
 // DeleteUser deletes a user
+// @Security BearerAuth
 func (h *UserHandler) DeleteUser(c echo.Context) error {
 	id := c.Param("id")
 	if err := h.userService.DeleteUser(c.Request().Context(), id); err != nil {

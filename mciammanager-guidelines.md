@@ -19,8 +19,10 @@
 ```
 .
 ├── asset/
-│   ├── menu/         # 메뉴
-│   ├── sql/         # sql
+│   ├── menu/         # 메뉴 YAML 파일 (초기 등록/동기화용)
+│   ├── sql/         # sql (테이블 정의 및 마이그레이션)
+│   │   ├── tables.sql  # 최종 스키마 정의 (참고용, 실제 적용은 마이그레이션으로)
+│   │   └── migrations/ # DB 마이그레이션 파일 (mcmp_ 접두사 적용됨)
 │   ├── uml/         # uml
 ├── dockerfiles/    # Docker 관련 파일
 │   ├── keycloak/         # keycloak
@@ -29,6 +31,7 @@
 │   ├── postgres/         # postgres
 ├── src/
 │   ├── config/         # 설정 관련 코드
+│   ├── docs/         # API 문서(원본)
 │   ├── handler/        # HTTP 요청 처리
 │   ├── middleware/     # 미들웨어
 │   ├── model/         # 데이터 모델
@@ -36,7 +39,7 @@
 │   ├── service/       # 비즈니스 로직
 │   └── main.go        # 애플리케이션 진입점
 ├── migrations/        # 데이터베이스 마이그레이션
-├── docs/             # API 문서
+├── docs/             # API 문서(복사본)
 └── docker/           # Docker 관련 파일
 ```
 
@@ -49,10 +52,15 @@
    - 데이터베이스 연결 정보 설정
    - Keycloak 설정 정보 추가
 
+#### 4.1.1 메뉴 YAML 파일 준비 (선택 사항)
+- 메뉴 데이터를 YAML 파일로부터 초기 등록하거나 동기화하려면 `asset/menu/menu.yaml` 파일을 준비합니다.
+- 파일 소스는 `.env` 파일의 `MCWEBCONSOLE_MENUYAML` 환경 변수를 통해 지정하거나, 기본 URL(`https://raw.githubusercontent.com/m-cmp/mc-web-console/refs/heads/main/conf/webconsole_menu_resources.yaml`)을 사용할 수 있습니다.
+- 파일 다운로드 예시: `curl -L [소스_URL_또는_경로] -o asset/menu/menu.yaml --create-dirs`
+
 2. 데이터베이스 설정
    - PostgreSQL 컨테이너 실행
-   - 마이그레이션 실행
-   - 초기 데이터 설정
+   - 마이그레이션 실행 (`/asset/sql/migrations` 참조, 모든 테이블에 `mcmp_` 접두사 적용 및 역할/권한 구조 개선 마이그레이션 포함)
+   - 초기 데이터 설정 (필요시 마이그레이션(`000005_...`) 사용)
 
 3. Keycloak 설정
    - Keycloak 컨테이너 실행
@@ -62,23 +70,35 @@
 
 ### 4.2 핵심 기능 구현
 
-#### 4.2.1 사용자 관리
-- 사용자 CRUD API 구현
-- 사용자 검색 기능
-- 사용자 상태 관리
-- 비밀번호 정책 적용
+#### 4.2.1 사용자 관리 (`mcmp_users` 테이블)
+- 사용자 CRUD API 구현 (Keycloak 연동 및 로컬 DB 동기화)
+- 사용자 검색 기능 (Keycloak 연동)
+- 사용자 상태 관리 (Keycloak 연동)
+- 비밀번호 정책 적용 (Keycloak 설정)
+- 로컬 DB에는 Keycloak User ID (`kc_id`) 및 추가 정보 저장
 
-#### 4.2.2 역할 관리
-- 플랫폼 역할 관리
-- 워크스페이스 역할 관리
-- 역할 기반 접근 제어
-- 역할 계층 구조 구현
+#### 4.2.2 역할 관리 (`mcmp_platform_roles`, `mcmp_workspace_roles` 테이블)
+- 플랫폼 역할 CRUD API 구현
+- 워크스페이스 역할 CRUD API 구현
+- 사용자에게 플랫폼/워크스페이스 역할 할당/제거 API 구현 (`mcmp_user_platform_roles`, `mcmp_user_workspace_roles` 테이블 사용)
+- 역할 기반 접근 제어 (미들웨어 등에서 활용)
 
-#### 4.2.3 권한 관리
+#### 4.2.3 권한 관리 (`mcmp_permissions`, `mcmp_role_permissions` 테이블)
 - 권한 CRUD API 구현
-- 권한 할당/제거
-- 권한 검증
-- 권한 그룹화
+- 역할(플랫폼/워크스페이스)에 권한 할당/제거 API 구현 (`/api/roles/{roleType}/{roleId}/permissions/{permissionId}`)
+- 권한 검증 로직 구현
+
+#### 4.2.4 메뉴 관리 (`mcmp_menu` 테이블)
+- 메뉴 데이터는 PostgreSQL 데이터베이스의 `mcmp_menu` 테이블에 저장 및 관리됩니다.
+- **DB 직접 관리:** 메뉴 CRUD API (`GET /menus`, `GET /menus/{id}`, `POST /menus`, `PUT /menus/{id}`, `DELETE /menus/{id}`)를 통해 직접 관리할 수 있습니다. (PUT은 부분 업데이트 지원)
+- **YAML 파일/URL 등록/동기화:** `POST /menus/register-from-yaml` API를 호출합니다.
+    - `filePath` 쿼리 파라미터가 있으면 해당 로컬 경로의 YAML 파일을 읽어 DB에 Upsert합니다.
+    - `filePath` 파라미터가 없으면, `.env` 파일의 `MCWEBCONSOLE_MENUYAML` 환경 변수를 확인합니다.
+        - 값이 URL이면 해당 URL에서 YAML을 다운로드하여 `asset/menu/menu.yaml`에 저장한 후, 이 파일을 읽어 DB에 Upsert합니다.
+        - 값이 로컬 경로이면 해당 경로의 파일을 읽어 DB에 Upsert합니다.
+        - 값이 없거나 URL이 아니면 기본 로컬 경로(`asset/menu/menu.yaml`)를 읽어 DB에 Upsert합니다.
+- **YAML 본문 등록/동기화:** `POST /menus/register-from-body` API를 호출하여 요청 본문에 포함된 YAML 텍스트 내용을 읽어 DB에 Upsert할 수 있습니다. (Content-Type: text/plain, text/yaml, application/yaml 등)
+- 테이블 스키마 및 변경 사항은 `/asset/sql/migrations` 디렉토리의 마이그레이션 파일을 통해 관리됩니다. (FK 제약 조건 지연 설정 포함)
 
 ### 4.3 API 문서화
 - Swagger/OpenAPI 문서 작성

@@ -46,18 +46,14 @@ func (h *PermissionHandler) List(c echo.Context) error {
 // @Tags permissions
 // @Accept json
 // @Produce json
-// @Param id path int true "권한 ID"
+// @Param id path string true "권한 ID" // Changed type to string
 // @Success 200 {object} model.Permission
 // @Router /api/permissions/{id} [get]
 func (h *PermissionHandler) GetByID(c echo.Context) error {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "잘못된 권한 ID입니다",
-		})
-	}
+	id := c.Param("id") // Get ID as string
+	// No need to parse uint
 
-	permission, err := h.permissionService.GetByID(c.Request().Context(), uint(id))
+	permission, err := h.permissionService.GetByID(c.Request().Context(), id) // Pass string id
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "권한을 가져오는데 실패했습니다",
@@ -102,17 +98,13 @@ func (h *PermissionHandler) Create(c echo.Context) error {
 // @Tags permissions
 // @Accept json
 // @Produce json
-// @Param id path int true "권한 ID"
+// @Param id path string true "권한 ID" // Changed type to string
 // @Param permission body model.Permission true "권한 정보"
 // @Success 200 {object} model.Permission
 // @Router /api/permissions/{id} [put]
 func (h *PermissionHandler) Update(c echo.Context) error {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "잘못된 권한 ID입니다",
-		})
-	}
+	id := c.Param("id") // Get ID as string
+	// No need to parse uint
 
 	var permission model.Permission
 	if err := c.Bind(&permission); err != nil {
@@ -120,7 +112,7 @@ func (h *PermissionHandler) Update(c echo.Context) error {
 			"error": "잘못된 요청입니다",
 		})
 	}
-	permission.ID = uint(id)
+	permission.ID = id // Assign string id
 
 	if err := h.permissionService.Update(c.Request().Context(), &permission); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -136,18 +128,14 @@ func (h *PermissionHandler) Update(c echo.Context) error {
 // @Tags permissions
 // @Accept json
 // @Produce json
-// @Param id path int true "권한 ID"
+// @Param id path string true "권한 ID" // Changed type to string
 // @Success 204 "No Content"
 // @Router /api/permissions/{id} [delete]
 func (h *PermissionHandler) Delete(c echo.Context) error {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "잘못된 권한 ID입니다",
-		})
-	}
+	id := c.Param("id") // Get ID as string
+	// No need to parse uint
 
-	if err := h.permissionService.Delete(c.Request().Context(), uint(id)); err != nil {
+	if err := h.permissionService.Delete(c.Request().Context(), id); err != nil { // Pass string id
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "권한 삭제에 실패했습니다",
 		})
@@ -161,26 +149,26 @@ func (h *PermissionHandler) Delete(c echo.Context) error {
 // @Tags permissions
 // @Accept json
 // @Produce json
+// @Param roleType path string true "역할 타입 ('platform' or 'workspace')"
 // @Param roleId path int true "역할 ID"
-// @Param permissionId path int true "권한 ID"
+// @Param permissionId path string true "권한 ID" // Changed type to string
 // @Success 204 "No Content"
-// @Router /api/roles/{roleId}/permissions/{permissionId} [post]
+// @Router /api/roles/{roleType}/{roleId}/permissions/{permissionId} [post] // Added roleType to path
 func (h *PermissionHandler) AssignRolePermission(c echo.Context) error {
+	roleType := c.Param("roleType") // Get roleType from path
+	if roleType != "platform" && roleType != "workspace" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 타입입니다. 'platform' 또는 'workspace'를 사용하세요."})
+	}
+
 	roleID, err := strconv.ParseUint(c.Param("roleId"), 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "잘못된 역할 ID입니다",
-		})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 ID입니다"})
 	}
 
-	permissionID, err := strconv.ParseUint(c.Param("permissionId"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "잘못된 권한 ID입니다",
-		})
-	}
+	permissionID := c.Param("permissionId") // Get permissionID as string
+	// No need to parse uint
 
-	if err := h.permissionService.AssignRolePermission(c.Request().Context(), uint(roleID), uint(permissionID)); err != nil {
+	if err := h.permissionService.AssignRolePermission(c.Request().Context(), roleType, uint(roleID), permissionID); err != nil { // Pass roleType and string permissionID
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "권한 할당에 실패했습니다",
 		})
@@ -194,26 +182,26 @@ func (h *PermissionHandler) AssignRolePermission(c echo.Context) error {
 // @Tags permissions
 // @Accept json
 // @Produce json
+// @Param roleType path string true "역할 타입 ('platform' or 'workspace')"
 // @Param roleId path int true "역할 ID"
-// @Param permissionId path int true "권한 ID"
+// @Param permissionId path string true "권한 ID" // Changed type to string
 // @Success 204 "No Content"
-// @Router /api/roles/{roleId}/permissions/{permissionId} [delete]
+// @Router /api/roles/{roleType}/{roleId}/permissions/{permissionId} [delete] // Added roleType to path
 func (h *PermissionHandler) RemoveRolePermission(c echo.Context) error {
+	roleType := c.Param("roleType") // Get roleType from path
+	if roleType != "platform" && roleType != "workspace" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 타입입니다. 'platform' 또는 'workspace'를 사용하세요."})
+	}
+
 	roleID, err := strconv.ParseUint(c.Param("roleId"), 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "잘못된 역할 ID입니다",
-		})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 ID입니다"})
 	}
 
-	permissionID, err := strconv.ParseUint(c.Param("permissionId"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "잘못된 권한 ID입니다",
-		})
-	}
+	permissionID := c.Param("permissionId") // Get permissionID as string
+	// No need to parse uint
 
-	if err := h.permissionService.RemoveRolePermission(c.Request().Context(), uint(roleID), uint(permissionID)); err != nil {
+	if err := h.permissionService.RemoveRolePermission(c.Request().Context(), roleType, uint(roleID), permissionID); err != nil { // Pass roleType and string permissionID
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "권한 제거에 실패했습니다",
 		})
@@ -227,18 +215,22 @@ func (h *PermissionHandler) RemoveRolePermission(c echo.Context) error {
 // @Tags permissions
 // @Accept json
 // @Produce json
+// @Param roleType path string true "역할 타입 ('platform' or 'workspace')"
 // @Param roleId path int true "역할 ID"
 // @Success 200 {array} model.Permission
-// @Router /api/roles/{roleId}/permissions [get]
+// @Router /api/roles/{roleType}/{roleId}/permissions [get] // Added roleType to path
 func (h *PermissionHandler) GetRolePermissions(c echo.Context) error {
-	roleID, err := strconv.ParseUint(c.Param("roleId"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "잘못된 역할 ID입니다",
-		})
+	roleType := c.Param("roleType") // Get roleType from path
+	if roleType != "platform" && roleType != "workspace" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 타입입니다. 'platform' 또는 'workspace'를 사용하세요."})
 	}
 
-	permissions, err := h.permissionService.GetRolePermissions(c.Request().Context(), uint(roleID))
+	roleID, err := strconv.ParseUint(c.Param("roleId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 ID입니다"})
+	}
+
+	permissions, err := h.permissionService.GetRolePermissions(c.Request().Context(), roleType, uint(roleID)) // Pass roleType
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "권한 목록을 가져오는데 실패했습니다",
