@@ -92,6 +92,31 @@ func (h *ProjectHandler) GetProjectByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, project)
 }
 
+// GetProjectByName godoc
+// @Summary 이름으로 프로젝트 조회
+// @Description 이름으로 특정 프로젝트를 조회합니다 (연결된 워크스페이스 정보 포함).
+// @Tags projects
+// @Accept json
+// @Produce json
+// @Param name path string true "프로젝트 이름"
+// @Success 200 {object} model.Project
+// @Failure 404 {object} map[string]string "error: 프로젝트를 찾을 수 없습니다"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /projects/name/{name} [get]
+func (h *ProjectHandler) GetProjectByName(c echo.Context) error {
+	name := c.Param("name")
+
+	project, err := h.projectService.GetByName(name)
+	if err != nil {
+		if err.Error() == "project not found" {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 조회 실패: %v", err)})
+	}
+	return c.JSON(http.StatusOK, project)
+}
+
 // UpdateProject godoc
 // @Summary 프로젝트 수정
 // @Description 기존 프로젝트 정보를 부분적으로 수정합니다.

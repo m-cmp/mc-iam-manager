@@ -4,13 +4,13 @@ import "time"
 
 // User 사용자 모델 (DB 테이블: mcmp_users)
 type User struct {
-	// Keycloak에서 가져오는 정보 (DB에 직접 저장되지 않을 수 있음, Repository에서 처리)
-	ID        string `json:"id" gorm:"-"` // DB에는 저장 안 함 (Keycloak ID 사용)
-	Username  string `json:"username" gorm:"-"`
-	Email     string `json:"email" gorm:"-"`
-	FirstName string `json:"firstName,omitempty" gorm:"-"`
-	LastName  string `json:"lastName,omitempty" gorm:"-"`
-	Enabled   bool   `json:"enabled" gorm:"-"`
+	// Keycloak 정보
+	ID        string `json:"id" gorm:"-"`                                              // Use KcId for DB operations
+	Username  string `json:"username" gorm:"column:username;size:255;not null;unique"` // Keep Username mapped to DB
+	Email     string `json:"email" gorm:"-"`                                           // Ignore Email for DB
+	FirstName string `json:"firstName,omitempty" gorm:"-"`                             // Ignore FirstName for DB
+	LastName  string `json:"lastName,omitempty" gorm:"-"`                              // Ignore LastName for DB
+	Enabled   bool   `json:"enabled" gorm:"-"`                                         // Enabled status managed by Keycloak
 
 	// DB에 저장되는 정보 (mcmp_users 테이블)
 	DbId        uint      `json:"-" gorm:"primaryKey;column:id"`                  // DB 내부 ID

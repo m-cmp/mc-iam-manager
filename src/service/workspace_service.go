@@ -35,6 +35,11 @@ func (s *WorkspaceService) GetByID(id uint) (*model.Workspace, error) {
 	return s.workspaceRepo.GetByID(id)
 }
 
+// GetByName 이름으로 워크스페이스 조회
+func (s *WorkspaceService) GetByName(name string) (*model.Workspace, error) {
+	return s.workspaceRepo.GetByName(name)
+}
+
 // Update 워크스페이스 정보 부분 업데이트
 func (s *WorkspaceService) Update(id uint, updates map[string]interface{}) error {
 	// TODO: Add validation logic if needed

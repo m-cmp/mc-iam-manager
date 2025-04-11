@@ -1,32 +1,196 @@
 package service
 
 import (
+	"context" // Added
 	"fmt"
-	"io"       // Added
-	"net/http" // Added
-	"os"       // Added
+	"io"
+	"net/http"
+	"os"
 	"path/filepath"
-	"strings" // Added
+	"sort" // Added
+	"strings"
 
-	"github.com/joho/godotenv" // Added
+	"github.com/joho/godotenv"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
-	"gopkg.in/yaml.v3" // Use v3
+	"gopkg.in/yaml.v3"
 )
 
 type MenuService struct {
-	menuRepo *repository.MenuRepository
+	menuRepo       *repository.MenuRepository
+	userRepo       *repository.UserRepository       // Added dependency
+	permissionRepo *repository.PermissionRepository // Added dependency
 }
 
-func NewMenuService(menuRepo *repository.MenuRepository) *MenuService {
+// NewMenuService 새 MenuService 인스턴스 생성
+func NewMenuService(menuRepo *repository.MenuRepository, userRepo *repository.UserRepository, permissionRepo *repository.PermissionRepository) *MenuService {
 	return &MenuService{
-		menuRepo: menuRepo,
+		menuRepo:       menuRepo,
+		userRepo:       userRepo,
+		permissionRepo: permissionRepo,
 	}
 }
 
-// GetMenus 모든 메뉴 조회
+// GetAllMenusTree 모든 메뉴를 트리 구조로 조회 (관리자용)
+func (s *MenuService) GetAllMenusTree() ([]*model.MenuTreeNode, error) {
+	allMenus, err := s.menuRepo.GetMenus() // Get all menus
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all menus: %w", err)
+	}
+	if len(allMenus) == 0 {
+		return []*model.MenuTreeNode{}, nil
+	}
+
+	// Use the existing helper function to build the tree
+	tree := buildMenuTree(allMenus)
+	return tree, nil
+}
+
+// BuildUserMenuTree 사용자의 Platform Role 기반 메뉴 트리 조회 (내부 로직용)
+func (s *MenuService) BuildUserMenuTree(ctx context.Context, userID string) ([]*model.MenuTreeNode, error) {
+	// 1. Get User's Platform Roles
+	// Assuming userID is Keycloak ID, fetch user details including roles
+	// Note: userRepo.GetUserByID currently only fetches basic info + roles from DB based on kc_id.
+	// Ensure userRepo.GetUserByID correctly preloads PlatformRoles.
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user details: %w", err)
+	}
+	if user == nil || user.PlatformRoles == nil || len(user.PlatformRoles) == 0 {
+		return []*model.MenuTreeNode{}, nil // No roles, no menus
+	}
+
+	platformRoleIDs := make([]uint, len(user.PlatformRoles))
+	for i, role := range user.PlatformRoles {
+		platformRoleIDs[i] = role.ID
+	}
+
+	// 2. Get Permissions for those Roles
+	// Need a method in PermissionRepository like GetPermissionsByRoleIDs(ctx, roleType, roleIDs)
+	// For now, iterate and call GetRolePermissions (less efficient)
+	allowedMenuIDs := make(map[string]bool)
+	for _, roleID := range platformRoleIDs {
+		permissions, err := s.permissionRepo.GetRolePermissions(ctx, "platform", roleID)
+		if err != nil {
+			// Log error but continue, maybe user has other roles with permissions
+			fmt.Printf("Warning: failed to get permissions for platform role %d: %v\n", roleID, err)
+			continue
+		}
+		for _, p := range permissions {
+			// Assuming permission ID directly corresponds to menu ID for menu permissions
+			allowedMenuIDs[p.ID] = true
+		}
+	}
+
+	if len(allowedMenuIDs) == 0 {
+		return []*model.MenuTreeNode{}, nil // No menu permissions
+	}
+
+	// 3. Get All Menus from DB
+	allMenus, err := s.menuRepo.GetMenus() // Get the flat list
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all menus: %w", err)
+	}
+	if len(allMenus) == 0 {
+		return []*model.MenuTreeNode{}, nil
+	}
+
+	// 4. Build Menu Map for easy lookup
+	menuMap := make(map[string]*model.Menu, len(allMenus))
+	for i := range allMenus {
+		menuMap[allMenus[i].ID] = &allMenus[i]
+	}
+
+	// 5. Determine Full Set of Accessible Menus (including parents)
+	accessibleMenuIDs := make(map[string]bool)
+	for menuID := range allowedMenuIDs {
+		currID := menuID
+		for {
+			if _, visited := accessibleMenuIDs[currID]; visited {
+				break // Already processed this branch
+			}
+			menu, exists := menuMap[currID]
+			if !exists {
+				break // Parent ID doesn't exist in the map (data inconsistency?)
+			}
+			accessibleMenuIDs[currID] = true
+			if menu.ParentID == "" {
+				break // Reached root
+			}
+			currID = menu.ParentID
+		}
+	}
+
+	// 6. Filter All Menus based on accessibility
+	accessibleMenus := make([]model.Menu, 0, len(accessibleMenuIDs))
+	for _, menu := range allMenus {
+		if accessibleMenuIDs[menu.ID] {
+			accessibleMenus = append(accessibleMenus, menu)
+		}
+	}
+
+	// 7. Build the Tree Structure
+	tree := buildMenuTree(accessibleMenus)
+
+	return tree, nil
+}
+
+// buildMenuTree 재귀적으로 메뉴 트리 구조 생성 (헬퍼 함수)
+func buildMenuTree(menus []model.Menu) []*model.MenuTreeNode {
+	nodeMap := make(map[string]*model.MenuTreeNode, len(menus))
+	var rootNodes []*model.MenuTreeNode
+
+	// Create all nodes and put them in a map
+	for i := range menus {
+		node := &model.MenuTreeNode{
+			Menu: menus[i], // Copy menu data
+		}
+		nodeMap[node.ID] = node
+	}
+
+	// Build the tree structure
+	for _, node := range nodeMap {
+		if node.ParentID == "" {
+			rootNodes = append(rootNodes, node)
+		} else {
+			parentNode, exists := nodeMap[node.ParentID]
+			if exists {
+				parentNode.Children = append(parentNode.Children, node)
+			} else {
+				// Orphan node (parent not accessible or doesn't exist), treat as root? Or log warning?
+				// fmt.Printf("Warning: Parent menu %s not found or not accessible for menu %s\n", node.ParentID, node.ID)
+				rootNodes = append(rootNodes, node) // Add orphans as root nodes for now
+			}
+		}
+	}
+
+	// Sort nodes at each level by priority, then menu_number
+	sortNodes(rootNodes)
+
+	return rootNodes
+}
+
+// sortNodes 재귀적으로 노드와 자식 노드 정렬 (헬퍼 함수)
+func sortNodes(nodes []*model.MenuTreeNode) {
+	sort.SliceStable(nodes, func(i, j int) bool {
+		if nodes[i].Priority != nodes[j].Priority {
+			return nodes[i].Priority < nodes[j].Priority
+		}
+		return nodes[i].MenuNumber < nodes[j].MenuNumber
+	})
+	for _, node := range nodes {
+		if len(node.Children) > 0 {
+			sortNodes(node.Children)
+		}
+	}
+}
+
+// GetMenus 모든 메뉴 조회 (Deprecated or internal use only)
 func (s *MenuService) GetMenus() ([]model.Menu, error) {
-	return s.menuRepo.GetMenus()
+	// return s.menuRepo.GetMenus() // Keep original GetMenus for now
+	var menus []model.Menu
+	menus, err := s.menuRepo.GetMenus()
+	return menus, err
 }
 
 // GetByID 메뉴 ID로 조회

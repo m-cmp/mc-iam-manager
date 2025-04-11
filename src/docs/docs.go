@@ -454,8 +454,8 @@ const docTemplate = `{
             }
         },
         "/auth/login": {
-            "get": {
-                "description": "OIDC 로그인을 시작합니다",
+            "post": {
+                "description": "사용자 ID와 비밀번호로 로그인하여 JWT 토큰을 발급받습니다.",
                 "consumes": [
                     "application/json"
                 ],
@@ -466,11 +466,59 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "로그인",
-                "responses": {
-                    "302": {
-                        "description": "리다이렉트 URL",
+                "parameters": [
+                    {
+                        "description": "로그인 정보 (Id, Password)",
+                        "name": "login",
+                        "in": "body",
+                        "required": true,
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/idp.UserLogin"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "로그인 성공 및 토큰 정보 (gocloak.JWT 구조체와 유사)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 요청 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: 인증 실패 (자격 증명 오류)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: 계정이 비활성화되었거나 승인 대기 중입니다",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류 (Keycloak 통신, DB 동기화 등)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -483,7 +531,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "모든 메뉴 목록을 조회합니다",
+                "description": "현재 로그인한 사용자의 Platform Role에 따라 접근 가능한 메뉴 목록을 트리 구조로 조회합니다.",
                 "consumes": [
                     "application/json"
                 ],
@@ -493,14 +541,32 @@ const docTemplate = `{
                 "tags": [
                     "menus"
                 ],
-                "summary": "모든 메뉴 조회",
+                "summary": "현재 사용자의 메뉴 트리 조회",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/model.Menu"
+                                "$ref": "#/definitions/model.MenuTreeNode"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }
@@ -539,6 +605,64 @@ const docTemplate = `{
                         "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/model.Menu"
+                        }
+                    }
+                }
+            }
+        },
+        "/menus/all": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "모든 메뉴 목록을 트리 구조로 조회합니다. 관리자 권한이 필요합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menus"
+                ],
+                "summary": "모든 메뉴 트리 조회 (관리자용)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.MenuTreeNode"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -842,6 +966,61 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "error: 잘못된 요청 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/name/{name}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "이름으로 특정 프로젝트를 조회합니다 (연결된 워크스페이스 정보 포함).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "이름으로 프로젝트 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "프로젝트 이름",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Project"
+                        }
+                    },
+                    "404": {
+                        "description": "error: 프로젝트를 찾을 수 없습니다",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1180,6 +1359,96 @@ const docTemplate = `{
                 }
             }
         },
+        "/users": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/users/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/users/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "지정된 사용자를 활성화하고 시스템 사용을 승인합니다. 'admin' 또는 'platformadmin' 역할이 필요합니다.", // Changed platform_superadmin to platformadmin
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "사용자 승인 (관리자용)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "사용자 Keycloak ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "error: 잘못된 사용자 ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden (권한 부족)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/workspaces": {
             "get": {
                 "security": [
@@ -1256,6 +1525,61 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "error: 잘못된 요청 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/name/{name}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "이름으로 특정 워크스페이스를 조회합니다 (연결된 프로젝트 정보 포함).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "이름으로 워크스페이스 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "워크스페이스 이름",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Workspace"
+                        }
+                    },
+                    "404": {
+                        "description": "error: 워크스페이스를 찾을 수 없습니다",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1596,9 +1920,53 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "idp.UserLogin": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Menu": {
             "type": "object",
             "properties": {
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_action": {
+                    "type": "boolean"
+                },
+                "menu_number": {
+                    "type": "integer"
+                },
+                "parent_id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "res_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MenuTreeNode": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "description": "Slice of pointers to child nodes",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MenuTreeNode"
+                    }
+                },
                 "display_name": {
                     "type": "string"
                 },

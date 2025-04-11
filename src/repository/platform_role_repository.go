@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"errors"
+
 	"github.com/m-cmp/mc-iam-manager/model"
 	"gorm.io/gorm"
 )
@@ -40,5 +42,31 @@ func (r *PlatformRoleRepository) Update(role *model.PlatformRole) error {
 }
 
 func (r *PlatformRoleRepository) Delete(id uint) error {
-	return r.db.Delete(&model.PlatformRole{}, id).Error
+	result := r.db.Delete(&model.PlatformRole{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		// Consider returning a specific error like ErrPlatformRoleNotFound
+		return errors.New("platform role not found or already deleted")
+	}
+	return nil
+}
+
+// GetByName finds a platform role by its name.
+func (r *PlatformRoleRepository) GetByName(name string) (*model.PlatformRole, error) {
+	var role model.PlatformRole
+	if err := r.db.Where("name = ?", name).First(&role).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Consider returning a specific error like ErrPlatformRoleNotFound
+			return nil, errors.New("platform role not found")
+		}
+		return nil, err
+	}
+	return &role, nil
+}
+
+// DB returns the underlying gorm DB instance (Helper for sync function)
+func (r *PlatformRoleRepository) DB() *gorm.DB {
+	return r.db
 }

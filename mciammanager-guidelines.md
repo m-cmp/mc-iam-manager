@@ -36,7 +36,7 @@
 │   ├── middleware/     # 미들웨어
 │   ├── model/         # 데이터 모델
 │   ├── repository/    # 데이터베이스 작업
-│   ├── service/       # 비즈니스 로직
+│   ├── service/       # 비즈니스 로직 (e.g., user_service.go)
 │   └── main.go        # 애플리케이션 진입점
 ├── migrations/        # 데이터베이스 마이그레이션
 ├── docs/             # API 문서(복사본)
@@ -65,24 +65,36 @@
 3. Keycloak 설정
    - Keycloak 컨테이너 실행
    - Realm 생성
-   - 클라이언트 설정
+   - 클라이언트 설정 (`mciamClient` 등)
    - 사용자 및 역할 설정
+   - **서비스 계정 역할 설정 (중요):**
+     - `mciamClient` (또는 `.env`의 `MCIAMMANAGER_KEYCLOAK_CLIENTID` 클라이언트)의 서비스 계정이 활성화되어 있는지 확인합니다.
+     - 해당 서비스 계정에 필요한 역할(Role)을 부여해야 합니다. 특히, 사용자 정보 조회가 필요한 기능(예: `GET /users`)을 사용하려면 **"Service Account Roles"** 탭에서 **`realm-management` 클라이언트의 `view-users` 역할**을 할당해야 합니다. (다른 관리 API 사용 시 추가 역할 필요)
 
 ### 4.2 핵심 기능 구현
 
-#### 4.2.1 사용자 관리 (`mcmp_users` 테이블)
-- 사용자 CRUD API 구현 (Keycloak 연동 및 로컬 DB 동기화)
-- 사용자 검색 기능 (Keycloak 연동)
-- 사용자 상태 관리 (Keycloak 연동)
-- 비밀번호 정책 적용 (Keycloak 설정)
-- 로컬 DB에는 Keycloak User ID (`kc_id`) 및 추가 정보 저장
+#### 4.2.1 사용자 관리 (`mcmp_users` 테이블 및 Keycloak)
+- **사용자 등록:** Keycloak 자체 등록 기능 사용 (초기 상태: 비활성).
+- **사용자 승인:**
+    - 관리자(admin/platform_superadmin)가 Keycloak 콘솔 또는 `POST /api/users/{kc_id}/approve` API를 통해 사용자를 활성화(`enabled=true`).
+- **로그인 및 동기화:**
+    - 사용자가 `POST /api/auth/login`으로 로그인 시도.
+    - Keycloak 인증 성공 후, 사용자의 `enabled` 상태 확인. 비활성 시 403 Forbidden 반환.
+    - 활성 상태이면, 로컬 `mcmp_users` DB에 해당 사용자 정보가 있는지 확인하고 없으면 Keycloak 정보를 바탕으로 생성 (DB 동기화).
+    - 동기화 후 로그인 토큰 발급.
+- **관리자용 사용자 생성:** `POST /api/users` API (admin/platform_superadmin 권한 필요)는 Keycloak에 즉시 활성 상태로 사용자를 생성하고 로컬 DB에도 동기화.
+- **기타 관리:** 사용자 조회(`GET /users`, `GET /users/{id}`, `GET /users/username/{username}`), 수정(`PUT /users/{id}`), 삭제(`DELETE /users/{id}`) API 제공 (적절한 권한 필요).
+- 로컬 DB(`mcmp_users`)에는 Keycloak User ID (`kc_id`), 사용자 이름(`username`), 추가 정보(예: `description`)가 저장됩니다. (Email, FirstName, LastName 등은 Keycloak에서 관리)
+- **최고 관리자 동기화:** 애플리케이션 시작 시 `.env`의 `MCIAMMANAGER_PLATFORMADMIN_ID` 사용자를 확인하고, 로컬 DB에 동기화하며 'platform_superadmin' 역할을 부여합니다 (`UserService.SyncPlatformAdmin` 로직).
 
 #### 4.2.2 워크스페이스 관리 (`mcmp_workspaces` 테이블)
 - 워크스페이스 CRUD API 구현 (`/workspaces`, `/workspaces/{id}`)
+- 워크스페이스 이름으로 조회 API 구현 (`/workspaces/name/{name}`)
 - 워크스페이스-프로젝트 연결/해제 API 구현 (`/workspaces/{id}/projects/{projectId}`)
 
 #### 4.2.3 프로젝트 관리 (`mcmp_projects` 테이블)
 - 프로젝트 CRUD API 구현 (`/projects`, `/projects/{id}`)
+- 프로젝트 이름으로 조회 API 구현 (`/projects/name/{name}`)
 - 프로젝트-워크스페이스 연결/해제 API 구현 (`/projects/{id}/workspaces/{workspaceId}`)
 - 워크스페이스와 프로젝트는 M:N 관계 (`mcmp_workspace_projects` 매핑 테이블 사용)
 
@@ -99,7 +111,9 @@
 
 #### 4.2.6 메뉴 관리 (`mcmp_menu` 테이블)
 - 메뉴 데이터는 PostgreSQL 데이터베이스의 `mcmp_menu` 테이블에 저장 및 관리됩니다.
-- **DB 직접 관리:** 메뉴 CRUD API (`GET /menus`, `GET /menus/{id}`, `POST /menus`, `PUT /menus/{id}`, `DELETE /menus/{id}`)를 통해 직접 관리할 수 있습니다. (PUT은 부분 업데이트 지원)
+- **사용자 메뉴 트리 조회:** `GET /menus` API는 현재 로그인한 사용자의 Platform Role에 따라 접근 가능한 메뉴 목록을 트리 구조(`[]model.MenuTreeNode`)로 반환합니다. 하위 메뉴 접근 권한이 있으면 상위 메뉴도 포함됩니다.
+- **개별 메뉴 조회:** `GET /menus/{id}` API로 특정 메뉴 정보를 조회합니다.
+- **메뉴 생성/수정/삭제:** `POST /menus`, `PUT /menus/{id}` (부분 업데이트 지원), `DELETE /menus/{id}` API를 통해 메뉴를 직접 관리할 수 있습니다.
 - **YAML 파일/URL 등록/동기화:** `POST /menus/register-from-yaml` API를 호출합니다.
     - `filePath` 쿼리 파라미터가 있으면 해당 로컬 경로의 YAML 파일을 읽어 DB에 Upsert합니다.
     - `filePath` 파라미터가 없으면, `.env` 파일의 `MCWEBCONSOLE_MENUYAML` 환경 변수를 확인합니다.

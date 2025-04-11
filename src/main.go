@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"path/filepath"
@@ -11,6 +12,8 @@ import (
 	"github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/handler"
 	"github.com/m-cmp/mc-iam-manager/middleware"
+
+	// "github.com/m-cmp/mc-iam-manager/model" // No longer needed directly in main
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/service"
 
@@ -67,22 +70,35 @@ func main() {
 
 	platformRoleRepo := repository.NewPlatformRoleRepository(db)
 	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db)
+	// Need PermissionRepository for MenuService
+	permissionRepo := repository.NewPermissionRepository(db) // Define permissionRepo earlier
 
 	// Service 초기화
-	userService := service.NewUserService(userRepo, config.KC, config.KC.Client)
+	// Pass platformRoleRepo to NewUserService
+	userService := service.NewUserService(userRepo, platformRoleRepo, config.KC, config.KC.Client)
 	platformRoleService := service.NewPlatformRoleService(platformRoleRepo)
 	workspaceRoleService := service.NewWorkspaceRoleService(workspaceRoleRepo)
 
 	// 핸들러 초기화
-	authHandler := handler.NewAuthHandler(config.KC)
+	// Pass keycloakClient and userRepo to NewAuthHandler
+	authHandler := handler.NewAuthHandler(config.KC, config.KC.Client, userRepo)
 	platformRoleHandler := handler.NewPlatformRoleHandler(platformRoleService)
 	workspaceRoleHandler := handler.NewWorkspaceRoleHandler(workspaceRoleService)
 	userHandler := handler.NewUserHandler(userService)
 
 	// 메뉴 핸들러 초기화 (DB 사용)
 	menuRepo := repository.NewMenuRepository(db)
-	menuService := service.NewMenuService(menuRepo)
+	// permissionRepo is already defined above, just use it
+	// Need UserService for MenuService (or just UserRepository)
+	// Assuming MenuService needs UserRepository directly
+	menuService := service.NewMenuService(menuRepo, userRepo, permissionRepo)
 	menuHandler := handler.NewMenuHandler(menuService)
+
+	// --- Sync Platform Superadmin (Call after UserService is initialized) ---
+	if err := userService.SyncPlatformAdmin(context.Background()); err != nil {
+		// Log the error but continue starting the application
+		log.Printf("Error during platform superadmin sync: %v", err)
+	}
 
 	// Workspace 및 Project 핸들러 초기화
 	workspaceRepo := repository.NewWorkspaceRepository(db)
@@ -114,13 +130,17 @@ func main() {
 		api.GET("/users", userHandler.GetUsers)
 		api.GET("/users/:id", userHandler.GetUserByID)
 		api.GET("/users/username/:username", userHandler.GetUserByUsername)
-		api.POST("/users", userHandler.CreateUser)
+		api.POST("/users", userHandler.CreateUser) // Admin creates enabled user
 		api.PUT("/users/:id", userHandler.UpdateUser)
 		api.DELETE("/users/:id", userHandler.DeleteUser)
+		api.POST("/users/:id/approve", userHandler.ApproveUser) // Admin approves registration
 	}
 
+	// TODO: Add public registration route (e.g., POST /register) if needed
+
 	// 메뉴 라우트
-	api.GET("/menus", menuHandler.GetMenus)
+	api.GET("/menus", menuHandler.GetUserMenuTree)     // User-specific menu tree
+	api.GET("/menus/all", menuHandler.GetAllMenusTree) // All menus tree (Admin)
 	api.GET("/menus/:id", menuHandler.GetByID)
 	api.POST("/menus", menuHandler.Create)
 	api.PUT("/menus/:id", menuHandler.Update)
@@ -145,6 +165,7 @@ func main() {
 	// Workspace 라우트
 	api.POST("/workspaces", workspaceHandler.CreateWorkspace)
 	api.GET("/workspaces", workspaceHandler.ListWorkspaces)
+	api.GET("/workspaces/name/:name", workspaceHandler.GetWorkspaceByName) // Add route for GetByName
 	api.GET("/workspaces/:id", workspaceHandler.GetWorkspaceByID)
 	api.PUT("/workspaces/:id", workspaceHandler.UpdateWorkspace)
 	api.DELETE("/workspaces/:id", workspaceHandler.DeleteWorkspace)
@@ -154,6 +175,7 @@ func main() {
 	// Project 라우트
 	api.POST("/projects", projectHandler.CreateProject)
 	api.GET("/projects", projectHandler.ListProjects)
+	api.GET("/projects/name/:name", projectHandler.GetProjectByName) // Add route for GetByName
 	api.GET("/projects/:id", projectHandler.GetProjectByID)
 	api.PUT("/projects/:id", projectHandler.UpdateProject)
 	api.DELETE("/projects/:id", projectHandler.DeleteProject)
@@ -162,7 +184,9 @@ func main() {
 
 	// ... existing code ...
 	// 권한 관리 API 라우트
-	permissionHandler := handler.NewPermissionHandler(service.NewPermissionService(repository.NewPermissionRepository(db)))
+	// Use the already initialized permissionRepo
+	permissionService := service.NewPermissionService(permissionRepo)
+	permissionHandler := handler.NewPermissionHandler(permissionService)
 	api.POST("/permissions", permissionHandler.Create)
 	api.GET("/permissions", permissionHandler.List)
 	api.GET("/permissions/:id", permissionHandler.GetByID)
@@ -183,3 +207,16 @@ func main() {
 	}
 	e.Logger.Fatal(e.Start(":" + port))
 }
+
+// Helper methods to access gorm.DB from repositories (add these to respective repo files if not already present)
+/*
+// In repository/user_repository.go
+func (r *UserRepository) DB() *gorm.DB {
+	return r.db
+}
+
+// In repository/platform_role_repository.go
+func (r *PlatformRoleRepository) DB() *gorm.DB {
+	return r.db
+}
+*/

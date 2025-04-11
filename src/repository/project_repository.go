@@ -49,6 +49,19 @@ func (r *ProjectRepository) GetByID(id uint) (*model.Project, error) {
 	return &project, nil
 }
 
+// GetByName 이름으로 프로젝트 조회 (워크스페이스 정보 포함)
+func (r *ProjectRepository) GetByName(name string) (*model.Project, error) {
+	var project model.Project
+	// Preload Workspaces and find by name
+	if err := r.db.Preload("Workspaces").Where("name = ?", name).First(&project).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrProjectNotFound
+		}
+		return nil, err
+	}
+	return &project, nil
+}
+
 // Update 프로젝트 정보 부분 업데이트
 func (r *ProjectRepository) Update(id uint, updates map[string]interface{}) error {
 	if len(updates) == 0 {
