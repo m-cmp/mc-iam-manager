@@ -18,6 +18,12 @@ func (Menu) TableName() string {
 	return "mcmp_menu"
 }
 
+// MenuTreeNode 메뉴 트리 구조를 위한 노드
+type MenuTreeNode struct {
+	Menu                     // Embed Menu fields directly
+	Children []*MenuTreeNode `json:"children,omitempty"` // Slice of pointers to child nodes
+}
+
 // MenuData YAML 파일의 최상위 구조를 나타내는 구조체 (DB 전환 후에는 사용되지 않음)
 // type MenuData struct {
 // 	Menus []Menu `yaml:"menus"`

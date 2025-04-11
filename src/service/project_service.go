@@ -35,6 +35,11 @@ func (s *ProjectService) GetByID(id uint) (*model.Project, error) {
 	return s.projectRepo.GetByID(id)
 }
 
+// GetByName 이름으로 프로젝트 조회
+func (s *ProjectService) GetByName(name string) (*model.Project, error) {
+	return s.projectRepo.GetByName(name)
+}
+
 // Update 프로젝트 정보 부분 업데이트
 func (s *ProjectService) Update(id uint, updates map[string]interface{}) error {
 	// TODO: Add validation logic if needed

@@ -5,9 +5,14 @@ import (
 	"io" // Ensure io package is imported
 	"net/http"
 
+	// "strings" // Removed unused import
+
+	// "github.com/Nerzal/gocloak/v13" // Keep gocloak removed
+	// "github.com/golang-jwt/jwt/v5" // jwt import moved to util package
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/model"
-	"github.com/m-cmp/mc-iam-manager/service"
+	"github.com/m-cmp/mc-iam-manager/service" // Corrected import path
+	"github.com/m-cmp/mc-iam-manager/util"    // Import the new util package
 )
 
 type MenuHandler struct {
@@ -18,23 +23,142 @@ func NewMenuHandler(menuService *service.MenuService) *MenuHandler {
 	return &MenuHandler{menuService: menuService}
 }
 
-// GetMenus godoc
-// @Summary 모든 메뉴 조회
-// @Description 모든 메뉴 목록을 조회합니다
+// Helper function moved to util package
+
+// GetUserMenuTree godoc
+// @Summary 현재 사용자의 메뉴 트리 조회
+// @Description 현재 로그인한 사용자의 Platform Role에 따라 접근 가능한 메뉴 목록을 트리 구조로 조회합니다.
 // @Tags menus
 // @Accept json
 // @Produce json
-// @Success 200 {array} model.Menu
+// @Success 200 {array} model.MenuTreeNode
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /menus [get]
-func (h *MenuHandler) GetMenus(c echo.Context) error {
-	menus, err := h.menuService.GetMenus()
+// @Router /menus [get] // Endpoint remains the same, handler name changes
+func (h *MenuHandler) GetUserMenuTree(c echo.Context) error {
+	userID := ""
+	claims, err := util.GetMapClaimsFromContext(c) // Call util function
+	if err != nil {
+		fmt.Printf("[ERROR] GetUserMenuTree: Failed to get claims: %v\n", err)
+		// Consider returning error or handling differently
+	} else {
+		fmt.Printf("[DEBUG] GetUserMenuTree: Claims retrieved from access_token: %+v\n", claims)
+		// Access 'sub' claim
+		if sub, subOk := claims["sub"].(string); subOk {
+			userID = sub
+			fmt.Printf("[DEBUG] GetUserMenuTree: UserID found via claims[\"sub\"]: %s\n", userID)
+		} else {
+			fmt.Printf("[DEBUG] GetUserMenuTree: 'sub' key not found or not a string in claims map.\n")
+		}
+	}
+
+	if userID == "" {
+		fmt.Printf("[DEBUG] GetUserMenuTree: UserID is empty after checking context/claims.\n")
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized: User ID not found"})
+	}
+
+	// Call the renamed service method
+	menuTree, err := h.menuService.BuildUserMenuTree(c.Request().Context(), userID) // Call BuildUserMenuTree
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "메뉴 목록을 가져오는데 실패했습니다",
+			"error": fmt.Sprintf("메뉴 트리 조회 실패: %v", err),
 		})
 	}
-	return c.JSON(http.StatusOK, menus)
+
+	// Return the tree structure
+	return c.JSON(http.StatusOK, menuTree)
+}
+
+// GetAllMenusTree godoc
+// @Summary 모든 메뉴 트리 조회 (관리자용)
+// @Description 모든 메뉴 목록을 트리 구조로 조회합니다. 관리자 권한이 필요합니다.
+// @Tags menus
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.MenuTreeNode
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /menus/all [get]
+func (h *MenuHandler) GetAllMenusTree(c echo.Context) error {
+	isAdmin := false
+	fmt.Printf("[DEBUG] GetAllMenusTree: Checking roles for user...\n")
+
+	claims, err := util.GetMapClaimsFromContext(c) // Call util function
+	if err != nil {
+		fmt.Printf("[ERROR] GetAllMenusTree: Failed to get claims: %v\n", err)
+		// Return Forbidden as we cannot verify roles
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Could not verify user roles"})
+	}
+
+	fmt.Printf("[DEBUG] GetAllMenusTree: Claims retrieved from access_token: %+v\n", claims)
+
+	// --- Check roles using map access from parsed token ---
+	// Attempt 1: Check top-level "roles"
+	rolesValue, rolesKeyExists := claims["roles"]
+	if rolesKeyExists {
+		fmt.Printf("[DEBUG] GetAllMenusTree: Checking top-level 'roles': %v (Type: %T)\n", rolesValue, rolesValue)
+		if rolesClaim, typeOk := rolesValue.([]interface{}); typeOk {
+			for _, role := range rolesClaim {
+				if roleStr, strOk := role.(string); strOk && (roleStr == "admin" || roleStr == "platformAdmin") {
+					fmt.Printf("[DEBUG] GetAllMenusTree: Found matching role in top-level 'roles': %s\n", roleStr)
+					isAdmin = true
+					break // Exit role loop once found
+				}
+			}
+		} else {
+			fmt.Printf("[DEBUG] GetAllMenusTree: Top-level 'roles' is not []interface{}. Actual type: %T\n", rolesValue)
+		}
+	} else {
+		fmt.Printf("[DEBUG] GetAllMenusTree: Key 'roles' does not exist at top level in claims map.\n")
+	}
+
+	// Attempt 2 (Fallback): Check "realm_access.roles" if not found in top-level
+	if !isAdmin { // Only check if not already admin
+		if realmAccessValue, realmKeyExists := claims["realm_access"]; realmKeyExists {
+			fmt.Printf("[DEBUG] GetAllMenusTree: Checking 'realm_access': %+v\n", realmAccessValue)
+			if realmAccessMap, mapOk := realmAccessValue.(map[string]interface{}); mapOk {
+				if realmRolesValue, realmRolesKeyExists := realmAccessMap["roles"]; realmRolesKeyExists {
+					fmt.Printf("[DEBUG] GetAllMenusTree: Checking 'realm_access.roles': %v (Type: %T)\n", realmRolesValue, realmRolesValue)
+					if realmRolesClaim, typeOk := realmRolesValue.([]interface{}); typeOk {
+						for _, role := range realmRolesClaim {
+							if roleStr, strOk := role.(string); strOk && (roleStr == "admin" || roleStr == "platformAdmin") {
+								fmt.Printf("[DEBUG] GetAllMenusTree: Found matching role in 'realm_access.roles': %s\n", roleStr)
+								isAdmin = true
+								break // Exit role loop once found
+							}
+						}
+					} else {
+						fmt.Printf("[DEBUG] GetAllMenusTree: 'realm_access.roles' is not []interface{}. Actual type: %T\n", realmRolesValue)
+					}
+				} else {
+					fmt.Printf("[DEBUG] GetAllMenusTree: Key 'roles' does not exist in 'realm_access' map.\n")
+				}
+			} else {
+				fmt.Printf("[DEBUG] GetAllMenusTree: 'realm_access' is not map[string]interface{}. Actual type: %T\n", realmAccessValue)
+			}
+		} else {
+			fmt.Printf("[DEBUG] GetAllMenusTree: Key 'realm_access' does not exist in claims map.\n")
+		}
+	}
+	// --- Role check end ---
+
+	if !isAdmin {
+		fmt.Printf("[DEBUG] GetAllMenusTree: isAdmin is false, returning Forbidden.\n") // Log before returning error
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Administrator access required"})
+	}
+
+	// Call the service method for all menus
+	allMenuTree, err := h.menuService.GetAllMenusTree()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": fmt.Sprintf("전체 메뉴 트리 조회 실패: %v", err),
+		})
+	}
+
+	return c.JSON(http.StatusOK, allMenuTree)
 }
 
 // GetByID godoc

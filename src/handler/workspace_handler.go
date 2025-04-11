@@ -96,6 +96,31 @@ func (h *WorkspaceHandler) GetWorkspaceByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, workspace)
 }
 
+// GetWorkspaceByName godoc
+// @Summary 이름으로 워크스페이스 조회
+// @Description 이름으로 특정 워크스페이스를 조회합니다 (연결된 프로젝트 정보 포함).
+// @Tags workspaces
+// @Accept json
+// @Produce json
+// @Param name path string true "워크스페이스 이름"
+// @Success 200 {object} model.Workspace
+// @Failure 404 {object} map[string]string "error: 워크스페이스를 찾을 수 없습니다"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /workspaces/name/{name} [get]
+func (h *WorkspaceHandler) GetWorkspaceByName(c echo.Context) error {
+	name := c.Param("name")
+
+	workspace, err := h.workspaceService.GetByName(name)
+	if err != nil {
+		if err.Error() == "workspace not found" {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 조회 실패: %v", err)})
+	}
+	return c.JSON(http.StatusOK, workspace)
+}
+
 // UpdateWorkspace godoc
 // @Summary 워크스페이스 수정
 // @Description 기존 워크스페이스 정보를 부분적으로 수정합니다.
