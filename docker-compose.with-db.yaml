@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  mc-iam-manager:
+    container_name: mciam-manager
+    build:
+      context: ./dockerfiles/mc-iam-manager
+      dockerfile: Dockerfile.mciammanager
+    ports:
+      - "${PORT:-8082}:${PORT:-8082}"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mciam-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: mciam-postgres
+    environment:
+      POSTGRES_USER: ${IAM_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${IAM_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${IAM_POSTGRES_DB}
+    volumes:
+      - ./dockercontainer-volume/postgres/data/:/var/lib/postgresql/data
+      - ./dockerfiles/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - mciam-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${IAM_POSTGRES_USER} -d ${IAM_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  mciam-network:
+    driver: bridge
