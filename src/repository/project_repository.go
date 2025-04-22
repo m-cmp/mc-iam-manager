@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/m-cmp/mc-iam-manager/model"
+	// "github.com/m-cmp/mc-iam-manager/service" // Remove service import
 	"gorm.io/gorm"
 )
 
@@ -14,11 +15,15 @@ var (
 // ProjectRepository 프로젝트 데이터 관리
 type ProjectRepository struct {
 	db *gorm.DB
+	// mcmpApiService service.McmpApiService // Removed dependency
 }
 
 // NewProjectRepository 새 ProjectRepository 인스턴스 생성
-func NewProjectRepository(db *gorm.DB) *ProjectRepository {
-	return &ProjectRepository{db: db}
+func NewProjectRepository(db *gorm.DB) *ProjectRepository { // Removed parameter
+	return &ProjectRepository{
+		db: db,
+		// mcmpApiService: mcmpApiService, // Removed initialization
+	}
 }
 
 // Create 프로젝트 생성

@@ -1,19 +1,27 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
+	"gorm.io/gorm" // Import gorm
 )
 
 // WorkspaceService 워크스페이스 관리 서비스
 type WorkspaceService struct {
 	workspaceRepo *repository.WorkspaceRepository
 	projectRepo   *repository.ProjectRepository // Needed for association checks
+	db            *gorm.DB                      // Add DB field
 }
 
 // NewWorkspaceService 새 WorkspaceService 인스턴스 생성
-func NewWorkspaceService(workspaceRepo *repository.WorkspaceRepository, projectRepo *repository.ProjectRepository) *WorkspaceService {
+func NewWorkspaceService(db *gorm.DB) *WorkspaceService { // Accept only db
+	// Initialize repositories internally
+	workspaceRepo := repository.NewWorkspaceRepository(db)
+	projectRepo := repository.NewProjectRepository(db)
 	return &WorkspaceService{
+		db:            db, // Store db
 		workspaceRepo: workspaceRepo,
 		projectRepo:   projectRepo,
 	}
@@ -80,4 +88,65 @@ func (s *WorkspaceService) AddProjectToWorkspace(workspaceID, projectID uint) er
 func (s *WorkspaceService) RemoveProjectFromWorkspace(workspaceID, projectID uint) error {
 	// Existence checks are optional as repo method might handle it gracefully
 	return s.workspaceRepo.RemoveProjectAssociation(workspaceID, projectID)
+}
+
+// GetProjectsByWorkspaceID 특정 워크스페이스에 연결된 프로젝트 목록 조회
+func (s *WorkspaceService) GetProjectsByWorkspaceID(workspaceID uint) ([]model.Project, error) {
+	// First, check if the workspace exists
+	_, err := s.workspaceRepo.GetByID(workspaceID)
+	if err != nil {
+		return nil, err // Return error if workspace not found or DB error
+	}
+	// Call the repository method to get associated projects
+	return s.workspaceRepo.FindProjectsByWorkspaceID(workspaceID)
+}
+
+// UserWithRoles 워크스페이스 내 사용자 및 역할 정보를 담는 구조체
+type UserWithRoles struct {
+	User  model.User            `json:"user"`
+	Roles []model.WorkspaceRole `json:"roles"`
+}
+
+// GetUsersAndRolesByWorkspaceID 특정 워크스페이스에 속한 사용자 및 역할 목록 조회
+func (s *WorkspaceService) GetUsersAndRolesByWorkspaceID(workspaceID uint) ([]UserWithRoles, error) {
+	// 1. Check if workspace exists
+	_, err := s.workspaceRepo.GetByID(workspaceID)
+	if err != nil {
+		return nil, err // Return ErrWorkspaceNotFound or other DB error
+	}
+
+	// 2. Get the raw mapping data from the repository
+	userWorkspaceRoles, err := s.workspaceRepo.FindUsersAndRolesByWorkspaceID(workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find users and roles for workspace %d: %w", workspaceID, err)
+	}
+
+	// 3. Process the data into the desired output format (group roles by user)
+	userRolesMap := make(map[uint]*UserWithRoles) // Key: User DB ID
+
+	for _, uwr := range userWorkspaceRoles {
+		// Ensure User and WorkspaceRole were preloaded correctly
+		if uwr.User.ID == 0 || uwr.WorkspaceRole.ID == 0 {
+			// Log a warning or skip this entry if data is incomplete
+			fmt.Printf("Warning: Incomplete data in UserWorkspaceRole mapping (UserID: %d, RoleID: %d)\n", uwr.UserID, uwr.WorkspaceRoleID)
+			continue
+		}
+
+		userID := uwr.User.ID
+		if _, exists := userRolesMap[userID]; !exists {
+			userRolesMap[userID] = &UserWithRoles{
+				User:  uwr.User, // Assumes User object is fully populated by preload
+				Roles: []model.WorkspaceRole{},
+			}
+		}
+		userRolesMap[userID].Roles = append(userRolesMap[userID].Roles, uwr.WorkspaceRole)
+	}
+
+	// Convert map to slice
+	result := make([]UserWithRoles, 0, len(userRolesMap))
+	for _, userInfo := range userRolesMap {
+		result = append(result, *userInfo)
+	}
+
+	return result, nil
 }

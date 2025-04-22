@@ -40,5 +40,30 @@ func (r *WorkspaceRoleRepository) Update(role *model.WorkspaceRole) error {
 }
 
 func (r *WorkspaceRoleRepository) Delete(id uint) error {
+	// Consider deleting associated user roles as well, or handle via DB constraints
 	return r.db.Delete(&model.WorkspaceRole{}, id).Error
+}
+
+// AssignRoleToUser 사용자에게 워크스페이스 역할 할당 (mcmp_user_workspace_roles 테이블)
+func (r *WorkspaceRoleRepository) AssignRoleToUser(userID, roleID, workspaceID uint) error { // Add workspaceID parameter
+	mapping := model.UserWorkspaceRole{
+		UserID:          userID,
+		WorkspaceID:     workspaceID, // Set WorkspaceID
+		WorkspaceRoleID: roleID,
+	}
+	// Create the mapping record. Handle potential errors like duplicate entry.
+	// Using FirstOrCreate or similar might be better to avoid errors if mapping already exists.
+	// For simplicity, just Create for now. Ensure DB constraints handle duplicates.
+	return r.db.Create(&mapping).Error
+}
+
+// RemoveRoleFromUser 사용자에게서 워크스페이스 역할 제거 (mcmp_user_workspace_roles 테이블)
+func (r *WorkspaceRoleRepository) RemoveRoleFromUser(userID, roleID, workspaceID uint) error { // Add workspaceID parameter
+	// Delete the specific mapping record using the composite key
+	result := r.db.Where("user_id = ? AND workspace_id = ? AND workspace_role_id = ?", userID, workspaceID, roleID).Delete(&model.UserWorkspaceRole{})
+	if result.Error != nil {
+		return result.Error
+	}
+	// Optionally check result.RowsAffected if you need to know if a record was actually deleted
+	return nil
 }

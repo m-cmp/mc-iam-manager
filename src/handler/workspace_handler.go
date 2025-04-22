@@ -1,22 +1,28 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/model"
+	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/service"
+	"gorm.io/gorm" // Ensure gorm is imported
 )
 
 // WorkspaceHandler 워크스페이스 관리 핸들러
 type WorkspaceHandler struct {
 	workspaceService *service.WorkspaceService
+	// db *gorm.DB // Not needed directly in handler
 }
 
 // NewWorkspaceHandler 새 WorkspaceHandler 인스턴스 생성
-func NewWorkspaceHandler(workspaceService *service.WorkspaceService) *WorkspaceHandler {
+func NewWorkspaceHandler(db *gorm.DB) *WorkspaceHandler { // Accept db, remove service param
+	// Initialize service internally
+	workspaceService := service.NewWorkspaceService(db)
 	return &WorkspaceHandler{workspaceService: workspaceService}
 }
 
@@ -199,6 +205,78 @@ func (h *WorkspaceHandler) DeleteWorkspace(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 삭제 실패: %v", err)})
 	}
 	return c.NoContent(http.StatusNoContent)
+}
+
+// ListUsersAndRolesByWorkspace godoc
+// @Summary 워크스페이스 사용자 및 역할 목록 조회
+// @Description 특정 워크스페이스에 속한 모든 사용자와 각 사용자의 역할을 조회합니다.
+// @Tags workspaces, users, roles
+// @Accept json
+// @Produce json
+// @Param id path int true "워크스페이스 ID"
+// @Success 200 {array} service.UserWithRoles "성공 시 사용자 및 역할 목록 반환"
+// @Failure 400 {object} map[string]string "error: 잘못된 워크스페이스 ID"
+// @Failure 404 {object} map[string]string "error: 워크스페이스를 찾을 수 없습니다"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /workspaces/{id}/users [get]
+func (h *WorkspaceHandler) ListUsersAndRolesByWorkspace(c echo.Context) error {
+	workspaceID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID입니다"})
+	}
+
+	usersWithRoles, err := h.workspaceService.GetUsersAndRolesByWorkspaceID(uint(workspaceID))
+	if err != nil {
+		// Handle not found error from service (which checks workspace existence)
+		if errors.Is(err, repository.ErrWorkspaceNotFound) { // Assuming service passes this error up
+			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("사용자 및 역할 목록 조회 실패: %v", err)})
+	}
+
+	// Return empty list if no users are associated
+	if usersWithRoles == nil {
+		usersWithRoles = []service.UserWithRoles{} // Ensure we return [] instead of null
+	}
+
+	return c.JSON(http.StatusOK, usersWithRoles)
+}
+
+// ListProjectsByWorkspace godoc
+// @Summary 워크스페이스에 연결된 프로젝트 목록 조회
+// @Description 특정 워크스페이스 ID에 연결된 모든 프로젝트 목록을 조회합니다.
+// @Tags workspaces
+// @Accept json
+// @Produce json
+// @Param id path int true "워크스페이스 ID"
+// @Success 200 {array} model.Project "성공 시 프로젝트 목록 반환"
+// @Failure 400 {object} map[string]string "error: 잘못된 워크스페이스 ID"
+// @Failure 404 {object} map[string]string "error: 워크스페이스를 찾을 수 없습니다"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /workspaces/{id}/projects [get]
+func (h *WorkspaceHandler) ListProjectsByWorkspace(c echo.Context) error {
+	workspaceID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID입니다"})
+	}
+
+	projects, err := h.workspaceService.GetProjectsByWorkspaceID(uint(workspaceID))
+	if err != nil {
+		// Handle not found error from service (which checks workspace existence)
+		if err.Error() == "workspace not found" { // Assuming service returns this specific error
+			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 목록 조회 실패: %v", err)})
+	}
+
+	// Return empty list if no projects are associated, instead of 404
+	if projects == nil {
+		projects = []model.Project{} // Ensure we return [] instead of null
+	}
+
+	return c.JSON(http.StatusOK, projects)
 }
 
 // AddProjectToWorkspace godoc

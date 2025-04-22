@@ -1,29 +1,33 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
-	"github.com/Nerzal/gocloak/v13" // Need gocloak client
+	// Needed for token type in GetUserIDFromToken
+	"gorm.io/gorm" // Ensure gorm is imported
+
 	// "github.com/golang-jwt/jwt/v5" // No longer directly needed
 	"github.com/labstack/echo/v4"
-	"github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/model/idp"
-	"github.com/m-cmp/mc-iam-manager/repository" // Need UserRepository
+	"github.com/m-cmp/mc-iam-manager/repository" // Needed for error check
+	"github.com/m-cmp/mc-iam-manager/service"
 )
 
 type AuthHandler struct {
-	keycloakConfig *config.KeycloakConfig
-	keycloakClient *gocloak.GoCloak           // Add gocloak client
-	userRepo       *repository.UserRepository // Add UserRepository dependency
+	// keycloakService service.KeycloakService // Removed dependency
+	userService *service.UserService // Use concrete type
+	// db *gorm.DB // Not needed directly
 }
 
 // NewAuthHandler creates a new AuthHandler instance
-func NewAuthHandler(keycloakConfig *config.KeycloakConfig, keycloakClient *gocloak.GoCloak, userRepo *repository.UserRepository) *AuthHandler {
+func NewAuthHandler(db *gorm.DB) *AuthHandler { // Remove keycloakService parameter
+	// Initialize UserService internally
+	userService := service.NewUserService(db) // Pass only db
 	return &AuthHandler{
-		keycloakConfig: keycloakConfig,
-		keycloakClient: keycloakClient, // Initialize client
-		userRepo:       userRepo,       // Initialize repo
+		// keycloakService: keycloakService, // Removed
+		userService: userService, // Store initialized userService
 	}
 }
 
@@ -53,37 +57,29 @@ func (h *AuthHandler) Login(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	// 1. Login to Keycloak using username/password (use Id field)
-	token, err := h.keycloakClient.Login(ctx, h.keycloakConfig.ClientID, h.keycloakConfig.ClientSecret, h.keycloakConfig.Realm, userLogin.Id, userLogin.Password)
+	// 1. Login to Keycloak using a temporary KeycloakService instance
+	ks := service.NewKeycloakService()
+	token, err := ks.Login(ctx, userLogin.Id, userLogin.Password)
 	if err != nil {
 		// Differentiate between invalid credentials and other errors if possible
-		// gocloak might return specific error types or messages
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": fmt.Sprintf("Keycloak 인증 실패: %v", err)})
 	}
 
-	// 2. Get User ID (sub) from Access Token
-	_, claims, err := h.keycloakClient.DecodeAccessToken(ctx, token.AccessToken, h.keycloakConfig.Realm)
+	// 2. Get User ID (sub) from Access Token using a temporary KeycloakService instance
+	userID, err := ks.GetUserIDFromToken(ctx, token)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("토큰 디코딩 실패: %v", err)})
-	}
-	// claims is already *jwt.MapClaims, just check if nil
-	if claims == nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "토큰 클레임 정보가 없습니다"})
-	}
-	// Access the map directly via the pointer
-	userID, ok := (*claims)["sub"].(string)
-	if !ok || userID == "" {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "토큰에서 사용자 ID(sub)를 찾을 수 없습니다"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("토큰에서 사용자 ID 추출 실패: %v", err)})
 	}
 
-	// 3. Check if user is enabled in Keycloak
-	// Need admin token to get user details
-	adminToken, err := h.keycloakConfig.LoginAdmin(ctx)
+	// Old claims logic removed
+
+	// 3. Check if user is enabled in Keycloak using a temporary KeycloakService instance
+	kcUser, err := ks.GetUser(ctx, userID) // Use GetUser from KeycloakService
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("관리자 토큰 얻기 실패: %v", err)})
-	}
-	kcUser, err := h.keycloakClient.GetUserByID(ctx, adminToken.AccessToken, h.keycloakConfig.Realm, userID)
-	if err != nil {
+		// Handle not found vs other errors
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "Keycloak 사용자 정보를 찾을 수 없습니다 (계정 동기화 문제 가능성)"})
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Keycloak 사용자 정보 조회 실패: %v", err)})
 	}
 	if kcUser == nil || kcUser.Enabled == nil || !*kcUser.Enabled {
@@ -91,7 +87,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	}
 
 	// 4. Sync user with local DB (Create if not exists)
-	_, err = h.userRepo.SyncUser(ctx, userID)
+	_, err = h.userService.SyncUser(ctx, userID)
 	if err != nil {
 		// Log the error but allow login if Keycloak auth succeeded
 		fmt.Printf("Warning: Failed to sync user %s with local DB: %v\n", userID, err)
@@ -143,10 +139,14 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "리프레시 토큰이 필요합니다"})
 	}
 
-	token, err := h.keycloakConfig.GetToken(c.Request().Context())
+	ctx := c.Request().Context() // Get context from request
+
+	// Use KeycloakService to refresh token
+	ks := service.NewKeycloakService()
+	newToken, err := ks.RefreshToken(ctx, refreshToken)
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "토큰 갱신에 실패했습니다"})
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": fmt.Sprintf("토큰 갱신 실패: %v", err)})
 	}
 
-	return c.JSON(http.StatusOK, token)
+	return c.JSON(http.StatusOK, newToken)
 }

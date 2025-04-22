@@ -7,15 +7,19 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service"
+	"gorm.io/gorm" // Import gorm
 )
 
 type PlatformRoleHandler struct {
 	service *service.PlatformRoleService
+	// db *gorm.DB // Not needed directly in handler
 }
 
-func NewPlatformRoleHandler(service *service.PlatformRoleService) *PlatformRoleHandler {
+func NewPlatformRoleHandler(db *gorm.DB) *PlatformRoleHandler { // Accept db, remove service param
+	// Initialize service internally
+	platformRoleService := service.NewPlatformRoleService(db)
 	return &PlatformRoleHandler{
-		service: service,
+		service: platformRoleService,
 	}
 }
 
