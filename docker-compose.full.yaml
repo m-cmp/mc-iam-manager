@@ -1,0 +1,125 @@
+version: '3.8'
+
+services:
+  mc-iam-manager:
+    container_name: mciam-manager
+    build:
+      context: ./dockerfiles/mc-iam-manager
+      dockerfile: Dockerfile.mciammanager
+    ports:
+      - "${PORT:-8082}:${PORT:-8082}" # Use PORT from .env, default to 8082 if not set
+    env_file:
+      - .env # Load environment variables from .env file
+    depends_on:
+      postgres:
+        condition: service_healthy # Wait for postgres to be healthy if defined
+      keycloak:
+        condition: service_healthy # Wait for keycloak to be healthy
+    networks:
+      - mciam-network
+    restart: unless-stopped
+    # Add healthcheck if needed for mc-iam-manager
+    profiles: ["standalone", "with-db", "with-keycloak", "all"]
+
+  postgres:
+    image: postgres:16
+    container_name: mciam-postgres
+    environment:
+      POSTGRES_USER: ${IAM_POSTGRES_USER} # Updated to match .env
+      POSTGRES_PASSWORD: ${IAM_POSTGRES_PASSWORD} # Updated to match .env
+      POSTGRES_DB: ${IAM_POSTGRES_DB} # Updated to match .env
+    volumes:
+      - ./dockercontainer-volume/postgres/data/:/var/lib/postgresql/data # Corrected default path for postgres:16
+      - ./dockerfiles/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql # Corrected init script path
+    ports:
+      - "5432:5432"
+    networks:
+      - mciam-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${IAM_POSTGRES_USER} -d ${IAM_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles: ["with-db", "all"]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.1 # Using image directly as build context might not be needed if Dockerfile is simple
+    container_name: mciam-keycloak
+    # build: # If custom build is needed, uncomment and ensure Dockerfile.keycloak exists
+    #   context: ./dockerfiles/old/keycloak # Assuming Dockerfile is in old path
+    #   dockerfile: Dockerfile.keycloak
+    command: #start-dev # start or start-dev
+      - start-dev
+      # - --import-realm # Uncomment if realm import is needed on first start
+      # - --verbose
+    volumes:
+      # - ./dockerfiles/old/keycloak/import/:/opt/keycloak/data/import/ # Mount import volume if needed
+      - ./dockercontainer-volume/keycloak/data/:/opt/keycloak/data/
+    environment:
+      KC_DB: postgres # Explicitly set DB type
+      KC_DB_URL_HOST: postgres # Service name in docker-compose network
+      KC_DB_URL_DATABASE: ${IAM_POSTGRES_DB} # Use the same DB as mc-iam-manager
+      KC_DB_URL_PORT: 5432
+      KC_DB_USERNAME: ${IAM_POSTGRES_USER} # Use the same user
+      KC_DB_PASSWORD: ${IAM_POSTGRES_PASSWORD} # Use the same password
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin} # Default admin user if not in .env
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_password} # Default admin password if not in .env
+      KC_HOSTNAME: ${DOMAIN:-localhost} # Use DOMAIN from .env, default to localhost
+      KC_HOSTNAME_STRICT: "false" # Typically false for dev/testing
+      KC_HOSTNAME_STRICT_HTTPS: "false" # Typically false for dev/testing without proper certs
+      KC_HTTP_ENABLED: "true" # Enable HTTP for easier local access
+      KC_PROXY: edge # Required if running behind a proxy like Nginx
+    ports:
+      - "8080:8080" # Expose Keycloak port
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mciam-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    profiles: ["with-keycloak", "all"]
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: mciam-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN_NAME=${DOMAIN:-localhost} # Use DOMAIN from .env, default to localhost
+    volumes:
+      - ./dockerfiles/nginx/nginx.conf:/etc/nginx/nginx.conf:ro # Corrected config path
+      # - ./dockerfiles/nginx/templates:/etc/nginx/templates:ro # Corrected templates path if needed
+      - ./dockercontainer-volume/certs:/etc/nginx/certs:ro # Mount certs volume (read-only for nginx)
+      - ./dockercontainer-volume/certbot/www:/var/www/certbot:ro # Mount certbot challenge dir (read-only)
+    depends_on:
+      - keycloak # Nginx likely proxies Keycloak and mc-iam-manager
+      - mc-iam-manager
+    networks:
+      - mciam-network
+    restart: unless-stopped
+    profiles: ["with-keycloak", "all"]
+
+  certbot:
+    image: certbot/certbot
+    container_name: mciam-certbot
+    volumes:
+      - ./dockercontainer-volume/certs:/etc/letsencrypt # Mount certs volume
+      - ./dockercontainer-volume/certbot/www:/var/www/certbot # Mount challenge dir
+    depends_on:
+      - nginx
+    networks:
+      - mciam-network
+    # entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet --agree-tos --email your-email@example.com -d ${DOMAIN:-localhost}; sleep 12h & wait $${!}; done;'" # Adjust email and domain
+    # Commenting out entrypoint for now, needs proper setup
+    profiles: ["with-keycloak", "all"] # Assigning to with-keycloak and all profiles
+
+networks:
+  mciam-network:
+    driver: bridge
