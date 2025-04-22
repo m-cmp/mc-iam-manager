@@ -1,271 +1,469 @@
 package service
 
 import (
-	"context" // Ensure errors is imported
+	"context"
+	"errors"
 	"fmt"
-	"log" // Added for logging in SyncPlatformAdmin
-	"os"
-	"time"
+	"log"
 
+	// Add strings import for error checking
+	// "github.com/Nerzal/gocloak/v13" // No longer needed directly
+	// "github.com/m-cmp/mc-iam-manager/config" // No longer needed directly
 	"github.com/Nerzal/gocloak/v13"
-	"github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
-	// Added for gorm.ErrRecordNotFound
+	"gorm.io/gorm"
 )
+
+// Use repository's error
+// var (
+// 	ErrUserNotFound = errors.New("user not found")
+// )
 
 type UserService struct {
 	userRepo          *repository.UserRepository
-	platformRoleRepo  *repository.PlatformRoleRepository // Added dependency
+	platformRoleRepo  *repository.PlatformRoleRepository
 	workspaceRoleRepo *repository.WorkspaceRoleRepository
-	tokenRepo         *repository.TokenRepository // Assuming this exists and is needed for getValidToken
-	keycloakClient    *gocloak.GoCloak
-	keycloakConfig    *config.KeycloakConfig
+	workspaceRepo     *repository.WorkspaceRepository
+	tokenRepo         *repository.TokenRepository
+	db                *gorm.DB // Add DB field for initializing repos
+	// keycloakService   KeycloakService // Removed dependency
 }
 
-// NewUserService constructor needs to accept new dependencies
+// NewUserService constructor initializes repositories internally
 func NewUserService(
-	userRepo *repository.UserRepository,
-	platformRoleRepo *repository.PlatformRoleRepository, // Added
-	// workspaceRoleRepo *repository.WorkspaceRoleRepository, // Add if needed
-	// tokenRepo *repository.TokenRepository, // Add if needed
-	keycloakConfig *config.KeycloakConfig,
-	keycloakClient *gocloak.GoCloak,
+	db *gorm.DB, // Add db parameter
+	// keycloakService KeycloakService, // Removed KeycloakService parameter
 ) *UserService {
+	// Initialize repositories internally
+	userRepo := repository.NewUserRepository(db)
+	platformRoleRepo := repository.NewPlatformRoleRepository(db)
+	workspaceRepo := repository.NewWorkspaceRepository(db)
+	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db) // Initialize needed repo
+	tokenRepo := repository.NewTokenRepository(db)                 // Initialize needed repo
+
 	return &UserService{
+		db:                db, // Store db
 		userRepo:          userRepo,
-		platformRoleRepo:  platformRoleRepo, // Initialize
-		workspaceRoleRepo: nil,              // Initialize if needed
-		tokenRepo:         nil,              // Initialize if needed
-		keycloakClient:    keycloakClient,
-		keycloakConfig:    keycloakConfig,
+		platformRoleRepo:  platformRoleRepo,
+		workspaceRepo:     workspaceRepo,
+		workspaceRoleRepo: workspaceRoleRepo, // Store initialized repo
+		tokenRepo:         tokenRepo,         // Store initialized repo
+		// keycloakService:   keycloakService, // Removed KeycloakService field
 	}
 }
 
-// SyncPlatformAdmin ensures the platform superadmin from .env exists and has the correct role
-func (s *UserService) SyncPlatformAdmin(ctx context.Context) error {
-	adminUsername := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_ID")
-	if adminUsername == "" {
-		log.Println("Warning: MCIAMMANAGER_PLATFORMADMIN_ID not set in .env, skipping superadmin sync.")
-		return nil // Not a fatal error if not set
+// --- Helper methods for Keycloak interaction --- // REMOVED
+
+// SyncUser ensures a user record exists in the local DB for the given Keycloak ID.
+func (s *UserService) SyncUser(ctx context.Context, kcUserID string) (*model.User, error) {
+	dbUser, err := s.userRepo.FindByKcID(kcUserID)
+	if err == nil && dbUser != nil {
+		// User found, enrich with Keycloak data before returning
+		ks := NewKeycloakService() // Create KeycloakService instance when needed
+		kcUser, kcErr := ks.GetUser(ctx, kcUserID)
+		if kcErr != nil {
+			log.Printf("Warning: Found user in DB but failed to get Keycloak details for %s: %v", kcUserID, kcErr)
+		} else if kcUser != nil {
+			dbUser.Email = *kcUser.Email
+			dbUser.FirstName = *kcUser.FirstName
+			dbUser.LastName = *kcUser.LastName
+			dbUser.Enabled = *kcUser.Enabled
+			if dbUser.Username != *kcUser.Username {
+				log.Printf("Warning: Username mismatch for user KcId %s (DB: %s, KC: %s). Updating DB.", kcUserID, dbUser.Username, *kcUser.Username)
+				dbUser.Username = *kcUser.Username
+				updateErr := s.userRepo.UpdateDbUser(dbUser)
+				if updateErr != nil {
+					log.Printf("Warning: Failed to update username in DB for KcId %s: %v", kcUserID, updateErr)
+				}
+			}
+		}
+		return dbUser, nil
 	}
-
-	log.Printf("Syncing platform superadmin: %s", adminUsername)
-
-	// 1. Find user in Keycloak by username
-	kcUser, err := s.userRepo.GetUserByUsername(ctx, adminUsername)
+	// Handle DB errors other than "not found" (which is nil, nil from FindByKcID)
 	if err != nil {
-		log.Printf("Error finding superadmin '%s' in Keycloak: %v. Please ensure the user exists in Keycloak.", adminUsername, err)
-		return fmt.Errorf("superadmin user '%s' must exist in Keycloak", adminUsername) // Make it an error to stop startup?
-	}
-	if kcUser == nil { // Should be covered by err check, but double-check
-		log.Printf("Superadmin user '%s' not found in Keycloak. Please ensure the user exists.", adminUsername)
-		return fmt.Errorf("superadmin user '%s' must exist in Keycloak", adminUsername)
+		return nil, fmt.Errorf("error checking user in local db (kc_id: %s): %w", kcUserID, err)
 	}
 
-	// 2. Ensure user exists in local DB (mcmp_users) using Count()
-	var count int64
-	var dbUser model.User // Declare dbUser here for later use
-	err = s.userRepo.DB().Model(&model.User{}).Where("kc_id = ?", kcUser.ID).Count(&count).Error
+	// Not found in DB, fetch from Keycloak and create
+	log.Printf("User '%s' not found in local DB, syncing from Keycloak...", kcUserID)
+	ks := NewKeycloakService() // Create KeycloakService instance when needed
+	kcUser, err := ks.GetUser(ctx, kcUserID)
 	if err != nil {
-		log.Printf("Error counting superadmin '%s' in local DB: %v", adminUsername, err)
-		return fmt.Errorf("failed to count superadmin in local DB: %w", err)
+		// Handle specific "not found" error from keycloakService
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return nil, fmt.Errorf("user %s not found in keycloak during sync: %w", kcUserID, err)
+		}
+		return nil, fmt.Errorf("failed to get user details from keycloak for sync (id: %s): %w", kcUserID, err)
+	}
+	if kcUser == nil {
+		return nil, fmt.Errorf("user %s not found in keycloak detail fetch", kcUserID)
 	}
 
-	if count == 0 {
-		// User not found, create entry
-		log.Printf("Superadmin '%s' not found in local DB, creating entry...", adminUsername)
-		// Log kcUser details before creating dbUserToCreate
-		log.Printf("[DEBUG] kcUser data before creating local record: %+v", kcUser)
-		dbUserToCreate := model.User{
-			KcId:     kcUser.ID,
-			Username: kcUser.Username, // Ensure Username is included
-			// Email:       kcUser.Email,    // Email is ignored by gorm:"-" in model
-			FirstName:   kcUser.FirstName,
-			LastName:    kcUser.LastName,
-			Description: kcUser.Description, // Include Description
-		}
-		// Log the data being sent to DB Create
-		log.Printf("[DEBUG] Attempting to create dbUserToCreate: %+v", dbUserToCreate)
-		// Use map to explicitly specify columns for Create, ensuring username is included
-		userDataToCreate := map[string]interface{}{
-			"kc_id":    dbUserToCreate.KcId,
-			"username": dbUserToCreate.Username,
-			// "email":       dbUserToCreate.Email, // Remove email as column doesn't exist
-			//"first_name":  dbUserToCreate.FirstName,
-			//"last_name":   dbUserToCreate.LastName,
-			"description": dbUserToCreate.Description,
-		}
-		log.Printf("[DEBUG] Data being passed to GORM Create (map): %+v", userDataToCreate)
-		// Create using map on the specific model type
-		if errCreate := s.userRepo.DB().Model(&model.User{}).Create(userDataToCreate).Error; errCreate != nil {
-			// Corrected log format string and added missing argument
-			log.Printf("Error creating superadmin '%s' in local DB: %v", adminUsername, errCreate)
-			return fmt.Errorf("failed to create superadmin in local DB: %w", errCreate)
-		}
-		// Need to fetch the created user again to get the DbId
-		err = s.userRepo.DB().Where("kc_id = ?", kcUser.ID).First(&dbUser).Error
-		if err != nil {
-			log.Printf("Error fetching newly created superadmin '%s' from local DB: %v", adminUsername, err)
-			return fmt.Errorf("failed to fetch newly created superadmin from local DB: %w", err)
-		}
-		log.Printf("Superadmin '%s' entry created in local DB. DB ID: %d", adminUsername, dbUser.DbId)
-	} else {
-		// User exists, fetch the full record including DbId
-		err = s.userRepo.DB().Where("kc_id = ?", kcUser.ID).First(&dbUser).Error
-		if err != nil {
-			log.Printf("Error fetching existing superadmin '%s' from local DB: %v", adminUsername, err)
-			return fmt.Errorf("failed to fetch existing superadmin from local DB: %w", err)
-		}
+	newUser := &model.User{
+		KcId:        *kcUser.ID,
+		Username:    *kcUser.Username,
+		Description: "", // Default description
+	}
+	createdDbUser, createErr := s.userRepo.CreateDbUser(newUser)
+	if createErr != nil {
+		return nil, fmt.Errorf("failed to create user in local db during sync (kc_id: %s): %w", kcUserID, createErr)
 	}
 
-	// 3. Ensure 'platformadmin' role exists
-	adminRoleName := "platformadmin"                         // Changed variable name and value
-	role, err := s.platformRoleRepo.GetByName(adminRoleName) // Use PlatformRoleRepository with new name
+	log.Printf("User '%s' synced and created in local DB.", kcUserID)
+	// Merge transient Keycloak info
+	createdDbUser.Email = *kcUser.Email
+	createdDbUser.FirstName = *kcUser.FirstName
+	createdDbUser.LastName = *kcUser.LastName
+	createdDbUser.Enabled = *kcUser.Enabled
+	return createdDbUser, nil
+}
+
+// --- Public Service Methods ---
+
+// GetUsers retrieves all users, merging data from Keycloak and the local DB.
+func (s *UserService) GetUsers(ctx context.Context) ([]model.User, error) {
+	ks := NewKeycloakService() // Create KeycloakService instance when needed
+	kcUsers, err := ks.GetUsers(ctx)
 	if err != nil {
-		// Assuming GetByName returns specific error string for not found
-		if err.Error() == "platform role not found" { // Check error string
-			log.Printf("Error: '%s' role not found in mcmp_platform_roles. Run migration 000010 first.", adminRoleName)
+		return nil, err
+	}
+	if len(kcUsers) == 0 {
+		return []model.User{}, nil
+	}
+
+	kcIDs := make([]string, 0, len(kcUsers))
+	keycloakUserMap := make(map[string]*gocloak.User, len(kcUsers))
+	for _, u := range kcUsers {
+		if u != nil && u.ID != nil {
+			kcIDs = append(kcIDs, *u.ID)
+			keycloakUserMap[*u.ID] = u
+		}
+	}
+	if len(kcIDs) == 0 {
+		return []model.User{}, nil
+	}
+
+	dbUsers, err := s.userRepo.GetDbUsersByKcIDs(kcIDs)
+	if err != nil {
+		log.Printf("Warning: Failed to get DB user details for some users: %v. Returning potentially incomplete data.", err)
+		var result []model.User
+		for _, kcUser := range kcUsers {
+			if kcUser != nil && kcUser.ID != nil {
+				result = append(result, model.User{
+					KcId:      *kcUser.ID,
+					Username:  *kcUser.Username,
+					Email:     *kcUser.Email,
+					FirstName: *kcUser.FirstName,
+					LastName:  *kcUser.LastName,
+					Enabled:   *kcUser.Enabled,
+				})
+			}
+		}
+		return result, nil
+	}
+
+	dbUserMap := make(map[string]*model.User, len(dbUsers))
+	for i := range dbUsers {
+		dbUserMap[dbUsers[i].KcId] = &dbUsers[i]
+	}
+
+	var result []model.User
+	for _, kcUser := range kcUsers {
+		if kcUser == nil || kcUser.ID == nil {
+			continue
+		}
+		kcID := *kcUser.ID
+
+		mergedUser := model.User{
+			KcId:      kcID,
+			Username:  *kcUser.Username,
+			Email:     *kcUser.Email,
+			FirstName: *kcUser.FirstName,
+			LastName:  *kcUser.LastName,
+			Enabled:   *kcUser.Enabled,
+		}
+
+		if dbUser, dbExists := dbUserMap[kcID]; dbExists {
+			mergedUser.ID = dbUser.ID
+			mergedUser.Description = dbUser.Description
+			mergedUser.CreatedAt = dbUser.CreatedAt
+			mergedUser.UpdatedAt = dbUser.UpdatedAt
+			mergedUser.PlatformRoles = dbUser.PlatformRoles
+			mergedUser.WorkspaceRoles = dbUser.WorkspaceRoles
 		} else {
-			log.Printf("Error fetching '%s' role: %v", adminRoleName, err)
+			fmt.Printf("Warning: User found in Keycloak but not in local db (kc_id: %s)\n", kcID)
 		}
-		return fmt.Errorf("failed to find '%s' role: %w", adminRoleName, err)
+		result = append(result, mergedUser)
 	}
 
-	// 4. Assign 'platformadmin' role to the user if not already assigned
-	if dbUser.DbId == 0 {
-		// Fetch again to ensure DbId is populated if it was just created
-		err = s.userRepo.DB().Where("kc_id = ?", kcUser.ID).First(&dbUser).Error
-		if err != nil || dbUser.DbId == 0 {
-			log.Printf("Error: Could not get valid DB ID for admin '%s' after creation/check. Cannot assign role.", adminUsername) // Changed log message
-			return fmt.Errorf("could not get valid DB ID for admin '%s'", adminUsername)                                           // Changed error message
-		}
-	}
+	return result, nil
+}
 
-	// Check if association already exists
-	var currentRoles []model.PlatformRole
-	// Use userRepo's DB method and check association
-	if err := s.userRepo.DB().Model(&dbUser).Association("PlatformRoles").Find(&currentRoles); err != nil {
-		log.Printf("Error checking existing roles for admin '%s': %v", adminUsername, err) // Changed log message
-		return fmt.Errorf("failed to check existing roles for admin: %w", err)             // Changed error message
+// GetUserByID retrieves user details by DB ID.
+func (s *UserService) GetUserByID(ctx context.Context, id uint) (*model.User, error) {
+	dbUser, err := s.userRepo.FindByID(id)
+	if err != nil {
+		return nil, err
 	}
-
-	hasAdminRole := false // Changed variable name
-	for _, r := range currentRoles {
-		if r.ID == role.ID {
-			hasAdminRole = true // Changed variable name
-			break
-		}
+	if dbUser.KcId == "" {
+		log.Printf("Warning: User with DB ID %d has empty kc_id.", id)
+		return dbUser, nil
 	}
+	ks := NewKeycloakService() // Create KeycloakService instance when needed
+	kcUser, err := ks.GetUser(ctx, dbUser.KcId)
+	if err != nil {
+		log.Printf("Warning: failed to get Keycloak details for user id %d (kcId: %s): %v. Returning DB data only.", id, dbUser.KcId, err)
+		// If user not found in Keycloak, maybe return DB data but log inconsistency?
+		return dbUser, nil
+	}
+	dbUser.Email = *kcUser.Email
+	dbUser.FirstName = *kcUser.FirstName
+	dbUser.LastName = *kcUser.LastName
+	dbUser.Enabled = *kcUser.Enabled
+	if dbUser.Username != *kcUser.Username {
+		log.Printf("Warning: Username mismatch for user ID %d (DB: %s, KC: %s)", id, dbUser.Username, *kcUser.Username)
+	}
+	return dbUser, nil
+}
 
-	if !hasAdminRole { // Changed variable name
-		log.Printf("Assigning '%s' role to admin '%s'...", adminRoleName, adminUsername) // Changed log message
-		// Use userRepo's DB method to append association
-		if err := s.userRepo.DB().Model(&dbUser).Association("PlatformRoles").Append(role); err != nil {
-			log.Printf("Error assigning '%s' role to admin '%s': %v", adminRoleName, adminUsername, err) // Changed log message
-			return fmt.Errorf("failed to assign '%s' role: %w", adminRoleName, err)                      // Changed error message
-		}
-		log.Printf("Successfully assigned '%s' role to admin '%s'.", adminRoleName, adminUsername) // Changed log message
+// GetUserByKcID retrieves user details by Keycloak ID.
+func (s *UserService) GetUserByKcID(ctx context.Context, kcId string) (*model.User, error) {
+	ks := NewKeycloakService() // Create KeycloakService instance when needed
+	kcUser, err := ks.GetUser(ctx, kcId)
+	if err != nil {
+		return nil, err // Propagate error (e.g., user not found)
+	}
+	resultUser := &model.User{
+		KcId:      *kcUser.ID,
+		Username:  *kcUser.Username,
+		Email:     *kcUser.Email,
+		FirstName: *kcUser.FirstName,
+		LastName:  *kcUser.LastName,
+		Enabled:   *kcUser.Enabled,
+	}
+	dbUser, err := s.userRepo.FindByKcID(kcId)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) && err != nil {
+		log.Printf("Error fetching user details from local db (kc_id: %s): %v\n", resultUser.KcId, err)
+		return resultUser, nil
+	}
+	if dbUser != nil {
+		resultUser.ID = dbUser.ID
+		resultUser.Description = dbUser.Description
+		resultUser.CreatedAt = dbUser.CreatedAt
+		resultUser.UpdatedAt = dbUser.UpdatedAt
+		resultUser.PlatformRoles = dbUser.PlatformRoles
+		resultUser.WorkspaceRoles = dbUser.WorkspaceRoles
 	} else {
-		log.Printf("Admin '%s' already has '%s' role.", adminUsername, adminRoleName) // Changed log message
+		fmt.Printf("Warning: User found in Keycloak but not in local db (kc_id: %s)\n", resultUser.KcId)
 	}
+	return resultUser, nil
+}
 
+// GetUserByUsername retrieves user details by username.
+func (s *UserService) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
+	ks := NewKeycloakService() // Create KeycloakService instance when needed
+	kcUser, err := ks.GetUserByUsername(ctx, username)
+	if err != nil {
+		return nil, err // Propagate error (e.g., user not found)
+	}
+	resultUser := &model.User{
+		KcId:      *kcUser.ID,
+		Username:  *kcUser.Username,
+		Email:     *kcUser.Email,
+		FirstName: *kcUser.FirstName,
+		LastName:  *kcUser.LastName,
+		Enabled:   *kcUser.Enabled,
+	}
+	dbUser, err := s.userRepo.FindByKcID(resultUser.KcId)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) && err != nil {
+		log.Printf("Error fetching user details from local db (kc_id: %s): %v\n", resultUser.KcId, err)
+		return resultUser, nil
+	}
+	if dbUser != nil {
+		resultUser.ID = dbUser.ID
+		resultUser.Description = dbUser.Description
+		resultUser.CreatedAt = dbUser.CreatedAt
+		resultUser.UpdatedAt = dbUser.UpdatedAt
+		resultUser.PlatformRoles = dbUser.PlatformRoles
+		resultUser.WorkspaceRoles = dbUser.WorkspaceRoles
+	} else {
+		fmt.Printf("Warning: User found in Keycloak but not in local db (kc_id: %s)\n", resultUser.KcId)
+	}
+	return resultUser, nil
+}
+
+// CreateUser creates a user in Keycloak and the local DB.
+func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
+	ks := NewKeycloakService() // Create KeycloakService instance when needed
+	kcId, err := ks.CreateUser(ctx, user)
+	if err != nil {
+		return err // Propagate error (e.g., user exists)
+	}
+	user.KcId = kcId
+	_, err = s.userRepo.CreateDbUser(user)
+	if err != nil {
+		log.Printf("CRITICAL: Failed to create user in DB after Keycloak creation (kcId: %s). Manual cleanup needed. Error: %v", kcId, err)
+		// TODO: Compensation - delete user from Keycloak?
+		return fmt.Errorf("failed to create user in DB after Keycloak: %w", err)
+	}
 	return nil
 }
 
-// --- Existing UserService methods below ---
-
-// getValidToken (Keep as is, assuming tokenRepo is initialized if needed)
-func (s *UserService) getValidToken(ctx context.Context) (string, error) {
-	if s.tokenRepo == nil {
-		// If tokenRepo is not essential for all UserService operations, handle its absence.
-		// Otherwise, ensure it's initialized in NewUserService.
-		// For now, assume it might be needed elsewhere or refactor if not.
-		// Fallback to direct login if token repo is unavailable.
-		tokenResponse, err := s.keycloakClient.LoginClient(ctx, s.keycloakConfig.ClientID, s.keycloakConfig.ClientSecret, s.keycloakConfig.Realm)
-		if err != nil {
-			return "", fmt.Errorf("failed to get token via login: %v", err)
-		}
-		return tokenResponse.AccessToken, nil
-	}
-
-	token, err := s.tokenRepo.GetTokenByUserID(s.keycloakConfig.ClientID)
-	if err == nil {
-		if time.Until(token.ExpiresAt) > 10*time.Minute {
-			return token.Token, nil
-		}
-	}
-
-	tokenResponse, err := s.keycloakClient.LoginClient(ctx, s.keycloakConfig.ClientID, s.keycloakConfig.ClientSecret, s.keycloakConfig.Realm)
-	if err != nil {
-		return "", fmt.Errorf("failed to get token: %v", err)
-	}
-
-	if err := s.tokenRepo.SaveToken(s.keycloakConfig.ClientID, tokenResponse.AccessToken, int64(tokenResponse.ExpiresIn)); err != nil {
-		// Log error but return token anyway
-		fmt.Printf("Warning: failed to save token: %v\n", err)
-		// return "", fmt.Errorf("failed to save token: %v", err)
-	}
-
-	return tokenResponse.AccessToken, nil
-}
-
-// GetUsers returns a list of users
-func (s *UserService) GetUsers(ctx context.Context) ([]model.User, error) {
-	// This method likely needs updating to use userRepo.GetUsers which combines KC and DB data
-	return s.userRepo.GetUsers(ctx) // Delegate to repository
-}
-
-// GetUserByID returns a user by ID
-func (s *UserService) GetUserByID(ctx context.Context, id string) (*model.User, error) {
-	return s.userRepo.GetUserByID(ctx, id)
-}
-
-// GetUserByUsername returns a user by username from Keycloak
-func (s *UserService) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
-	return s.userRepo.GetUserByUsername(ctx, username)
-}
-
-// CreateUser creates a new user
-func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
-	// Add potential validation or business logic here
-	return s.userRepo.CreateUser(ctx, user)
-}
-
-// UpdateUser updates an existing user
+// UpdateUser updates a user in Keycloak and the local DB.
 func (s *UserService) UpdateUser(ctx context.Context, user *model.User) error {
-	// Add potential validation or business logic here
-	return s.userRepo.UpdateUser(ctx, user)
+	if user.ID == 0 {
+		return errors.New("user ID must be provided for update")
+	}
+	dbUser, err := s.userRepo.FindByID(user.ID)
+	if err != nil {
+		return err
+	}
+	if dbUser.KcId == "" {
+		return fmt.Errorf("cannot update user in keycloak: KcId missing for DB user ID %d", user.ID)
+	}
+	user.KcId = dbUser.KcId
+
+	ks := NewKeycloakService() // Create KeycloakService instance when needed
+	err = ks.UpdateUser(ctx, user)
+	if err != nil {
+		return err // Propagate error
+	}
+	err = s.userRepo.UpdateDbUser(user)
+	if err != nil {
+		log.Printf("Warning: Keycloak user updated, but DB update failed for ID %d: %v", user.ID, err)
+	}
+	return nil
 }
 
-// DeleteUser deletes a user
-func (s *UserService) DeleteUser(ctx context.Context, id string) error {
-	// Add potential validation or business logic here
-	return s.userRepo.DeleteUser(ctx, id)
-}
+// DeleteUser deletes a user from Keycloak and the local DB using the DB ID.
+func (s *UserService) DeleteUser(ctx context.Context, id uint) error {
+	dbUser, err := s.userRepo.FindByID(id)
+	if err != nil {
+		return err
+	}
+	kcId := dbUser.KcId
 
-// GetUser returns a user by ID (Duplicate of GetUserByID?)
-// func (s *UserService) GetUser(ctx context.Context, id string) (*model.User, error) {
-// 	return s.userRepo.GetUserByID(ctx, id)
-// }
+	if kcId != "" {
+		ks := NewKeycloakService() // Create KeycloakService instance when needed
+		err = ks.DeleteUser(ctx, kcId)
+		if err != nil {
+			// Log warning but continue with DB deletion attempt
+			log.Printf("Warning: Failed to delete user %s from Keycloak: %v. Proceeding with DB deletion.", kcId, err)
+		}
+	} else {
+		log.Printf("Warning: User with DB ID %d has no KcId. Skipping Keycloak deletion.", id)
+	}
+
+	err = s.userRepo.DeleteDbUserByID(id)
+	if err != nil {
+		log.Printf("CRITICAL: Failed to delete user from DB (ID: %d) after Keycloak deletion attempt. Manual cleanup needed. Error: %v", id, err)
+		return fmt.Errorf("failed to delete user from DB: %w", err)
+	}
+	return nil
+}
 
 // ApproveUser enables a user in Keycloak and ensures they exist in the local DB.
 func (s *UserService) ApproveUser(ctx context.Context, kcUserID string) error {
-	// 1. Enable user in Keycloak
-	err := s.userRepo.EnableUserInKeycloak(ctx, kcUserID)
+	ks := NewKeycloakService() // Create KeycloakService instance when needed
+	err := ks.EnableUser(ctx, kcUserID)
 	if err != nil {
 		return fmt.Errorf("failed to enable user in keycloak: %w", err)
 	}
-
-	// 2. Ensure user exists in local DB (sync)
-	_, err = s.userRepo.SyncUser(ctx, kcUserID)
+	_, err = s.SyncUser(ctx, kcUserID)
 	if err != nil {
-		// Log warning but consider approval successful if Keycloak enable worked
 		fmt.Printf("Warning: User %s enabled in Keycloak, but failed to sync/create in local DB: %v\n", kcUserID, err)
-		// return fmt.Errorf("failed to sync user to local db after enabling: %w", err)
 	}
-
-	// TODO: Assign default role(s) if needed upon approval
-
 	return nil
 }
+
+// WorkspaceRoleInfo 사용자별 워크스페이스 및 역할 정보를 담는 구조체
+type WorkspaceRoleInfo struct { // Uncomment struct definition
+	Workspace model.Workspace     `json:"workspace"`
+	Role      model.WorkspaceRole `json:"role"`
+}
+
+// GetUserWorkspaceAndWorkspaceRoles 현재 사용자가 속한 워크스페이스 및 역할 목록 조회
+func (s *UserService) GetUserWorkspaceAndWorkspaceRoles(ctx context.Context, userID uint) ([]WorkspaceRoleInfo, error) { // Uncomment function
+	// 1. Check if user exists by DB ID
+	_, err := s.userRepo.FindByID(userID) // Use correct repo method name
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return nil, ErrUserNotFound // Use service level error
+		}
+		return nil, fmt.Errorf("failed to verify user existence: %w", err)
+	}
+
+	// 2. Call repository method to get workspace roles for the user
+	userWorkspaceRoles, err := s.userRepo.FindWorkspaceAndWorkspaceRolesByUserID(userID) // Use correct repo method name
+	if err != nil {
+		return nil, fmt.Errorf("failed to find workspace roles for user %d: %w", userID, err)
+	}
+
+	// Process the results
+	workspaceMap := make(map[uint]*WorkspaceRoleInfo)
+	for _, uwr := range userWorkspaceRoles {
+		workspaceID := uwr.WorkspaceID
+		if workspaceID == 0 {
+			continue
+		}
+
+		if _, exists := workspaceMap[workspaceID]; !exists {
+			workspaceInfo, err := s.workspaceRepo.GetByID(workspaceID) // Assuming workspaceRepo exists and has GetByID
+			if err != nil {
+				fmt.Printf("Warning: Could not fetch workspace details for ID %d: %v\n", workspaceID, err)
+				workspaceMap[workspaceID] = &WorkspaceRoleInfo{
+					Workspace: model.Workspace{ID: workspaceID, Name: fmt.Sprintf("Workspace %d (Fetch Failed)", workspaceID)},
+				}
+			} else {
+				workspaceMap[workspaceID] = &WorkspaceRoleInfo{
+					Workspace: *workspaceInfo,
+				}
+			}
+		}
+		if uwr.WorkspaceRole.ID != 0 {
+			workspaceMap[workspaceID].Role = uwr.WorkspaceRole
+		}
+	}
+
+	result := make([]WorkspaceRoleInfo, 0, len(workspaceMap))
+	for _, info := range workspaceMap {
+		result = append(result, *info)
+	}
+
+	return result, nil
+}
+
+// GetUserIDByKcID finds the local database ID for a given Keycloak User ID.
+func (s *UserService) GetUserIDByKcID(ctx context.Context, kcUserID string) (uint, error) { // Uncomment function
+	dbUser, err := s.userRepo.FindByKcID(kcUserID) // Use correct repo method name
+	if err == nil && dbUser != nil {
+		return dbUser.ID, nil // User found in DB
+	}
+	// Check if the error is specifically gorm.ErrRecordNotFound or our nil,nil case
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, fmt.Errorf("error checking user db_id by kc_id %s: %w", kcUserID, err)
+	}
+	// If err is nil but dbUser is nil (FindByKcID returns nil,nil for not found)
+	if err == nil && dbUser == nil {
+		// Proceed to sync
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) { // Handle other errors
+		return 0, fmt.Errorf("error checking user db_id by kc_id %s: %w", kcUserID, err)
+	}
+
+	// User not found in DB, sync from Keycloak
+	syncedUser, syncErr := s.SyncUser(ctx, kcUserID) // Call SyncUser method
+	if syncErr != nil {
+		return 0, fmt.Errorf("failed to sync user to get db_id (kc_id: %s): %w", kcUserID, syncErr)
+	}
+	if syncedUser == nil || syncedUser.ID == 0 {
+		return 0, fmt.Errorf("failed to retrieve db_id after syncing user (kc_id: %s)", kcUserID)
+	}
+
+	return syncedUser.ID, nil
+}
+
+// getValidToken (Keep as is, assuming tokenRepo is initialized if needed)
+// func (s *UserService) getValidToken(ctx context.Context) (string, error) {
+// 	// ... (Implementation) ...
+// }

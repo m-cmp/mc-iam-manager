@@ -518,6 +518,378 @@
                 }
             }
         },
+        "/mcmp-apis": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves all MCMP API service and action definitions currently stored in the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "McmpAPI"
+                ],
+                "summary": "Get All Stored MCMP API Definitions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by service name",
+                        "name": "serviceName",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by action name (operationId)",
+                        "name": "actionName",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved API definitions",
+                        "schema": {
+                            "$ref": "#/definitions/mcmpapi.McmpApiDefinitions"
+                        }
+                    },
+                    "500": {
+                        "description": "message: Failed to retrieve API definitions",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/mcmp-apis/call": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Executes a defined MCMP API action with parameters structured in McmpApiCallRequest.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "McmpAPI"
+                ],
+                "summary": "Call an external MCMP API action (Structured Request)",
+                "parameters": [
+                    {
+                        "description": "API Call Request",
+                        "name": "callRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mcmpapi.McmpApiCallRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "External API Response (structure depends on the called API)",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "error: Invalid request body or parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Service or action not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Internal server error or failed to call external API",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "error: External API unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/mcmp-apis/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Triggers the synchronization of MCMP API definitions from the configured YAML URL to the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "McmpAPI // Updated tag"
+                ],
+                "summary": "Sync MCMP API Definitions",
+                "responses": {
+                    "200": {
+                        "description": "message: Successfully triggered MCMP API sync\" // Updated message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "message: Failed to trigger MCMP API sync\" // Updated message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/mcmp-apis/test/mc-infra-manager/getallns": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Calls the GetAllNs action of the mc-infra-manager service via the CallApi service.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "McmpAPI",
+                    "Test"
+                ],
+                "summary": "Test Call to mc-infra-manager GetAllNs",
+                "responses": {
+                    "200": {
+                        "description": "Response from mc-infra-manager GetAllNs",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "error: Bad Request (e.g., invalid parameters)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Service or Action Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "error: External API Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/mcmp-apis/{serviceName}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates specific fields (e.g., BaseURL, Auth info) of an MCMP API service definition identified by its name. Cannot update name or version.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "McmpAPI"
+                ],
+                "summary": "Update MCMP API Service Definition",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service Name to update",
+                        "name": "serviceName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update (e.g., {\\",
+                        "name": "updates",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message: Service updated successfully\" // Or return updated service?",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "error: Invalid service name or request body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Service not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Failed to update service",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/mcmp-apis/{serviceName}/versions/{version}/activate": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Sets the specified version of an MCMP API service as the active one.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "McmpAPI"
+                ],
+                "summary": "Set Active Version for a Service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Service Name",
+                        "name": "serviceName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Version to activate",
+                        "name": "version",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "error: Invalid service name or version",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Service or version not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Failed to set active version",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/menus": {
             "get": {
                 "security": [
@@ -1353,7 +1725,143 @@
                 }
             }
         },
+        "/readyz": {
+            "get": {
+                "description": "애플리케이션의 준비 상태를 확인합니다. status=detail 쿼리 파라미터로 상세 상태를 확인할 수 있습니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "애플리케이션 준비 상태 확인",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "상세 상태 확인 여부 ('detail')",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "상세 상태 정보 (status=detail)",
+                        "schema": {
+                            "$ref": "#/definitions/service.HealthStatus"
+                        }
+                    },
+                    "503": {
+                        "description": "상세 상태 확인 중 오류 발생 시",
+                        "schema": {
+                            "$ref": "#/definitions/service.HealthStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/workspaces": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "현재 로그인한 사용자가 접근 가능한 워크스페이스 및 각 워크스페이스에서의 역할 목록을 조회합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users",
+                    "workspaces",
+                    "roles",
+                    "me"
+                ],
+                "summary": "내 워크스페이스 및 역할 목록 조회",
+                "responses": {
+                    "200": {
+                        "description": "성공 시 워크스페이스 및 역할 정보 목록 반환",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/service.WorkspaceRoleInfo"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "모든 사용자 목록을 조회합니다. 'admin' 또는 'platformAdmin' 역할이 필요합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "사용자 목록 조회 (관리자용)",
+                "responses": {
+                    "200": {
+                        "description": "성공 시 사용자 목록 반환",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.User"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden (권한 부족)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -1370,6 +1878,15 @@
                         "BearerAuth": []
                     }
                 ],
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User DB ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {}
             }
         },
@@ -1380,7 +1897,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "지정된 사용자를 활성화하고 시스템 사용을 승인합니다. 'admin' 또는 'platform_superadmin' 역할이 필요합니다.",
+                "description": "지정된 사용자를 활성화하고 시스템 사용을 승인합니다. 'admin' 또는 'platformadmin' 역할이 필요합니다.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1787,6 +2304,73 @@
                 }
             }
         },
+        "/workspaces/{id}/projects": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "특정 워크스페이스 ID에 연결된 모든 프로젝트 목록을 조회합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "워크스페이스에 연결된 프로젝트 목록 조회",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공 시 프로젝트 목록 반환",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Project"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 워크스페이스 ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 워크스페이스를 찾을 수 없습니다",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/workspaces/{id}/projects/{projectId}": {
             "post": {
                 "security": [
@@ -1911,6 +2495,245 @@
                     }
                 }
             }
+        },
+        "/workspaces/{id}/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "특정 워크스페이스에 속한 모든 사용자와 각 사용자의 역할을 조회합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces",
+                    "users",
+                    "roles"
+                ],
+                "summary": "워크스페이스 사용자 및 역할 목록 조회",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공 시 사용자 및 역할 목록 반환",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/service.UserWithRoles"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 워크스페이스 ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 워크스페이스를 찾을 수 없습니다",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceId}/users/{userId}/roles/{roleId}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "특정 워크스페이스 내의 사용자에게 특정 워크스페이스 역할을 할당합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces",
+                    "roles",
+                    "users"
+                ],
+                "summary": "워크스페이스 사용자에게 역할 할당",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 ID",
+                        "name": "workspaceId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "사용자 DB ID (db_id)",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "error: 잘못된 ID 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 사용자, 역할 또는 워크스페이스를 찾을 수 없습니다",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "error: 역할이 해당 워크스페이스에 속하지 않음",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "특정 워크스페이스 내의 사용자에게서 특정 워크스페이스 역할을 제거합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces",
+                    "roles",
+                    "users"
+                ],
+                "summary": "워크스페이스 사용자 역할 제거",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 ID",
+                        "name": "workspaceId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "사용자 DB ID (db_id)",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "error: 잘못된 ID 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 역할 또는 워크스페이스를 찾을 수 없습니다\" // User existence check is optional here",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "error: 역할이 해당 워크스페이스에 속하지 않음",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1921,6 +2744,122 @@
                     "type": "string"
                 },
                 "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "mcmpapi.McmpApiAuthInfo": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "mcmpapi.McmpApiCallRequest": {
+            "type": "object",
+            "required": [
+                "actionName",
+                "serviceName"
+            ],
+            "properties": {
+                "actionName": {
+                    "description": "Target action name (operationId)",
+                    "type": "string"
+                },
+                "requestParams": {
+                    "description": "Parameters for the external API call",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/mcmpapi.McmpApiRequestParams"
+                        }
+                    ]
+                },
+                "serviceName": {
+                    "description": "Target service name",
+                    "type": "string"
+                }
+            }
+        },
+        "mcmpapi.McmpApiDefinitions": {
+            "type": "object",
+            "properties": {
+                "serviceActions": {
+                    "description": "Use renamed ServiceAction",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/definitions/mcmpapi.McmpApiServiceAction"
+                        }
+                    }
+                },
+                "services": {
+                    "description": "Use renamed ServiceDefinition",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/mcmpapi.McmpApiServiceDefinition"
+                    }
+                }
+            }
+        },
+        "mcmpapi.McmpApiRequestParams": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "description": "Request body (accept any JSON structure) - Changed from json.RawMessage for swag compatibility"
+                },
+                "pathParams": {
+                    "description": "Parameters to replace in the resource path (e.g., {userId})",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "queryParams": {
+                    "description": "Parameters to append as query string (?key=value)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "mcmpapi.McmpApiServiceAction": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "resourcePath": {
+                    "type": "string"
+                }
+            }
+        },
+        "mcmpapi.McmpApiServiceDefinition": {
+            "type": "object",
+            "properties": {
+                "auth": {
+                    "description": "Use renamed AuthInfo",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/mcmpapi.McmpApiAuthInfo"
+                        }
+                    ]
+                },
+                "baseURL": {
+                    "type": "string"
+                },
+                "version": {
                     "type": "string"
                 }
             }
@@ -2058,6 +2997,62 @@
                 }
             }
         },
+        "model.User": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "email": {
+                    "description": "Ignore Email for DB",
+                    "type": "string"
+                },
+                "enabled": {
+                    "description": "Enabled status managed by Keycloak",
+                    "type": "boolean"
+                },
+                "firstName": {
+                    "description": "Ignore FirstName for DB",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "DB에 저장되는 정보 (mcmp_users 테이블)",
+                    "type": "integer"
+                },
+                "kc_id": {
+                    "description": "Keycloak User ID",
+                    "type": "string"
+                },
+                "lastName": {
+                    "description": "Ignore LastName for DB",
+                    "type": "string"
+                },
+                "platform_roles": {
+                    "description": "관계 정의 (Foreign Key는 DB ID인 'ID' 필드를 참조해야 함)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlatformRole"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "description": "Keycloak 정보",
+                    "type": "string"
+                },
+                "workspace_roles": {
+                    "description": "Changed foreignKey to ID",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.WorkspaceRole"
+                    }
+                }
+            }
+        },
         "model.Workspace": {
             "type": "object",
             "properties": {
@@ -2082,6 +3077,84 @@
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "model.WorkspaceRole": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "이름은 고유해야 함",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.HealthStatus": {
+            "type": "object",
+            "properties": {
+                "db_connection": {
+                    "type": "string"
+                },
+                "keycloak_admin_login": {
+                    "type": "string"
+                },
+                "keycloak_client_check": {
+                    "type": "string"
+                },
+                "keycloak_realm_check": {
+                    "type": "string"
+                },
+                "mcmp_actions_count": {
+                    "type": "integer"
+                },
+                "mcmp_services_count": {
+                    "type": "integer"
+                },
+                "menus_count": {
+                    "type": "integer"
+                },
+                "platform_roles_count": {
+                    "type": "integer"
+                },
+                "workspace_roles_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "service.UserWithRoles": {
+            "type": "object",
+            "properties": {
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.WorkspaceRole"
+                    }
+                },
+                "user": {
+                    "$ref": "#/definitions/model.User"
+                }
+            }
+        },
+        "service.WorkspaceRoleInfo": {
+            "type": "object",
+            "properties": {
+                "role": {
+                    "$ref": "#/definitions/model.WorkspaceRole"
+                },
+                "workspace": {
+                    "$ref": "#/definitions/model.Workspace"
                 }
             }
         }

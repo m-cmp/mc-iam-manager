@@ -5,19 +5,32 @@ import (
 	"net/http"
 	"strconv"
 
+	// Add json import
+	"log" // Add log import
+
 	"github.com/labstack/echo/v4"
-	"github.com/m-cmp/mc-iam-manager/model"
+	"gorm.io/gorm"
+	// Removed duplicate echo import
+	"github.com/m-cmp/mc-iam-manager/model" // Import mcmpapi model for request
 	"github.com/m-cmp/mc-iam-manager/service"
 )
 
 // ProjectHandler 프로젝트 관리 핸들러
 type ProjectHandler struct {
 	projectService *service.ProjectService
+	mcmpApiService service.McmpApiService // Added dependency
+	// db *gorm.DB // Not needed directly in handler
 }
 
 // NewProjectHandler 새 ProjectHandler 인스턴스 생성
-func NewProjectHandler(projectService *service.ProjectService) *ProjectHandler {
-	return &ProjectHandler{projectService: projectService}
+func NewProjectHandler(db *gorm.DB) *ProjectHandler { // Accept db, remove service params
+	// Initialize services internally
+	mcmpApiService := service.NewMcmpApiService(db)
+	projectService := service.NewProjectService(db, mcmpApiService)
+	return &ProjectHandler{
+		projectService: projectService,
+		mcmpApiService: mcmpApiService, // Initialize dependency
+	}
 }
 
 // CreateProject godoc
@@ -38,10 +51,14 @@ func (h *ProjectHandler) CreateProject(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 	project.ID = 0 // Ensure ID is not set by client
+	// project.NsId will be set by the service after calling the external API
 
-	if err := h.projectService.Create(&project); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 생성 실패: %v", err)})
+	// Call the service Create method, passing the context
+	if err := h.projectService.Create(c.Request().Context(), &project); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 생성 실패 (DB 저장 오류): %v", err)})
 	}
+
+	log.Printf("Successfully created project '%s' (ID: %d, NsId: %s)", project.Name, project.ID, project.NsId)
 	return c.JSON(http.StatusCreated, project)
 }
 

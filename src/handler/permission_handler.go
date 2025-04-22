@@ -8,15 +8,19 @@ import (
 	"github.com/m-cmp/mc-iam-manager/service"
 
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm" // Import gorm
 )
 
 // PermissionHandler 권한 관리 핸들러
 type PermissionHandler struct {
 	permissionService *service.PermissionService
+	// db *gorm.DB // Not needed directly in handler
 }
 
 // NewPermissionHandler 권한 관리 핸들러 생성
-func NewPermissionHandler(permissionService *service.PermissionService) *PermissionHandler {
+func NewPermissionHandler(db *gorm.DB) *PermissionHandler { // Accept db, remove service param
+	// Initialize service internally
+	permissionService := service.NewPermissionService(db)
 	return &PermissionHandler{
 		permissionService: permissionService,
 	}

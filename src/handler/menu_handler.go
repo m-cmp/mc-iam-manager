@@ -13,13 +13,17 @@ import (
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service" // Corrected import path
 	"github.com/m-cmp/mc-iam-manager/util"    // Import the new util package
+	"gorm.io/gorm"                            // Ensure gorm is imported
 )
 
 type MenuHandler struct {
 	menuService *service.MenuService
+	// db *gorm.DB // Not needed directly in handler
 }
 
-func NewMenuHandler(menuService *service.MenuService) *MenuHandler {
+func NewMenuHandler(db *gorm.DB) *MenuHandler { // Accept db, remove service param
+	// Initialize service internally
+	menuService := service.NewMenuService(db)
 	return &MenuHandler{menuService: menuService}
 }
 
@@ -147,7 +151,7 @@ func (h *MenuHandler) GetAllMenusTree(c echo.Context) error {
 
 	if !isAdmin {
 		fmt.Printf("[DEBUG] GetAllMenusTree: isAdmin is false, returning Forbidden.\n") // Log before returning error
-		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Administrator access required"})
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Administrator access required 1"})
 	}
 
 	// Call the service method for all menus

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,10 +12,11 @@ import (
 	"github.com/m-cmp/mc-iam-manager/handler"
 	"github.com/m-cmp/mc-iam-manager/middleware"
 
-	// "github.com/m-cmp/mc-iam-manager/model" // No longer needed directly in main
-	"github.com/m-cmp/mc-iam-manager/repository"
-	"github.com/m-cmp/mc-iam-manager/service"
+	// "github.com/m-cmp/mc-iam-manager/service" // Remove unused service import
 
+	// "github.com/m-cmp/mc-iam-manager/repository" // Removed unused import
+
+	// Ensure YAML is imported
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
@@ -40,11 +40,6 @@ func main() {
 		log.Printf("Warning: .env 파일을 로드하는데 실패했습니다: %v", err)
 	}
 
-	// // 데이터베이스 초기화
-	// db, err := config.InitDB()
-	// if err != nil {
-	// 	log.Fatalf("Failed to initialize database: %v", err)
-	// }
 	// 데이터베이스 초기화
 	dbConfig := config.NewDatabaseConfig()
 	db, err := gorm.Open(postgres.Open(dbConfig.GetDSN()), &gorm.Config{})
@@ -65,137 +60,170 @@ func main() {
 	e.Use(echomiddleware.Recover())
 	e.Use(echomiddleware.CORS())
 
-	// Repository 초기화
-	userRepo := repository.NewUserRepository(db, config.KC, config.KC.Client) // Pass db instance
+	// Repository and Service initializations are now handled within Handler constructors
 
-	platformRoleRepo := repository.NewPlatformRoleRepository(db)
-	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db)
-	// Need PermissionRepository for MenuService
-	permissionRepo := repository.NewPermissionRepository(db) // Define permissionRepo earlier
-
-	// Service 초기화
-	// Pass platformRoleRepo to NewUserService
-	userService := service.NewUserService(userRepo, platformRoleRepo, config.KC, config.KC.Client)
-	platformRoleService := service.NewPlatformRoleService(platformRoleRepo)
-	workspaceRoleService := service.NewWorkspaceRoleService(workspaceRoleRepo)
+	// Keycloak Service 초기화 (이제 파라미터 없음)
+	// keycloakService := service.NewKeycloakService() // No longer need to store this instance
 
 	// 핸들러 초기화
-	// Pass keycloakClient and userRepo to NewAuthHandler
-	authHandler := handler.NewAuthHandler(config.KC, config.KC.Client, userRepo)
-	platformRoleHandler := handler.NewPlatformRoleHandler(platformRoleService)
-	workspaceRoleHandler := handler.NewWorkspaceRoleHandler(workspaceRoleService)
-	userHandler := handler.NewUserHandler(userService)
+	authHandler := handler.NewAuthHandler(db)                   // Pass only db
+	platformRoleHandler := handler.NewPlatformRoleHandler(db)   // Correct: Pass db
+	workspaceRoleHandler := handler.NewWorkspaceRoleHandler(db) // Correct: Pass db
+	userHandler := handler.NewUserHandler(db)                   // Pass only db
+	permissionHandler := handler.NewPermissionHandler(db)       // Correct: Pass db
+	mcmpApiHandler := handler.NewMcmpApiHandler(db)             // Correct: Pass db
 
 	// 메뉴 핸들러 초기화 (DB 사용)
-	menuRepo := repository.NewMenuRepository(db)
-	// permissionRepo is already defined above, just use it
-	// Need UserService for MenuService (or just UserRepository)
-	// Assuming MenuService needs UserRepository directly
-	menuService := service.NewMenuService(menuRepo, userRepo, permissionRepo)
-	menuHandler := handler.NewMenuHandler(menuService)
+	menuHandler := handler.NewMenuHandler(db) // Pass db
 
 	// --- Sync Platform Superadmin (Call after UserService is initialized) ---
-	if err := userService.SyncPlatformAdmin(context.Background()); err != nil {
-		// Log the error but continue starting the application
-		log.Printf("Error during platform superadmin sync: %v", err)
-	}
+	// TODO : SyncPlatformAdmin needed - This logic might need adjustment
+	//        as userService is no longer directly available here.
+	//        Consider moving this sync logic elsewhere or initializing userService temporarily.
+	// tempUserService := service.NewUserService(db) // Pass only db
+	// if err := tempUserService.SyncPlatformAdmin(context.Background()); err != nil {
+	// 	log.Printf("Error during platform superadmin sync: %v", err)
+	// }
 
 	// Workspace 및 Project 핸들러 초기화
-	workspaceRepo := repository.NewWorkspaceRepository(db)
-	projectRepo := repository.NewProjectRepository(db)
-	workspaceService := service.NewWorkspaceService(workspaceRepo, projectRepo) // Pass both repos
-	projectService := service.NewProjectService(projectRepo, workspaceRepo)     // Pass both repos
-	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
-	projectHandler := handler.NewProjectHandler(projectService)
+	workspaceHandler := handler.NewWorkspaceHandler(db) // Pass db
+	projectHandler := handler.NewProjectHandler(db)     // Correct: Pass db
+
+	// Health Check 초기화
+	healthHandler := handler.NewHealthCheckHandler(db) // Correct: Pass only db
 
 	// 라우트 설정
-	e.GET("/readyz", func(c echo.Context) error {
-		return c.JSON(200, map[string]string{"status": "ok"})
-	})
-
-	// // 인증 라우트
-	// e.POST("/login", authHandler.Login)
-	// e.POST("/logout", authHandler.Logout)
-	// e.POST("/refresh", authHandler.RefreshToken)
+	e.GET("/readyz", healthHandler.ReadyzCheck) // Use the new handler
 
 	api := e.Group("/api")
 	// 인증 라우트
 	api.POST("/auth/login", authHandler.Login)
 	api.POST("/auth/logout", authHandler.Logout)
 	api.POST("/auth/refresh", authHandler.RefreshToken)
+	// Removed undefined auth routes
 
-	// 사용자 라우트
-	api.Use(middleware.KeycloakAuthMiddleware)
+	// 사용자 라우트 (인증 필요, 관리자용)
+	// userRoutes is declared only once here using :=
+	userRoutes := api.Group("/users", middleware.AuthMiddleware)
 	{
-		api.GET("/users", userHandler.GetUsers)
-		api.GET("/users/:id", userHandler.GetUserByID)
-		api.GET("/users/username/:username", userHandler.GetUserByUsername)
-		api.POST("/users", userHandler.CreateUser) // Admin creates enabled user
-		api.PUT("/users/:id", userHandler.UpdateUser)
-		api.DELETE("/users/:id", userHandler.DeleteUser)
-		api.POST("/users/:id/approve", userHandler.ApproveUser) // Admin approves registration
+		// Remove the duplicated meRoutes.GET line from here
+		userRoutes.GET("", userHandler.GetUsers)
+		userRoutes.GET("/:id", userHandler.GetUserByID) // This ID is likely DB ID now
+		userRoutes.GET("/username/:username", userHandler.GetUserByUsername)
+		userRoutes.POST("", userHandler.CreateUser)       // Admin creates enabled user
+		userRoutes.PUT("/:id", userHandler.UpdateUser)    // This ID is DB ID
+		userRoutes.DELETE("/:id", userHandler.DeleteUser) // This ID is DB ID
+		// Note: ApproveUser still uses Keycloak ID in path, might need alignment
+		userRoutes.POST("/:id/approve", userHandler.ApproveUser) // Admin approves registration
+
+		// This route seems misplaced under /users, should be /user/workspaces or /my/workspaces
+		// Keeping it here for now based on file content, but correcting handler name
+		userRoutes.GET("/workspaces", userHandler.GetUserWorkspaceAndWorkspaceRoles) // Correct handler function name
+		// This route also seems misplaced, should be /user/menus or /my/menus
+		userRoutes.GET("/menus", menuHandler.GetUserMenuTree) // 사용자별 메뉴 트리 조회 이동
+
 	}
 
-	// TODO: Add public registration route (e.g., POST /register) if needed
+	// 메뉴 라우트 (인증 필요, 관리자용) - 사용자별 조회는 /user/menus 로 이동
+	menuRoutes := api.Group("/menus", middleware.AuthMiddleware)
+	{
+		// menuRoutes.GET("", menuHandler.GetUserMenuTree)     // Moved to /user/menus
+		menuRoutes.GET("/all", menuHandler.GetAllMenusTree) // All menus tree (Admin)
+		menuRoutes.GET("/:id", menuHandler.GetByID)
+		menuRoutes.POST("", menuHandler.Create)
+		menuRoutes.PUT("/:id", menuHandler.Update)
+		menuRoutes.DELETE("/:id", menuHandler.Delete)
+		menuRoutes.POST("/register-from-yaml", menuHandler.RegisterMenusFromYAML)
+		menuRoutes.POST("/register-from-body", menuHandler.RegisterMenusFromBody)
+	}
 
-	// 메뉴 라우트
-	api.GET("/menus", menuHandler.GetUserMenuTree)     // User-specific menu tree
-	api.GET("/menus/all", menuHandler.GetAllMenusTree) // All menus tree (Admin)
-	api.GET("/menus/:id", menuHandler.GetByID)
-	api.POST("/menus", menuHandler.Create)
-	api.PUT("/menus/:id", menuHandler.Update)
-	api.DELETE("/menus/:id", menuHandler.Delete)
-	api.POST("/menus/register-from-yaml", menuHandler.RegisterMenusFromYAML)
-	api.POST("/menus/register-from-body", menuHandler.RegisterMenusFromBody) // YAML 본문 등록 라우트 추가
+	// 플랫폼 역할 라우트 (인증 필요)
+	platformRoleRoutes := api.Group("/platform-roles", middleware.AuthMiddleware)
+	{
+		platformRoleRoutes.GET("", platformRoleHandler.List)
+		platformRoleRoutes.GET("/:id", platformRoleHandler.GetByID)
+		platformRoleRoutes.POST("", platformRoleHandler.Create)
+		platformRoleRoutes.PUT("/:id", platformRoleHandler.Update)
+		platformRoleRoutes.DELETE("/:id", platformRoleHandler.Delete)
+	}
 
-	// 플랫폼 역할 라우트
-	api.GET("/platform-roles", platformRoleHandler.List)
-	api.GET("/platform-roles/:id", platformRoleHandler.GetByID)
-	api.POST("/platform-roles", platformRoleHandler.Create)
-	api.PUT("/platform-roles/:id", platformRoleHandler.Update)
-	api.DELETE("/platform-roles/:id", platformRoleHandler.Delete)
+	// 워크스페이스 역할 라우트 (인증 필요)
+	workspaceRoleRoutes := api.Group("/workspace-roles", middleware.AuthMiddleware)
+	{
+		workspaceRoleRoutes.GET("", workspaceRoleHandler.List)
+		workspaceRoleRoutes.GET("/:id", workspaceRoleHandler.GetByID)
+		workspaceRoleRoutes.POST("", workspaceRoleHandler.Create)
+		workspaceRoleRoutes.PUT("/:id", workspaceRoleHandler.Update)
+		workspaceRoleRoutes.DELETE("/:id", workspaceRoleHandler.Delete)
+		// Add routes for assigning/removing roles to users within a workspace context
+		// These might fit better under /workspaces/{workspaceId}/users/{userId}/roles/{roleId}
+		// Let's add them to a new group for clarity or attach to workspaceRoutes
+	}
 
-	// 워크스페이스 역할 라우트
-	api.GET("/workspace-roles", workspaceRoleHandler.List)
-	api.GET("/workspace-roles/:id", workspaceRoleHandler.GetByID)
-	api.POST("/workspace-roles", workspaceRoleHandler.Create)
-	api.PUT("/workspace-roles/:id", workspaceRoleHandler.Update)
-	api.DELETE("/workspace-roles/:id", workspaceRoleHandler.Delete)
+	// User-Workspace-Role Assignment Routes (within API group, requires auth)
+	userWorkspaceRoleRoutes := api.Group("/workspaces/:workspaceId/users/:userId/roles", middleware.AuthMiddleware)
+	{
+		userWorkspaceRoleRoutes.POST("/:roleId", workspaceRoleHandler.AssignRoleToUser)
+		userWorkspaceRoleRoutes.DELETE("/:roleId", workspaceRoleHandler.RemoveRoleFromUser)
+		// TODO: Add GET route to list roles for a user in a workspace?
+	}
 
-	// Workspace 라우트
-	api.POST("/workspaces", workspaceHandler.CreateWorkspace)
-	api.GET("/workspaces", workspaceHandler.ListWorkspaces)
-	api.GET("/workspaces/name/:name", workspaceHandler.GetWorkspaceByName) // Add route for GetByName
-	api.GET("/workspaces/:id", workspaceHandler.GetWorkspaceByID)
-	api.PUT("/workspaces/:id", workspaceHandler.UpdateWorkspace)
-	api.DELETE("/workspaces/:id", workspaceHandler.DeleteWorkspace)
-	api.POST("/workspaces/:id/projects/:projectId", workspaceHandler.AddProjectToWorkspace)
-	api.DELETE("/workspaces/:id/projects/:projectId", workspaceHandler.RemoveProjectFromWorkspace)
+	// Workspace 라우트 (인증 필요)
+	workspaceRoutes := api.Group("/workspaces", middleware.AuthMiddleware)
+	{
+		workspaceRoutes.POST("", workspaceHandler.CreateWorkspace)
+		workspaceRoutes.GET("", workspaceHandler.ListWorkspaces)
+		workspaceRoutes.GET("/name/:name", workspaceHandler.GetWorkspaceByName)
+		workspaceRoutes.GET("/:id", workspaceHandler.GetWorkspaceByID)
+		workspaceRoutes.PUT("/:id", workspaceHandler.UpdateWorkspace)
+		workspaceRoutes.DELETE("/:id", workspaceHandler.DeleteWorkspace)
+		workspaceRoutes.POST("/:id/projects/:projectId", workspaceHandler.AddProjectToWorkspace)
+		workspaceRoutes.DELETE("/:id/projects/:projectId", workspaceHandler.RemoveProjectFromWorkspace)
+		workspaceRoutes.GET("/:id/projects", workspaceHandler.ListProjectsByWorkspace)   // 워크스페이스별 프로젝트 목록 조회 라우트 추가
+		workspaceRoutes.GET("/:id/users", workspaceHandler.ListUsersAndRolesByWorkspace) // 워크스페이스별 사용자 및 역할 목록 조회 라우트 추가
+	}
 
-	// Project 라우트
-	api.POST("/projects", projectHandler.CreateProject)
-	api.GET("/projects", projectHandler.ListProjects)
-	api.GET("/projects/name/:name", projectHandler.GetProjectByName) // Add route for GetByName
-	api.GET("/projects/:id", projectHandler.GetProjectByID)
-	api.PUT("/projects/:id", projectHandler.UpdateProject)
-	api.DELETE("/projects/:id", projectHandler.DeleteProject)
-	api.POST("/projects/:id/workspaces/:workspaceId", projectHandler.AddWorkspaceToProject)
-	api.DELETE("/projects/:id/workspaces/:workspaceId", projectHandler.RemoveWorkspaceFromProject)
+	// Project 라우트 (인증 필요)
+	projectRoutes := api.Group("/projects", middleware.AuthMiddleware)
+	{
+		projectRoutes.POST("", projectHandler.CreateProject)
+		projectRoutes.GET("", projectHandler.ListProjects)
+		projectRoutes.GET("/name/:name", projectHandler.GetProjectByName)
+		projectRoutes.GET("/:id", projectHandler.GetProjectByID)
+		projectRoutes.PUT("/:id", projectHandler.UpdateProject)
+		projectRoutes.DELETE("/:id", projectHandler.DeleteProject)
+		projectRoutes.POST("/:id/workspaces/:workspaceId", projectHandler.AddWorkspaceToProject)
+		projectRoutes.DELETE("/:id/workspaces/:workspaceId", projectHandler.RemoveWorkspaceFromProject)
+	}
 
-	// ... existing code ...
-	// 권한 관리 API 라우트
-	// Use the already initialized permissionRepo
-	permissionService := service.NewPermissionService(permissionRepo)
-	permissionHandler := handler.NewPermissionHandler(permissionService)
-	api.POST("/permissions", permissionHandler.Create)
-	api.GET("/permissions", permissionHandler.List)
-	api.GET("/permissions/:id", permissionHandler.GetByID)
-	api.PUT("/permissions/:id", permissionHandler.Update)
-	api.DELETE("/permissions/:id", permissionHandler.Delete)
-	// Updated role-permission routes to include roleType
-	api.POST("/roles/:roleType/:roleId/permissions/:permissionId", permissionHandler.AssignRolePermission)
-	api.DELETE("/roles/:roleType/:roleId/permissions/:permissionId", permissionHandler.RemoveRolePermission)
-	api.GET("/roles/:roleType/:roleId/permissions", permissionHandler.GetRolePermissions)
+	// 권한 관리 API 라우트 (인증 필요)
+	permissionRoutes := api.Group("/permissions", middleware.AuthMiddleware)
+	{
+		permissionRoutes.POST("", permissionHandler.Create)
+		permissionRoutes.GET("", permissionHandler.List)
+		permissionRoutes.GET("/:id", permissionHandler.GetByID)
+		permissionRoutes.PUT("/:id", permissionHandler.Update)
+		permissionRoutes.DELETE("/:id", permissionHandler.Delete)
+	}
+	// 역할-권한 매핑 라우트 (인증 필요)
+	rolePermissionRoutes := api.Group("/roles", middleware.AuthMiddleware)
+	{
+		rolePermissionRoutes.POST("/:roleType/:roleId/permissions/:permissionId", permissionHandler.AssignRolePermission)
+		rolePermissionRoutes.DELETE("/:roleType/:roleId/permissions/:permissionId", permissionHandler.RemoveRolePermission)
+		rolePermissionRoutes.GET("/:roleType/:roleId/permissions", permissionHandler.GetRolePermissions)
+	}
+
+	// mcmp API 라우트 (인증 필요) -> McmpAPI 라우트로 변경
+	mcmpApiRoutes := api.Group("/mcmp-apis", middleware.AuthMiddleware) // Renamed group and potentially middleware
+	{
+		mcmpApiRoutes.POST("/sync", mcmpApiHandler.SyncMcmpAPIs)                                       // Renamed handler and method
+		mcmpApiRoutes.PUT("/:serviceName/versions/:version/activate", mcmpApiHandler.SetActiveVersion) // Add route for activating version
+		mcmpApiRoutes.GET("", mcmpApiHandler.GetAllAPIDefinitions)                                     // Add route for getting all definitions
+		mcmpApiRoutes.PUT("/:serviceName", mcmpApiHandler.UpdateService)                               // Add route for updating service
+		mcmpApiRoutes.POST("/call", mcmpApiHandler.McmpApiCall)                                        // Correct handler method name
+		mcmpApiRoutes.GET("/test/mc-infra-manager/getallns", mcmpApiHandler.TestCallGetAllNs)          // Add test route
+		// Add other mcmp API routes if needed
+	}
 
 	// Swagger 라우트 추가
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
@@ -203,20 +231,8 @@ func main() {
 	// 서버 시작
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8082"
+		port = "8082" // Default port if not set
 	}
+	log.Printf("Server starting on port %s", port)
 	e.Logger.Fatal(e.Start(":" + port))
 }
-
-// Helper methods to access gorm.DB from repositories (add these to respective repo files if not already present)
-/*
-// In repository/user_repository.go
-func (r *UserRepository) DB() *gorm.DB {
-	return r.db
-}
-
-// In repository/platform_role_repository.go
-func (r *PlatformRoleRepository) DB() *gorm.DB {
-	return r.db
-}
-*/

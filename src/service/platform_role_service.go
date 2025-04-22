@@ -3,15 +3,20 @@ package service
 import (
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
+	"gorm.io/gorm" // Import gorm
 )
 
 type PlatformRoleService struct {
 	repo *repository.PlatformRoleRepository
+	// db *gorm.DB // Not needed directly in service methods for now
 }
 
-func NewPlatformRoleService(repo *repository.PlatformRoleRepository) *PlatformRoleService {
+func NewPlatformRoleService(db *gorm.DB) *PlatformRoleService { // Accept db
+	// Initialize repository internally
+	repo := repository.NewPlatformRoleRepository(db) // Pass db to repo constructor
 	return &PlatformRoleService{
 		repo: repo,
+		// db: db, // Store db if needed later
 	}
 }
 

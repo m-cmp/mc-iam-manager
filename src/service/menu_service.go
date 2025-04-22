@@ -14,17 +14,24 @@ import (
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gopkg.in/yaml.v3"
+	"gorm.io/gorm" // Import gorm
 )
 
 type MenuService struct {
+	db             *gorm.DB // Add db field
 	menuRepo       *repository.MenuRepository
 	userRepo       *repository.UserRepository       // Added dependency
 	permissionRepo *repository.PermissionRepository // Added dependency
 }
 
 // NewMenuService 새 MenuService 인스턴스 생성
-func NewMenuService(menuRepo *repository.MenuRepository, userRepo *repository.UserRepository, permissionRepo *repository.PermissionRepository) *MenuService {
+func NewMenuService(db *gorm.DB) *MenuService { // Accept only db
+	// Initialize repositories internally
+	menuRepo := repository.NewMenuRepository(db)
+	userRepo := repository.NewUserRepository(db)
+	permissionRepo := repository.NewPermissionRepository() // Permission repo doesn't need db in constructor
 	return &MenuService{
+		db:             db, // Store db
 		menuRepo:       menuRepo,
 		userRepo:       userRepo,
 		permissionRepo: permissionRepo,
@@ -47,12 +54,12 @@ func (s *MenuService) GetAllMenusTree() ([]*model.MenuTreeNode, error) {
 }
 
 // BuildUserMenuTree 사용자의 Platform Role 기반 메뉴 트리 조회 (내부 로직용)
-func (s *MenuService) BuildUserMenuTree(ctx context.Context, userID string) ([]*model.MenuTreeNode, error) {
+func (s *MenuService) BuildUserMenuTree(ctx context.Context, kcUserID string) ([]*model.MenuTreeNode, error) {
 	// 1. Get User's Platform Roles
 	// Assuming userID is Keycloak ID, fetch user details including roles
 	// Note: userRepo.GetUserByID currently only fetches basic info + roles from DB based on kc_id.
 	// Ensure userRepo.GetUserByID correctly preloads PlatformRoles.
-	user, err := s.userRepo.GetUserByID(ctx, userID)
+	user, err := s.userRepo.FindByKcID(kcUserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user details: %w", err)
 	}
@@ -69,8 +76,9 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, userID string) ([]*
 	// Need a method in PermissionRepository like GetPermissionsByRoleIDs(ctx, roleType, roleIDs)
 	// For now, iterate and call GetRolePermissions (less efficient)
 	allowedMenuIDs := make(map[string]bool)
+	tx := s.db.WithContext(ctx) // Create transaction with context
 	for _, roleID := range platformRoleIDs {
-		permissions, err := s.permissionRepo.GetRolePermissions(ctx, "platform", roleID)
+		permissions, err := s.permissionRepo.GetRolePermissions(tx, "platform", roleID) // Pass tx
 		if err != nil {
 			// Log error but continue, maybe user has other roles with permissions
 			fmt.Printf("Warning: failed to get permissions for platform role %d: %v\n", roleID, err)
@@ -232,12 +240,13 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 	// If filePath is not provided via query param
 	if effectiveFilePath == "" {
 		// Load .env file to get the URL (assuming .env is at project root)
-		envPath := filepath.Join("..", ".env") // Path relative to src directory
-		_ = godotenv.Load(envPath)             // Ignore error if .env not found
+		// .env path should be relative to project root when running the binary
+		envPath := ".env"          // Path relative to project root
+		_ = godotenv.Load(envPath) // Ignore error if .env not found
 		menuURL := os.Getenv("MCWEBCONSOLE_MENUYAML")
 
-		// Default local path if URL is not set or not a valid URL
-		defaultLocalPath := filepath.Join("..", "asset", "menu", "menu.yaml")
+		// Default local path relative to project root
+		defaultLocalPath := filepath.Join("asset", "menu", "menu.yaml") // Removed "../"
 
 		if menuURL != "" && (strings.HasPrefix(menuURL, "http://") || strings.HasPrefix(menuURL, "https://")) {
 			// Attempt to download from URL
@@ -278,12 +287,10 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 				}
 			}
 		} else if menuURL != "" {
-			// If MCWEBCONSOLE_MENUYAML is set but not a URL, assume it's a local path
+			// If MCWEBCONSOLE_MENUYAML is set but not a URL, assume it's a local path relative to project root
 			fmt.Printf("Using local menu YAML path from MCWEBCONSOLE_MENUYAML: %s\n", menuURL)
-			// Note: This path should be relative to the project root or absolute.
-			// Adjusting relative path from .env based on current execution dir (src) might be needed.
 			// Assuming menuURL is relative to project root:
-			effectiveFilePath = filepath.Join("..", menuURL)
+			effectiveFilePath = menuURL // Use the path directly
 		} else {
 			// If MCWEBCONSOLE_MENUYAML is not set, use the default local path
 			fmt.Printf("MCWEBCONSOLE_MENUYAML not set or invalid URL, using default local path: %s\n", defaultLocalPath)

@@ -52,11 +52,11 @@ func InitKeycloak() error {
 	}
 
 	// Test connection and get certs
-	ctx := context.Background()
-	_, err := KC.Client.GetCerts(ctx, KC.Realm)
-	if err != nil {
-		return fmt.Errorf("failed to get Keycloak certs: %v", err)
-	}
+	// ctx := context.Background()
+	// _, err := KC.Client.GetCerts(ctx, KC.Realm)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to get Keycloak certs: %v", err)
+	// }
 
 	return nil
 }
