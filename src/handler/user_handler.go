@@ -273,7 +273,7 @@ func (h *UserHandler) ApproveUser(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /user/workspaces [get] // Updated router path to match user preference
+// @Router /users/workspaces [get] // Updated router path to match user preference
 func (h *UserHandler) GetUserWorkspaceAndWorkspaceRoles(c echo.Context) error { // Renamed function
 	// 1. Get user claims from context
 	claimsIntf := c.Get("token_claims")

@@ -118,9 +118,14 @@
 
 #### 4.2.3 프로젝트 관리 (`mcmp_projects` 테이블)
 - 프로젝트 CRUD API 구현 (`/api/v1/projects`, `/api/v1/projects/{id}`)
+  - **참고:** 프로젝트 생성(`POST /api/v1/projects`) 시, 해당 프로젝트는 `.env` 파일의 `DEFAULT_WORKSPACE_NAME` 환경 변수에 지정된 이름의 워크스페이스(기본값: "default")에 자동으로 할당됩니다.
 - 프로젝트 이름으로 조회 API 구현 (`/api/v1/projects/name/{name}`)
 - 프로젝트-워크스페이스 연결/해제 API 구현 (`POST`/`DELETE /api/v1/projects/{id}/workspaces/{workspaceId}`)
 - 워크스페이스와 프로젝트는 M:N 관계 (`mcmp_workspace_projects` 매핑 테이블 사용)
+- **프로젝트 동기화 API:** `POST /api/v1/projects/sync`
+  - `mc-infra-manager`의 네임스페이스 목록을 조회합니다.
+  - 로컬 DB(`mcmp_projects`)에 존재하지 않는 네임스페이스를 새로운 프로젝트로 생성합니다.
+  - 동기화 과정에서 **새로 생성되었거나, 기존에 존재했지만 어떤 워크스페이스에도 할당되지 않은 프로젝트**를 `.env` 파일의 `DEFAULT_WORKSPACE_NAME` 환경 변수에 지정된 이름의 워크스페이스(기본값: "default")에 자동으로 할당합니다.
 
 #### 4.2.4 역할 관리 (`mcmp_platform_roles`, `mcmp_workspace_roles`, `mcmp_user_workspace_roles` 테이블)
 - 플랫폼 역할 CRUD API 구현 (`/api/v1/platform-roles`)
@@ -250,6 +255,7 @@
     - `IAM_POSTGRES_USER`, `IAM_POSTGRES_PASSWORD`, `IAM_POSTGRES_DB`: PostgreSQL 접속 정보
     - `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`: Keycloak 관리자 정보 (Docker Compose에서 사용)
     - `DOMAIN_NAME`: Nginx 및 Keycloak에서 사용할 도메인 이름 (기본값: localhost)
+    - `DEFAULT_WORKSPACE_NAME`: 할당되지 않은 프로젝트가 속할 기본 워크스페이스 이름 (기본값: "default")
     - `.env_sample` 파일을 참고하여 필요한 모든 변수를 설정해야 합니다.
 - **볼륨 및 설정 파일 경로:**
     - 컨테이너 데이터 볼륨: `./dockercontainer-volume/` 하위 (postgres, keycloak, certs, certbot)

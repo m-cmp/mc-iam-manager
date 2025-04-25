@@ -209,6 +209,11 @@ INSERT INTO mcmp_menu (id, parent_id, display_name, res_type, is_action, priorit
 VALUES ('dashboard', NULL, 'Dashboard', 'menu', false, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
+-- Seed default workspace
+INSERT INTO mcmp_workspaces (name, description) VALUES
+    ('default', 'Default workspace for unassigned projects')
+ON CONFLICT (name) DO NOTHING; -- Assuming name should be unique
+
 -- Seed permissions
 INSERT INTO mcmp_permissions (id, name, description) VALUES
     ('dashboard', 'dashboard', 'Allow viewing dashboard menu'),

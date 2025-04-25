@@ -4,8 +4,8 @@ services:
   mc-iam-manager:
     container_name: mciam-manager
     build:
-      context: ./dockerfiles/mc-iam-manager
-      dockerfile: Dockerfile.mciammanager
+      context: . # Changed build context to project root
+      dockerfile: dockerfiles/mc-iam-manager/Dockerfile.mciammanager # Adjusted Dockerfile path relative to new context
     ports:
       - "${PORT:-8082}:${PORT:-8082}" # Use PORT from .env, default to 8082 if not set
     env_file:

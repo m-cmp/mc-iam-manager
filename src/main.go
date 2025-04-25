@@ -194,6 +194,7 @@ func main() {
 		projectRoutes.DELETE("/:id", projectHandler.DeleteProject)
 		projectRoutes.POST("/:id/workspaces/:workspaceId", projectHandler.AddWorkspaceToProject)
 		projectRoutes.DELETE("/:id/workspaces/:workspaceId", projectHandler.RemoveWorkspaceFromProject)
+		projectRoutes.POST("/sync-projects", projectHandler.SyncProjects) // Add project sync route
 	}
 
 	// 권한 관리 API 라우트 (인증 필요)

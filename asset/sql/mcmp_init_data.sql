@@ -16,6 +16,11 @@ VALUES ('dashboard', NULL, 'Dashboard', 'menu', false, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 -- Note: Add other essential menus if they were previously seeded via YAML or other migrations
 
+-- Seed default workspace
+INSERT INTO mcmp_workspaces (name, description) VALUES
+    ('default', 'Default workspace for unassigned projects')
+ON CONFLICT (name) DO NOTHING; -- Assuming name should be unique
+
 -- Seed permissions (from 000009 and 000010)
 -- Note: The 'name' column was added based on model analysis, assuming it should often match 'id'. Adjust if needed.
 INSERT INTO mcmp_permissions (id, name, description) VALUES
