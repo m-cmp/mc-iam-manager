@@ -8,6 +8,7 @@ import (
 	// "errors"        // Remove unused import
 	"fmt" // Add fmt import for errors
 	"log" // Add log import
+	"os"  // Import os package to read environment variables
 
 	// "net/http"      // Remove unused import
 
@@ -102,8 +103,32 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 
 	// 2. Create project in local DB
 
-	// Only call the repository to create the project in the DB
-	return s.projectRepo.Create(project)
+	// 2. Create project in local DB
+	if err := s.projectRepo.Create(project); err != nil {
+		return err // Return DB creation error
+	}
+
+	// 3. Assign to default workspace
+	defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
+	if defaultWsName == "" {
+		defaultWsName = "default" // Fallback to "default" if env var is not set
+	}
+	log.Printf("Assigning newly created project (ID: %d) to default workspace '%s'", project.ID, defaultWsName)
+	defaultWs, err := s.workspaceRepo.GetByName(defaultWsName)
+	if err != nil {
+		log.Printf("Error finding default workspace '%s': %v. Skipping assignment.", defaultWsName, err)
+		// Decide if this should be a critical error or just a warning
+		// For now, log a warning and return success as the project itself was created.
+		return nil // Or return fmt.Errorf("failed to find default workspace: %w", err)
+	}
+	if err := s.projectRepo.AddWorkspaceAssociation(project.ID, defaultWs.ID); err != nil {
+		log.Printf("Error assigning project %d to default workspace %d: %v", project.ID, defaultWs.ID, err)
+		// Log a warning, but the project creation was successful.
+		return nil // Or return fmt.Errorf("failed to assign project to default workspace: %w", err)
+	}
+	log.Printf("Successfully assigned project %d to default workspace %d", project.ID, defaultWs.ID)
+
+	return nil // Project created and assigned (or assignment failed but logged)
 }
 
 // List 모든 프로젝트 조회
@@ -159,4 +184,154 @@ func (s *ProjectService) AddWorkspaceToProject(projectID, workspaceID uint) erro
 func (s *ProjectService) RemoveWorkspaceFromProject(projectID, workspaceID uint) error {
 	// Optional: Check if project and workspace exist before attempting removal
 	return s.projectRepo.RemoveWorkspaceAssociation(projectID, workspaceID)
+}
+
+// SyncProjectsWithInfraManager mc-infra-manager의 네임스페이스와 로컬 프로젝트 동기화
+func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error {
+	log.Println("Starting project synchronization with mc-infra-manager...")
+
+	// 1. Call mc-infra-manager GetAllNs API
+	callReq := &mcmpapi.McmpApiCallRequest{
+		ServiceName: "mc-infra-manager",
+		ActionName:  "GetAllNs",
+		RequestParams: mcmpapi.McmpApiRequestParams{ // No params needed for GetAllNs
+			PathParams:  nil,
+			QueryParams: nil,
+			Body:        nil,
+		},
+	}
+
+	statusCode, respBody, serviceVersion, calledURL, err := s.mcmpApiService.McmpApiCall(ctx, callReq)
+	if err != nil {
+		log.Printf("Error calling %s(v%s) %s (URL: %s): %v (status code: %d)", callReq.ServiceName, serviceVersion, callReq.ActionName, calledURL, err, statusCode)
+		return fmt.Errorf("failed to call mc-infra-manager GetAllNs: %w (status code: %d)", err, statusCode)
+	}
+	if statusCode < 200 || statusCode >= 300 {
+		log.Printf("%s(v%s) %s call failed (URL: %s): status code %d, response: %s", callReq.ServiceName, serviceVersion, callReq.ActionName, calledURL, statusCode, string(respBody))
+		return fmt.Errorf("mc-infra-manager GetAllNs call failed with status code %d", statusCode)
+	}
+
+	// 2. Parse response and extract namespaces
+	var infraResponse struct { // Define a struct to parse the expected response
+		Ns []struct {
+			ID          string `json:"id"`
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		} `json:"ns"`
+	}
+	if err := json.Unmarshal(respBody, &infraResponse); err != nil {
+		log.Printf("Error unmarshalling mc-infra-manager GetAllNs response: %v. Body: %s", err, string(respBody))
+		return fmt.Errorf("failed to parse response from mc-infra-manager: %w", err)
+	}
+
+	if len(infraResponse.Ns) == 0 {
+		log.Println("No namespaces found in mc-infra-manager. Synchronization finished.")
+		return nil
+	}
+	log.Printf("Found %d namespaces in mc-infra-manager.", len(infraResponse.Ns))
+
+	// 3. Get local projects
+	localProjects, err := s.projectRepo.List()
+	if err != nil {
+		log.Printf("Error listing local projects: %v", err)
+		return fmt.Errorf("failed to list local projects: %w", err)
+	}
+
+	// 4. Create a map of existing local projects by NsId for quick lookup
+	localProjectMap := make(map[string]bool)
+	for _, p := range localProjects {
+		if p.NsId != "" {
+			localProjectMap[p.NsId] = true
+		}
+	}
+	log.Printf("Found %d local projects with NsId.", len(localProjectMap))
+
+	// Get all project-workspace assignments
+	assignedProjectMap, err := s.projectRepo.GetAllProjectWorkspaceAssignments()
+	if err != nil {
+		log.Printf("Error getting project workspace assignments: %v", err)
+		return fmt.Errorf("failed to get project assignments: %w", err)
+	}
+	log.Printf("Found %d projects assigned to at least one workspace.", len(assignedProjectMap))
+
+	// Get default workspace ID once
+	defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
+	if defaultWsName == "" {
+		defaultWsName = "default" // Fallback
+	}
+	defaultWs, err := s.workspaceRepo.GetByName(defaultWsName)
+	if err != nil {
+		log.Printf("Error finding default workspace '%s': %v. Cannot assign projects.", defaultWsName, err)
+		// If default workspace doesn't exist, we can't proceed with assignment.
+		// Depending on requirements, we might return an error or just log and continue.
+		// Let's return an error for now, as assignment is a key part of this logic.
+		return fmt.Errorf("failed to find default workspace: %w", err)
+	}
+
+	// 5. Compare, create missing projects, and assign unassigned existing projects
+	addedCount := 0
+	assignedToDefaultCount := 0
+	for _, infraNs := range infraResponse.Ns {
+		var currentProjectID uint
+		var isNewProject bool
+
+		// Check if project exists locally based on NsId
+		var existingProject *model.Project
+		for _, p := range localProjects {
+			if p.NsId == infraNs.ID {
+				existingProject = &p
+				break
+			}
+		}
+
+		if existingProject == nil {
+			// Project does not exist locally, create it
+			isNewProject = true
+			log.Printf("Namespace '%s' (ID: %s) not found locally. Creating project...", infraNs.Name, infraNs.ID)
+			newProject := &model.Project{
+				NsId:        infraNs.ID,
+				Name:        infraNs.Name, // Use infra name as local name
+				Description: infraNs.Description,
+			}
+			if err := s.projectRepo.Create(newProject); err != nil {
+				// Log the error but continue syncing other projects
+				log.Printf("Error creating project for namespace '%s' (ID: %s): %v", infraNs.Name, infraNs.ID, err)
+				continue // Skip assignment if creation failed
+			}
+			log.Printf("Successfully created project for namespace '%s' (ID: %s)", infraNs.Name, infraNs.ID)
+			addedCount++
+			currentProjectID = newProject.ID // Use the ID of the newly created project
+		} else {
+			// Project already exists locally
+			isNewProject = false
+			currentProjectID = existingProject.ID
+			log.Printf("Project for namespace '%s' (ID: %s) already exists locally (Project ID: %d). Checking assignment...", infraNs.Name, infraNs.ID, currentProjectID)
+		}
+
+		// Check if the project (new or existing) is assigned to any workspace
+		if _, isAssigned := assignedProjectMap[currentProjectID]; !isAssigned {
+			// Project is not assigned to any workspace, assign to default
+			log.Printf("Project %d (NsId: %s) is not assigned to any workspace. Assigning to default workspace %d...", currentProjectID, infraNs.ID, defaultWs.ID)
+			if assignErr := s.projectRepo.AddWorkspaceAssociation(currentProjectID, defaultWs.ID); assignErr != nil {
+				log.Printf("Error assigning project %d to default workspace %d: %v", currentProjectID, defaultWs.ID, assignErr)
+			} else {
+				log.Printf("Successfully assigned project %d to default workspace %d", currentProjectID, defaultWs.ID)
+				if !isNewProject { // Count only assignments for existing projects here
+					assignedToDefaultCount++
+				}
+				// Add to map immediately to avoid re-checking if somehow processed again (though unlikely with current loop)
+				assignedProjectMap[currentProjectID] = true
+			}
+		} else if isNewProject {
+			// This case should ideally not happen if GetAllProjectWorkspaceAssignments is correct,
+			// but log a warning if a newly created project ID somehow already exists in the assignment map.
+			log.Printf("Warning: Newly created project %d (NsId: %s) was unexpectedly found in the assignment map.", currentProjectID, infraNs.ID)
+		} else {
+			// Existing project is already assigned to at least one workspace
+			log.Printf("Project %d (NsId: %s) is already assigned to a workspace. Skipping default assignment.", currentProjectID, infraNs.ID)
+		}
+	}
+
+	log.Printf("Project synchronization finished. Added %d new projects. Assigned %d existing unassigned projects to default workspace.", addedCount, assignedToDefaultCount)
+	return nil
 }

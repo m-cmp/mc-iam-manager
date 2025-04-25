@@ -84,6 +84,24 @@ func (r *ProjectRepository) Update(id uint, updates map[string]interface{}) erro
 	return nil
 }
 
+// GetAllProjectWorkspaceAssignments 모든 프로젝트-워크스페이스 할당 정보 조회
+// 프로젝트 ID를 키로 하고, 할당 여부(true)를 값으로 하는 맵 반환
+func (r *ProjectRepository) GetAllProjectWorkspaceAssignments() (map[uint]bool, error) {
+	var assignments []struct {
+		ProjectID uint `gorm:"column:project_id"`
+	}
+	// Select distinct project_id from the join table
+	if err := r.db.Table("mcmp_workspace_projects").Distinct("project_id").Find(&assignments).Error; err != nil {
+		return nil, err
+	}
+
+	assignmentMap := make(map[uint]bool)
+	for _, assign := range assignments {
+		assignmentMap[assign.ProjectID] = true
+	}
+	return assignmentMap, nil
+}
+
 // Delete 프로젝트 삭제
 func (r *ProjectRepository) Delete(id uint) error {
 	// GORM will automatically handle deleting associations in the join table

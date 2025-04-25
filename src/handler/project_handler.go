@@ -10,6 +10,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
+
 	// Removed duplicate echo import
 	"github.com/m-cmp/mc-iam-manager/model" // Import mcmpapi model for request
 	"github.com/m-cmp/mc-iam-manager/service"
@@ -209,6 +210,26 @@ func (h *ProjectHandler) DeleteProject(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 삭제 실패: %v", err)})
 	}
 	return c.NoContent(http.StatusNoContent)
+}
+
+// SyncProjects godoc
+// @Summary mc-infra-manager와 프로젝트 동기화
+// @Description mc-infra-manager의 네임스페이스 목록을 조회하여 로컬 DB에 없는 프로젝트를 추가합니다.
+// @Tags projects
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]string "message: Project synchronization successful"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류 또는 동기화 실패"
+// @Security BearerAuth
+// @Router /sync-projects [post]
+func (h *ProjectHandler) SyncProjects(c echo.Context) error {
+	log.Println("Received request to sync projects with mc-infra-manager")
+	if err := h.projectService.SyncProjectsWithInfraManager(c.Request().Context()); err != nil {
+		log.Printf("Error during project synchronization: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 동기화 실패: %v", err)})
+	}
+	log.Println("Project synchronization completed successfully")
+	return c.JSON(http.StatusOK, map[string]string{"message": "Project synchronization successful"})
 }
 
 // AddWorkspaceToProject godoc

@@ -1,5 +1,6 @@
 # --- Build Stage ---
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
+# Updated Go version to 1.23
 
 # Install build dependencies if any (e.g., git for private modules)
 # RUN apk add --no-cache git
@@ -12,13 +13,13 @@ COPY src/go.mod src/go.sum ./
 # Download dependencies
 RUN go mod download
 
-# Copy the entire src directory and asset directory
-COPY src ./src
+# Copy the contents of the src directory and the asset directory
+COPY src/ ./
 COPY asset ./asset
 
 # Build the application statically
 # Output binary to /mc-iam-manager
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /mc-iam-manager ./src/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /mc-iam-manager ./main.go
 
 # --- Runtime Stage ---
 FROM alpine:latest
@@ -31,8 +32,8 @@ COPY --from=builder /mc-iam-manager /app/mc-iam-manager
 # Copy necessary assets from the builder stage
 COPY --from=builder /app/asset ./asset
 
-# Copy .env file (Consider using environment variables in docker-compose instead for secrets)
-# COPY .env .env
+# Copy .env file to the root directory inside the container, so "../.env" resolves from "/app"
+COPY .env /.env
 
 # Expose the application port (adjust if different)
 EXPOSE 8082
