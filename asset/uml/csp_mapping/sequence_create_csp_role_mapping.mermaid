@@ -1,0 +1,36 @@
+sequenceDiagram
+    participant Client
+    participant Router as main.go (Echo)
+    participant AuthMiddleware as middleware.AuthMiddleware
+    participant CspMappingHandler as handler.CspMappingHandler
+    participant CspMappingService as service.CspMappingService
+    participant WorkspaceRoleRepo as repository.WorkspaceRoleRepository
+    participant CspMappingRepo as repository.CspMappingRepository
+
+    Client->>+Router: POST /workspace-roles/{roleId}/csp-role-mappings (Body: Mapping Info, Header: Auth Token)
+    Router->>+AuthMiddleware: Verify Token
+    AuthMiddleware-->>-Router: Token OK
+    Router->>+CspMappingHandler: CreateCspRoleMapping(c)
+    CspMappingHandler->>CspMappingHandler: Parse roleId from path
+    CspMappingHandler->>CspMappingHandler: Bind Request Body (model.WorkspaceRoleCspRoleMapping)
+    CspMappingHandler->>CspMappingHandler: Set mapping.WorkspaceRoleID
+    CspMappingHandler->>+CspMappingService: Create(ctx, mapping)
+    CspMappingService->>+WorkspaceRoleRepo: GetByID(mapping.WorkspaceRoleID) # Check role exists
+    WorkspaceRoleRepo-->>-CspMappingService: Role or Error
+    alt Role Not Found
+        CspMappingService-->>-CspMappingHandler: Error (NotFound)
+        CspMappingHandler-->>-Router: 404 Not Found
+        Router-->>-Client: 404 Not Found
+    else Role Found
+        %% TODO: Add CSP Role ARN Validation Logic (Optional)
+        CspMappingService->>+CspMappingRepo: Create(mapping) # DB Insert
+        CspMappingRepo-->>-CspMappingService: Success or Error
+        CspMappingService-->>-CspMappingHandler: Success or Error
+        alt Error Creating Mapping
+            CspMappingHandler-->>-Router: 409/500 Error
+            Router-->>-Client: 409/500 Error
+        else Success
+            CspMappingHandler-->>-Router: 201 Created (Mapping Info)
+            Router-->>-Client: 201 Created (Mapping Info)
+        end
+    end

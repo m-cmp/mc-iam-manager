@@ -134,10 +134,36 @@
 - 사용자에게 워크스페이스 역할 할당/제거 API 구현 (`POST`/`DELETE /api/v1/workspaces/{workspaceId}/users/{userId}/roles/{roleId}`) - `{userId}`는 DB ID(`id`) 사용.
 - 역할 기반 접근 제어 (미들웨어 등에서 활용)
 
-#### 4.2.5 권한 관리 (`mcmp_permissions`, `mcmp_role_permissions` 테이블)
-- 권한 CRUD API 구현
-- 역할(플랫폼/워크스페이스)에 권한 할당/제거 API 구현 (`POST`/`DELETE /api/v1/roles/{roleType}/{roleId}/permissions/{permissionId}`)
-- 권한 검증 로직 구현
+#### 4.2.5 권한 관리 (MC-IAM 내부 권한) (`mcmp_mciam_permissions`, `mciam_role_mciam_permissions` 테이블)
+- **개념:** MCMP API 호출, UI 메뉴 접근, 워크스페이스 접근 등 `mc-iam-manager` 내부 작업에 대한 권한을 관리합니다. 리소스 유형(`framework_id`, `resource_type_id`)과 액션(`action`)을 기반으로 정의됩니다 (예: `mc-infra-manager:vm:create`, `mc-iam-manager:workspace:read`).
+- **권한 관리 API:** `/api/mciam-permissions` 엔드포인트를 통해 CRUD 관리.
+- **역할-권한 매핑 API:** `/api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}` 엔드포인트 (POST/DELETE)를 통해 역할(플랫폼/워크스페이스)에 MC-IAM 권한을 매핑합니다.
+- **권한 검증 (MCMP API):** `/api/mcmp-apis/call` 요청 시 전달된 RPT(Action Ticket) 내의 권한 정보를 확인하여 검증합니다 (`McmpApiAuthMiddleware`).
+- **권한 검증 (워크스페이스 API):** 워크스페이스 관련 API(`ListWorkspaces`, `CreateWorkspace`, `GetWorkspaceByID` 등) 핸들러 내부에서 사용자의 플랫폼 역할 또는 특정 워크스페이스 역할에 부여된 MC-IAM 권한(`list_all`, `list_assigned`, `create`, `read` 등)을 확인합니다.
+
+#### 4.2.6 역할 - CSP 역할 매핑 (`mcmp_workspace_role_csp_role_mapping` 테이블)
+- **개념:** `mc-iam-manager`의 워크스페이스 역할을 실제 CSP의 IAM 역할(예: AWS Role ARN)에 매핑하여 CSP 임시 자격 증명 발급에 사용합니다.
+- **API:** `/api/workspace-roles/{roleId}/csp-role-mappings` 엔드포인트를 통해 CRUD 관리.
+
+#### 4.2.7 Keycloak 연동 및 권한 검증 (UMA 기반 - MC-IAM 권한용)
+- **목표:** MCMP API 호출 권한 검증에 Keycloak UMA 활용.
+- **핵심 메커니즘:**
+    1.  **DB-Keycloak 그룹 동기화:** 사용자-워크스페이스 역할 할당 변경 시 Keycloak 그룹 정보 업데이트.
+    2.  **Keycloak UMA 설정:** MC-IAM 권한(`mcmp_mciam_permissions`) 기반으로 리소스/스코프/정책/퍼미션 설정.
+    3.  **Action Ticket (RPT) 발급:** `/api/auth/action-ticket` API 호출 시 Keycloak UMA 평가 후 RPT 발급.
+    4.  **MCMP API 호출 권한 검증:** `/api/mcmp-apis/call` 미들웨어에서 RPT 검증.
+
+#### 4.2.8 CSP 임시 자격 증명 발급
+- **API:** `/api/csp/credentials` (POST)
+- **요청:** 원본 OIDC 토큰 (헤더), `workspaceId`, `cspType` (본문).
+- **로직:**
+    1. OIDC 토큰 검증 및 사용자 확인.
+    2. 사용자의 해당 워크스페이스 역할 목록 조회 (DB).
+    3. 역할 목록과 `cspType`을 사용하여 `mcmp_workspace_role_csp_role_mapping` 테이블에서 매핑된 `csp_role_arn` 및 `idp_identifier` 조회.
+    4. 조회된 정보와 **원본 OIDC 토큰**을 사용하여 해당 CSP의 STS API (`AssumeRoleWithWebIdentity` 등) 호출.
+    5. 발급된 임시 자격 증명 반환.
+
+#### 4.2.9 메뉴 관리 (`mcmp_menu` 테이블)
 
 #### 4.2.6 메뉴 관리 (`mcmp_menu` 테이블)
 - 메뉴 데이터는 PostgreSQL 데이터베이스의 `mcmp_menu` 테이블에 저장 및 관리됩니다.
@@ -199,6 +225,11 @@
     - `context.Context`는 핸들러에서 시작되어 서비스 계층으로 전달됩니다.
     - 서비스 계층은 전달받은 컨텍스트를 사용하여 DB 트랜잭션을 생성(`db.WithContext(ctx)`)하거나 Keycloak API 호출 시 전달합니다.
     - 리포지토리 계층은 일반적으로 컨텍스트 대신 트랜잭션 객체를 전달받습니다.
+    - **`AuthMiddleware`**는 성공적으로 토큰을 검증한 후, 요청 컨텍스트(`c.Set()`)에 다음 정보를 저장합니다:
+        - `"token_claims"`: 디코딩된 JWT 클레임 (`*jwt.MapClaims` 타입)
+        - `"access_token"`: 원본 액세스 토큰 문자열
+        - `"kcUserId"`: 토큰의 Subject 클레임 (Keycloak User ID)
+    - 핸들러에서는 `c.Get("kcUserId").(string)`과 같이 컨텍스트에서 사용자 ID를 가져와 사용할 수 있습니다.
 
 ### 5.3 테스트
 - 단위 테스트 작성
@@ -253,10 +284,15 @@
 - **필수 설정 (`.env`):**
     - `PORT`: mc-iam-manager 실행 포트 (기본값: 8082)
     - `IAM_POSTGRES_USER`, `IAM_POSTGRES_PASSWORD`, `IAM_POSTGRES_DB`: PostgreSQL 접속 정보
-    - `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`: Keycloak 관리자 정보 (Docker Compose에서 사용)
+    - `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`: Keycloak 관리자 정보 (Docker Compose 및 내부 Keycloak API 호출 시 사용)
+    - `KEYCLOAK_HOST`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENTID`, `KEYCLOAK_CLIENTSECRET`: Keycloak 연동 정보
     - `DOMAIN_NAME`: Nginx 및 Keycloak에서 사용할 도메인 이름 (기본값: localhost)
     - `DEFAULT_WORKSPACE_NAME`: 할당되지 않은 프로젝트가 속할 기본 워크스페이스 이름 (기본값: "default")
+    - `MCADMINCLI_APIYAML`: MCMP API 정의 YAML 경로/URL
     - `.env_sample` 파일을 참고하여 필요한 모든 변수를 설정해야 합니다.
+- **Keycloak UMA 설정:** (별도 문서 또는 Keycloak 관리 콘솔 참고)
+    - `mciamClient` 클라이언트의 Authorization 활성화.
+    - 리소스, 스코프, 그룹 기반 정책, 퍼미션 설정 필요 (MC-IAM 권한 기준).
 - **볼륨 및 설정 파일 경로:**
     - 컨테이너 데이터 볼륨: `./dockercontainer-volume/` 하위 (postgres, keycloak, certs, certbot)
     - 서비스 설정 파일: `./dockerfiles/<service_name>/` 하위 (postgres, nginx)

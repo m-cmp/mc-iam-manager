@@ -310,6 +310,16 @@ func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
 	return nil
 }
 
+// FindWorkspacesByUserID 사용자가 속한 워크스페이스 목록 조회
+func (s *UserService) FindWorkspacesByUserID(userID uint) ([]model.Workspace, error) {
+	return s.userRepo.FindWorkspacesByUserID(userID)
+}
+
+// GetUserRolesInWorkspace 사용자의 특정 워크스페이스 내 역할 목록 조회
+func (s *UserService) GetUserRolesInWorkspace(userID, workspaceID uint) ([]model.UserWorkspaceRole, error) {
+	return s.userRepo.GetUserRolesInWorkspace(userID, workspaceID)
+}
+
 // UpdateUser updates a user in Keycloak and the local DB.
 func (s *UserService) UpdateUser(ctx context.Context, user *model.User) error {
 	if user.ID == 0 {

@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant Client
+    participant Router as main.go (Echo)
+    participant AuthMiddleware as middleware.AuthMiddleware
+    participant WorkspaceHandler as handler.WorkspaceHandler
+    participant UserService as service.UserService
+    participant PermissionRepo as repository.MciamPermissionRepository
+    participant WorkspaceService as service.WorkspaceService
+    participant WorkspaceRepo as repository.WorkspaceRepository
+    participant UserRepo as repository.UserRepository
+
+    Client->>+Router: GET /api/workspaces (Header: Auth Token)
+    Router->>+AuthMiddleware: Verify Token
+    AuthMiddleware-->>-Router: Token OK (Set User Info)
+    Router->>+WorkspaceHandler: ListWorkspaces(c)
+    WorkspaceHandler->>+UserService: GetUserByKcID(ctx, kcUserId) %% Helper call
+    UserService-->>-WorkspaceHandler: User (with PlatformRoles, DB ID)
+    WorkspaceHandler->>+PermissionRepo: CheckRoleMciamPermission("platform", roleId, "mc-iam-manager:workspace:list_all") %% Helper call
+    PermissionRepo-->>-WorkspaceHandler: hasListAllPermission
+    alt hasListAllPermission is true
+        WorkspaceHandler->>+WorkspaceService: List()
+        WorkspaceService->>+WorkspaceRepo: List()
+        WorkspaceRepo-->>-WorkspaceService: All Workspaces
+        WorkspaceService-->>-WorkspaceHandler: All Workspaces
+    else hasListAllPermission is false
+        WorkspaceHandler->>+UserService: FindWorkspacesByUserID(userId)
+        UserService->>+UserRepo: FindWorkspacesByUserID(userId)
+        UserRepo-->>-UserService: Assigned Workspaces
+        UserService-->>-WorkspaceHandler: Assigned Workspaces
+    end
+    WorkspaceHandler-->>-Router: 200 OK (Workspace List)
+    Router-->>-Client: 200 OK (Workspace List)

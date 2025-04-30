@@ -2,98 +2,91 @@ package service
 
 import (
 	"context"
-	"errors"
+	// "errors" // Removed unused import
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gorm.io/gorm" // Import gorm
 )
 
-// PermissionService 권한 관리 서비스
-type PermissionService struct {
-	db             *gorm.DB // Add db field
-	permissionRepo *repository.PermissionRepository
+// MciamPermissionService MC-IAM 권한 관리 서비스 - Renamed
+type MciamPermissionService struct {
+	db             *gorm.DB                              // Add db field
+	permissionRepo *repository.MciamPermissionRepository // Use renamed repo type
 }
 
-// NewPermissionService 권한 관리 서비스 생성
-func NewPermissionService(db *gorm.DB) *PermissionService { // Removed permissionRepo parameter
+// NewMciamPermissionService MC-IAM 권한 관리 서비스 생성 - Renamed
+func NewMciamPermissionService(db *gorm.DB) *MciamPermissionService {
 	// Initialize repository internally
-	permissionRepo := repository.NewPermissionRepository()
-	return &PermissionService{
+	permissionRepo := repository.NewMciamPermissionRepository(db) // Use renamed constructor
+	return &MciamPermissionService{
 		db:             db, // Store db
 		permissionRepo: permissionRepo,
 	}
 }
 
-// Create 권한 생성
-func (s *PermissionService) Create(ctx context.Context, permission *model.Permission) error {
-	tx := s.db.WithContext(ctx)                    // Create transaction with context
-	return s.permissionRepo.Create(tx, permission) // Pass tx
+// Create MC-IAM 권한 생성 - Renamed
+func (s *MciamPermissionService) Create(ctx context.Context, permission *model.MciamPermission) error { // Use renamed model
+	// Add validation for permission ID format if needed
+	// e.g., parts := strings.Split(permission.ID, ":"); if len(parts) != 3 { ... }
+	return s.permissionRepo.Create(permission)
 }
 
-// GetByID ID로 권한 조회
-func (s *PermissionService) GetByID(ctx context.Context, id string) (*model.Permission, error) { // Changed id type to string
-	tx := s.db.WithContext(ctx)             // Create transaction with context
-	return s.permissionRepo.GetByID(tx, id) // Pass tx
+// GetByID ID로 MC-IAM 권한 조회 - Renamed
+func (s *MciamPermissionService) GetByID(ctx context.Context, id string) (*model.MciamPermission, error) { // Use renamed model
+	return s.permissionRepo.GetByID(id)
 }
 
-// List 권한 목록 조회
-func (s *PermissionService) List(ctx context.Context) ([]model.Permission, error) {
-	tx := s.db.WithContext(ctx)      // Create transaction with context
-	return s.permissionRepo.List(tx) // Pass tx
+// List MC-IAM 권한 목록 조회 (필터 추가) - Renamed
+func (s *MciamPermissionService) List(ctx context.Context, frameworkID, resourceTypeID string) ([]model.MciamPermission, error) { // Use renamed model
+	return s.permissionRepo.List(frameworkID, resourceTypeID)
 }
 
-// Update 권한 수정
-func (s *PermissionService) Update(ctx context.Context, permission *model.Permission) error {
-	tx := s.db.WithContext(ctx) // Create transaction with context
-	// permission.ID is already string, no change needed for GetByID call
-	existing, err := s.permissionRepo.GetByID(tx, permission.ID) // Pass tx
-	if err != nil {
-		return err // Propagate error (e.g., DB connection issue)
-	}
-	if existing == nil {
-		return errors.New("권한을 찾을 수 없습니다")
-	}
-	return s.permissionRepo.Update(tx, permission) // Pass tx
+// Update MC-IAM 권한 정보 부분 업데이트 - Renamed
+func (s *MciamPermissionService) Update(ctx context.Context, id string, updates map[string]interface{}) error {
+	// Add validation for updates map if needed (e.g., allowed fields)
+	// The repository already prevents updating PKs and createdAt
+	return s.permissionRepo.Update(id, updates)
 }
 
-// Delete 권한 삭제
-func (s *PermissionService) Delete(ctx context.Context, id string) error { // Changed id type to string
-	tx := s.db.WithContext(ctx) // Create transaction with context
-	// Check existence before deleting (optional, as repo Delete handles it)
-	// existing, err := s.permissionRepo.GetByID(tx, id) // Pass tx if uncommented
-	// if err != nil { return err }
-	// if existing == nil { return errors.New("권한을 찾을 수 없습니다") }
-	return s.permissionRepo.Delete(tx, id) // Pass tx, Pass string id
+// Delete MC-IAM 권한 삭제 - Renamed
+func (s *MciamPermissionService) Delete(ctx context.Context, id string) error {
+	// Add business logic if needed before deleting
+	return s.permissionRepo.Delete(id)
 }
 
-// AssignRolePermission 역할에 권한 할당
-func (s *PermissionService) AssignRolePermission(ctx context.Context, roleType string, roleID uint, permissionID string) error { // Added roleType, changed permissionID type
-	tx := s.db.WithContext(ctx) // Create transaction with context
+// AssignMciamPermissionToRole 역할에 MC-IAM 권한 할당 - Renamed
+func (s *MciamPermissionService) AssignMciamPermissionToRole(ctx context.Context, roleType string, roleID uint, permissionID string) error {
 	// 권한 존재 여부 확인
-	permission, err := s.permissionRepo.GetByID(tx, permissionID) // Pass tx, Pass string permissionID
+	_, err := s.permissionRepo.GetByID(permissionID)
 	if err != nil {
-		// Handle specific "not found" error from repo if needed
-		return err
+		// Handle specific "not found" error from repo
+		return err // Return ErrPermissionNotFound or other DB error
 	}
-	if permission == nil {
-		// This case might be covered by the error check above if repo returns specific error
-		return errors.New("권한을 찾을 수 없습니다")
-	}
-	// TODO: 역할 존재 여부 확인 (Platform or Workspace)
-	return s.permissionRepo.AssignRolePermission(tx, roleType, roleID, permissionID) // Pass tx, Pass all args
+
+	// TODO: 역할 존재 여부 확인 (Platform or Workspace) - Requires Role Repositories
+	// Example:
+	// if roleType == "platform" {
+	//  if _, err := s.platformRoleRepo.GetByID(roleID); err != nil { return err }
+	// } else if roleType == "workspace" {
+	//  if _, err := s.workspaceRoleRepo.GetByID(roleID); err != nil { return err }
+	// } else {
+	//  return errors.New("invalid role type")
+	// }
+
+	return s.permissionRepo.AssignMciamPermissionToRole(roleType, roleID, permissionID) // Use renamed repo method
 }
 
-// RemoveRolePermission 역할에서 권한 제거
-func (s *PermissionService) RemoveRolePermission(ctx context.Context, roleType string, roleID uint, permissionID string) error { // Added roleType, changed permissionID type
-	tx := s.db.WithContext(ctx) // Create transaction with context
+// RemoveMciamPermissionFromRole 역할에서 MC-IAM 권한 제거 - Renamed
+func (s *MciamPermissionService) RemoveMciamPermissionFromRole(ctx context.Context, roleType string, roleID uint, permissionID string) error {
 	// No need to check existence first, repo handles it gracefully
-	return s.permissionRepo.RemoveRolePermission(tx, roleType, roleID, permissionID) // Pass tx, Pass all args
+	return s.permissionRepo.RemoveMciamPermissionFromRole(roleType, roleID, permissionID) // Use renamed repo method
 }
 
-// GetRolePermissions 역할의 권한 목록 조회
-func (s *PermissionService) GetRolePermissions(ctx context.Context, roleType string, roleID uint) ([]model.Permission, error) { // Added roleType
-	tx := s.db.WithContext(ctx) // Create transaction with context
+// GetRoleMciamPermissions 역할의 MC-IAM 권한 ID 목록 조회 - Renamed
+func (s *MciamPermissionService) GetRoleMciamPermissions(ctx context.Context, roleType string, roleID uint) ([]string, error) { // Return []string
 	// TODO: 역할 존재 여부 확인 (Platform or Workspace)
-	return s.permissionRepo.GetRolePermissions(tx, roleType, roleID) // Pass tx, Pass all args
+	return s.permissionRepo.GetRoleMciamPermissions(roleType, roleID) // Use renamed repo method
 }
+
+// Note: Need similar service for CSP permissions and role-csp mappings later.

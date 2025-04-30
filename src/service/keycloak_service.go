@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository" // For ErrUserNotFound potentially
@@ -25,8 +26,15 @@ type KeycloakService interface {
 	CheckRealm(ctx context.Context) (bool, error)
 	CheckClient(ctx context.Context) (bool, error)
 	GetUserIDFromToken(ctx context.Context, token *gocloak.JWT) (string, error)
-	Login(ctx context.Context, username, password string) (*gocloak.JWT, error)  // Added Login method
-	RefreshToken(ctx context.Context, refreshToken string) (*gocloak.JWT, error) // Added RefreshToken method
+	Login(ctx context.Context, username, password string) (*gocloak.JWT, error)
+	RefreshToken(ctx context.Context, refreshToken string) (*gocloak.JWT, error)
+	// Methods for group synchronization
+	EnsureGroupExistsAndAssignUser(ctx context.Context, kcUserId, groupName string) error
+	RemoveUserFromGroup(ctx context.Context, kcUserId, groupName string) error
+	// Method for UMA RPT Token
+	GetRequestingPartyToken(ctx context.Context, accessToken string, options gocloak.RequestingPartyTokenOptions) (*gocloak.JWT, error)
+	// Method to validate token and get claims
+	ValidateTokenAndGetClaims(ctx context.Context, token string) (*jwt.MapClaims, error) // Changed return type
 }
 
 // keycloakService is now stateless, methods directly use config.KC
@@ -178,6 +186,58 @@ func (s *keycloakService) UpdateUser(ctx context.Context, user *model.User) erro
 		return fmt.Errorf("failed to update user in keycloak (kcId: %s): %w", user.KcId, err)
 	}
 	return nil
+}
+
+// GetRequestingPartyToken requests an RPT token from Keycloak using provided options.
+func (s *keycloakService) GetRequestingPartyToken(ctx context.Context, accessToken string, options gocloak.RequestingPartyTokenOptions) (*gocloak.JWT, error) {
+	if config.KC == nil || config.KC.Client == nil {
+		return nil, fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	// Ensure GrantType is set correctly for RPT request
+	if options.GrantType == nil || *options.GrantType != "urn:ietf:params:oauth:grant-type:uma-ticket" {
+		// It's often required to get a permission ticket first and include it in options.Ticket
+		// For simplicity, we assume the caller provides the correct options including the ticket if needed.
+		log.Println("Warning: GrantType in RequestingPartyTokenOptions should typically be 'urn:ietf:params:oauth:grant-type:uma-ticket'")
+		// Setting it here just in case, but the caller should ideally set it.
+		options.GrantType = gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket")
+	}
+
+	// The Audience for RPT is often the resource server (client acting as resource server)
+	if options.Audience == nil {
+		options.Audience = &config.KC.ClientID
+	}
+
+	// Call the gocloak function to get the RPT
+	rpt, err := config.KC.Client.GetRequestingPartyToken(ctx, accessToken, config.KC.Realm, options)
+	if err != nil {
+		// Handle specific errors, e.g., 403 Forbidden if permissions are denied
+		return nil, fmt.Errorf("failed to get requesting party token: %w", err)
+	}
+	if rpt == nil {
+		// gocloak might return nil token and nil error in some cases? Unlikely but check.
+		return nil, fmt.Errorf("received nil RPT token from keycloak without an error")
+	}
+
+	return rpt, nil
+}
+
+// ValidateTokenAndGetClaims validates the token signature/expiry and returns claims.
+func (s *keycloakService) ValidateTokenAndGetClaims(ctx context.Context, token string) (*jwt.MapClaims, error) { // Changed return type
+	if config.KC == nil || config.KC.Client == nil {
+		return nil, fmt.Errorf("keycloak configuration not initialized")
+	}
+	// DecodeAccessToken performs local validation (signature, expiry) based on realm keys
+	_, claims, err := config.KC.Client.DecodeAccessToken(ctx, token, config.KC.Realm)
+	if err != nil {
+		return nil, fmt.Errorf("token validation/decoding failed: %w", err)
+	}
+	if claims == nil {
+		return nil, fmt.Errorf("token claims are nil after decoding")
+	}
+	// Note: For stricter validation, especially for RPTs or if Keycloak settings change,
+	// using IntrospectToken might be preferred, but requires an extra network call.
+	return claims, nil
 }
 
 // DeleteUser deletes a user from Keycloak.
@@ -334,4 +394,113 @@ func (s *keycloakService) RefreshToken(ctx context.Context, refreshToken string)
 		return nil, fmt.Errorf("keycloak token refresh failed: %w", err)
 	}
 	return newToken, nil
+}
+
+// --- Group Synchronization Methods ---
+
+// findGroupByName finds a group by name and returns its ID. Returns empty string if not found.
+func (s *keycloakService) findGroupByName(ctx context.Context, token, groupName string) (string, error) {
+	groups, err := config.KC.Client.GetGroups(ctx, token, config.KC.Realm, gocloak.GetGroupsParams{
+		Search: &groupName,
+		Exact:  gocloak.BoolP(true),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to search for group '%s': %w", groupName, err)
+	}
+	if len(groups) == 0 {
+		return "", nil // Not found
+	}
+	if len(groups) > 1 {
+		log.Printf("Warning: Found multiple groups named '%s'. Using the first one.", groupName)
+	}
+	if groups[0].ID == nil {
+		return "", fmt.Errorf("found group '%s' but its ID is nil", groupName)
+	}
+	return *groups[0].ID, nil
+}
+
+// EnsureGroupExistsAndAssignUser ensures a group exists and assigns a user to it.
+func (s *keycloakService) EnsureGroupExistsAndAssignUser(ctx context.Context, kcUserId, groupName string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+	adminToken, err := config.KC.LoginAdmin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token for group operation: %w", err)
+	}
+
+	// 1. Find group by name
+	groupID, err := s.findGroupByName(ctx, adminToken.AccessToken, groupName)
+	if err != nil {
+		return err // Error during search
+	}
+
+	// 2. Create group if not found
+	if groupID == "" {
+		log.Printf("Keycloak group '%s' not found, creating it.", groupName)
+		newGroup := gocloak.Group{Name: &groupName}
+		groupID, err = config.KC.Client.CreateGroup(ctx, adminToken.AccessToken, config.KC.Realm, newGroup)
+		if err != nil {
+			// Handle potential conflict if group was created concurrently
+			if strings.Contains(err.Error(), "409") {
+				log.Printf("Group '%s' likely created concurrently, attempting to find it again.", groupName)
+				groupID, err = s.findGroupByName(ctx, adminToken.AccessToken, groupName)
+				if err != nil {
+					return err
+				}
+				if groupID == "" {
+					return fmt.Errorf("failed to create or find group '%s' after conflict", groupName)
+				}
+			} else {
+				return fmt.Errorf("failed to create keycloak group '%s': %w", groupName, err)
+			}
+		}
+		log.Printf("Successfully created Keycloak group '%s' (ID: %s)", groupName, groupID)
+	}
+
+	// 3. Assign user to group
+	err = config.KC.Client.AddUserToGroup(ctx, adminToken.AccessToken, config.KC.Realm, kcUserId, groupID)
+	if err != nil {
+		// Handle potential errors like user already in group (might not be an error depending on gocloak)
+		// Or user not found (should have been checked before calling this service method ideally)
+		return fmt.Errorf("failed to add user '%s' to keycloak group '%s' (ID: %s): %w", kcUserId, groupName, groupID, err)
+	}
+
+	return nil
+}
+
+// RemoveUserFromGroup removes a user from a specific group.
+func (s *keycloakService) RemoveUserFromGroup(ctx context.Context, kcUserId, groupName string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+	adminToken, err := config.KC.LoginAdmin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token for group operation: %w", err)
+	}
+
+	// 1. Find group by name
+	groupID, err := s.findGroupByName(ctx, adminToken.AccessToken, groupName)
+	if err != nil {
+		return err // Error during search
+	}
+
+	// 2. If group doesn't exist, nothing to remove from
+	if groupID == "" {
+		log.Printf("Keycloak group '%s' not found, cannot remove user '%s'.", groupName, kcUserId)
+		return nil // Or return an error? Let's consider it not an error for idempotency.
+	}
+
+	// 3. Remove user from group
+	err = config.KC.Client.DeleteUserFromGroup(ctx, adminToken.AccessToken, config.KC.Realm, kcUserId, groupID)
+	if err != nil {
+		// Handle potential errors like user not in group (might not be an error) or user not found
+		if strings.Contains(err.Error(), "404") {
+			log.Printf("User '%s' or Group '%s' (ID: %s) not found during removal, or user not in group.", kcUserId, groupName, groupID)
+			return nil // Consider it not an error
+		}
+		return fmt.Errorf("failed to remove user '%s' from keycloak group '%s' (ID: %s): %w", kcUserId, groupName, groupID, err)
+	}
+
+	return nil
 }

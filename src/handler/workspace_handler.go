@@ -6,6 +6,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"log" // Added for logging
+
+	"context" // Added for context passing
+
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -13,17 +17,78 @@ import (
 	"gorm.io/gorm" // Ensure gorm is imported
 )
 
+// Helper function to get user DB ID and Platform Roles from context
+// TODO: Move this to a shared location or middleware
+func getUserDbIdAndPlatformRoles(ctx context.Context, c echo.Context, userService *service.UserService) (uint, []*model.PlatformRole, error) { // Added ctx parameter
+	// Assume AuthMiddleware sets kcUserId in context
+	kcUserIdVal := c.Get("kcUserId") // Or however the middleware provides it
+	if kcUserIdVal == nil {
+		return 0, nil, errors.New("kcUserId not found in context")
+	}
+	kcUserId, ok := kcUserIdVal.(string)
+	if !ok || kcUserId == "" {
+		return 0, nil, errors.New("invalid kcUserId in context")
+	}
+
+	// Fetch user details including roles
+	user, err := userService.GetUserByKcID(ctx, kcUserId) // Use GetUserByKcID from UserService, pass context
+	if err != nil {
+		// Handle user not found or other errors
+		return 0, nil, fmt.Errorf("failed to find user by kcId %s: %w", kcUserId, err)
+	}
+	if user == nil { // Should not happen if FindByKcID handles errors correctly
+		return 0, nil, fmt.Errorf("user not found for kcId %s", kcUserId)
+	}
+
+	return user.ID, user.PlatformRoles, nil
+}
+
+// Helper function to check platform role permission
+// TODO: Implement proper permission check using MciamPermissionRepository
+func checkPlatformPermission(permissionRepo *repository.MciamPermissionRepository, platformRoles []*model.PlatformRole, requiredPermissionID string) (bool, error) {
+	if len(platformRoles) == 0 {
+		return false, nil
+	}
+	for _, role := range platformRoles {
+		hasPerm, err := permissionRepo.CheckRoleMciamPermission("platform", role.ID, requiredPermissionID)
+		if err != nil {
+			log.Printf("Error checking permission %s for platform role %d: %v", requiredPermissionID, role.ID, err)
+			// Continue checking other roles in case of error? Or return error immediately?
+			// Let's return the error for now.
+			return false, err
+		}
+		if hasPerm {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // WorkspaceHandler 워크스페이스 관리 핸들러
 type WorkspaceHandler struct {
-	workspaceService *service.WorkspaceService
+	workspaceService     *service.WorkspaceService
+	userService          *service.UserService                  // For getting user info
+	permissionRepo       *repository.MciamPermissionRepository // For checking permissions directly
+	workspaceRoleService *service.WorkspaceRoleService         // For assigning role on create
+	workspaceRoleRepo    *repository.WorkspaceRoleRepository   // For finding 'admin' role ID
 	// db *gorm.DB // Not needed directly in handler
 }
 
 // NewWorkspaceHandler 새 WorkspaceHandler 인스턴스 생성
-func NewWorkspaceHandler(db *gorm.DB) *WorkspaceHandler { // Accept db, remove service param
-	// Initialize service internally
+func NewWorkspaceHandler(db *gorm.DB) *WorkspaceHandler {
+	// Initialize services and repositories internally
 	workspaceService := service.NewWorkspaceService(db)
-	return &WorkspaceHandler{workspaceService: workspaceService}
+	userService := service.NewUserService(db)
+	permissionRepo := repository.NewMciamPermissionRepository(db)
+	workspaceRoleService := service.NewWorkspaceRoleService(db)    // Corrected: Initialize WorkspaceRoleService
+	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db) // Initialize WorkspaceRoleRepository
+	return &WorkspaceHandler{
+		workspaceService:     workspaceService,
+		userService:          userService,
+		permissionRepo:       permissionRepo,
+		workspaceRoleService: workspaceRoleService,
+		workspaceRoleRepo:    workspaceRoleRepo,
+	}
 }
 
 // CreateWorkspace godoc
@@ -36,9 +101,30 @@ func NewWorkspaceHandler(db *gorm.DB) *WorkspaceHandler { // Accept db, remove s
 // @Success 201 {object} model.Workspace
 // @Failure 400 {object} map[string]string "error: 잘못된 요청 형식"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Failure 403 {object} map[string]string "error: 권한 부족"
 // @Security BearerAuth
 // @Router /workspaces [post]
 func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
+	// --- Permission Check ---
+	userID, platformRoles, err := getUserDbIdAndPlatformRoles(c.Request().Context(), c, h.userService) // Pass context
+	if err != nil {
+		log.Printf("Error getting user info for CreateWorkspace: %v", err)
+		// Fallback or default behavior if user info is missing? For now, deny.
+		// This indicates an issue with the AuthMiddleware setup.
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to identify user"})
+	}
+
+	// Check for 'create' permission (Platform level)
+	hasPermission, err := checkPlatformPermission(h.permissionRepo, platformRoles, "mc-iam-manager:workspace:create") // Use helper
+	if err != nil {
+		log.Printf("Error checking create workspace permission for user %d: %v", userID, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "권한 확인 중 오류 발생"})
+	}
+	if !hasPermission {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "워크스페이스 생성 권한이 없습니다"})
+	}
+	// --- End Permission Check ---
+
 	var workspace model.Workspace
 	if err := c.Bind(&workspace); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
@@ -50,6 +136,24 @@ func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 	if err := h.workspaceService.Create(&workspace); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 생성 실패: %v", err)})
 	}
+
+	// --- Assign creator as admin ---
+	adminRole, err := h.workspaceRoleRepo.GetByName("admin") // Find the 'admin' role
+	if err != nil {
+		log.Printf("Error finding 'admin' workspace role: %v. Cannot auto-assign creator.", err)
+		// Continue without assigning role, but log the issue
+	} else {
+		// Assign the role (ignore error for now, just log it)
+		// Note: AssignRoleToUser expects DB User ID
+		errAssign := h.workspaceRoleService.AssignRoleToUser(userID, adminRole.ID, workspace.ID)
+		if errAssign != nil {
+			log.Printf("Warning: Failed to auto-assign admin role to creator (User DB ID: %d) for new workspace %d: %v", userID, workspace.ID, errAssign)
+		} else {
+			log.Printf("Auto-assigned admin role to creator (User DB ID: %d) for new workspace %d", userID, workspace.ID)
+		}
+	}
+	// --- End Assign creator ---
+
 	// Return the created workspace, including the generated ID
 	return c.JSON(http.StatusCreated, workspace)
 }
@@ -62,12 +166,42 @@ func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 // @Produce json
 // @Success 200 {array} model.Workspace
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Failure 403 {object} map[string]string "error: 권한 부족"
 // @Security BearerAuth
 // @Router /workspaces [get]
 func (h *WorkspaceHandler) ListWorkspaces(c echo.Context) error {
-	workspaces, err := h.workspaceService.List()
+	// --- Permission Check ---
+	userID, platformRoles, err := getUserDbIdAndPlatformRoles(c.Request().Context(), c, h.userService) // Pass context
+	if err != nil {
+		log.Printf("Error getting user info for ListWorkspaces: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to identify user"})
+	}
+
+	// Check for 'list_all' permission (Platform level)
+	hasListAllPermission, err := checkPlatformPermission(h.permissionRepo, platformRoles, "mc-iam-manager:workspace:list_all") // Use helper
+	if err != nil {
+		log.Printf("Error checking list_all workspace permission for user %d: %v", userID, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "권한 확인 중 오류 발생"})
+	}
+
+	var workspaces []model.Workspace
+	if hasListAllPermission {
+		// User has permission to list all workspaces
+		workspaces, err = h.workspaceService.List()
+	} else {
+		// User can only list assigned workspaces
+		// TODO: Check for 'list_assigned' permission if needed for more granular control
+		workspaces, err = h.userService.FindWorkspacesByUserID(userID) // Use the new repo method via userService
+	}
+
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 목록 조회 실패: %v", err)})
+	}
+	// --- End Permission Check ---
+
+	// Return empty list if no workspaces found or accessible
+	if workspaces == nil {
+		workspaces = []model.Workspace{}
 	}
 	return c.JSON(http.StatusOK, workspaces)
 }
@@ -82,18 +216,69 @@ func (h *WorkspaceHandler) ListWorkspaces(c echo.Context) error {
 // @Success 200 {object} model.Workspace
 // @Failure 400 {object} map[string]string "error: 잘못된 워크스페이스 ID"
 // @Failure 404 {object} map[string]string "error: 워크스페이스를 찾을 수 없습니다"
+// @Failure 403 {object} map[string]string "error: 접근 권한 없음"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
 // @Router /workspaces/{id} [get]
 func (h *WorkspaceHandler) GetWorkspaceByID(c echo.Context) error {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	// --- Permission Check ---
+	userID, platformRoles, err := getUserDbIdAndPlatformRoles(c.Request().Context(), c, h.userService) // Pass context
+	if err != nil {
+		log.Printf("Error getting user info for GetWorkspaceByID: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to identify user"})
+	}
+
+	workspaceID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID입니다"})
 	}
 
-	workspace, err := h.workspaceService.GetByID(uint(id))
+	// Check for 'list_all' platform permission first
+	hasListAllPermission, err := checkPlatformPermission(h.permissionRepo, platformRoles, "mc-iam-manager:workspace:list_all") // Use helper
 	if err != nil {
-		// Check for specific "not found" error
+		log.Printf("Error checking list_all workspace permission for user %d: %v", userID, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "권한 확인 중 오류 발생"})
+	}
+	hasReadPermission := false
+
+	if !hasListAllPermission {
+		// If no list_all, check specific read permission for this workspace
+		userRolesInWs, err := h.userService.GetUserRolesInWorkspace(userID, uint(workspaceID))
+		if err != nil {
+			log.Printf("Error getting user roles in workspace %d for permission check: %v", workspaceID, err)
+			// Don't expose internal error, treat as forbidden
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "워크스페이스 접근 권한이 없습니다"})
+		}
+		if len(userRolesInWs) == 0 {
+			// User has no roles in this workspace
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "워크스페이스 접근 권한이 없습니다"})
+		}
+
+		// Check if any of the user's roles in this workspace have the 'read' permission
+		requiredPermissionID := "mc-iam-manager:workspace:read"
+		for _, userRole := range userRolesInWs {
+			hasPerm, errCheck := h.permissionRepo.CheckRoleMciamPermission("workspace", userRole.WorkspaceRoleID, requiredPermissionID) // Use actual repo method
+			if errCheck != nil {
+				log.Printf("Error checking permission %s for role %d: %v", requiredPermissionID, userRole.WorkspaceRoleID, errCheck)
+				// Return error on check failure
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "권한 확인 중 오류 발생"})
+			}
+			if hasPerm {
+				hasReadPermission = true
+				break
+			}
+		}
+	}
+
+	// If user doesn't have list_all and doesn't have specific read permission
+	if !hasListAllPermission && !hasReadPermission {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "워크스페이스 접근 권한이 없습니다"})
+	}
+	// --- End Permission Check ---
+
+	workspace, err := h.workspaceService.GetByID(uint(workspaceID))
+	if err != nil {
+		// Check for specific "not found" error (should be handled by service now)
 		if err.Error() == "workspace not found" { // Assuming service returns this error string
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}

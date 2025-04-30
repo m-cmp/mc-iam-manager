@@ -14,32 +14,34 @@ const (
 	PermissionTypeResource PermissionType = "resource"
 )
 
-// Permission 권한 정보 (DB 테이블: mcmp_permissions)
-type Permission struct {
-	ID          string    `json:"id" gorm:"primaryKey;column:id;type:varchar(255)"` // Changed to string
-	Name        string    `json:"name" gorm:"column:name;size:100;not null"`        // Assuming Name column exists or needs to be added
-	Description string    `json:"description" gorm:"column:description;size:1000"`  // Increased size to match roles
-	CreatedAt   time.Time `json:"created_at" gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt   time.Time `json:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
-	// Type        PermissionType `json:"type" gorm:"column:type;size:20;not null"` // Type column removed based on migration, add back if needed
+// MciamPermission 권한 정보 (DB 테이블: mcmp_mciam_permissions) - Renamed
+type MciamPermission struct {
+	ID             string    `json:"id" gorm:"primaryKey;column:id;type:varchar(255)"`                         // Format: <framework_id>:<resource_type_id>:<action>
+	FrameworkID    string    `json:"frameworkId" gorm:"column:framework_id;type:varchar(100);not null"`        // FK to mcmp_resource_types.framework_id
+	ResourceTypeID string    `json:"resourceTypeId" gorm:"column:resource_type_id;type:varchar(100);not null"` // FK to mcmp_resource_types.id
+	Action         string    `json:"action" gorm:"column:action;type:varchar(100);not null"`                   // e.g., create, read, update, delete
+	Name           string    `json:"name" gorm:"column:name;size:100;not null"`
+	Description    string    `json:"description" gorm:"column:description;size:1000"`
+	CreatedAt      time.Time `json:"createdAt" gorm:"column:created_at;not null;default:now()"` // Match DB schema
+	UpdatedAt      time.Time `json:"updatedAt" gorm:"column:updated_at;not null;default:now()"` // Match DB schema
+	// ResourceType   ResourceType `gorm:"foreignKey:FrameworkID,ResourceTypeID;references:FrameworkID,ID"` // Optional: Define relationship if needed
 }
 
 // TableName 테이블 이름 지정
-func (Permission) TableName() string {
-	return "mcmp_permissions"
+func (MciamPermission) TableName() string { // Renamed receiver
+	return "mcmp_mciam_permissions" // Updated table name
 }
 
-// RolePermission 역할-권한 매핑 (DB 테이블: mcmp_role_permissions)
-type RolePermission struct {
-	RoleType     string    `json:"role_type" gorm:"primaryKey;column:role_type;type:varchar(50);not null"`          // 'platform' or 'workspace'
-	RoleID       uint      `json:"role_id" gorm:"primaryKey;column:role_id;not null"`                               // Refers to mcmp_platform_roles.id or mcmp_workspace_roles.id
-	PermissionID string    `json:"permission_id" gorm:"primaryKey;column:permission_id;type:varchar(255);not null"` // Refers to mcmp_permissions.id
-	CreatedAt    time.Time `json:"created_at" gorm:"column:created_at;autoCreateTime"`
-	// Removed UpdatedAt as it's not in the migration schema
-	// Relationships can be added if needed, e.g., PlatformRole, WorkspaceRole, Permission
+// MciamRoleMciamPermission 역할-MC-IAM 권한 매핑 (DB 테이블: mcmp_mciam_role_permissions) - Renamed
+type MciamRoleMciamPermission struct {
+	RoleType        string    `json:"role_type" gorm:"primaryKey;column:role_type;type:varchar(50);not null"`          // 'platform' or 'workspace'
+	WorkspaceRoleID uint      `json:"workspace_role_id" gorm:"primaryKey;column:workspace_role_id;not null"`           // Renamed, Refers to mcmp_workspace_roles.id
+	PermissionID    string    `json:"permission_id" gorm:"primaryKey;column:permission_id;type:varchar(255);not null"` // Refers to mcmp_mciam_permissions.id
+	CreatedAt       time.Time `json:"created_at" gorm:"column:created_at;autoCreateTime"`
+	// Relationships can be added if needed, e.g., WorkspaceRole, MciamPermission
 }
 
 // TableName 테이블 이름 지정
-func (RolePermission) TableName() string {
-	return "mcmp_role_permissions"
+func (MciamRoleMciamPermission) TableName() string { // Renamed receiver
+	return "mcmp_mciam_role_permissions" // Updated table name
 }

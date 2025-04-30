@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings" // Import strings
 
 	"github.com/labstack/echo/v4"
+	"github.com/m-cmp/mc-iam-manager/config" // Import config for Keycloak client
 	"github.com/m-cmp/mc-iam-manager/model/mcmpapi"
 	"github.com/m-cmp/mc-iam-manager/service"
 	"gorm.io/gorm" // Import gorm
@@ -102,8 +104,79 @@ func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body: " + err.Error()})
 	}
 
-	// TODO: Add validation for the request body using validator if needed
+	// --- RPT Validation and Permission Check START ---
+	authHeader := c.Request().Header.Get("Authorization")
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Authorization 헤더가 없거나 형식이 잘못되었습니다 (RPT 필요)."})
+	}
+	rptToken := strings.TrimPrefix(authHeader, "Bearer ")
 
+	// Validate RPT token
+	_, claims, err := config.KC.Client.DecodeAccessToken(c.Request().Context(), rptToken, config.KC.Realm)
+	if err != nil {
+		log.Printf("RPT 토큰 검증 실패 (McmpApiCall): %v", err)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "유효하지 않거나 만료된 RPT 토큰입니다."})
+	}
+
+	// Extract permissions from RPT
+	authClaim, ok := (*claims)["authorization"].(map[string]interface{})
+	if !ok {
+		log.Println("RPT 토큰에 'authorization' 클레임이 없습니다 (McmpApiCall).")
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "권한 거부: RPT에 authorization 클레임이 없습니다."})
+	}
+	permissionsClaim, ok := authClaim["permissions"].([]interface{})
+	if !ok {
+		log.Println("RPT 토큰에 'authorization.permissions' 클레임이 없습니다 (McmpApiCall).")
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "권한 거부: RPT에 permissions 클레임이 없습니다."})
+	}
+
+	// Check if the required permission is in the RPT claims
+	// Required permission format: "serviceName#actionName" (based on Keycloak UMA resource/scope)
+	requiredPermission := fmt.Sprintf("%s#%s", req.ServiceName, req.ActionName)
+	hasPermission := false
+	requiredParts := strings.SplitN(requiredPermission, "#", 2)
+	requiredResource := requiredParts[0]
+	requiredScope := ""
+	if len(requiredParts) > 1 {
+		requiredScope = requiredParts[1]
+	} else {
+		log.Printf("경고: requiredPermission 형식 오류 (McmpApiCall): %s", requiredPermission)
+		// Decide how to handle - maybe deny access if format is wrong?
+		// return c.JSON(http.StatusInternalServerError, map[string]string{"error": "서버 설정 오류: 잘못된 내부 권한 형식"})
+	}
+
+	for _, p := range permissionsClaim {
+		permMap, ok := p.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		rsname, rsnameOk := permMap["rsname"].(string) // Or rsid
+		scopes, scopesOk := permMap["scopes"].([]interface{})
+		if !rsnameOk || !scopesOk {
+			continue
+		}
+
+		if rsname == requiredResource {
+			for _, scopeInterface := range scopes {
+				scope, ok := scopeInterface.(string)
+				if ok && (requiredScope == "" || scope == requiredScope) {
+					hasPermission = true
+					break
+				}
+			}
+		}
+		if hasPermission {
+			break
+		}
+	}
+
+	if !hasPermission {
+		log.Printf("권한 거부 (McmpApiCall): '%s' 필요. RPT 권한: %v", requiredPermission, permissionsClaim)
+		return c.JSON(http.StatusForbidden, fmt.Sprintf("권한 거부: '%s' 권한이 필요합니다.", requiredPermission))
+	}
+	// --- RPT Validation and Permission Check END ---
+
+	// If permission check passed, proceed to call the service
 	statusCode, respBody, serviceVersion, calledURL, err := h.service.McmpApiCall(c.Request().Context(), &req) // Get new return values
 	if err != nil {
 		// Handle errors from the service layer (e.g., service/action not found, network error)
