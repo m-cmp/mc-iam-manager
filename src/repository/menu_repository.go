@@ -122,6 +122,13 @@ func (r *MenuRepository) UpsertMenus(menus []model.Menu) error {
 	if tx.Error != nil {
 		return fmt.Errorf("failed to begin transaction: %w", tx.Error)
 	}
+	// Defer rollback in case of panic
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r) // Re-panic after rollback
+		}
+	}()
 
 	// 제약 조건 검사 지연 설정 (트랜잭션 내에서만 유효)
 	// PostgreSQL 기준. 다른 DB는 구문이 다를 수 있음.
@@ -136,13 +143,52 @@ func (r *MenuRepository) UpsertMenus(menus []model.Menu) error {
 		DoUpdates: clause.AssignmentColumns([]string{"parent_id", "display_name", "res_type", "is_action", "priority", "menu_number"}),
 	}).Create(&menus).Error; err != nil {
 		tx.Rollback() // 롤백
+		tx.Rollback() // 롤백
 		return fmt.Errorf("failed to upsert menus in transaction: %w", err)
 	}
 
+	// --- Add logic to ensure resource type and create permissions ---
+	// 1. Ensure 'menu' resource type exists
+	resourceType := model.ResourceType{
+		FrameworkID: "menu",
+		ID:          "menu",
+		Name:        "Menu Item",
+		Description: "Represents a menu item resource",
+	}
+	// Use Clauses OnConflict to do nothing if the resource type already exists
+	if err := tx.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "framework_id"}, {Name: "id"}},
+		DoNothing: true,
+	}).Create(&resourceType).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to ensure menu resource type exists: %w", err)
+	}
+
+	// 2. Create/Update permissions for each menu item
+	for _, menu := range menus {
+		permissionID := fmt.Sprintf("menu:menu:view:%s", menu.ID)
+		perm := model.MciamPermission{
+			ID:             permissionID,
+			FrameworkID:    "menu",
+			ResourceTypeID: "menu",
+			Action:         fmt.Sprintf("view:%s", menu.ID),               // Store the specific menu ID in action
+			Name:           fmt.Sprintf("View Menu %s", menu.DisplayName), // Use DisplayName for Name
+			Description:    fmt.Sprintf("Permission to view the '%s' menu item.", menu.DisplayName),
+		}
+		// Upsert the permission based on the unique ID
+		if err := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"name", "description", "updated_at"}), // Update name/desc if needed
+		}).Create(&perm).Error; err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to upsert permission for menu %s: %w", menu.ID, err)
+		}
+	}
+	// --- End of added logic ---
+
 	// 트랜잭션 커밋 (이 시점에 지연된 제약 조건 검사 발생)
 	if err := tx.Commit().Error; err != nil {
-		// 커밋 실패 시 롤백은 자동으로 처리될 수 있으나 명시적 롤백 시도도 가능
-		// tx.Rollback()
+		// Rollback might have already happened automatically on commit error
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 

@@ -11,6 +11,8 @@ import (
 	"github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/handler"
 	"github.com/m-cmp/mc-iam-manager/middleware"
+	"github.com/m-cmp/mc-iam-manager/repository"
+	"github.com/m-cmp/mc-iam-manager/service"
 
 	// "github.com/m-cmp/mc-iam-manager/service" // Remove unused service import
 
@@ -66,12 +68,12 @@ func main() {
 	// keycloakService := service.NewKeycloakService() // No longer need to store this instance
 
 	// 핸들러 초기화
-	authHandler := handler.NewAuthHandler(db)                   // Pass only db
-	platformRoleHandler := handler.NewPlatformRoleHandler(db)   // Correct: Pass db
-	workspaceRoleHandler := handler.NewWorkspaceRoleHandler(db) // Correct: Pass db
-	userHandler := handler.NewUserHandler(db)                   // Pass only db
-	permissionHandler := handler.NewPermissionHandler(db)       // Correct: Pass db
-	mcmpApiHandler := handler.NewMcmpApiHandler(db)             // Correct: Pass db
+	authHandler := handler.NewAuthHandler(db)                       // Pass only db
+	platformRoleHandler := handler.NewPlatformRoleHandler(db)       // Correct: Pass db
+	workspaceRoleHandler := handler.NewWorkspaceRoleHandler(db)     // Correct: Pass db
+	userHandler := handler.NewUserHandler(db)                       // Pass only db
+	mciamPermissionHandler := handler.NewMciamPermissionHandler(db) // Use renamed handler and constructor
+	mcmpApiHandler := handler.NewMcmpApiHandler(db)                 // Correct: Pass db
 
 	// 메뉴 핸들러 초기화 (DB 사용)
 	menuHandler := handler.NewMenuHandler(db) // Pass db
@@ -92,6 +94,18 @@ func main() {
 	// Health Check 초기화
 	healthHandler := handler.NewHealthCheckHandler(db) // Correct: Pass only db
 
+	// Resource Type 핸들러 초기화
+	resourceTypeHandler := handler.NewResourceTypeHandler(db)
+	// CSP Mapping 핸들러 초기화
+	cspMappingHandler := handler.NewCspMappingHandler(db)
+	// CSP Credential 핸들러 초기화
+	cspCredentialHandler := handler.NewCspCredentialHandler(db)
+
+	// 권한-API 액션 매핑 관련 핸들러 초기화
+	mcmpApiPermissionActionMappingRepo := repository.NewMcmpApiPermissionActionMappingRepository(db)
+	mcmpApiPermissionActionMappingService := service.NewMcmpApiPermissionActionMappingService(mcmpApiPermissionActionMappingRepo)
+	mcmpApiPermissionActionMappingHandler := handler.NewMcmpApiPermissionActionMappingHandler(mcmpApiPermissionActionMappingService)
+
 	// 라우트 설정
 	e.GET("/readyz", healthHandler.ReadyzCheck) // Use the new handler
 
@@ -100,6 +114,7 @@ func main() {
 	api.POST("/auth/login", authHandler.Login)
 	api.POST("/auth/logout", authHandler.Logout)
 	api.POST("/auth/refresh", authHandler.RefreshToken)
+	api.POST("/auth/workspace-ticket", authHandler.WorkspaceTicket, middleware.AuthMiddleware) // Add RPT endpoint
 	// Removed undefined auth routes
 
 	// 사용자 라우트 (인증 필요, 관리자용)
@@ -197,21 +212,22 @@ func main() {
 		projectRoutes.POST("/sync-projects", projectHandler.SyncProjects) // Add project sync route
 	}
 
-	// 권한 관리 API 라우트 (인증 필요)
-	permissionRoutes := api.Group("/permissions", middleware.AuthMiddleware)
+	// MC-IAM 권한 관리 API 라우트 (인증 필요) - Renamed
+	mciamPermissionRoutes := api.Group("/mciam-permissions", middleware.AuthMiddleware) // Updated path
 	{
-		permissionRoutes.POST("", permissionHandler.Create)
-		permissionRoutes.GET("", permissionHandler.List)
-		permissionRoutes.GET("/:id", permissionHandler.GetByID)
-		permissionRoutes.PUT("/:id", permissionHandler.Update)
-		permissionRoutes.DELETE("/:id", permissionHandler.Delete)
+		mciamPermissionRoutes.POST("", mciamPermissionHandler.CreateMciamPermission)       // Use renamed handler and method
+		mciamPermissionRoutes.GET("", mciamPermissionHandler.ListMciamPermissions)         // Use renamed handler and method
+		mciamPermissionRoutes.GET("/:id", mciamPermissionHandler.GetMciamPermissionByID)   // Use renamed handler and method
+		mciamPermissionRoutes.PUT("/:id", mciamPermissionHandler.UpdateMciamPermission)    // Use renamed handler and method
+		mciamPermissionRoutes.DELETE("/:id", mciamPermissionHandler.DeleteMciamPermission) // Use renamed handler and method
 	}
-	// 역할-권한 매핑 라우트 (인증 필요)
-	rolePermissionRoutes := api.Group("/roles", middleware.AuthMiddleware)
+	// 역할-MC-IAM 권한 매핑 라우트 (인증 필요) - Renamed
+	roleMciamPermissionRoutes := api.Group("/roles", middleware.AuthMiddleware) // Keep group name? Or rename? Let's keep for now.
 	{
-		rolePermissionRoutes.POST("/:roleType/:roleId/permissions/:permissionId", permissionHandler.AssignRolePermission)
-		rolePermissionRoutes.DELETE("/:roleType/:roleId/permissions/:permissionId", permissionHandler.RemoveRolePermission)
-		rolePermissionRoutes.GET("/:roleType/:roleId/permissions", permissionHandler.GetRolePermissions)
+		// Updated paths and handler methods
+		roleMciamPermissionRoutes.POST("/:roleType/:roleId/mciam-permissions/:permissionId", mciamPermissionHandler.AssignMciamPermissionToRole)
+		roleMciamPermissionRoutes.DELETE("/:roleType/:roleId/mciam-permissions/:permissionId", mciamPermissionHandler.RemoveMciamPermissionFromRole)
+		roleMciamPermissionRoutes.GET("/:roleType/:roleId/mciam-permissions", mciamPermissionHandler.GetRoleMciamPermissions)
 	}
 
 	// mcmp API 라우트 (인증 필요) -> McmpAPI 라우트로 변경
@@ -221,9 +237,57 @@ func main() {
 		mcmpApiRoutes.PUT("/:serviceName/versions/:version/activate", mcmpApiHandler.SetActiveVersion) // Add route for activating version
 		mcmpApiRoutes.GET("", mcmpApiHandler.GetAllAPIDefinitions)                                     // Add route for getting all definitions
 		mcmpApiRoutes.PUT("/:serviceName", mcmpApiHandler.UpdateService)                               // Add route for updating service
-		mcmpApiRoutes.POST("/call", mcmpApiHandler.McmpApiCall)                                        // Correct handler method name
+		mcmpApiRoutes.POST("/call", mcmpApiHandler.McmpApiCall)                                        // RPT validation moved to handler
 		mcmpApiRoutes.GET("/test/mc-infra-manager/getallns", mcmpApiHandler.TestCallGetAllNs)          // Add test route
 		// Add other mcmp API routes if needed
+	}
+
+	// 리소스 유형 관리 API 라우트 (인증 필요)
+	resourceTypeRoutes := api.Group("/resource-types", middleware.AuthMiddleware)
+	{
+		resourceTypeRoutes.POST("", resourceTypeHandler.CreateResourceType)
+		resourceTypeRoutes.GET("", resourceTypeHandler.ListResourceTypes)
+		resourceTypeRoutes.GET("/:frameworkId/:id", resourceTypeHandler.GetResourceTypeByID)   // Composite key in path
+		resourceTypeRoutes.PUT("/:frameworkId/:id", resourceTypeHandler.UpdateResourceType)    // Composite key in path
+		resourceTypeRoutes.DELETE("/:frameworkId/:id", resourceTypeHandler.DeleteResourceType) // Composite key in path
+	}
+
+	// 권한 관리 API 라우트 (인증 필요) - /api/permissions 경로 사용 - REMOVED as it's replaced by /mciam-permissions
+	// permissionApiRoutes := api.Group("/permissions", middleware.AuthMiddleware)
+	// {
+	// 	permissionApiRoutes.POST("", permissionHandler.Create)       // 권한 생성
+	// 	permissionApiRoutes.GET("", permissionHandler.List)          // 권한 목록 조회 (필터 가능)
+	// 	permissionApiRoutes.GET("/:id", permissionHandler.GetByID)   // 특정 권한 조회
+	// 	permissionApiRoutes.PUT("/:id", permissionHandler.Update)    // 권한 수정
+	// 	permissionApiRoutes.DELETE("/:id", permissionHandler.Delete) // 권한 삭제
+	// }
+	// 역할-권한 매핑 라우트 (인증 필요) - /api/roles 경로 사용 (기존 것 활용) - REMOVED as it's replaced by roleMciamPermissionRoutes
+	// rolePermissionRoutes 그룹은 이미 존재하므로 수정할 필요 없음
+
+	// 역할 - CSP 역할 매핑 라우트 (인증 필요)
+	roleCspMappingRoutes := api.Group("/workspace-roles/:roleId/csp-role-mappings", middleware.AuthMiddleware)
+	{
+		roleCspMappingRoutes.POST("", cspMappingHandler.CreateCspRoleMapping)
+		roleCspMappingRoutes.GET("", cspMappingHandler.ListCspRoleMappingsByRole)
+		// PUT and DELETE need composite key in path or query params
+		// Using path params here, ensure ARN is URL encoded if passed in path
+		roleCspMappingRoutes.PUT("/:cspType/:cspRoleArn", cspMappingHandler.UpdateCspRoleMapping)
+		roleCspMappingRoutes.DELETE("/:cspType/:cspRoleArn", cspMappingHandler.DeleteCspRoleMapping)
+	}
+
+	// CSP 임시 자격 증명 발급 API 라우트 (인증 필요)
+	cspCredentialRoutes := api.Group("/csp", middleware.AuthMiddleware)
+	{
+		cspCredentialRoutes.POST("/credentials", cspCredentialHandler.GetTemporaryCredentials)
+	}
+
+	// 권한-API 액션 매핑 라우트 (인증 필요)
+	mcmpApiPermissionActionMappingRoutes := api.Group("/mcmp-api-permission-action-mappings", middleware.AuthMiddleware)
+	{
+		mcmpApiPermissionActionMappingRoutes.GET("/permissions/:permissionId/actions", mcmpApiPermissionActionMappingHandler.GetActionsByPermissionID)
+		mcmpApiPermissionActionMappingRoutes.GET("/actions/:actionId/permissions", mcmpApiPermissionActionMappingHandler.GetPermissionsByActionID)
+		mcmpApiPermissionActionMappingRoutes.POST("", mcmpApiPermissionActionMappingHandler.CreateMapping)
+		mcmpApiPermissionActionMappingRoutes.DELETE("/permissions/:permissionId/actions/:actionId", mcmpApiPermissionActionMappingHandler.DeleteMapping)
 	}
 
 	// Swagger 라우트 추가

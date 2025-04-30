@@ -20,8 +20,8 @@ import (
 type MenuService struct {
 	db             *gorm.DB // Add db field
 	menuRepo       *repository.MenuRepository
-	userRepo       *repository.UserRepository       // Added dependency
-	permissionRepo *repository.PermissionRepository // Added dependency
+	userRepo       *repository.UserRepository            // Added dependency
+	permissionRepo *repository.MciamPermissionRepository // Use renamed repository type
 }
 
 // NewMenuService 새 MenuService 인스턴스 생성
@@ -29,7 +29,7 @@ func NewMenuService(db *gorm.DB) *MenuService { // Accept only db
 	// Initialize repositories internally
 	menuRepo := repository.NewMenuRepository(db)
 	userRepo := repository.NewUserRepository(db)
-	permissionRepo := repository.NewPermissionRepository() // Permission repo doesn't need db in constructor
+	permissionRepo := repository.NewMciamPermissionRepository(db) // Use renamed constructor
 	return &MenuService{
 		db:             db, // Store db
 		menuRepo:       menuRepo,
@@ -76,17 +76,18 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, kcUserID string) ([
 	// Need a method in PermissionRepository like GetPermissionsByRoleIDs(ctx, roleType, roleIDs)
 	// For now, iterate and call GetRolePermissions (less efficient)
 	allowedMenuIDs := make(map[string]bool)
-	tx := s.db.WithContext(ctx) // Create transaction with context
+	// tx := s.db.WithContext(ctx) // No longer need tx here if repo methods don't require it
 	for _, roleID := range platformRoleIDs {
-		permissions, err := s.permissionRepo.GetRolePermissions(tx, "platform", roleID) // Pass tx
+		// GetRolePermissions now returns []string and doesn't need tx
+		permissionIDs, err := s.permissionRepo.GetRoleMciamPermissions("platform", roleID) // Use renamed method
 		if err != nil {
 			// Log error but continue, maybe user has other roles with permissions
 			fmt.Printf("Warning: failed to get permissions for platform role %d: %v\n", roleID, err)
 			continue
 		}
-		for _, p := range permissions {
+		for _, permissionID := range permissionIDs {
 			// Assuming permission ID directly corresponds to menu ID for menu permissions
-			allowedMenuIDs[p.ID] = true
+			allowedMenuIDs[permissionID] = true
 		}
 	}
 

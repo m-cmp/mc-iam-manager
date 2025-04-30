@@ -165,3 +165,30 @@ func (r *UserRepository) FindWorkspaceAndWorkspaceRolesByUserID(userID uint) ([]
 	}
 	return userWorkspaceRoles, nil
 }
+
+// FindWorkspacesByUserID finds all workspaces a user is assigned to (has any role in).
+func (r *UserRepository) FindWorkspacesByUserID(userID uint) ([]model.Workspace, error) {
+	var workspaces []model.Workspace
+	// Select distinct workspaces associated with the user through the join table
+	err := r.db.Joins("JOIN mcmp_user_workspace_roles uwr ON uwr.workspace_id = mcmp_workspaces.id").
+		Where("uwr.user_id = ?", userID).
+		Distinct("mcmp_workspaces.*"). // Select distinct workspace fields
+		Find(&workspaces).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding workspaces for user %d: %w", userID, err)
+	}
+	return workspaces, nil
+}
+
+// GetUserRolesInWorkspace finds all roles assigned to a user within a specific workspace.
+func (r *UserRepository) GetUserRolesInWorkspace(userID, workspaceID uint) ([]model.UserWorkspaceRole, error) {
+	var userWorkspaceRoles []model.UserWorkspaceRole
+	// Query the join table directly
+	err := r.db.Where("user_id = ? AND workspace_id = ?", userID, workspaceID).
+		Preload("WorkspaceRole"). // Preload the role details
+		Find(&userWorkspaceRoles).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding roles for user %d in workspace %d: %w", userID, workspaceID, err)
+	}
+	return userWorkspaceRoles, nil
+}

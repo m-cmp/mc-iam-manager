@@ -67,3 +67,13 @@ func (r *WorkspaceRoleRepository) RemoveRoleFromUser(userID, roleID, workspaceID
 	// Optionally check result.RowsAffected if you need to know if a record was actually deleted
 	return nil
 }
+
+// GetByName finds a workspace role by its name.
+func (r *WorkspaceRoleRepository) GetByName(name string) (*model.WorkspaceRole, error) {
+	var role model.WorkspaceRole
+	if err := r.db.Where("name = ?", name).First(&role).Error; err != nil {
+		// Consider returning a specific "not found" error
+		return nil, err
+	}
+	return &role, nil
+}

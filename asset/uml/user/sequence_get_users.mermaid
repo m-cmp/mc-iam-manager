@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant Client
+    participant Router as main.go (Echo)
+    participant AuthMiddleware as middleware.AuthMiddleware
+    participant UserHandler as handler.UserHandler
+    participant UserService as service.UserService
+    participant KeycloakService as service.KeycloakService
+    participant UserRepo as repository.UserRepository
+    participant Keycloak
+
+    Client->>+Router: GET /api/users (Header: Auth Token)
+    Router->>+AuthMiddleware: Verify Token
+    AuthMiddleware-->>-Router: Token OK (Set User Info in Context)
+    Router->>+UserHandler: GetUsers(c)
+    UserHandler->>UserHandler: checkRoleFromContext(c, ["admin", "platformAdmin"])
+    alt Permission Denied
+        UserHandler-->>-Router: 403 Forbidden
+        Router-->>-Client: 403 Forbidden
+    else Permission Granted
+        UserHandler->>+UserService: GetUsers(ctx)
+        UserService->>+KeycloakService: GetUsers(ctx)
+        KeycloakService->>+Keycloak: Get Users API Call
+        Keycloak-->>-KeycloakService: Keycloak User List (kcUsers)
+        KeycloakService-->>-UserService: kcUsers
+        UserService->>UserService: Extract Keycloak IDs (kcIDs)
+        UserService->>+UserRepo: GetDbUsersByKcIDs(kcIDs)
+        UserRepo-->>-UserService: DB User List (dbUsers)
+        UserService->>UserService: Merge kcUsers and dbUsers
+        UserService-->>-UserHandler: Merged User List (result)
+        UserHandler-->>-Router: 200 OK (result)
+        Router-->>-Client: 200 OK (result)
+    end

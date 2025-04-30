@@ -1,0 +1,44 @@
+sequenceDiagram
+    participant Client
+    participant Router as main.go (Echo)
+    participant AuthMiddleware as middleware.AuthMiddleware
+    participant WorkspaceHandler as handler.WorkspaceHandler
+    participant UserService as service.UserService
+    participant PermissionRepo as repository.MciamPermissionRepository
+    participant WorkspaceService as service.WorkspaceService
+    participant WorkspaceRepo as repository.WorkspaceRepository
+    participant WorkspaceRoleRepo as repository.WorkspaceRoleRepository
+    participant WorkspaceRoleService as service.WorkspaceRoleService
+    participant UserRepo as repository.UserRepository
+    participant KeycloakService as service.KeycloakService
+    participant Keycloak
+
+    Client->>+Router: POST /api/workspaces (Body: Workspace Info, Header: Auth Token)
+    Router->>+AuthMiddleware: Verify Token
+    AuthMiddleware-->>-Router: Token OK (Set User Info)
+    Router->>+WorkspaceHandler: CreateWorkspace(c)
+    WorkspaceHandler->>+UserService: GetUserByKcID(ctx, kcUserId) %% Helper call
+    UserService-->>-WorkspaceHandler: User (with PlatformRoles)
+    WorkspaceHandler->>+PermissionRepo: CheckRoleMciamPermission("platform", roleId, "mc-iam-manager:workspace:create") %% Helper call
+    PermissionRepo-->>-WorkspaceHandler: hasPermission=true
+    WorkspaceHandler->>WorkspaceHandler: Bind Request Body
+    WorkspaceHandler->>+WorkspaceService: Create(workspace)
+    WorkspaceService->>+WorkspaceRepo: Create(workspace)
+    WorkspaceRepo-->>-WorkspaceService: Success
+    WorkspaceService-->>-WorkspaceHandler: Created Workspace (with ID)
+    WorkspaceHandler->>+WorkspaceRoleRepo: GetByName("admin")
+    WorkspaceRoleRepo-->>-WorkspaceHandler: Admin Role (with ID)
+    WorkspaceHandler->>+WorkspaceRoleService: AssignRoleToUser(userId, adminRoleId, workspaceId)
+    WorkspaceRoleService->>+UserRepo: FindByID(userId)
+    UserRepo-->>-WorkspaceRoleService: User (with KcId)
+    WorkspaceRoleService->>+WorkspaceRoleRepo: GetByID(adminRoleId)
+    WorkspaceRoleRepo-->>-WorkspaceRoleService: Role Info
+    WorkspaceRoleService->>+WorkspaceRoleRepo: AssignRoleToUser(userId, adminRoleId, workspaceId) # DB Insert
+    WorkspaceRoleRepo-->>-WorkspaceRoleService: Success/Error (DB)
+    WorkspaceRoleService->>+KeycloakService: EnsureGroupExistsAndAssignUser(ctx, user.KcId, groupName)
+    KeycloakService->>+Keycloak: Find/Create Group & Assign User API Calls
+    Keycloak-->>-KeycloakService: Success/Error
+    KeycloakService-->>-WorkspaceRoleService: Success/Error (Log only)
+    WorkspaceRoleService-->>-WorkspaceHandler: Success/Error (Log only)
+    WorkspaceHandler-->>-Router: 201 Created (Workspace Info)
+    Router-->>-Client: 201 Created (Workspace Info)

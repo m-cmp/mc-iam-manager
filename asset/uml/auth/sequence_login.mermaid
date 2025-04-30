@@ -1,0 +1,47 @@
+sequenceDiagram
+    participant Client
+    participant Router as main.go (Echo)
+    participant AuthHandler as handler.AuthHandler
+    participant KeycloakService as service.KeycloakService
+    participant UserService as service.UserService
+    participant UserRepo as repository.UserRepository
+    participant Keycloak
+
+    Client->>+Router: POST /api/auth/login (Body: Id, Password)
+    Router->>+AuthHandler: Login(c)
+    AuthHandler->>+KeycloakService: Login(ctx, id, password)
+    KeycloakService->>+Keycloak: Authenticate User (OIDC)
+    Keycloak-->>-KeycloakService: JWT (Access Token, etc.)
+    KeycloakService-->>-AuthHandler: token
+    AuthHandler->>+KeycloakService: GetUserIDFromToken(ctx, token)
+    KeycloakService->>+Keycloak: Decode/Verify Token
+    Keycloak-->>-KeycloakService: UserID (sub)
+    KeycloakService-->>-AuthHandler: userID
+    AuthHandler->>+KeycloakService: GetUser(ctx, userID)
+    KeycloakService->>+Keycloak: Get User Details by ID
+    Keycloak-->>-KeycloakService: Keycloak User Info (kcUser)
+    KeycloakService-->>-AuthHandler: kcUser
+    alt User Disabled in Keycloak
+        AuthHandler-->>-Router: 403 Forbidden
+        Router-->>-Client: 403 Forbidden
+    else User Enabled
+        AuthHandler->>+UserService: SyncUser(ctx, userID)
+        UserService->>+UserRepo: FindByKcID(userID)
+        UserRepo-->>-UserService: DB User (or nil)
+        alt DB User Not Found or Mismatch
+            UserService->>+KeycloakService: GetUser(ctx, userID)
+            KeycloakService->>+Keycloak: Get User Details by ID
+            Keycloak-->>-KeycloakService: Keycloak User Info
+            KeycloakService-->>-UserService: Keycloak User Info
+            alt DB User Not Found
+                 UserService->>+UserRepo: CreateDbUser(newUser)
+                 UserRepo-->>-UserService: Created DB User
+            else Username Mismatch
+                 UserService->>+UserRepo: UpdateDbUser(dbUser)
+                 UserRepo-->>-UserService: Success/Error
+            end
+        end
+        UserService-->>-AuthHandler: Synced User (or error)
+        AuthHandler-->>-Router: 200 OK (token)
+        Router-->>-Client: 200 OK (token)
+    end

@@ -9,162 +9,6 @@
     "host": "localhost:3000",
     "basePath": "/api/v1",
     "paths": {
-        "/api/permissions": {
-            "get": {
-                "description": "모든 권한 목록을 조회합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "권한 목록 조회",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.Permission"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "새로운 권한을 생성합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "권한 생성",
-                "parameters": [
-                    {
-                        "description": "권한 정보",
-                        "name": "permission",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Permission"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/model.Permission"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/permissions/{id}": {
-            "get": {
-                "description": "ID로 특정 권한을 조회합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "ID로 권한 조회",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "권한 ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.Permission"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "기존 권한을 수정합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "권한 수정",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "권한 ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "권한 정보",
-                        "name": "permission",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Permission"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.Permission"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "권한을 삭제합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "권한 삭제",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "권한 ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
         "/api/platform-roles": {
             "get": {
                 "description": "모든 플랫폼 역할을 조회합니다.",
@@ -321,132 +165,6 @@
                 }
             }
         },
-        "/api/roles/{roleType}/{roleId}/permissions": {
-            "get": {
-                "description": "특정 역할의 권한 목록을 조회합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "역할의 권한 목록 조회",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "역할 타입 ('platform' or 'workspace')",
-                        "name": "roleType",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "역할 ID",
-                        "name": "roleId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.Permission"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/roles/{roleType}/{roleId}/permissions/{permissionId}": {
-            "post": {
-                "description": "역할에 권한을 할당합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "역할에 권한 할당",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "역할 타입 ('platform' or 'workspace')",
-                        "name": "roleType",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "역할 ID",
-                        "name": "roleId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "권한 ID",
-                        "name": "permissionId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            },
-            "delete": {
-                "description": "역할에서 권한을 제거합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "역할에서 권한 제거",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "역할 타입 ('platform' or 'workspace')",
-                        "name": "roleType",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "역할 ID",
-                        "name": "roleId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "권한 ID",
-                        "name": "permissionId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
         "/auth/login": {
             "post": {
                 "description": "사용자 ID와 비밀번호로 로그인하여 JWT 토큰을 발급받습니다.",
@@ -473,10 +191,9 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "로그인 성공 및 토큰 정보 (gocloak.JWT 구조체와 유사)",
+                        "description": "로그인 성공 및 토큰 정보\" // Updated response type for Swagger",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.JWTResponse"
                         }
                     },
                     "400": {
@@ -514,6 +231,385 @@
                                 "type": "string"
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "리프레시 토큰을 사용하여 새로운 액세스 토큰 및 리프레시 토큰을 발급받습니다.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "토큰 갱신",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "리프레시 토큰",
+                        "name": "refresh_token",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "토큰 갱신 성공 및 새 토큰 정보\" // Added response type for Swagger",
+                        "schema": {
+                            "$ref": "#/definitions/model.JWTResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "error: 리프레시 토큰 누락",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: 토큰 갱신 실패 (유효하지 않은 토큰 등)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/workspace-ticket": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "사용자가 선택한 워크스페이스 및 요청 권한에 대한 RPT(Requesting Party Token)를 Keycloak으로부터 발급받습니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "워크스페이스 티켓(RPT) 발급",
+                "parameters": [
+                    {
+                        "description": "워크스페이스 ID 및 요청 권한",
+                        "name": "ticketRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.WorkspaceTicketRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "발급된 RPT 토큰\" // Updated response type for Swagger",
+                        "schema": {
+                            "$ref": "#/definitions/model.JWTResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 요청 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: 인증 실패 또는 유효하지 않은 토큰",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: 권한 부족 (Keycloak 정책 평가 실패)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류 또는 Keycloak 통신 실패",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/csp/credentials": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "사용자의 워크스페이스 역할에 매핑된 CSP 역할을 Assume하여 임시 자격 증명을 발급받습니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-credentials"
+                ],
+                "summary": "CSP 임시 자격 증명 발급",
+                "parameters": [
+                    {
+                        "description": "워크스페이스 ID 및 CSP 타입",
+                        "name": "credentialRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CspCredentialRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "발급된 임시 자격 증명 (현재 AWS만 지원)",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspCredentialResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 요청 형식 또는 지원하지 않는 CSP 타입",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: 인증 실패 또는 유효하지 않은 토큰",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: 해당 워크스페이스에 역할이 없거나 매핑된 CSP 역할이 없음",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 사용자 또는 워크스페이스를 찾을 수 없음",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류 또는 CSP 통신 실패",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/mciam-permissions": {
+            "get": {
+                "description": "모든 MC-IAM 권한 목록을 조회합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mciam-permissions"
+                ],
+                "summary": "MC-IAM 권한 목록 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "프레임워크 ID로 필터링",
+                        "name": "frameworkId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "리소스 유형 ID로 필터링",
+                        "name": "resourceTypeId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.MciamPermission"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "새로운 MC-IAM 권한을 생성합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mciam-permissions"
+                ],
+                "summary": "MC-IAM 권한 생성 - Renamed",
+                "parameters": [
+                    {
+                        "description": "권한 정보",
+                        "name": "permission",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MciamPermission"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.MciamPermission"
+                        }
+                    }
+                }
+            }
+        },
+        "/mciam-permissions/{id}": {
+            "get": {
+                "description": "ID로 특정 MC-IAM 권한을 조회합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mciam-permissions"
+                ],
+                "summary": "ID로 MC-IAM 권한 조회 - Renamed",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "권한 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.MciamPermission"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "기존 MC-IAM 권한을 수정합니다 (Name, Description만 가능).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mciam-permissions"
+                ],
+                "summary": "MC-IAM 권한 수정 - Renamed",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "권한 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "수정할 필드와 값 (예: {\\",
+                        "name": "updates",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "업데이트된 권한 정보\" // Use renamed model",
+                        "schema": {
+                            "$ref": "#/definitions/model.MciamPermission"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "MC-IAM 권한을 삭제합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mciam-permissions"
+                ],
+                "summary": "MC-IAM 권한 삭제 - Renamed",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "권한 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
@@ -1406,46 +1502,6 @@
                 }
             }
         },
-        "/projects/sync": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "mc-infra-manager의 네임스페이스 목록을 조회하여 로컬 DB에 없는 프로젝트를 추가합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "projects"
-                ],
-                "summary": "mc-infra-manager와 프로젝트 동기화",
-                "responses": {
-                    "200": {
-                        "description": "message: Project synchronization successful",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 서버 내부 오류 또는 동기화 실패",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/projects/{id}": {
             "get": {
                 "security": [
@@ -1799,36 +1855,99 @@
                 }
             }
         },
-        "/user/workspaces": {
+        "/resource-types": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "현재 로그인한 사용자가 접근 가능한 워크스페이스 및 각 워크스페이스에서의 역할 목록을 조회합니다.",
+                "description": "모든 리소스 유형 목록을 조회합니다. frameworkId 쿼리 파라미터로 필터링 가능합니다.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "users",
-                    "workspaces",
-                    "roles",
-                    "me"
+                    "resource-types"
                 ],
-                "summary": "내 워크스페이스 및 역할 목록 조회",
+                "summary": "리소스 유형 목록 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "프레임워크 ID로 필터링",
+                        "name": "frameworkId",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "성공 시 워크스페이스 및 역할 정보 목록 반환",
+                        "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/service.WorkspaceRoleInfo"
+                                "$ref": "#/definitions/model.ResourceType"
                             }
                         }
                     },
-                    "401": {
-                        "description": "error: Unauthorized",
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "새로운 리소스 유형을 생성합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "resource-types"
+                ],
+                "summary": "리소스 유형 생성",
+                "parameters": [
+                    {
+                        "description": "리소스 유형 정보 (FrameworkID, ID, Name 필수)",
+                        "name": "resourceType",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ResourceType"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.ResourceType"
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 요청 형식 또는 필수 필드 누락",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "error: 이미 존재하는 리소스 유형",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1838,6 +1957,390 @@
                     },
                     "500": {
                         "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/resource-types/{frameworkId}/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Framework ID와 Resource Type ID로 특정 리소스 유형을 조회합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "resource-types"
+                ],
+                "summary": "ID로 리소스 유형 조회",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "프레임워크 ID",
+                        "name": "frameworkId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "리소스 유형 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ResourceType"
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 ID 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 리소스 유형을 찾을 수 없습니다",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "기존 리소스 유형 정보를 부분적으로 수정합니다 (Name, Description만 수정 가능).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "resource-types"
+                ],
+                "summary": "리소스 유형 수정",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "프레임워크 ID",
+                        "name": "frameworkId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "리소스 유형 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "수정할 필드와 값 (예: {\\",
+                        "name": "updates",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "업데이트된 리소스 유형 정보",
+                        "schema": {
+                            "$ref": "#/definitions/model.ResourceType"
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 요청 형식 또는 ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 리소스 유형을 찾을 수 없습니다",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "리소스 유형을 삭제합니다. 연결된 권한도 함께 삭제됩니다 (DB Cascade).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "resource-types"
+                ],
+                "summary": "리소스 유형 삭제",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "프레임워크 ID",
+                        "name": "frameworkId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "리소스 유형 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "error: 잘못된 ID 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 리소스 유형을 찾을 수 없습니다",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/{roleType}/{roleId}/mciam-permissions": {
+            "get": {
+                "description": "특정 역할의 MC-IAM 권한 ID 목록을 조회합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles",
+                    "mciam-permissions"
+                ],
+                "summary": "역할의 MC-IAM 권한 목록 조회 - Renamed",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "역할 타입 ('platform' or 'workspace')",
+                        "name": "roleType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "권한 ID 목록",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}": {
+            "post": {
+                "description": "역할에 MC-IAM 권한을 할당합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles",
+                    "mciam-permissions"
+                ],
+                "summary": "역할에 MC-IAM 권한 할당 - Renamed",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "역할 타입 ('platform' or 'workspace')",
+                        "name": "roleType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "MC-IAM 권한 ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            },
+            "delete": {
+                "description": "역할에서 MC-IAM 권한을 제거합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles",
+                    "mciam-permissions"
+                ],
+                "summary": "역할에서 MC-IAM 권한 제거 - Renamed",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "역할 타입 ('platform' or 'workspace')",
+                        "name": "roleType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "MC-IAM 권한 ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/sync-projects": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "mc-infra-manager의 네임스페이스 목록을 조회하여 로컬 DB에 없는 프로젝트를 추가합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "mc-infra-manager와 프로젝트 동기화",
+                "responses": {
+                    "200": {
+                        "description": "message: Project synchronization successful",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류 또는 동기화 실패",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1909,6 +2412,55 @@
                     }
                 ],
                 "responses": {}
+            }
+        },
+        "/users/workspaces": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "현재 로그인한 사용자가 접근 가능한 워크스페이스 및 각 워크스페이스에서의 역할 목록을 조회합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users",
+                    "workspaces",
+                    "roles",
+                    "me"
+                ],
+                "summary": "내 워크스페이스 및 역할 목록 조회",
+                "responses": {
+                    "200": {
+                        "description": "성공 시 워크스페이스 및 역할 정보 목록 반환",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/service.WorkspaceRoleInfo"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/users/{id}": {
@@ -2000,6 +2552,308 @@
                 }
             }
         },
+        "/workspace-roles/{roleId}/csp-role-mappings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "특정 워크스페이스 역할에 매핑된 모든 CSP 역할 목록을 조회합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspace-roles",
+                    "csp-mappings"
+                ],
+                "summary": "특정 워크스페이스 역할의 CSP 역할 매핑 목록 조회",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.WorkspaceRoleCspRoleMapping"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 ID 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "워크스페이스 역할과 CSP 역할(ARN)을 매핑합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspace-roles",
+                    "csp-mappings"
+                ],
+                "summary": "역할-CSP 역할 매핑 생성",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "CSP 역할 매핑 정보 (workspaceRoleId는 경로 파라미터 사용, 요청 본문에서는 제외 가능)",
+                        "name": "mapping",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.WorkspaceRoleCspRoleMapping"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.WorkspaceRoleCspRoleMapping"
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 요청 형식 또는 ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 워크스페이스 역할을 찾을 수 없음",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "error: 이미 매핑이 존재함 (PK 충돌)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/workspace-roles/{roleId}/csp-role-mappings/{cspType}/{cspRoleArn}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "기존 역할-CSP 역할 매핑 정보를 수정합니다 (Description, IdpIdentifier만 수정 가능).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspace-roles",
+                    "csp-mappings"
+                ],
+                "summary": "역할-CSP 역할 매핑 수정",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSP 타입 (e.g., aws)",
+                        "name": "cspType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSP 역할 ARN (URL Encoded)",
+                        "name": "cspRoleArn",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "수정할 필드와 값 (예: {\\",
+                        "name": "updates",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "업데이트된 매핑 정보",
+                        "schema": {
+                            "$ref": "#/definitions/model.WorkspaceRoleCspRoleMapping"
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 요청 형식 또는 ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 매핑을 찾을 수 없습니다",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "역할-CSP 역할 매핑을 삭제합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspace-roles",
+                    "csp-mappings"
+                ],
+                "summary": "역할-CSP 역할 매핑 삭제",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSP 타입 (e.g., aws)",
+                        "name": "cspType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSP 역할 ARN (URL Encoded)",
+                        "name": "cspRoleArn",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "error: 잘못된 ID 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 매핑을 찾을 수 없습니다",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/workspaces": {
             "get": {
                 "security": [
@@ -2025,6 +2879,15 @@
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/model.Workspace"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: 권한 부족",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     },
@@ -2076,6 +2939,15 @@
                     },
                     "400": {
                         "description": "error: 잘못된 요청 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: 권한 부족",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2186,6 +3058,15 @@
                     },
                     "400": {
                         "description": "error: 잘못된 워크스페이스 ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: 접근 권한 없음",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2904,6 +3785,122 @@
                 }
             }
         },
+        "model.CspCredentialRequest": {
+            "type": "object",
+            "required": [
+                "cspType",
+                "workspaceId"
+            ],
+            "properties": {
+                "cspType": {
+                    "description": "대상 CSP 타입",
+                    "type": "string",
+                    "enum": [
+                        "aws",
+                        "gcp",
+                        "azure"
+                    ]
+                },
+                "workspaceId": {
+                    "description": "대상 워크스페이스 ID",
+                    "type": "string"
+                }
+            }
+        },
+        "model.CspCredentialResponse": {
+            "type": "object",
+            "properties": {
+                "accessKeyId": {
+                    "description": "AWS Access Key ID",
+                    "type": "string"
+                },
+                "cspType": {
+                    "description": "e.g., \"aws\"",
+                    "type": "string"
+                },
+                "expiration": {
+                    "description": "Expiration time",
+                    "type": "string"
+                },
+                "region": {
+                    "description": "Optional: AWS Region",
+                    "type": "string"
+                },
+                "secretAccessKey": {
+                    "description": "AWS Secret Access Key",
+                    "type": "string"
+                },
+                "sessionToken": {
+                    "description": "AWS Session Token",
+                    "type": "string"
+                }
+            }
+        },
+        "model.JWTResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "not-before-policy": {
+                    "description": "Use the correct JSON tag if needed, often omitted",
+                    "type": "integer"
+                },
+                "refresh_expires_in": {
+                    "type": "integer"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "session_state": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MciamPermission": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "description": "e.g., create, read, update, delete",
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "Match DB schema",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "frameworkId": {
+                    "description": "FK to mcmp_resource_types.framework_id",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Format: \u003cframework_id\u003e:\u003cresource_type_id\u003e:\u003caction\u003e",
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resourceTypeId": {
+                    "description": "FK to mcmp_resource_types.id",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "description": "Match DB schema",
+                    "type": "string"
+                }
+            }
+        },
         "model.Menu": {
             "type": "object",
             "properties": {
@@ -2963,29 +3960,6 @@
                 }
             }
         },
-        "model.Permission": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "description": "Increased size to match roles",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "Changed to string",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "Assuming Name column exists or needs to be added",
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
         "model.PlatformRole": {
             "type": "object",
             "properties": {
@@ -3034,6 +4008,32 @@
                     "items": {
                         "$ref": "#/definitions/model.Workspace"
                     }
+                }
+            }
+        },
+        "model.ResourceType": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "frameworkId": {
+                    "description": "Identifier of the framework (e.g., \"mc-iam-manager\", \"mc-infra-manager\")",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Unique identifier within the framework (e.g., \"workspace\", \"vm\")",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Display name (e.g., \"Workspace\", \"Virtual Machine\")",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
@@ -3137,6 +4137,54 @@
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.WorkspaceRoleCspRoleMapping": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "cspRoleArn": {
+                    "description": "The actual ARN or identifier of the role in the CSP",
+                    "type": "string"
+                },
+                "cspType": {
+                    "description": "e.g., \"aws\", \"gcp\", \"azure\"",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Description of this specific mapping (Nullable)",
+                    "type": "string"
+                },
+                "idpIdentifier": {
+                    "description": "e.g., AWS OIDC Provider ARN (Nullable)",
+                    "type": "string"
+                },
+                "workspaceRoleId": {
+                    "description": "FK to mcmp_workspace_roles.id",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.WorkspaceTicketRequest": {
+            "type": "object",
+            "required": [
+                "permissions",
+                "workspaceId"
+            ],
+            "properties": {
+                "permissions": {
+                    "description": "요청할 권한 목록 (예: [\"resource_vm#scope_create\", \"resource_vm#scope_read\"])",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "workspaceId": {
+                    "description": "대상 워크스페이스 ID (문자열로 처리하는 것이 Keycloak 리소스 ID와 일치시키기 용이할 수 있음)",
                     "type": "string"
                 }
             }

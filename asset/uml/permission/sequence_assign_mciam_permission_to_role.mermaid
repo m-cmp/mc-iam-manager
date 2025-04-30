@@ -1,0 +1,33 @@
+sequenceDiagram
+    participant Client
+    participant Router as main.go (Echo)
+    participant AuthMiddleware as middleware.AuthMiddleware
+    participant PermissionHandler as handler.MciamPermissionHandler
+    participant PermissionService as service.MciamPermissionService
+    participant PermissionRepo as repository.MciamPermissionRepository
+
+    Client->>+Router: POST /roles/{roleType}/{roleId}/mciam-permissions/{permissionId} (Header: Auth Token)
+    Router->>+AuthMiddleware: Verify Token
+    AuthMiddleware-->>-Router: Token OK
+    Router->>+PermissionHandler: AssignMciamPermissionToRole(c)
+    PermissionHandler->>PermissionHandler: Parse IDs from path (roleType, roleId, permissionId)
+    PermissionHandler->>+PermissionService: AssignMciamPermissionToRole(ctx, roleType, roleId, permissionId)
+    PermissionService->>+PermissionRepo: GetByID(permissionId) # Check permission exists
+    PermissionRepo-->>-PermissionService: Permission or Error
+    alt Permission Not Found
+        PermissionService-->>-PermissionHandler: Error (NotFound)
+        PermissionHandler-->>-Router: 404 Not Found
+        Router-->>-Client: 404 Not Found
+    else Permission Found
+        %% TODO: Add Role existence check here (Platform or Workspace)
+        PermissionService->>+PermissionRepo: AssignMciamPermissionToRole(roleType, roleId, permissionId) # DB Insert into mapping table
+        PermissionRepo-->>-PermissionService: Success or Error
+        PermissionService-->>-PermissionHandler: Success or Error
+        alt Error Assigning
+            PermissionHandler-->>-Router: 500 Internal Server Error
+            Router-->>-Client: 500 Internal Server Error
+        else Success
+            PermissionHandler-->>-Router: 204 No Content
+            Router-->>-Client: 204 No Content
+        end
+    end
