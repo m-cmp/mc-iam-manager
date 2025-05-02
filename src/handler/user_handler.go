@@ -16,26 +16,24 @@ import (
 
 // Helper function to check roles directly from context (assuming middleware stores them)
 func checkRoleFromContext(c echo.Context, requiredRoles []string) bool {
-	realmRolesIntf := c.Get("realm_roles") // Assuming middleware sets this
-	// resourceRolesIntf := c.Get("resource_roles") // Removed as it's not used currently
+	platformRolesIntf := c.Get("platformRoles")
 
 	allUserRoles := []string{}
-	if realmRoles, ok := realmRolesIntf.([]string); ok {
-		allUserRoles = append(allUserRoles, realmRoles...)
+	if platformRoles, ok := platformRolesIntf.([]string); ok {
+		allUserRoles = append(allUserRoles, platformRoles...)
 	}
-	// Add logic to check resource roles if necessary, e.g., specific client roles
 
-	fmt.Printf("[DEBUG] checkRoleFromContext: User Roles from Context: %v, Required: %v\n", allUserRoles, requiredRoles)
+	c.Logger().Debugf("checkRoleFromContext: User Roles from Context: %v, Required: %v", allUserRoles, requiredRoles)
 
 	for _, userRole := range allUserRoles {
 		for _, reqRole := range requiredRoles {
 			if userRole == reqRole {
-				fmt.Printf("[DEBUG] checkRoleFromContext: Found matching role: %s\n", userRole)
+				c.Logger().Debugf("checkRoleFromContext: Found matching role: %s", userRole)
 				return true
 			}
 		}
 	}
-	fmt.Printf("[DEBUG] checkRoleFromContext: No matching role found.\n")
+	c.Logger().Debugf("checkRoleFromContext: No matching role found.")
 	return false
 }
 

@@ -2,17 +2,16 @@ package mcmpapi
 
 import "time"
 
-// McmpApiPermissionActionMapping represents the mcmp_mciam_permission_action_mappings table.
+// McmpApiPermissionActionMapping은 권한과 API 액션 간의 매핑을 나타냅니다.
 type McmpApiPermissionActionMapping struct {
 	ID           uint      `gorm:"primaryKey;autoIncrement"`
-	PermissionID string    `gorm:"column:permission_id;type:varchar(255);not null;index"`
-	ActionID     uint      `gorm:"column:action_id;not null;index"`
-	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt    time.Time `gorm:"column:updated_at;autoUpdateTime"`
-	// McmpApiAction McmpApiAction `gorm:"foreignKey:ActionID;references:ID"` // Define relationship if needed
+	PermissionID string    `gorm:"not null"`
+	ActionID     uint      `gorm:"not null"`
+	CreatedAt    time.Time `gorm:"autoCreateTime"`
+	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
 }
 
-// TableName specifies the table name for McmpApiPermissionActionMapping.
+// TableName은 테이블 이름을 반환합니다.
 func (McmpApiPermissionActionMapping) TableName() string {
-	return "mcmp_mciam_permission_action_mappings"
+	return "mcmp_api_permission_action_mappings"
 }

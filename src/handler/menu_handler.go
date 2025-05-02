@@ -100,23 +100,23 @@ func (h *MenuHandler) GetAllMenusTree(c echo.Context) error {
 	fmt.Printf("[DEBUG] GetAllMenusTree: Claims retrieved from access_token: %+v\n", claims)
 
 	// --- Check roles using map access from parsed token ---
-	// Attempt 1: Check top-level "roles"
-	rolesValue, rolesKeyExists := claims["roles"]
-	if rolesKeyExists {
-		fmt.Printf("[DEBUG] GetAllMenusTree: Checking top-level 'roles': %v (Type: %T)\n", rolesValue, rolesValue)
-		if rolesClaim, typeOk := rolesValue.([]interface{}); typeOk {
-			for _, role := range rolesClaim {
+	// Attempt 1: Check top-level "platformRoles"
+	platformRolesValue, platformRolesKeyExists := claims["platformRoles"]
+	if platformRolesKeyExists {
+		fmt.Printf("[DEBUG] GetAllMenusTree: Checking top-level 'platformRoles': %v (Type: %T)\n", platformRolesValue, platformRolesValue)
+		if platformRolesClaim, typeOk := platformRolesValue.([]interface{}); typeOk {
+			for _, role := range platformRolesClaim {
 				if roleStr, strOk := role.(string); strOk && (roleStr == "admin" || roleStr == "platformAdmin") {
-					fmt.Printf("[DEBUG] GetAllMenusTree: Found matching role in top-level 'roles': %s\n", roleStr)
+					fmt.Printf("[DEBUG] GetAllMenusTree: Found matching role in top-level 'platformRoles': %s\n", roleStr)
 					isAdmin = true
 					break // Exit role loop once found
 				}
 			}
 		} else {
-			fmt.Printf("[DEBUG] GetAllMenusTree: Top-level 'roles' is not []interface{}. Actual type: %T\n", rolesValue)
+			fmt.Printf("[DEBUG] GetAllMenusTree: Top-level 'platformRoles' is not []interface{}. Actual type: %T\n", platformRolesValue)
 		}
 	} else {
-		fmt.Printf("[DEBUG] GetAllMenusTree: Key 'roles' does not exist at top level in claims map.\n")
+		fmt.Printf("[DEBUG] GetAllMenusTree: Key 'platformRoles' does not exist at top level in claims map.\n")
 	}
 
 	// Attempt 2 (Fallback): Check "realm_access.roles" if not found in top-level

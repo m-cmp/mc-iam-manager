@@ -32,8 +32,8 @@ INSERT INTO mcmp_resource_types (framework_id, id, name, description) VALUES
     ('mc-infra-manager', 'k8s', 'Kubernetes', 'Kubernetes cluster resources'),
     ('mc-infra-manager', 'vpc', 'Virtual Network', 'Virtual Private Cloud resources'),
     ('mc-infra-manager', 'storage', 'Storage', 'Storage resources'),
-    ('mc-billing', 'billing', 'Billing', 'Billing information'),
-    ('mc-monitoring', 'monitoring', 'Monitoring', 'Monitoring data')
+    ('mc-cost-optimizer', 'billing', 'Billing', 'Billing information'),
+    ('mc-observerablility', 'monitoring', 'Monitoring', 'Monitoring data')
 ON CONFLICT (framework_id, id) DO NOTHING;
 
 -- Seed Permissions (based on Resource Types and Actions)
@@ -58,8 +58,8 @@ INSERT INTO mcmp_mciam_permissions (id, framework_id, resource_type_id, action, 
     ('mc-infra-manager:vm:update', 'mc-infra-manager', 'vm', 'update', 'Update VM', 'Allow updating VMs via MCMP API'),
     ('mc-infra-manager:vm:delete', 'mc-infra-manager', 'vm', 'delete', 'Delete VM', 'Allow deleting VMs via MCMP API'),
     -- Billing Permissions
-    ('mc-billing:billing:read', 'mc-billing', 'billing', 'read', 'Read Billing', 'Allow viewing billing information'),
-    ('mc-billing:billing:update', 'mc-billing', 'billing', 'update', 'Update Billing', 'Allow updating billing settings')
+    ('mc-mc-cost-optimizer:billing:read', 'mc-cost-optimizer', 'billing', 'read', 'Read Billing', 'Allow viewing billing information'),
+    ('mc-cost-optimizer:billing:update', 'mc-cost-optimizer', 'billing', 'update', 'Update Billing', 'Allow updating billing settings')
     -- Add other permissions for k8s, vpc, storage, monitoring etc.
 ON CONFLICT (id) DO NOTHING;
 
@@ -109,7 +109,7 @@ INSERT INTO mcmp_mciam_role_permissions (role_type, workspace_role_id, permissio
 SELECT 'workspace', r.id, p.id
 FROM mcmp_workspace_roles r, mcmp_mciam_permissions p -- Updated table name
 WHERE r.name = 'billadmin'
-  AND p.id IN ('mc-billing:billing:read', 'mc-billing:billing:update')
+  AND p.id IN ('mc-cost-optimizer:billing:read', 'mc-cost-optimizer:billing:update')
 ON CONFLICT (role_type, workspace_role_id, permission_id) DO NOTHING; -- Updated conflict target
 
 -- Billing Viewer Role
@@ -117,7 +117,7 @@ INSERT INTO mcmp_mciam_role_permissions (role_type, workspace_role_id, permissio
 SELECT 'workspace', r.id, p.id
 FROM mcmp_workspace_roles r, mcmp_mciam_permissions p -- Updated table name
 WHERE r.name = 'billviewer'
-  AND p.id = 'mc-billing:billing:read'
+  AND p.id = 'mc-cost-optimizer:billing:read'
 ON CONFLICT (role_type, workspace_role_id, permission_id) DO NOTHING;
 
 -- Seed Role-CSP Role Mappings (Example - Add actual mappings as needed)
@@ -252,6 +252,6 @@ SELECT
     a.id as action_id
 FROM mcmp_mciam_permissions p
 JOIN mcmp_api_actions a ON 
-    (p.id = 'mc-billing:billing:read' AND a.action_name = 'GetBillingInfo') OR
-    (p.id = 'mc-billing:billing:update' AND a.action_name = 'UpdateBillingSettings')
+    (p.id = 'mc-cost-optimizer:billing:read' AND a.action_name = 'GetBillingInfo') OR
+    (p.id = 'mc-cost-optimizer:billing:update' AND a.action_name = 'UpdateBillingSettings')
 ON CONFLICT (permission_id, action_id) DO NOTHING;

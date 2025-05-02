@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
@@ -35,6 +36,8 @@ type KeycloakService interface {
 	GetRequestingPartyToken(ctx context.Context, accessToken string, options gocloak.RequestingPartyTokenOptions) (*gocloak.JWT, error)
 	// Method to validate token and get claims
 	ValidateTokenAndGetClaims(ctx context.Context, token string) (*jwt.MapClaims, error) // Changed return type
+	// SetupInitialAdmin creates the initial platform admin user and sets up necessary permissions
+	SetupInitialAdmin(ctx context.Context) error
 }
 
 // keycloakService is now stateless, methods directly use config.KC
@@ -313,16 +316,67 @@ func (s *keycloakService) CheckAdminLogin(ctx context.Context) (bool, error) {
 func (s *keycloakService) CheckRealm(ctx context.Context) (bool, error) {
 	// Directly use config.KC
 	if config.KC == nil || config.KC.Client == nil {
+		log.Printf("[DEBUG] Keycloak configuration not initialized")
 		return false, fmt.Errorf("keycloak configuration not initialized")
 	}
+	log.Printf("[DEBUG] Attempting to login as admin to check realm")
 	token, err := config.KC.LoginAdmin(ctx)
 	if err != nil {
+		log.Printf("[DEBUG] Admin login failed: %v", err)
 		return false, fmt.Errorf("admin login failed, cannot check realm: %w", err)
 	}
+	log.Printf("[DEBUG] Admin login successful, token obtained")
+
+	// Check client permissions
+	log.Printf("[DEBUG] Checking client permissions for realm management")
+	clients, err := config.KC.Client.GetClients(ctx, token.AccessToken, config.KC.Realm, gocloak.GetClientsParams{
+		ClientID: &config.KC.ClientID,
+	})
+	if err != nil {
+		log.Printf("[DEBUG] Failed to get client info: %v", err)
+		return false, fmt.Errorf("failed to get client info: %w", err)
+	}
+	if len(clients) == 0 {
+		log.Printf("[DEBUG] Client '%s' not found", config.KC.ClientID)
+		return false, fmt.Errorf("client '%s' not found", config.KC.ClientID)
+	}
+
+	// Log required permissions
+	log.Printf("[DEBUG] Required permissions for realm check:")
+	log.Printf("[DEBUG] - realm-management:manage-realm")
+	log.Printf("[DEBUG] - realm-management:query-realm")
+	log.Printf("[DEBUG] - realm-management:view-clients")
+	log.Printf("[DEBUG] - realm-management:query-clients")
+	log.Printf("[DEBUG] - realm-management:manage-clients")
+
+	// Get all realms first
+	log.Printf("[DEBUG] Fetching all realms from Keycloak")
+	realms, err := config.KC.Client.GetRealms(ctx, token.AccessToken)
+	if err != nil {
+		log.Printf("[DEBUG] Failed to get realms list: %v", err)
+		log.Printf("[DEBUG] This might be due to missing realm-management permissions")
+		return false, fmt.Errorf("failed to get realms list: %w", err)
+	}
+
+	// Log all available realms
+	log.Printf("[DEBUG] Available realms count: %d", len(realms))
+	for i, r := range realms {
+		if r.Realm != nil {
+			log.Printf("[DEBUG] Realm %d: %s", i+1, *r.Realm)
+		} else {
+			log.Printf("[DEBUG] Realm %d: <nil>", i+1)
+		}
+	}
+
+	// Check if our realm exists
+	log.Printf("[DEBUG] Checking if realm '%s' exists", config.KC.Realm)
 	_, err = config.KC.Client.GetRealm(ctx, token.AccessToken, config.KC.Realm)
 	if err != nil {
+		log.Printf("[DEBUG] Failed to get realm '%s': %v", config.KC.Realm, err)
+		log.Printf("[DEBUG] This might be due to missing realm-management permissions")
 		return false, fmt.Errorf("failed to get realm '%s': %w", config.KC.Realm, err)
 	}
+	log.Printf("[DEBUG] Realm '%s' exists and is accessible", config.KC.Realm)
 	return true, nil
 }
 
@@ -375,6 +429,16 @@ func (s *keycloakService) Login(ctx context.Context, username, password string) 
 	if config.KC == nil || config.KC.Client == nil {
 		return nil, fmt.Errorf("keycloak configuration not initialized")
 	}
+
+	// Add debug logging for Keycloak configuration
+	log.Printf("[DEBUG] Keycloak Login Configuration:")
+	log.Printf("[DEBUG] - Host: %s", config.KC.Host)
+	log.Printf("[DEBUG] - Realm: %s", config.KC.Realm)
+	log.Printf("[DEBUG] - ClientID: %s", config.KC.ClientID)
+	log.Printf("[DEBUG] - ClientSecret: %s", config.KC.ClientSecret)
+	log.Printf("[DEBUG] - Username: %s", username)
+	log.Printf("[DEBUG] - password: %s", password)
+
 	token, err := config.KC.Client.Login(ctx, config.KC.ClientID, config.KC.ClientSecret, config.KC.Realm, username, password)
 	if err != nil {
 		// Consider more specific error handling for invalid credentials vs other errors
@@ -500,6 +564,134 @@ func (s *keycloakService) RemoveUserFromGroup(ctx context.Context, kcUserId, gro
 			return nil // Consider it not an error
 		}
 		return fmt.Errorf("failed to remove user '%s' from keycloak group '%s' (ID: %s): %w", kcUserId, groupName, groupID, err)
+	}
+
+	return nil
+}
+
+// SetupInitialAdmin creates the initial platform admin user and sets up necessary permissions
+func (s *keycloakService) SetupInitialAdmin(ctx context.Context) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	// 1. Admin 로그인
+	log.Printf("[DEBUG] Attempting to login as admin")
+	adminToken, err := config.KC.LoginAdmin(ctx)
+	if err != nil {
+		return fmt.Errorf("admin login failed: %w", err)
+	}
+	log.Printf("[DEBUG] Admin login successful")
+
+	// 2. platformAdmin 사용자 생성
+	platformAdminID := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_ID")
+	platformAdminPassword := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_PASSWORD")
+	platformAdminFirstName := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_FIRSTNAME")
+	platformAdminLastName := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_LASTNAME")
+	platformAdminEmail := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_EMAIL")
+
+	if platformAdminID == "" {
+		return fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_ID not set in environment variables")
+	}
+	if platformAdminPassword == "" {
+		return fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_PASSWORD not set in environment variables")
+	}
+	if platformAdminFirstName == "" {
+		return fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_FIRSTNAME not set in environment variables")
+	}
+	if platformAdminLastName == "" {
+		return fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_LASTNAME not set in environment variables")
+	}
+	if platformAdminEmail == "" {
+		return fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_EMAIL not set in environment variables")
+	}
+
+	log.Printf("[DEBUG] Creating platform admin user: %s", platformAdminID)
+	user := gocloak.User{
+		Username:      &platformAdminID,
+		FirstName:     &platformAdminFirstName,
+		LastName:      &platformAdminLastName,
+		Email:         &platformAdminEmail,
+		Enabled:       gocloak.BoolP(true),
+		EmailVerified: gocloak.BoolP(true),
+	}
+
+	userID, err := config.KC.Client.CreateUser(ctx, adminToken.AccessToken, config.KC.Realm, user)
+	if err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+	log.Printf("[DEBUG] User created with ID: %s", userID)
+
+	// 비밀번호 설정
+	err = config.KC.Client.SetPassword(ctx, adminToken.AccessToken, userID, config.KC.Realm, platformAdminPassword, false)
+	if err != nil {
+		return fmt.Errorf("failed to set password: %w", err)
+	}
+	log.Printf("[DEBUG] Password set successfully")
+
+	// 3. platformAdmin 역할을 기본 역할로 설정
+	log.Printf("[DEBUG] Setting platformAdmin as default role")
+	platformAdminRole, err := config.KC.Client.GetRealmRole(ctx, adminToken.AccessToken, config.KC.Realm, "platformAdmin")
+	if err != nil {
+		return fmt.Errorf("failed to get platformAdmin role: %w", err)
+	}
+
+	// platformAdmin 역할을 기본 역할로 설정
+	err = config.KC.Client.AddRealmRoleToUser(ctx, adminToken.AccessToken, config.KC.Realm, userID, []gocloak.Role{*platformAdminRole})
+	if err != nil {
+		return fmt.Errorf("failed to assign platformAdmin role: %w", err)
+	}
+	log.Printf("[DEBUG] PlatformAdmin role assigned as default role")
+
+	// 4. 필요한 권한 부여 (Realm 내부 관리자 권한)
+	requiredPermissions := []string{
+		"view-users",
+		"view-identity-providers",
+		"view-clients",
+		"view-events",
+		"view-realm",
+		"view-authorization",
+		"manage-users",
+		"manage-identity-providers",
+		"manage-clients",
+		"manage-events",
+		"manage-realm",
+		"manage-authorization",
+		"impersonation",
+		"create-client",
+		"manage-account",
+		"manage-account-links",
+		"view-profile",
+	}
+
+	// 클라이언트 정보 가져오기
+	clients, err := config.KC.Client.GetClients(ctx, adminToken.AccessToken, config.KC.Realm, gocloak.GetClientsParams{
+		ClientID: &config.KC.ClientID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get client info: %w", err)
+	}
+	if len(clients) == 0 {
+		return fmt.Errorf("client '%s' not found", config.KC.ClientID)
+	}
+	clientID := *clients[0].ID
+
+	// 각 권한에 대해 부여
+	for _, permission := range requiredPermissions {
+		log.Printf("[DEBUG] Assigning permission: %s", permission)
+
+		// 권한을 클라이언트 역할로 변환하여 부여
+		clientRole := gocloak.Role{
+			Name: &permission,
+		}
+
+		err = config.KC.Client.AddClientRoleToUser(ctx, adminToken.AccessToken, config.KC.Realm, clientID, userID, []gocloak.Role{clientRole})
+		if err != nil {
+			log.Printf("[DEBUG] Failed to assign permission %s: %v", permission, err)
+			continue
+		}
+
+		log.Printf("[DEBUG] Successfully assigned permission: %s", permission)
 	}
 
 	return nil
