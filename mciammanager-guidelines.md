@@ -1,4 +1,4 @@
- # MC-IAM-MANAGER 개발 가이드라인
+# MC-IAM-MANAGER 개발 가이드라인
 - 참조 project : https://github.com/m-cmp/mc-iam-manager 
 - 참조 project의 기능을 재현.
 
@@ -328,3 +328,118 @@
 - 캐싱 전략
 - 리소스 사용 최적화
 - 부하 테스트
+
+## 1. 권한 모델
+
+### 1.1 리소스 유형 (Resource Type)
+- 프레임워크별 리소스 유형 관리
+- 테이블: `mcmp_resource_types`
+- 주요 필드:
+  - `framework_id`: 프레임워크 식별자 (e.g., "mc-iam-manager", "mc-infra-manager")
+  - `id`: 프레임워크 내 유니크한 식별자
+  - `name`: 표시 이름
+  - `description`: 설명
+
+### 1.2 MC-IAM 권한
+- 테이블: `mcmp_mciam_permissions`
+- 권한 ID 형식: `{framework_id}:{resource_type_id}:{action}`
+- 예시:
+  - `mc-iam-manager:workspace:create`
+  - `mc-iam-manager:workspace:read`
+  - `mc-infra-manager:vm:create`
+  - `mc-infra-manager:vm:read`
+
+### 1.3 역할 및 권한 매핑
+- 워크스페이스 역할 - MC-IAM 권한 매핑
+  - 테이블: `mcmp_mciam_role_permissions`
+  - 역할 타입: 'workspace'
+  - 권한 할당/제거 API: `/api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}`
+
+- 워크스페이스 역할 - CSP 역할 매핑
+  - 테이블: `mcmp_workspace_role_csp_role_mapping`
+  - CSP 타입별 역할 매핑 관리
+  - API: `/api/workspace-roles/{roleId}/csp-role-mappings`
+
+## 2. 워크스페이스 접근 제어
+
+### 2.1 워크스페이스 권한
+- `mc-iam-manager:workspace:list_all`: 모든 워크스페이스 목록 조회 (플랫폼 관리자)
+- `mc-iam-manager:workspace:list_assigned`: 할당된 워크스페이스 목록 조회
+- `mc-iam-manager:workspace:create`: 워크스페이스 생성
+- `mc-iam-manager:workspace:read`: 워크스페이스 상세 조회
+
+### 2.2 API 권한 검증
+- 워크스페이스 목록 조회 (`/api/workspaces`)
+  - `list_all` 또는 `list_assigned` 권한 필요
+- 워크스페이스 생성 (`/api/workspaces`)
+  - `create` 권한 필요
+- 워크스페이스 상세 조회 (`/api/workspaces/{id}`)
+  - `read` 권한 필요
+
+## 3. MCMP API 호출 권한 관리
+
+### 3.1 Action Ticket (RPT) 발급
+- API: `POST /api/auth/action-ticket`
+- 요청 본문:
+```json
+{
+  "service_name": "string",
+  "action_name": "string"
+}
+```
+
+### 3.2 MCMP API 호출 권한 검증
+- 미들웨어: `McmpApiAuthMiddleware`
+- 권한 형식: `{service_name}#{action_name}`
+- RPT 토큰의 `authorization.permissions` 클레임 검증
+
+## 4. CSP 임시 자격 증명 발급
+
+### 4.1 API 엔드포인트
+- `POST /api/csp/credentials`
+- 요청 본문:
+```json
+{
+  "csp_type": "string",
+  "workspace_id": "string"
+}
+```
+
+### 4.2 권한 검증
+- 워크스페이스 역할 기반 CSP 역할 매핑 확인
+- 임시 자격 증명 발급
+
+## 5. 환경 설정
+
+### 5.1 필수 환경 변수
+```env
+# 데이터베이스
+DB_HOST=
+DB_PORT=
+DB_USER=
+DB_PASSWORD=
+DB_NAME=
+
+# Keycloak
+KEYCLOAK_URL=
+KEYCLOAK_REALM=
+KEYCLOAK_CLIENT_ID=
+KEYCLOAK_CLIENT_SECRET=
+```
+
+### 5.2 Keycloak UMA 설정
+- Resources: MCMP API 액션
+- Scopes: 액션 이름
+- Policies: 역할 기반
+- Permissions: 역할-액션 매핑
+
+## 6. API 문서
+- Swagger UI: `http://localhost:8082/swagger/index.html`
+- API 그룹:
+  - 인증 API
+  - 사용자 관리 API
+  - 워크스페이스 관리 API
+  - 역할 관리 API
+  - 권한 관리 API
+  - MCMP API
+  - CSP 자격 증명 API

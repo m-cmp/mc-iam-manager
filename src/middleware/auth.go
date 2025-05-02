@@ -29,36 +29,46 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		token := tokenParts[1]
 
 		// Decode the token using DecodeAccessToken
-		// Assuming it returns (*jwt.Token, interface{}, error) based on previous findings
 		jwtTokenDecoded, claimsInterface, err := config.KC.Client.DecodeAccessToken(c.Request().Context(), token, config.KC.Realm)
 		if err != nil {
-			fmt.Printf("[Middleware] Token decode/validation error: %v\n", err)
+			c.Logger().Debugf("Token decode/validation error: %v", err)
 			return echo.NewHTTPError(http.StatusUnauthorized, map[string]string{"message": "유효하지 않거나 만료된 토큰입니다"})
 		}
 		if !jwtTokenDecoded.Valid {
-			fmt.Println("[Middleware] Token is decoded but reported as invalid")
+			c.Logger().Debug("Token is decoded but reported as invalid")
 			return echo.NewHTTPError(http.StatusUnauthorized, map[string]string{"message": "유효하지 않은 토큰입니다 (invalid)"})
 		}
-		fmt.Println("[Middleware] claimsInterface ", claimsInterface)
+		c.Logger().Debugf("Claims interface: %v", claimsInterface)
 
 		// Store the decoded claims (interface{}) and token in context
-		c.Set("token_claims", claimsInterface) // Store the raw claims object
+		c.Set("token_claims", claimsInterface)
 		c.Set("access_token", token)
 
 		// Extract and set kcUserId (subject) into context
-		// claimsInterface is already *jwt.MapClaims, no need for type assertion
 		if claimsInterface == nil {
-			fmt.Println("[Middleware] Claims are nil after decoding")
+			c.Logger().Debug("Claims are nil after decoding")
 			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to process token claims")
 		}
-		kcUserId, err := (*claimsInterface).GetSubject() // Directly use claimsInterface
+		kcUserId, err := (*claimsInterface).GetSubject()
 		if err != nil || kcUserId == "" {
-			fmt.Printf("[Middleware] Failed to get subject (kcUserId) from claims: %v\n", err) // Use err from GetSubject
+			c.Logger().Debugf("Failed to get subject (kcUserId) from claims: %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get user ID from token")
 		}
-		c.Set("kcUserId", kcUserId) // Set kcUserId in context
+		c.Set("kcUserId", kcUserId)
 
-		fmt.Printf("[Middleware] Successfully validated and set token_claims and kcUserId (%s)\n", kcUserId)
+		// Extract and set roles from top-level claims
+		if roles, ok := (*claimsInterface)["roles"].([]interface{}); ok {
+			var roleStrings []string
+			for _, role := range roles {
+				if roleStr, ok := role.(string); ok {
+					roleStrings = append(roleStrings, roleStr)
+				}
+			}
+			c.Set("platformRoles", roleStrings)
+			c.Logger().Debugf("Extracted platform roles from top-level: %v", roleStrings)
+		}
+
+		c.Logger().Debugf("Successfully validated and set token_claims, kcUserId (%s) and platform roles", kcUserId)
 
 		return next(c)
 	}
