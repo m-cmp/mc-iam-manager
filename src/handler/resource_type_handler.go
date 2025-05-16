@@ -23,18 +23,18 @@ func NewResourceTypeHandler(db *gorm.DB) *ResourceTypeHandler {
 }
 
 // CreateResourceType godoc
-// @Summary 리소스 유형 생성
-// @Description 새로운 리소스 유형을 생성합니다.
+// @Summary 새 리소스 타입 생성
+// @Description 새로운 리소스 타입을 생성합니다
 // @Tags resource-types
 // @Accept json
 // @Produce json
-// @Param resourceType body model.ResourceType true "리소스 유형 정보 (FrameworkID, ID, Name 필수)"
+// @Param resourceType body model.ResourceType true "Resource Type Info"
 // @Success 201 {object} model.ResourceType
-// @Failure 400 {object} map[string]string "error: 잘못된 요청 형식 또는 필수 필드 누락"
-// @Failure 409 {object} map[string]string "error: 이미 존재하는 리소스 유형"
-// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Failure 400 {object} map[string]string "error: Invalid request"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /resource-types [post]
+// @Router /api/v1/resource-types [post]
 func (h *ResourceTypeHandler) CreateResourceType(c echo.Context) error {
 	var rt model.ResourceType
 	if err := c.Bind(&rt); err != nil {
@@ -56,16 +56,16 @@ func (h *ResourceTypeHandler) CreateResourceType(c echo.Context) error {
 }
 
 // ListResourceTypes godoc
-// @Summary 리소스 유형 목록 조회
-// @Description 모든 리소스 유형 목록을 조회합니다. frameworkId 쿼리 파라미터로 필터링 가능합니다.
+// @Summary 리소스 타입 목록 조회
+// @Description 모든 리소스 타입 목록을 조회합니다
 // @Tags resource-types
 // @Accept json
 // @Produce json
-// @Param frameworkId query string false "프레임워크 ID로 필터링"
 // @Success 200 {array} model.ResourceType
-// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /resource-types [get]
+// @Router /api/v1/resource-types [get]
 func (h *ResourceTypeHandler) ListResourceTypes(c echo.Context) error {
 	frameworkID := c.QueryParam("frameworkId")
 	resourceTypes, err := h.service.List(frameworkID)
@@ -76,19 +76,18 @@ func (h *ResourceTypeHandler) ListResourceTypes(c echo.Context) error {
 }
 
 // GetResourceTypeByID godoc
-// @Summary ID로 리소스 유형 조회
-// @Description Framework ID와 Resource Type ID로 특정 리소스 유형을 조회합니다.
+// @Summary 리소스 타입 ID로 조회
+// @Description 특정 리소스 타입을 ID로 조회합니다
 // @Tags resource-types
 // @Accept json
 // @Produce json
-// @Param frameworkId path string true "프레임워크 ID"
-// @Param id path string true "리소스 유형 ID"
+// @Param id path string true "Resource Type ID"
 // @Success 200 {object} model.ResourceType
-// @Failure 400 {object} map[string]string "error: 잘못된 ID 형식"
-// @Failure 404 {object} map[string]string "error: 리소스 유형을 찾을 수 없습니다"
-// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 404 {object} map[string]string "error: Resource Type not found"
 // @Security BearerAuth
-// @Router /resource-types/{frameworkId}/{id} [get]
+// @Router /api/v1/resource-types/{id} [get]
 func (h *ResourceTypeHandler) GetResourceTypeByID(c echo.Context) error {
 	frameworkID := c.Param("frameworkId")
 	id := c.Param("id")
@@ -107,24 +106,24 @@ func (h *ResourceTypeHandler) GetResourceTypeByID(c echo.Context) error {
 }
 
 // UpdateResourceType godoc
-// @Summary 리소스 유형 수정
-// @Description 기존 리소스 유형 정보를 부분적으로 수정합니다 (Name, Description만 수정 가능).
+// @Summary 리소스 타입 업데이트
+// @Description 리소스 타입 정보를 업데이트합니다
 // @Tags resource-types
 // @Accept json
 // @Produce json
-// @Param frameworkId path string true "프레임워크 ID"
-// @Param id path string true "리소스 유형 ID"
-// @Param updates body object true "수정할 필드와 값 (예: {\"name\": \"New Name\", \"description\": \"New Desc\"})"
-// @Success 200 {object} model.ResourceType "업데이트된 리소스 유형 정보"
-// @Failure 400 {object} map[string]string "error: 잘못된 요청 형식 또는 ID"
-// @Failure 404 {object} map[string]string "error: 리소스 유형을 찾을 수 없습니다"
-// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Param id path string true "Resource Type ID"
+// @Param resourceType body model.ResourceType true "Resource Type Info"
+// @Success 200 {object} model.ResourceType
+// @Failure 400 {object} map[string]string "error: Invalid request"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 404 {object} map[string]string "error: Resource Type not found"
 // @Security BearerAuth
-// @Router /resource-types/{frameworkId}/{id} [put]
+// @Router /api/v1/resource-types/{id} [put]
 func (h *ResourceTypeHandler) UpdateResourceType(c echo.Context) error {
 	frameworkID := c.Param("frameworkId")
-	id := c.Param("id")
-	if frameworkID == "" || id == "" {
+	resourceTypeId := c.Param("resourceTypeId")
+	if frameworkID == "" || resourceTypeId == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "프레임워크 ID와 리소스 유형 ID는 필수입니다"})
 	}
 
@@ -146,14 +145,14 @@ func (h *ResourceTypeHandler) UpdateResourceType(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "업데이트할 필드(name, description)가 없습니다"})
 	}
 
-	if err := h.service.Update(frameworkID, id, allowedUpdates); err != nil {
+	if err := h.service.Update(frameworkID, resourceTypeId, allowedUpdates); err != nil {
 		if err == repository.ErrResourceTypeNotFound {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("리소스 유형 업데이트 실패: %v", err)})
 	}
 
-	updatedResourceType, err := h.service.GetByID(frameworkID, id)
+	updatedResourceType, err := h.service.GetByID(frameworkID, resourceTypeId)
 	if err != nil {
 		// This shouldn't happen ideally after a successful update, but handle it
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("업데이트된 리소스 유형 조회 실패: %v", err)})
@@ -162,19 +161,18 @@ func (h *ResourceTypeHandler) UpdateResourceType(c echo.Context) error {
 }
 
 // DeleteResourceType godoc
-// @Summary 리소스 유형 삭제
-// @Description 리소스 유형을 삭제합니다. 연결된 권한도 함께 삭제됩니다 (DB Cascade).
+// @Summary 리소스 타입 삭제
+// @Description 리소스 타입을 삭제합니다
 // @Tags resource-types
 // @Accept json
 // @Produce json
-// @Param frameworkId path string true "프레임워크 ID"
-// @Param id path string true "리소스 유형 ID"
+// @Param id path string true "Resource Type ID"
 // @Success 204 "No Content"
-// @Failure 400 {object} map[string]string "error: 잘못된 ID 형식"
-// @Failure 404 {object} map[string]string "error: 리소스 유형을 찾을 수 없습니다"
-// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 404 {object} map[string]string "error: Resource Type not found"
 // @Security BearerAuth
-// @Router /resource-types/{frameworkId}/{id} [delete]
+// @Router /api/v1/resource-types/{id} [delete]
 func (h *ResourceTypeHandler) DeleteResourceType(c echo.Context) error {
 	frameworkID := c.Param("frameworkId")
 	id := c.Param("id")

@@ -7,7 +7,7 @@ type Project struct {
 	ID          uint         `json:"id" gorm:"primaryKey;column:id"`
 	NsId        string       `json:"nsid" gorm:"column:nsid;size:255"` // Namespace ID
 	Name        string       `json:"name" gorm:"column:name;size:255;not null"`
-	Description string       `json:"description" gorm:"column:description"`
+	Description string       `json:"description" gorm:"column:description;size:1000"`
 	CreatedAt   time.Time    `json:"created_at" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt   time.Time    `json:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
 	Workspaces  []*Workspace `json:"workspaces,omitempty" gorm:"many2many:mcmp_workspace_projects;"` // M:N relationship

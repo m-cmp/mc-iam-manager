@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -45,17 +46,19 @@ func (r *MenuRepository) GetByID(id string) (*model.Menu, error) {
 		}
 		return nil, err
 	}
+
+	// SQL 쿼리 로깅
+	sql := r.db.Statement.SQL.String()
+	args := r.db.Statement.Vars
+	log.Printf("GetByID SQL Query: %s", sql)
+	log.Printf("GetByID SQL Args: %v", args)
+
 	return &menu, nil
 }
 
 // Create 새 메뉴를 데이터베이스에 생성
 func (r *MenuRepository) Create(menu *model.Menu) error {
-	// GORM의 Create는 기본 키 충돌 시 에러 반환
-	if err := r.db.Create(menu).Error; err != nil {
-		// TODO: GORM/DB 드라이버의 특정 에러를 확인하여 ErrMenuAlreadyExists 반환 고려
-		return err
-	}
-	return nil
+	return r.db.Create(menu).Error
 }
 
 // Update 기존 메뉴를 데이터베이스에서 부분 업데이트
@@ -72,6 +75,14 @@ func (r *MenuRepository) Update(id string, updates map[string]interface{}) error
 	if result.RowsAffected == 0 {
 		return ErrMenuNotFound // 업데이트 대상 레코드가 없음
 	}
+
+	// SQL 쿼리 로깅
+	sql := result.Statement.SQL.String()
+	args := result.Statement.Vars
+	log.Printf("Update SQL Query: %s", sql)
+	log.Printf("Update SQL Args: %v", args)
+	log.Printf("Update Affected Rows: %d", result.RowsAffected)
+
 	return nil
 }
 
@@ -85,6 +96,14 @@ func (r *MenuRepository) Delete(id string) error {
 	if result.RowsAffected == 0 {
 		return ErrMenuNotFound
 	}
+
+	// SQL 쿼리 로깅
+	sql := result.Statement.SQL.String()
+	args := result.Statement.Vars
+	log.Printf("Delete SQL Query: %s", sql)
+	log.Printf("Delete SQL Args: %v", args)
+	log.Printf("Delete Affected Rows: %d", result.RowsAffected)
+
 	return nil
 }
 
@@ -193,4 +212,14 @@ func (r *MenuRepository) UpsertMenus(menus []model.Menu) error {
 	}
 
 	return nil
+}
+
+// GetMappedMenus returns menu IDs mapped to the given platform role
+func (r *MenuRepository) GetMappedMenus(platformRole string) ([]string, error) {
+	var menuIDs []string
+	err := r.db.Table("platform_role_menu_mappings").
+		Select("menu_id").
+		Where("platform_role = ?", platformRole).
+		Pluck("menu_id", &menuIDs).Error
+	return menuIDs, err
 }

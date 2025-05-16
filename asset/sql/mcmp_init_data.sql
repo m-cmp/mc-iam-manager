@@ -12,7 +12,8 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Seed initial menu data (from 000005)
 INSERT INTO mcmp_menu (id, parent_id, display_name, res_type, is_action, priority, menu_number)
-VALUES ('dashboard', NULL, 'Dashboard', 'menu', false, 1, 1)
+VALUES 
+    ('home', NULL, 'Home', 'menu', false, 1, 1)
 ON CONFLICT (id) DO NOTHING;
 -- Note: Add other essential menus if they were previously seeded via YAML or other migrations
 
@@ -77,7 +78,7 @@ ON CONFLICT (name) DO NOTHING;
 DELETE FROM mcmp_mciam_role_permissions WHERE role_type = 'workspace'; -- Updated table name
 
 -- Workspace Admin Role
-INSERT INTO mcmp_mciam_role_permissions (role_type, workspace_role_id, permission_id) -- Updated table name and column name
+INSERT INTO mcmp_mciam_role_permissions (role_type, role_id, permission_id) -- Updated table name and column name
 SELECT 'workspace', r.id, p.id
 FROM mcmp_workspace_roles r, mcmp_mciam_permissions p -- Updated table name
 WHERE r.name = 'admin'
@@ -85,7 +86,7 @@ WHERE r.name = 'admin'
 ON CONFLICT (role_type, workspace_role_id, permission_id) DO NOTHING; -- Updated conflict target
 
 -- Workspace Operator Role (Example: Infra RU + IAM Read)
-INSERT INTO mcmp_mciam_role_permissions (role_type, workspace_role_id, permission_id) -- Updated table name and column name
+INSERT INTO mcmp_mciam_role_permissions (role_type, role_id, permission_id) -- Updated table name and column name
 SELECT 'workspace', r.id, p.id
 FROM mcmp_workspace_roles r, mcmp_mciam_permissions p -- Updated table name
 WHERE r.name = 'operator'
@@ -93,32 +94,32 @@ WHERE r.name = 'operator'
        (p.framework_id = 'mc-infra-manager' AND p.action IN ('read', 'update', 'delete')) OR
        (p.framework_id = 'mc-iam-manager' AND p.action = 'read')
       )
-ON CONFLICT (role_type, workspace_role_id, permission_id) DO NOTHING; -- Updated conflict target
+ON CONFLICT (role_type, role_id, permission_id) DO NOTHING; -- Updated conflict target
 
 -- Workspace Viewer Role (Example: Read only for IAM and Infra)
-INSERT INTO mcmp_mciam_role_permissions (role_type, workspace_role_id, permission_id) -- Updated table name and column name
+INSERT INTO mcmp_mciam_role_permissions (role_type, role_id, permission_id) -- Updated table name and column name
 SELECT 'workspace', r.id, p.id
 FROM mcmp_workspace_roles r, mcmp_mciam_permissions p -- Updated table name
 WHERE r.name = 'viewer'
   AND p.action = 'read'
   AND p.framework_id IN ('mc-iam-manager', 'mc-infra-manager')
-ON CONFLICT (role_type, workspace_role_id, permission_id) DO NOTHING; -- Updated conflict target
+ON CONFLICT (role_type, role_id, permission_id) DO NOTHING; -- Updated conflict target
 
 -- Billing Admin Role
-INSERT INTO mcmp_mciam_role_permissions (role_type, workspace_role_id, permission_id) -- Updated table name and column name
+INSERT INTO mcmp_mciam_role_permissions (role_type, role_id, permission_id) -- Updated table name and column name
 SELECT 'workspace', r.id, p.id
 FROM mcmp_workspace_roles r, mcmp_mciam_permissions p -- Updated table name
 WHERE r.name = 'billadmin'
   AND p.id IN ('mc-cost-optimizer:billing:read', 'mc-cost-optimizer:billing:update')
-ON CONFLICT (role_type, workspace_role_id, permission_id) DO NOTHING; -- Updated conflict target
+ON CONFLICT (role_type, role_id, permission_id) DO NOTHING; -- Updated conflict target
 
 -- Billing Viewer Role
-INSERT INTO mcmp_mciam_role_permissions (role_type, workspace_role_id, permission_id) -- Updated table name and column name
+INSERT INTO mcmp_mciam_role_permissions (role_type, role_id, permission_id) -- Updated table name and column name
 SELECT 'workspace', r.id, p.id
 FROM mcmp_workspace_roles r, mcmp_mciam_permissions p -- Updated table name
 WHERE r.name = 'billviewer'
   AND p.id = 'mc-cost-optimizer:billing:read'
-ON CONFLICT (role_type, workspace_role_id, permission_id) DO NOTHING;
+ON CONFLICT (role_type, role_id, permission_id) DO NOTHING;
 
 -- Seed Role-CSP Role Mappings (Example - Add actual mappings as needed)
 -- INSERT INTO mcmp_workspace_role_csp_role_mapping (workspace_role_id, csp_type, csp_role_arn, idp_identifier, description)
@@ -168,14 +169,14 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Assign permissions to roles (from 000009 and 000010) - Platform Roles
 -- Assign all permissions to platformadmin
-INSERT INTO mcmp_mciam_role_permissions (role_type, workspace_role_id, permission_id) -- Updated table/column names
+INSERT INTO mcmp_mciam_role_permissions (role_type, role_id, permission_id) -- Updated table/column names
 SELECT 'platform', r.id, p.id
 FROM mcmp_platform_roles r, mcmp_mciam_permissions p
 WHERE r.name = 'platformadmin'
-ON CONFLICT (role_type, workspace_role_id, permission_id) DO NOTHING;
+ON CONFLICT (role_type, role_id, permission_id) DO NOTHING;
 
 -- Assign specific permissions to admin
-INSERT INTO mcmp_mciam_role_permissions (role_type, workspace_role_id, permission_id) -- Updated table/column names
+INSERT INTO mcmp_mciam_role_permissions (role_type, role_id, permission_id) -- Updated table/column names
 SELECT 'platform', r.id, p.id
 FROM mcmp_platform_roles r, mcmp_mciam_permissions p
 WHERE r.name = 'admin'
@@ -186,7 +187,7 @@ WHERE r.name = 'admin'
     'user:create', 'user:list', 'user:get', 'user:update', 'user:delete', 'user:approve', 'user:reject', 'registration:list'
     -- Add other admin-specific permission IDs...
   )
-ON CONFLICT (role_type, workspace_role_id, permission_id) DO NOTHING; -- Updated conflict target
+ON CONFLICT (role_type, role_id, permission_id) DO NOTHING; -- Updated conflict target
 
 -- Assign permissions for other roles (example for 'viewer')
 -- INSERT INTO mcmp_mciam_role_permissions (role_type, workspace_role_id, permission_id) -- Updated table/column names
@@ -255,3 +256,82 @@ JOIN mcmp_api_actions a ON
     (p.id = 'mc-cost-optimizer:billing:read' AND a.action_name = 'GetBillingInfo') OR
     (p.id = 'mc-cost-optimizer:billing:update' AND a.action_name = 'UpdateBillingSettings')
 ON CONFLICT (permission_id, action_id) DO NOTHING;
+
+-- MCMP API 권한-액션 매핑 초기 데이터
+INSERT INTO mcmp_api_permission_action_mappings (permission_id, action_id, action_name) VALUES
+-- 워크스페이스 관련 권한
+('mc-iam-manager:workspace:read', 1, 'workspace:read'),
+('mc-iam-manager:workspace:write', 2, 'workspace:write'),
+('mc-iam-manager:workspace:delete', 3, 'workspace:delete'),
+('mc-iam-manager:workspace:list', 4, 'workspace:list'),
+
+-- 프로젝트 관련 권한
+('mc-iam-manager:project:read', 5, 'project:read'),
+('mc-iam-manager:project:write', 6, 'project:write'),
+('mc-iam-manager:project:delete', 7, 'project:delete'),
+('mc-iam-manager:project:list', 8, 'project:list'),
+
+-- 사용자 관련 권한
+('mc-iam-manager:user:read', 9, 'user:read'),
+('mc-iam-manager:user:write', 10, 'user:write'),
+('mc-iam-manager:user:delete', 11, 'user:delete'),
+('mc-iam-manager:user:list', 12, 'user:list'),
+
+-- 역할 관련 권한
+('mc-iam-manager:role:read', 13, 'role:read'),
+('mc-iam-manager:role:write', 14, 'role:write'),
+('mc-iam-manager:role:delete', 15, 'role:delete'),
+('mc-iam-manager:role:list', 16, 'role:list'),
+
+-- 권한 관련 권한
+('mc-iam-manager:permission:read', 17, 'permission:read'),
+('mc-iam-manager:permission:write', 18, 'permission:write'),
+('mc-iam-manager:permission:delete', 19, 'permission:delete'),
+('mc-iam-manager:permission:list', 20, 'permission:list')
+ON CONFLICT (permission_id, action_id) DO NOTHING;
+
+-- 플랫폼 역할-메뉴 매핑 초기 데이터
+-- operator 역할에 대한 메뉴 매핑 (analytics 포함)
+INSERT INTO mcmp_platform_role_menu_mappings (platform_role, menu_id)
+SELECT
+    'operator' AS platform_role,
+    id AS menu_id
+FROM mcmp_menu
+WHERE is_action = true
+  AND parent_id IN ('workloads', 'monitorings', 'eventsntraces', 'analytics');
+
+-- operator 역할에 대한 메뉴 매핑 (analytics 제외)
+INSERT INTO mcmp_platform_role_menu_mappings (platform_role, menu_id)
+SELECT
+    'operator' AS platform_role,
+    id AS menu_id
+FROM mcmp_menu
+WHERE is_action = true
+  AND parent_id IN ('workloads', 'monitorings', 'eventsntraces');
+
+-- viewer 역할에 대한 메뉴 매핑
+INSERT INTO mcmp_platform_role_menu_mappings (platform_role, menu_id)
+SELECT
+    'viewer' AS platform_role,
+    id AS menu_id
+FROM mcmp_menu
+WHERE is_action = true
+  AND parent_id IN ('workloads', 'monitorings');
+
+-- billadmin 역할에 대한 메뉴 매핑
+INSERT INTO mcmp_platform_role_menu_mappings (platform_role, menu_id)
+SELECT
+    'billadmin' AS platform_role,
+    id AS menu_id
+FROM mcmp_menu
+WHERE is_action = true
+  AND parent_id IN ('analytics', 'workloads');
+
+-- billviewer 역할에 대한 메뉴 매핑
+INSERT INTO mcmp_platform_role_menu_mappings (platform_role, menu_id)
+SELECT
+    'billviewer' AS platform_role,
+    id AS menu_id
+FROM mcmp_menu
+WHERE is_action = true
+  AND parent_id IN ('analytics', 'workloads');

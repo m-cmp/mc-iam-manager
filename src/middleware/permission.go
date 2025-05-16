@@ -6,82 +6,63 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
-	"gorm.io/gorm"
-
-	"github.com/m-cmp/mc-iam-manager/model"
-	"github.com/m-cmp/mc-iam-manager/repository"
+	"github.com/m-cmp/mc-iam-manager/service"
 )
 
 // PermissionLevel은 권한 레벨을 정의합니다.
-type PermissionLevel int
+type PermissionLevel string
 
 const (
-	// Level1은 인증만 필요한 API를 위한 권한 레벨입니다.
-	Level1 PermissionLevel = iota + 1
-	// Level2는 기본 권한이 필요한 API를 위한 권한 레벨입니다.
-	Level2
-	// Level3는 특정 권한이 필요한 API를 위한 권한 레벨입니다.
-	Level3
+	Read   PermissionLevel = "read"
+	Write  PermissionLevel = "write"
+	Manage PermissionLevel = "manage"
 )
 
-// PermissionMiddleware는 권한 체크를 위한 미들웨어를 생성합니다.
-func PermissionMiddleware(db *gorm.DB, level PermissionLevel, requiredPermission string) echo.MiddlewareFunc {
+// PlatformAdminMiddleware는 플랫폼 관리자 권한이 필요한 미들웨어입니다.
+func PlatformAdminMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		// 플랫폼 역할 가져오기
+		platformRoles, ok := c.Get("platformRoles").([]string)
+		if !ok {
+			return echo.NewHTTPError(http.StatusUnauthorized, "플랫폼 역할을 가져올 수 없습니다")
+		}
+
+		// platformAdmin 역할 확인
+		for _, role := range platformRoles {
+			if role == "platformAdmin" {
+				return next(c)
+			}
+		}
+
+		return echo.NewHTTPError(http.StatusForbidden, "플랫폼 관리자 권한이 필요합니다")
+	}
+}
+
+// PlatformRoleMiddleware는 플랫폼 역할 기반의 권한 체크를 수행하는 미들웨어입니다.
+func PlatformRoleMiddleware(level PermissionLevel) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// Level 1: 인증만 필요한 API
-			if level == Level1 {
+			// 플랫폼 관리자는 모든 권한을 가집니다
+			if isPlatformAdmin(c) {
 				return next(c)
 			}
 
-			// Level 2 & 3: 권한 체크가 필요한 API
-			// 1. Access Token 검증
-			token := c.Get("access_token")
-			if token == nil {
-				return echo.NewHTTPError(http.StatusUnauthorized, "Access token is required")
+			// 플랫폼 역할 가져오기
+			platformRoles, ok := c.Get("platformRoles").([]string)
+			if !ok {
+				return echo.NewHTTPError(http.StatusUnauthorized, "플랫폼 역할을 가져올 수 없습니다")
 			}
 
-			// 2. Level 2 권한 체크
-			if level == Level2 {
-				c.Logger().Debugf("PermissionMiddleware: Checking Level 2 permissions")
-
-				// 기본 역할 확인
-				if !checkRoleFromContext(c, []string{"admin", "platformAdmin"}) {
-					c.Logger().Debugf("PermissionMiddleware: Basic role check failed")
-					return echo.NewHTTPError(http.StatusForbidden, "Basic role required")
-				}
-
-				c.Logger().Debugf("PermissionMiddleware: Basic role check passed, checking basic permissions")
-
-				// 기본 권한 확인
-				hasBasicPermission, err := checkBasicPermission(c, db)
-				if err != nil {
-					c.Logger().Errorf("Basic permission check failed: %v", err)
-					return echo.NewHTTPError(http.StatusInternalServerError, "Permission check failed")
-				}
-				if !hasBasicPermission {
-					c.Logger().Debugf("PermissionMiddleware: Basic permission check failed")
-					return echo.NewHTTPError(http.StatusForbidden, "Basic permission required")
-				}
-
-				c.Logger().Debugf("PermissionMiddleware: All checks passed")
-				return next(c)
+			// 권한 체크
+			hasPermission, err := checkPlatformPermission(c.Request().Context(), platformRoles, level)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusInternalServerError, "권한 체크에 실패했습니다")
 			}
 
-			// 3. Level 3 권한 체크
-			if level == Level3 {
-				if requiredPermission == "" {
-					return echo.NewHTTPError(http.StatusForbidden, "Permission is required")
-				}
-
-				hasPermission, err := checkPermission(c, db, requiredPermission)
-				if err != nil {
-					c.Logger().Errorf("Permission check failed: %v", err)
-					return echo.NewHTTPError(http.StatusInternalServerError, "Permission check failed")
-				}
-				if !hasPermission {
-					return echo.NewHTTPError(http.StatusForbidden, fmt.Sprintf("Permission denied: %s", requiredPermission))
-				}
+			if !hasPermission {
+				return echo.NewHTTPError(http.StatusForbidden, "권한이 부족합니다")
 			}
 
 			return next(c)
@@ -89,170 +70,152 @@ func PermissionMiddleware(db *gorm.DB, level PermissionLevel, requiredPermission
 	}
 }
 
-// checkBasicPermission은 사용자가 기본 권한을 가지고 있는지 확인합니다.
-func checkBasicPermission(c echo.Context, db *gorm.DB) (bool, error) {
-	// 1. 사용자 ID 가져오기
-	kcUserID, ok := c.Get("kcUserId").(string)
-	if !ok || kcUserID == "" {
-		return false, fmt.Errorf("invalid user ID")
-	}
-
-	// 2. 사용자 정보 조회
-	userRepo := repository.NewUserRepository(db)
-	user, err := userRepo.FindByKcID(kcUserID)
-	if err != nil {
-		return false, fmt.Errorf("failed to find user: %v", err)
-	}
-	if user == nil {
-		return false, fmt.Errorf("user not found")
-	}
-
-	// 3. 사용자의 플랫폼 역할 조회
-	var userRoles []model.UserPlatformRole
-	if err := db.Where("user_id = ?", user.ID).Find(&userRoles).Error; err != nil {
-		return false, fmt.Errorf("failed to get user roles: %v", err)
-	}
-
-	// 4. 역할별 기본 권한 확인
-	permissionRepo := repository.NewMciamPermissionRepository(db)
-	for _, userRole := range userRoles {
-		permissions, err := permissionRepo.GetRoleMciamPermissions("platform", userRole.PlatformRoleID)
-		if err != nil {
-			c.Logger().Warnf("Failed to get permissions for role %d: %v", userRole.PlatformRoleID, err)
-			continue
-		}
-
-		// 기본 권한 확인
-		for _, permissionID := range permissions {
-			// 메뉴 조회 권한
-			if strings.HasPrefix(permissionID, "menu:menu:view:") {
-				return true, nil
-			}
-			// 워크스페이스 조회 권한
-			if permissionID == "mc-iam-manager:workspace:read" {
-				return true, nil
-			}
-		}
-	}
-
-	return false, nil
-}
-
-// checkPermission은 사용자가 특정 권한을 가지고 있는지 확인합니다.
-func checkPermission(c echo.Context, db *gorm.DB, requiredPermission string) (bool, error) {
-	// 1. 사용자 ID 가져오기
-	kcUserID, ok := c.Get("kcUserId").(string)
-	if !ok || kcUserID == "" {
-		return false, fmt.Errorf("invalid user ID")
-	}
-
-	// 2. 사용자 정보 조회
-	userRepo := repository.NewUserRepository(db)
-	user, err := userRepo.FindByKcID(kcUserID)
-	if err != nil {
-		return false, fmt.Errorf("failed to find user: %v", err)
-	}
-	if user == nil {
-		return false, fmt.Errorf("user not found")
-	}
-
-	// 3. 사용자의 역할 목록 조회
-	roleRepo := repository.NewPlatformRoleRepository(db)
-	roles, err := roleRepo.List()
-	if err != nil {
-		return false, fmt.Errorf("failed to list roles: %v", err)
-	}
-
-	// 4. 역할별 권한 매핑 확인
-	permissionRepo := repository.NewMciamPermissionRepository(db)
-	mappingRepo := repository.NewMcmpApiPermissionActionMappingRepository(db)
-
-	// 4.1 플랫폼 역할 권한 확인
-	for _, role := range roles {
-		permissions, err := permissionRepo.GetRoleMciamPermissions("platform", role.ID)
-		if err != nil {
-			c.Logger().Warnf("Failed to get permissions for platform role %d: %v", role.ID, err)
-			continue
-		}
-
-		for _, permissionID := range permissions {
-			actions, err := mappingRepo.GetActionsByPermissionID(context.Background(), permissionID)
-			if err != nil {
-				c.Logger().Warnf("Failed to get actions for permission %s: %v", permissionID, err)
-				continue
-			}
-
-			for _, action := range actions {
-				if action.ActionName == requiredPermission {
-					return true, nil
-				}
-			}
-		}
-	}
-
-	// 4.2 워크스페이스 역할 권한 확인
-	workspaceID := c.Param("workspaceId")
-	if workspaceID != "" {
-		workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db)
-		workspaceRoles, err := workspaceRoleRepo.List()
-		if err != nil {
-			return false, fmt.Errorf("failed to list workspace roles: %v", err)
-		}
-
-		for _, role := range workspaceRoles {
-			permissions, err := permissionRepo.GetRoleMciamPermissions("workspace", role.ID)
-			if err != nil {
-				c.Logger().Warnf("Failed to get permissions for workspace role %d: %v", role.ID, err)
-				continue
-			}
-
-			for _, permissionID := range permissions {
-				actions, err := mappingRepo.GetActionsByPermissionID(context.Background(), permissionID)
-				if err != nil {
-					c.Logger().Warnf("Failed to get actions for permission %s: %v", permissionID, err)
-					continue
-				}
-
-				for _, action := range actions {
-					if action.ActionName == requiredPermission {
-						return true, nil
-					}
-				}
-			}
-		}
-	}
-
-	return false, nil
-}
-
-// checkRoleFromContext는 컨텍스트에서 역할을 확인합니다.
-func checkRoleFromContext(c echo.Context, requiredRoles []string) bool {
-	// 1. 컨텍스트에서 역할 목록 가져오기
-	platformRolesValue := c.Get("platformRoles")
-	if platformRolesValue == nil {
-		c.Logger().Debug("No platform roles found in context")
-		return false
-	}
-
-	// 2. 역할 목록 타입 확인
-	platformRoles, ok := platformRolesValue.([]string)
+// isPlatformAdmin는 사용자가 플랫폼 관리자인지 확인합니다.
+func isPlatformAdmin(c echo.Context) bool {
+	platformRoles, ok := c.Get("platformRoles").([]string)
 	if !ok {
-		c.Logger().Debugf("Invalid platform roles type: %T", platformRolesValue)
 		return false
 	}
 
-	c.Logger().Debugf("checkRoleFromContext: User Roles from Context: %v, Required: %v", platformRoles, requiredRoles)
-
-	// 3. 필요한 역할 확인
 	for _, role := range platformRoles {
-		for _, requiredRole := range requiredRoles {
-			if role == requiredRole {
-				c.Logger().Debugf("Found matching role: %s", role)
-				return true
+		if role == "platformAdmin" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// getPlatformRoles는 JWT 클레임에서 플랫폼 역할을 추출합니다.
+func getPlatformRoles(claims jwt.MapClaims) ([]string, error) {
+	roles, ok := claims["realm_access"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid realm_access claim")
+	}
+
+	roleList, ok := roles["roles"].([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid roles claim")
+	}
+
+	var platformRoles []string
+	for _, role := range roleList {
+		roleStr, ok := role.(string)
+		if !ok {
+			continue
+		}
+		// Platform roles don't have the "mc-iam-manager:" prefix
+		if !strings.HasPrefix(roleStr, "mc-iam-manager:") {
+			platformRoles = append(platformRoles, roleStr)
+		}
+	}
+
+	return platformRoles, nil
+}
+
+// getWorkspaceRoles는 JWT 클레임에서 워크스페이스 역할을 추출합니다.
+func getWorkspaceRoles(claims jwt.MapClaims) ([]string, error) {
+	roles, ok := claims["realm_access"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid realm_access claim")
+	}
+
+	roleList, ok := roles["roles"].([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid roles claim")
+	}
+
+	var workspaceRoles []string
+	for _, role := range roleList {
+		roleStr, ok := role.(string)
+		if !ok {
+			continue
+		}
+		// Workspace roles have the "mc-iam-manager:" prefix
+		if strings.HasPrefix(roleStr, "mc-iam-manager:") {
+			workspaceRoles = append(workspaceRoles, roleStr)
+		}
+	}
+
+	return workspaceRoles, nil
+}
+
+// checkPlatformPermission는 사용자가 필요한 플랫폼 권한을 가지고 있는지 확인합니다.
+func checkPlatformPermission(ctx context.Context, userPlatformRoles []string, level PermissionLevel) (bool, error) {
+	keycloakService := service.NewKeycloakService()
+
+	// Get user's permissions from Keycloak
+	permissions, err := keycloakService.GetUserPermissions(ctx, userPlatformRoles)
+	if err != nil {
+		return false, fmt.Errorf("failed to get user permissions: %w", err)
+	}
+
+	// Check if user has required permission level
+	requiredPermission := fmt.Sprintf("platform:%s", level)
+	return hasPermission(permissions, requiredPermission), nil
+}
+
+// checkWorkspacePermission는 사용자가 필요한 워크스페이스 권한을 가지고 있는지 확인합니다.
+func checkWorkspacePermission(ctx context.Context, roles []string, level PermissionLevel, workspaceID string) (bool, error) {
+	keycloakService := service.NewKeycloakService()
+
+	// Get workspace ticket from context
+	workspaceTicket, ok := ctx.Value("workspace_ticket").(string)
+	if !ok {
+		return false, fmt.Errorf("workspace ticket not found in context")
+	}
+
+	// Validate workspace ticket and get claims
+	claims, err := keycloakService.ValidateTokenAndGetClaims(ctx, workspaceTicket)
+	if err != nil {
+		return false, fmt.Errorf("failed to validate workspace ticket: %w", err)
+	}
+
+	// Extract permissions from workspace ticket
+	authorization, ok := (*claims)["authorization"].(map[string]interface{})
+	if !ok {
+		return false, fmt.Errorf("authorization claim not found in workspace ticket")
+	}
+
+	permissions, ok := authorization["permissions"].([]interface{})
+	if !ok || len(permissions) == 0 {
+		return false, fmt.Errorf("permissions not found in workspace ticket")
+	}
+
+	// Check if the workspace ID matches and has required permission
+	for _, perm := range permissions {
+		permission, ok := perm.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		rsid, ok := permission["rsid"].(string)
+		if !ok || rsid != workspaceID {
+			continue
+		}
+
+		scopes, ok := permission["scopes"].([]interface{})
+		if !ok {
+			continue
+		}
+
+		requiredScope := fmt.Sprintf("workspace:%s", level)
+		for _, scope := range scopes {
+			if scopeStr, ok := scope.(string); ok && scopeStr == requiredScope {
+				return true, nil
 			}
 		}
 	}
 
-	c.Logger().Debugf("No matching roles found. User roles: %v, Required roles: %v", platformRoles, requiredRoles)
+	return false, nil
+}
+
+// hasPermission는 사용자가 특정 권한을 가지고 있는지 확인합니다.
+func hasPermission(permissions []string, requiredPermission string) bool {
+	for _, permission := range permissions {
+		if permission == requiredPermission {
+			return true
+		}
+	}
 	return false
 }

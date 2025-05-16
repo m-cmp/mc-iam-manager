@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"   // For converting uint to string if needed for RoleSessionName
+	"log" // For converting uint to string if needed for RoleSessionName
+	"os"
 	"time" // For RoleSessionName timestamp
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config" // Alias to avoid conflict with our config pkg
@@ -16,7 +16,7 @@ import (
 
 // AwsCredentialService defines operations for interacting with AWS STS.
 type AwsCredentialService interface {
-	AssumeRoleWithWebIdentity(ctx context.Context, roleArn, kcUserId, webIdentityToken, idpArn string) (*model.CspCredentialResponse, error)
+	AssumeRoleWithWebIdentity(ctx context.Context, roleArn, kcUserId, webIdentityToken, idpArn, region string) (*model.CspCredentialResponse, error)
 }
 
 // awsCredentialService implements AwsCredentialService.
@@ -31,7 +31,7 @@ func NewAwsCredentialService() AwsCredentialService {
 
 // AssumeRoleWithWebIdentity assumes an IAM role using a web identity token (OIDC).
 // kcUserId is used to generate a unique RoleSessionName.
-func (s *awsCredentialService) AssumeRoleWithWebIdentity(ctx context.Context, roleArn, kcUserId, webIdentityToken, idpArn string) (*model.CspCredentialResponse, error) {
+func (s *awsCredentialService) AssumeRoleWithWebIdentity(ctx context.Context, roleArn, kcUserId, webIdentityToken, idpArn, region string) (*model.CspCredentialResponse, error) {
 	// Load default AWS configuration
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -39,9 +39,11 @@ func (s *awsCredentialService) AssumeRoleWithWebIdentity(ctx context.Context, ro
 		return nil, fmt.Errorf("failed to load AWS configuration: %w", err)
 	}
 
-	// Optionally override region if provided or needed
-	if region := os.Getenv("AWS_REGION"); region != "" {
+	// Set region if provided
+	if region != "" {
 		awsCfg.Region = region
+	} else if envRegion := os.Getenv("AWS_REGION"); envRegion != "" {
+		awsCfg.Region = envRegion
 	}
 	log.Printf("Using AWS Region: %s for STS call", awsCfg.Region)
 
@@ -57,12 +59,8 @@ func (s *awsCredentialService) AssumeRoleWithWebIdentity(ctx context.Context, ro
 	input := &sts.AssumeRoleWithWebIdentityInput{
 		RoleArn:          &roleArn,
 		RoleSessionName:  &roleSessionName,
-		WebIdentityToken: &webIdentityToken, // This is the OIDC token from Keycloak
-		// ProviderId:       &idpArn, // Optional: OIDC Provider ARN
-		DurationSeconds: nil, // Use default duration (1 hour)
-	}
-	if idpArn != "" {
-		input.ProviderId = &idpArn
+		WebIdentityToken: &webIdentityToken,
+		DurationSeconds:  nil, // Use default duration (1 hour)
 	}
 
 	log.Printf("Attempting to assume role %s with web identity token for session %s", roleArn, roleSessionName)

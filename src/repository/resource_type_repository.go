@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"log"
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"gorm.io/gorm"
@@ -24,14 +25,6 @@ func NewResourceTypeRepository(db *gorm.DB) *ResourceTypeRepository {
 
 // Create 리소스 유형 생성
 func (r *ResourceTypeRepository) Create(resourceType *model.ResourceType) error {
-	// Check if already exists
-	var existing model.ResourceType
-	if err := r.db.Where("framework_id = ? AND id = ?", resourceType.FrameworkID, resourceType.ID).First(&existing).Error; err == nil {
-		return ErrResourceTypeAlreadyExists
-	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return err // Other DB error
-	}
-	// Create if not found
 	return r.db.Create(resourceType).Error
 }
 
@@ -45,6 +38,14 @@ func (r *ResourceTypeRepository) List(frameworkID string) ([]model.ResourceType,
 	if err := query.Find(&resourceTypes).Error; err != nil {
 		return nil, err
 	}
+
+	// SQL 쿼리 로깅
+	sql := query.Statement.SQL.String()
+	args := query.Statement.Vars
+	log.Printf("List SQL Query: %s", sql)
+	log.Printf("List SQL Args: %v", args)
+	log.Printf("List Result Count: %d", len(resourceTypes))
+
 	return resourceTypes, nil
 }
 
@@ -57,6 +58,13 @@ func (r *ResourceTypeRepository) GetByID(frameworkID, id string) (*model.Resourc
 		}
 		return nil, err
 	}
+
+	// SQL 쿼리 로깅
+	sql := r.db.Statement.SQL.String()
+	args := r.db.Statement.Vars
+	log.Printf("GetByID SQL Query: %s", sql)
+	log.Printf("GetByID SQL Args: %v", args)
+
 	return &resourceType, nil
 }
 
@@ -77,6 +85,14 @@ func (r *ResourceTypeRepository) Update(frameworkID, id string, updates map[stri
 	if result.RowsAffected == 0 {
 		return ErrResourceTypeNotFound // Or check if record exists before update
 	}
+
+	// SQL 쿼리 로깅
+	sql := result.Statement.SQL.String()
+	args := result.Statement.Vars
+	log.Printf("Update SQL Query: %s", sql)
+	log.Printf("Update SQL Args: %v", args)
+	log.Printf("Update Affected Rows: %d", result.RowsAffected)
+
 	return nil
 }
 
@@ -90,5 +106,13 @@ func (r *ResourceTypeRepository) Delete(frameworkID, id string) error {
 		return ErrResourceTypeNotFound
 	}
 	// Note: Associated permissions will be deleted due to CASCADE constraint in DB schema
+
+	// SQL 쿼리 로깅
+	sql := result.Statement.SQL.String()
+	args := result.Statement.Vars
+	log.Printf("Delete SQL Query: %s", sql)
+	log.Printf("Delete SQL Args: %v", args)
+	log.Printf("Delete Affected Rows: %d", result.RowsAffected)
+
 	return nil
 }

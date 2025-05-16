@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"context"
 	"errors" // Ensure errors is imported
 	"fmt"    // Ensure fmt is imported
+	"log"
 	"net/http"
 	"strconv"
 
@@ -13,18 +15,71 @@ import (
 )
 
 type WorkspaceRoleHandler struct {
-	service *service.WorkspaceRoleService
+	service         *service.WorkspaceRoleService
+	userService     *service.UserService
+	keycloakService service.KeycloakService
 	// db *gorm.DB // Not needed directly in handler
 }
 
-func NewWorkspaceRoleHandler(db *gorm.DB) *WorkspaceRoleHandler { // Accept db, remove service param
-	// Initialize service internally
+func NewWorkspaceRoleHandler(db *gorm.DB) *WorkspaceRoleHandler {
 	workspaceRoleService := service.NewWorkspaceRoleService(db)
+	userService := service.NewUserService(db)
+	keycloakService := service.NewKeycloakService()
 	return &WorkspaceRoleHandler{
-		service: workspaceRoleService,
+		service:         workspaceRoleService,
+		userService:     userService,
+		keycloakService: keycloakService,
 	}
 }
 
+// GetWorkspaceIDFromToken 토큰에서 워크스페이스 ID를 추출합니다.
+func (h *WorkspaceRoleHandler) GetWorkspaceIDFromToken(tokenString string) (string, error) {
+	// 토큰 파싱
+	claims, err := h.keycloakService.ValidateTokenAndGetClaims(context.Background(), tokenString)
+	if err != nil {
+		return "", fmt.Errorf("failed to validate token: %w", err)
+	}
+
+	// authorization.permissions[0].rsid에서 workspace_id 추출
+	authorization, ok := (*claims)["authorization"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("authorization claim not found in token")
+	}
+
+	permissions, ok := authorization["permissions"].([]interface{})
+	if !ok || len(permissions) == 0 {
+		return "", fmt.Errorf("permissions not found or empty in token")
+	}
+
+	permission, ok := permissions[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid permission format in token")
+	}
+
+	workspaceID, ok := permission["rsid"].(string)
+	if !ok {
+		return "", fmt.Errorf("rsid not found in permission")
+	}
+
+	// rsname이 "workspace"인지 확인
+	rsname, ok := permission["rsname"].(string)
+	if !ok || rsname != "workspace" {
+		return "", fmt.Errorf("invalid resource name in permission")
+	}
+
+	return workspaceID, nil
+}
+
+// List godoc
+// @Summary 워크스페이스 역할 목록 조회
+// @Description 모든 워크스페이스 역할 목록을 조회합니다.
+// @Tags workspace-roles
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.WorkspaceRole
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /api/workspace-roles [get]
 func (h *WorkspaceRoleHandler) List(c echo.Context) error {
 	roles, err := h.service.List()
 	if err != nil {
@@ -33,6 +88,19 @@ func (h *WorkspaceRoleHandler) List(c echo.Context) error {
 	return c.JSON(200, roles)
 }
 
+// GetByID godoc
+// @Summary 워크스페이스 역할 조회
+// @Description ID로 워크스페이스 역할을 조회합니다.
+// @Tags workspace-roles
+// @Accept json
+// @Produce json
+// @Param id path int true "역할 ID"
+// @Success 200 {object} model.WorkspaceRole
+// @Failure 400 {object} map[string]string "error: 잘못된 ID 형식"
+// @Failure 404 {object} map[string]string "error: 역할을 찾을 수 없습니다"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /api/workspace-roles/{id} [get]
 func (h *WorkspaceRoleHandler) GetByID(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -46,6 +114,18 @@ func (h *WorkspaceRoleHandler) GetByID(c echo.Context) error {
 	return c.JSON(200, role)
 }
 
+// Create godoc
+// @Summary 워크스페이스 역할 생성
+// @Description 새로운 워크스페이스 역할을 생성합니다.
+// @Tags workspace-roles
+// @Accept json
+// @Produce json
+// @Param role body model.WorkspaceRole true "역할 정보"
+// @Success 201 {object} model.WorkspaceRole
+// @Failure 400 {object} map[string]string "error: 잘못된 요청 데이터"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /api/workspace-roles [post]
 func (h *WorkspaceRoleHandler) Create(c echo.Context) error {
 	var role model.WorkspaceRole
 	if err := c.Bind(&role); err != nil {
@@ -57,6 +137,20 @@ func (h *WorkspaceRoleHandler) Create(c echo.Context) error {
 	return c.JSON(201, role)
 }
 
+// Update godoc
+// @Summary 워크스페이스 역할 수정
+// @Description 기존 워크스페이스 역할을 수정합니다.
+// @Tags workspace-roles
+// @Accept json
+// @Produce json
+// @Param id path int true "역할 ID"
+// @Param role body model.WorkspaceRole true "역할 정보"
+// @Success 200 {object} model.WorkspaceRole
+// @Failure 400 {object} map[string]string "error: 잘못된 요청 데이터"
+// @Failure 404 {object} map[string]string "error: 역할을 찾을 수 없습니다"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /api/workspace-roles/{id} [put]
 func (h *WorkspaceRoleHandler) Update(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -74,6 +168,19 @@ func (h *WorkspaceRoleHandler) Update(c echo.Context) error {
 	return c.JSON(200, role)
 }
 
+// Delete godoc
+// @Summary 워크스페이스 역할 삭제
+// @Description 워크스페이스 역할을 삭제합니다.
+// @Tags workspace-roles
+// @Accept json
+// @Produce json
+// @Param id path int true "역할 ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} map[string]string "error: 잘못된 ID 형식"
+// @Failure 404 {object} map[string]string "error: 역할을 찾을 수 없습니다"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /api/workspace-roles/{id} [delete]
 func (h *WorkspaceRoleHandler) Delete(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -86,96 +193,159 @@ func (h *WorkspaceRoleHandler) Delete(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent) // Use http status constant
 }
 
-// AssignRoleToUser godoc
-// @Summary 워크스페이스 사용자에게 역할 할당
+// AssignWorkspaceRoleToUser godoc
+// @Summary 워크스페이스 사용자에게 워크스페이스 역할 할당
 // @Description 특정 워크스페이스 내의 사용자에게 특정 워크스페이스 역할을 할당합니다.
-// @Tags workspaces, roles, users
+// @Tags workspaces, workspace-roles, users
 // @Accept json
 // @Produce json
 // @Param workspaceId path int true "워크스페이스 ID"
-// @Param userId path int true "사용자 DB ID (db_id)"
-// @Param roleId path int true "워크스페이스 역할 ID"
+// @Param username path string true "사용자 이름"
+// @Param workspaceRoleName path string true "워크스페이스 역할 이름"
 // @Success 204 "No Content"
 // @Failure 400 {object} map[string]string "error: 잘못된 ID 형식"
-// @Failure 404 {object} map[string]string "error: 사용자, 역할 또는 워크스페이스를 찾을 수 없습니다"
-// @Failure 409 {object} map[string]string "error: 역할이 해당 워크스페이스에 속하지 않음"
+// @Failure 404 {object} map[string]string "error: 사용자, 워크스페이스 역할 또는 워크스페이스를 찾을 수 없습니다"
+// @Failure 409 {object} map[string]string "error: 워크스페이스 역할이 해당 워크스페이스에 속하지 않음"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /workspaces/{workspaceId}/users/{userId}/roles/{roleId} [post]
-func (h *WorkspaceRoleHandler) AssignRoleToUser(c echo.Context) error {
+// @Router /api/workspaces/{workspaceId}/users/{username}/roles/{workspaceRoleName} [post]
+func (h *WorkspaceRoleHandler) AssignWorkspaceRoleToUser(c echo.Context) error {
 	workspaceID, err := strconv.ParseUint(c.Param("workspaceId"), 10, 32)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
 	}
-	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32) // Assuming userId is the DB ID (uint)
+
+	username := c.Param("username")
+	workspaceRoleName := c.Param("workspaceRoleName")
+
+	// 1. 사용자명으로 DB ID 찾기
+	user, err := h.userService.GetUserByUsername(c.Request().Context(), username)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 사용자 ID 형식입니다"})
-	}
-	roleID, err := strconv.ParseUint(c.Param("roleId"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 ID 형식입니다"})
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자를 찾을 수 없습니다"})
 	}
 
-	err = h.service.AssignRoleToUser(uint(userID), uint(roleID), uint(workspaceID))
+	// 2. 워크스페이스 역할명으로 DB ID 찾기
+	workspaceRole, err := h.service.GetWorkspaceRoleByName(workspaceRoleName)
 	if err != nil {
-		// Handle specific errors from service
-		if errors.Is(err, service.ErrUserNotFound) || errors.Is(err, service.ErrRoleNotFound) || errors.Is(err, service.ErrWorkspaceNotFound) {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "워크스페이스 역할을 찾을 수 없습니다"})
+	}
+
+	// 3. DB ID로 워크스페이스 역할 할당
+	err = h.service.AssignWorkspaceRoleToUser(user.ID, workspaceRole.ID, uint(workspaceID))
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) || errors.Is(err, service.ErrWorkspaceRoleNotFound) || errors.Is(err, service.ErrWorkspaceNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
-		if errors.Is(err, service.ErrRoleNotInWorkspace) {
-			return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()}) // 409 Conflict might be appropriate
+		if errors.Is(err, service.ErrWorkspaceRoleNotInWorkspace) {
+			return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
 		}
-		// Handle potential duplicate assignment errors from DB if not handled by repo/service
-		// if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-		// 	return c.JSON(http.StatusConflict, map[string]string{"error": "User already has this role in the workspace"})
-		// }
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 할당 실패: %v", err)})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 역할 할당 실패: %v", err)})
+	}
+
+	// 4. Keycloak 그룹 동기화
+	groupName := fmt.Sprintf("ws_%d_%s", workspaceID, workspaceRole.Name)
+	if err := h.keycloakService.EnsureGroupExistsAndAssignUser(c.Request().Context(), user.KcId, groupName); err != nil {
+		log.Printf("Warning: Failed to assign user %s to Keycloak group %s: %v", user.Username, groupName, err)
+	} else {
+		log.Printf("Successfully assigned user %s to Keycloak group %s", user.Username, groupName)
 	}
 
 	return c.NoContent(http.StatusNoContent)
 }
 
-// RemoveRoleFromUser godoc
-// @Summary 워크스페이스 사용자 역할 제거
+// RemoveWorkspaceRoleFromUser godoc
+// @Summary 워크스페이스 사용자 워크스페이스 역할 제거
 // @Description 특정 워크스페이스 내의 사용자에게서 특정 워크스페이스 역할을 제거합니다.
-// @Tags workspaces, roles, users
+// @Tags workspaces, workspace-roles, users
 // @Accept json
 // @Produce json
 // @Param workspaceId path int true "워크스페이스 ID"
-// @Param userId path int true "사용자 DB ID (db_id)"
-// @Param roleId path int true "워크스페이스 역할 ID"
+// @Param username path string true "사용자 이름"
+// @Param workspaceRoleName path string true "워크스페이스 역할 이름"
 // @Success 204 "No Content"
 // @Failure 400 {object} map[string]string "error: 잘못된 ID 형식"
-// @Failure 404 {object} map[string]string "error: 역할 또는 워크스페이스를 찾을 수 없습니다" // User existence check is optional here
-// @Failure 409 {object} map[string]string "error: 역할이 해당 워크스페이스에 속하지 않음"
+// @Failure 404 {object} map[string]string "error: 워크스페이스 역할 또는 워크스페이스를 찾을 수 없습니다"
+// @Failure 409 {object} map[string]string "error: 워크스페이스 역할이 해당 워크스페이스에 속하지 않음"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /workspaces/{workspaceId}/users/{userId}/roles/{roleId} [delete]
-func (h *WorkspaceRoleHandler) RemoveRoleFromUser(c echo.Context) error {
+// @Router /api/workspaces/{workspaceId}/users/{username}/roles/{workspaceRoleName} [delete]
+func (h *WorkspaceRoleHandler) RemoveWorkspaceRoleFromUser(c echo.Context) error {
 	workspaceID, err := strconv.ParseUint(c.Param("workspaceId"), 10, 32)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
 	}
-	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
+
+	username := c.Param("username")
+	workspaceRoleName := c.Param("workspaceRoleName")
+
+	// 1. 사용자명으로 DB ID 찾기
+	user, err := h.userService.GetUserByUsername(c.Request().Context(), username)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 사용자 ID 형식입니다"})
-	}
-	roleID, err := strconv.ParseUint(c.Param("roleId"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 ID 형식입니다"})
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자를 찾을 수 없습니다"})
 	}
 
-	err = h.service.RemoveRoleFromUser(uint(userID), uint(roleID), uint(workspaceID))
+	// 2. 워크스페이스 역할명으로 DB ID 찾기
+	workspaceRole, err := h.service.GetWorkspaceRoleByName(workspaceRoleName)
 	if err != nil {
-		// Handle specific errors from service
-		if errors.Is(err, service.ErrRoleNotFound) || errors.Is(err, service.ErrWorkspaceNotFound) {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "워크스페이스 역할을 찾을 수 없습니다"})
+	}
+
+	// 3. Keycloak 그룹에서 사용자 제거
+	groupName := fmt.Sprintf("ws_%d_%s", workspaceID, workspaceRole.Name)
+	if err := h.keycloakService.RemoveUserFromGroup(c.Request().Context(), user.KcId, groupName); err != nil {
+		log.Printf("Warning: Failed to remove user %s from Keycloak group %s: %v", user.Username, groupName, err)
+	} else {
+		log.Printf("Successfully removed user %s from Keycloak group %s", user.Username, groupName)
+	}
+
+	// 4. DB에서 워크스페이스 역할 제거
+	err = h.service.RemoveWorkspaceRoleFromUser(user.ID, workspaceRole.ID, uint(workspaceID))
+	if err != nil {
+		if errors.Is(err, service.ErrWorkspaceRoleNotFound) || errors.Is(err, service.ErrWorkspaceNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
-		if errors.Is(err, service.ErrRoleNotInWorkspace) {
+		if errors.Is(err, service.ErrWorkspaceRoleNotInWorkspace) {
 			return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 제거 실패: %v", err)})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 역할 제거 실패: %v", err)})
 	}
 
 	return c.NoContent(http.StatusNoContent)
+}
+
+// GetUserWorkspaceRoles godoc
+// @Summary 사용자의 워크스페이스 역할 목록 조회
+// @Description 특정 워크스페이스에서 사용자에게 할당된 워크스페이스 역할 목록을 조회합니다.
+// @Tags workspaces, workspace-roles, users
+// @Accept json
+// @Produce json
+// @Param workspaceId path int true "워크스페이스 ID"
+// @Param username path string true "사용자 이름"
+// @Success 200 {array} string "워크스페이스 역할 이름 목록"
+// @Failure 400 {object} map[string]string "error: 잘못된 ID 형식"
+// @Failure 404 {object} map[string]string "error: 사용자를 찾을 수 없습니다"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /api/workspaces/{workspaceId}/users/{username}/roles [get]
+func (h *WorkspaceRoleHandler) GetUserWorkspaceRoles(c echo.Context) error {
+	workspaceID, err := strconv.ParseUint(c.Param("workspaceId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
+	}
+
+	username := c.Param("username")
+
+	// 1. 사용자명으로 DB ID 찾기
+	user, err := h.userService.GetUserByUsername(c.Request().Context(), username)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자를 찾을 수 없습니다"})
+	}
+
+	// 2. 사용자의 워크스페이스 역할 조회
+	workspaceRoles, err := h.service.GetUserWorkspaceRoles(user.ID, uint(workspaceID))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 역할 목록 조회 실패: %v", err)})
+	}
+
+	return c.JSON(http.StatusOK, workspaceRoles)
 }

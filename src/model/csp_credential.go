@@ -4,8 +4,9 @@ import "time"
 
 // CspCredentialRequest CSP 임시 자격 증명 발급 요청 모델
 type CspCredentialRequest struct {
-	WorkspaceID string `json:"workspaceId" validate:"required"`                 // 대상 워크스페이스 ID
-	CspType     string `json:"cspType" validate:"required,oneof=aws gcp azure"` // 대상 CSP 타입
+	WorkspaceID string `json:"workspaceId"` // 대상 워크스페이스 ID
+	CspType     string `json:"cspType"`     // 대상 CSP 타입
+	Region      string `json:"region"`      // AWS 리전 (선택적)
 }
 
 // CspCredentialResponse CSP 임시 자격 증명 발급 응답 모델 (현재는 AWS STS 기준)

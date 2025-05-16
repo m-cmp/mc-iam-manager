@@ -14,6 +14,8 @@ import (
 	"gorm.io/gorm" // Import gorm
 )
 
+const apiYamlEnvVar = "MCADMINCLI_APIYAML"
+
 // McmpApiHandler handles requests related to mcmp API definitions. (Renamed)
 type McmpApiHandler struct {
 	service service.McmpApiService // Use renamed service interface
@@ -27,22 +29,22 @@ func NewMcmpApiHandler(db *gorm.DB) *McmpApiHandler { // Accept db, remove servi
 	return &McmpApiHandler{service: mcmpApiService} // Renamed struct type
 }
 
-// SyncMcmpAPIs godoc (Renamed)
+// SyncMcmpAPIs godoc
 // @Summary Sync MCMP API Definitions
 // @Description Triggers the synchronization of MCMP API definitions from the configured YAML URL to the database.
-// @Tags McmpAPI // Updated tag
+// @Tags McmpAPI
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]string "message: Successfully triggered MCMP API sync" // Updated message
-// @Failure 500 {object} map[string]string "message: Failed to trigger MCMP API sync" // Updated message
-// @Router /mcmp-apis/sync [post] // Updated route suggestion (can be changed in main.go)
+// @Success 200 {object} map[string]string "message: Successfully triggered MCMP API sync"
+// @Failure 500 {object} map[string]string "message: Failed to trigger MCMP API sync"
+// @Router /sync-apis/sync [post]
 // @Security BearerAuth
-func (h *McmpApiHandler) SyncMcmpAPIs(c echo.Context) error { // Renamed receiver and method
-	err := h.service.SyncMcmpAPIsFromYAML() // Call renamed service method
+func (h *McmpApiHandler) SyncMcmpAPIs(c echo.Context) error {
+	err := h.service.SyncMcmpAPIsFromYAML()
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to trigger MCMP API sync: " + err.Error()}) // Updated message
+		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "Failed to trigger MCMP API sync: " + err.Error()})
 	}
-	return c.JSON(http.StatusOK, map[string]string{"message": "Successfully triggered MCMP API sync"}) // Updated message
+	return c.JSON(http.StatusOK, map[string]string{"message": "Successfully triggered MCMP API sync"})
 }
 
 // Add other handler methods if needed, e.g., to get API definitions via API
@@ -219,7 +221,7 @@ func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
 // @Failure 500 {object} map[string]string "message: Failed to retrieve API definitions"
 // @Param serviceName query string false "Filter by service name"
 // @Param actionName query string false "Filter by action name (operationId)"
-// @Router /mcmp-apis [get] // Example route
+// @Router /admin/mcmp-apis [get] // Example route
 // @Security BearerAuth
 func (h *McmpApiHandler) GetAllAPIDefinitions(c echo.Context) error {
 	// Read query parameters for filtering
@@ -338,3 +340,73 @@ func (h *McmpApiHandler) UpdateService(c echo.Context) error {
 	// Optionally fetch and return the updated service? For now, just success message.
 	return c.JSON(http.StatusOK, map[string]string{"message": fmt.Sprintf("Service '%s' updated successfully", serviceName)})
 }
+
+// ListMCMPAPIs godoc
+// @Summary MCMP API 목록 조회
+// @Description 모든 MCMP API 목록을 조회합니다
+// @Tags mcmp-apis
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.MCMPAPI
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Security BearerAuth
+// @Router /api/v1/mcmp-apis [get]
+
+// GetMCMPAPIByID godoc
+// @Summary MCMP API ID로 조회
+// @Description 특정 MCMP API를 ID로 조회합니다
+// @Tags mcmp-apis
+// @Accept json
+// @Produce json
+// @Param id path string true "API ID"
+// @Success 200 {object} model.MCMPAPI
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 404 {object} map[string]string "error: API not found"
+// @Security BearerAuth
+// @Router /api/v1/mcmp-apis/{id} [get]
+
+// CreateMCMPAPI godoc
+// @Summary 새 MCMP API 생성
+// @Description 새로운 MCMP API를 생성합니다
+// @Tags mcmp-apis
+// @Accept json
+// @Produce json
+// @Param api body model.MCMPAPI true "API Info"
+// @Success 201 {object} model.MCMPAPI
+// @Failure 400 {object} map[string]string "error: Invalid request"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Security BearerAuth
+// @Router /api/v1/mcmp-apis [post]
+
+// UpdateMCMPAPI godoc
+// @Summary MCMP API 업데이트
+// @Description MCMP API 정보를 업데이트합니다
+// @Tags mcmp-apis
+// @Accept json
+// @Produce json
+// @Param id path string true "API ID"
+// @Param api body model.MCMPAPI true "API Info"
+// @Success 200 {object} model.MCMPAPI
+// @Failure 400 {object} map[string]string "error: Invalid request"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 404 {object} map[string]string "error: API not found"
+// @Security BearerAuth
+// @Router /api/v1/mcmp-apis/{id} [put]
+
+// DeleteMCMPAPI godoc
+// @Summary MCMP API 삭제
+// @Description MCMP API를 삭제합니다
+// @Tags mcmp-apis
+// @Accept json
+// @Produce json
+// @Param id path string true "API ID"
+// @Success 204 "No Content"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 404 {object} map[string]string "error: API not found"
+// @Security BearerAuth
+// @Router /api/v1/mcmp-apis/{id} [delete]

@@ -12,6 +12,7 @@ import (
 
 	// "net/http"      // Remove unused import
 
+	// Import godotenv for loading environment variables
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/model/mcmpapi" // Import mcmpapi model
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -111,15 +112,29 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 	// 3. Assign to default workspace
 	defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
 	if defaultWsName == "" {
-		defaultWsName = "default" // Fallback to "default" if env var is not set
+		defaultWsName = "default"
+		log.Printf("DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
 	}
-	log.Printf("Assigning newly created project (ID: %d) to default workspace '%s'", project.ID, defaultWsName)
+	log.Printf("Using workspace name: %s", defaultWsName)
 	defaultWs, err := s.workspaceRepo.GetByName(defaultWsName)
 	if err != nil {
-		log.Printf("Error finding default workspace '%s': %v. Skipping assignment.", defaultWsName, err)
-		// Decide if this should be a critical error or just a warning
-		// For now, log a warning and return success as the project itself was created.
-		return nil // Or return fmt.Errorf("failed to find default workspace: %w", err)
+		if err.Error() == "workspace not found" {
+			// Default workspace doesn't exist, create it
+			log.Printf("Default workspace '%s' not found. Creating it...", defaultWsName)
+			newWorkspace := &model.Workspace{
+				Name:        defaultWsName,
+				Description: "Default workspace for automatically synced projects",
+			}
+			if err := s.workspaceRepo.Create(newWorkspace); err != nil {
+				log.Printf("Error creating default workspace '%s': %v", defaultWsName, err)
+				return fmt.Errorf("failed to create default workspace: %w", err)
+			}
+			log.Printf("Successfully created default workspace '%s'", defaultWsName)
+			defaultWs = newWorkspace
+		} else {
+			log.Printf("Error finding default workspace '%s': %v. Cannot assign projects.", defaultWsName, err)
+			return fmt.Errorf("failed to find or create default workspace: %w", err)
+		}
 	}
 	if err := s.projectRepo.AddWorkspaceAssociation(project.ID, defaultWs.ID); err != nil {
 		log.Printf("Error assigning project %d to default workspace %d: %v", project.ID, defaultWs.ID, err)
@@ -158,17 +173,16 @@ func (s *ProjectService) Update(id uint, updates map[string]interface{}) error {
 
 // Delete 프로젝트 삭제
 func (s *ProjectService) Delete(id uint) error {
-	// Check if project exists before deleting
 	_, err := s.projectRepo.GetByID(id)
 	if err != nil {
-		return err // Return error if not found or other DB error
+		return err
 	}
-	// TODO: Consider adding logic here or in handler to call mc-infra-manager DeleteNs API
 	return s.projectRepo.Delete(id)
 }
 
-// AddWorkspaceToProject 프로젝트에 워크스페이스 연결
-func (s *ProjectService) AddWorkspaceToProject(projectID, workspaceID uint) error {
+// AddWorkspaceAssociation 프로젝트에 워크스페이스 연결
+func (s *ProjectService) AddWorkspaceAssociation(projectID, workspaceID uint) error {
+	// Check if both project and workspace exist
 	_, errPr := s.projectRepo.GetByID(projectID)
 	if errPr != nil {
 		return errPr
@@ -180,9 +194,8 @@ func (s *ProjectService) AddWorkspaceToProject(projectID, workspaceID uint) erro
 	return s.projectRepo.AddWorkspaceAssociation(projectID, workspaceID)
 }
 
-// RemoveWorkspaceFromProject 프로젝트에서 워크스페이스 연결 제거
-func (s *ProjectService) RemoveWorkspaceFromProject(projectID, workspaceID uint) error {
-	// Optional: Check if project and workspace exist before attempting removal
+// RemoveWorkspaceAssociation 프로젝트에서 워크스페이스 연결 제거
+func (s *ProjectService) RemoveWorkspaceAssociation(projectID, workspaceID uint) error {
 	return s.projectRepo.RemoveWorkspaceAssociation(projectID, workspaceID)
 }
 
@@ -257,15 +270,29 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 	// Get default workspace ID once
 	defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
 	if defaultWsName == "" {
-		defaultWsName = "default" // Fallback
+		defaultWsName = "default"
+		log.Printf("DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
 	}
+	log.Printf("Using workspace name: %s", defaultWsName)
 	defaultWs, err := s.workspaceRepo.GetByName(defaultWsName)
 	if err != nil {
-		log.Printf("Error finding default workspace '%s': %v. Cannot assign projects.", defaultWsName, err)
-		// If default workspace doesn't exist, we can't proceed with assignment.
-		// Depending on requirements, we might return an error or just log and continue.
-		// Let's return an error for now, as assignment is a key part of this logic.
-		return fmt.Errorf("failed to find default workspace: %w", err)
+		if err.Error() == "workspace not found" {
+			// Default workspace doesn't exist, create it
+			log.Printf("Default workspace '%s' not found. Creating it...", defaultWsName)
+			newWorkspace := &model.Workspace{
+				Name:        defaultWsName,
+				Description: "Default workspace for automatically synced projects",
+			}
+			if err := s.workspaceRepo.Create(newWorkspace); err != nil {
+				log.Printf("Error creating default workspace '%s': %v", defaultWsName, err)
+				return fmt.Errorf("failed to create default workspace: %w", err)
+			}
+			log.Printf("Successfully created default workspace '%s'", defaultWsName)
+			defaultWs = newWorkspace
+		} else {
+			log.Printf("Error finding default workspace '%s': %v. Cannot assign projects.", defaultWsName, err)
+			return fmt.Errorf("failed to find or create default workspace: %w", err)
+		}
 	}
 
 	// 5. Compare, create missing projects, and assign unassigned existing projects
