@@ -26,41 +26,72 @@ import (
 
 const apiYamlEnvVar = "MCADMINCLI_APIYAML" // Re-add constant definition
 
-// McmpApiService defines the interface for mcmp API management. (Renamed)
+// McmpApiService defines the interface for mcmp API operations
 type McmpApiService interface {
-	SyncMcmpAPIsFromYAML() error                                                                                                                            // Renamed method
-	SetActiveVersion(serviceName, version string) error                                                                                                     // Added method signature
-	GetAllAPIDefinitions(serviceNameFilter, actionNameFilter string) (*mcmpapi.McmpApiDefinitions, error)                                                   // Updated signature with filters
-	UpdateService(serviceName string, updates map[string]interface{}) error                                                                                 // Added method signature for update
-	McmpApiCall(ctx context.Context, req *mcmpapi.McmpApiCallRequest) (statusCode int, respBody []byte, serviceVersion string, calledURL string, err error) // Renamed method for calling API and added return values
-	// Add other methods if needed, e.g., GetMcmpService, GetMcmpAction
+	GetDB() *gorm.DB
+	GetServiceByNameAndVersion(name, version string) (*mcmpapi.McmpApiService, error)
+	CreateService(tx *gorm.DB, service *mcmpapi.McmpApiService) error
+	CreateAction(tx *gorm.DB, action *mcmpapi.McmpApiAction) error
+	SetActiveVersion(serviceName, version string) error
+	GetAllAPIDefinitions(serviceNameFilter, actionNameFilter string) (*mcmpapi.McmpApiDefinitions, error)
+	UpdateService(serviceName string, updates map[string]interface{}) error
+	McmpApiCall(ctx context.Context, req *mcmpapi.McmpApiCallRequest) (int, []byte, string, string, error)
+	SyncMcmpAPIsFromYAML() error
 }
 
-// mcmpApiService implements the McmpApiService interface. (Renamed)
+// mcmpApiService implements the McmpApiService interface.
 type mcmpApiService struct {
-	db   *gorm.DB                     // Keep db instance for now, or just the repo
-	repo repository.McmpApiRepository // Use renamed repository interface
+	db   *gorm.DB
+	repo repository.McmpApiRepository
 }
 
-// NewMcmpApiService creates a new McmpApiService. (Renamed)
-func NewMcmpApiService(db *gorm.DB) McmpApiService { // Accept only db
-	// Initialize repository internally
+// NewMcmpApiService creates a new McmpApiService.
+func NewMcmpApiService(db *gorm.DB) McmpApiService {
 	repo := repository.NewMcmpApiRepository(db)
-	return &mcmpApiService{db: db, repo: repo} // Renamed struct type
+	return &mcmpApiService{db: db, repo: repo}
+}
+
+// GetDB returns the database instance.
+func (s *mcmpApiService) GetDB() *gorm.DB {
+	return s.db
+}
+
+// GetServiceByNameAndVersion finds a specific version of a service.
+func (s *mcmpApiService) GetServiceByNameAndVersion(name, version string) (*mcmpapi.McmpApiService, error) {
+	return s.repo.GetServiceByNameAndVersion(name, version)
+}
+
+// CreateService creates a new service record within a transaction.
+func (s *mcmpApiService) CreateService(tx *gorm.DB, service *mcmpapi.McmpApiService) error {
+	return s.repo.CreateService(tx, service)
+}
+
+// CreateAction creates a new action record within a transaction.
+func (s *mcmpApiService) CreateAction(tx *gorm.DB, action *mcmpapi.McmpApiAction) error {
+	return s.repo.CreateAction(tx, action)
 }
 
 // SyncMcmpAPIsFromYAML loads API definitions from the YAML URL specified by env var
-// and saves them to the database via the repository. (Renamed)
-// Now downloads from URL to local file first, similar to menu sync.
-func (s *mcmpApiService) SyncMcmpAPIsFromYAML() error { // Renamed receiver and method
+// and saves them to the database via the repository.
+func (s *mcmpApiService) SyncMcmpAPIsFromYAML() error {
+	// 테이블이 없으면 생성
+	var count int64
+	if err := s.db.Table("mcmp_api_services").Count(&count).Error; err != nil {
+		// 테이블이 없으면 생성
+		if err := s.db.AutoMigrate(&mcmpapi.McmpApiService{}, &mcmpapi.McmpApiAction{}); err != nil {
+			return fmt.Errorf("failed to create mcmp API tables: %w", err)
+		}
+		log.Printf("Created mcmp API tables")
+	}
+
 	yamlSource := os.Getenv(apiYamlEnvVar)
 	if yamlSource == "" {
 		err := fmt.Errorf("environment variable %s is not set", apiYamlEnvVar)
-		log.Printf("Error syncing mcmp APIs: %v", err) // Updated log message
+		log.Printf("Error syncing mcmp APIs: %v", err)
 		return err
 	}
 
-	localYamlPath := filepath.Join("asset", "mcmpapi", "mcmp_api.yaml") // Define local path relative to project root
+	localYamlPath := filepath.Join("asset", "mcmpapi", "mcmp_api.yaml")
 
 	// Check if yamlSource is a URL
 	if strings.HasPrefix(yamlSource, "http://") || strings.HasPrefix(yamlSource, "https://") {
@@ -108,15 +139,10 @@ func (s *mcmpApiService) SyncMcmpAPIsFromYAML() error { // Renamed receiver and 
 	} else {
 		// Assume yamlSource is a local file path relative to project root
 		log.Printf("Starting mcmp API sync: Using local file path %s", yamlSource)
-		// Use the path directly as it's assumed relative to project root
-		effectivePath := yamlSource
-		// Optional: Check if the file exists at this path?
-		// _, err := os.Stat(effectivePath)
-		// if os.IsNotExist(err) { ... handle error ... }
-		localYamlPath = effectivePath // Use the provided path
+		localYamlPath = yamlSource
 	}
 
-	// Read the local YAML file (using the determined localYamlPath)
+	// Read the local YAML file
 	log.Printf("Reading mcmp API definitions from %s", localYamlPath)
 	yamlData, err := os.ReadFile(localYamlPath)
 	if err != nil {
@@ -125,23 +151,23 @@ func (s *mcmpApiService) SyncMcmpAPIsFromYAML() error { // Renamed receiver and 
 		return err
 	}
 
-	var defs mcmpapi.McmpApiDefinitions // Use renamed struct from mcmpapi_spec.go
+	var defs mcmpapi.McmpApiDefinitions
 	err = yaml.Unmarshal(yamlData, &defs)
 	if err != nil {
-		err = fmt.Errorf("failed to unmarshal mcmp API YAML: %w", err) // Updated error message
-		log.Printf("Error syncing mcmp APIs: %v", err)                 // Updated log message
+		err = fmt.Errorf("failed to unmarshal mcmp API YAML: %w", err)
+		log.Printf("Error syncing mcmp APIs: %v", err)
 		return err
 	}
 
-	// --- Save to Database using new logic ---
-	err = s.saveDefinitionsToDB(&defs) // Call new private helper method
+	// Save to Database
+	err = s.saveDefinitionsToDB(&defs)
 	if err != nil {
 		log.Printf("Error saving mcmp API definitions to database: %v", err)
 		return fmt.Errorf("failed to save mcmp API definitions to DB: %w", err)
 	}
 
 	log.Println("Successfully synced mcmp API definitions to database.")
-	return nil // Success
+	return nil
 }
 
 // saveDefinitionsToDB handles the transaction and logic for saving definitions.
@@ -229,12 +255,7 @@ func (s *mcmpApiService) saveDefinitionsToDB(defs *mcmpapi.McmpApiDefinitions) e
 
 // SetActiveVersion sets the specified version of a service as active.
 func (s *mcmpApiService) SetActiveVersion(serviceName, version string) error {
-	// Optional: Add validation here to check if the service and version actually exist before trying to activate.
-	// _, err := s.repo.GetServiceByVersion(serviceName, version) // Assumes such a method exists or GetService handles versions
-	// if err != nil {
-	// 	return err // Return error if the specific version doesn't exist
-	// }
-	return s.repo.SetActiveServiceVersion(serviceName, version)
+	return s.repo.SetActiveVersion(serviceName, version)
 }
 
 // GetAllAPIDefinitions retrieves API definitions, optionally filtered.
@@ -263,13 +284,13 @@ func (s *mcmpApiService) UpdateService(serviceName string, updates map[string]in
 }
 
 // McmpApiCall executes a call to an external MCMP API based on stored definitions and provided parameters. (Renamed)
-func (s *mcmpApiService) McmpApiCall(ctx context.Context, req *mcmpapi.McmpApiCallRequest) (statusCode int, respBody []byte, serviceVersion string, calledURL string, err error) { // Renamed method and added return values
+func (s *mcmpApiService) McmpApiCall(ctx context.Context, req *mcmpapi.McmpApiCallRequest) (int, []byte, string, string, error) { // Renamed method and added return values
 	// Initialize return values for error cases
-	serviceVersion = ""
-	calledURL = ""
+	serviceVersion := ""
+	calledURL := ""
 
 	// 1. Get Service Info (use active version)
-	serviceInfo, err := s.repo.GetActiveService(req.ServiceName)
+	serviceInfo, err := s.repo.GetService(req.ServiceName)
 	if err != nil {
 		log.Printf("Error getting active service '%s': %v", req.ServiceName, err)
 		// Return default values for version and URL on error
@@ -312,7 +333,7 @@ func (s *mcmpApiService) McmpApiCall(ctx context.Context, req *mcmpapi.McmpApiCa
 	if err != nil {
 		log.Printf("Error parsing final URL '%s': %v", finalURL, err)
 		err = fmt.Errorf("error constructing request URL: %w", err)
-		return http.StatusInternalServerError, nil, serviceVersion, finalURL, err // Return finalURL even on parse error? Or empty? Let's return it.
+		return http.StatusInternalServerError, nil, serviceVersion, calledURL, err // Return finalURL even on parse error? Or empty? Let's return it.
 	}
 	query := parsedURL.Query()
 	if req.RequestParams.QueryParams != nil {
@@ -409,7 +430,7 @@ func (s *mcmpApiService) McmpApiCall(ctx context.Context, req *mcmpapi.McmpApiCa
 
 	// Return status code, raw body, version, URL, and nil error (even for non-2xx responses)
 	// The handler will decide how to interpret the status code.
-	statusCode = resp.StatusCode // Assign to named return variable
+	statusCode := resp.StatusCode // Assign to named return variable
 	// respBody is already assigned
 	// serviceVersion is already assigned
 	// calledURL is already assigned

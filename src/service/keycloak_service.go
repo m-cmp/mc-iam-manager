@@ -7,6 +7,11 @@ import (
 	"os"
 	"strings"
 
+	"bytes"
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/m-cmp/mc-iam-manager/config"
@@ -38,6 +43,16 @@ type KeycloakService interface {
 	ValidateTokenAndGetClaims(ctx context.Context, token string) (*jwt.MapClaims, error) // Changed return type
 	// SetupInitialAdmin creates the initial platform admin user and sets up necessary permissions
 	SetupInitialAdmin(ctx context.Context) error
+	// CheckUserRoles checks and logs all roles assigned to a user
+	CheckUserRoles(ctx context.Context, username string) error
+	// GetUserPermissions gets all permissions for the given roles
+	GetUserPermissions(ctx context.Context, roles []string) ([]string, error)
+	// GetImpersonationToken gets an impersonation token for a user
+	GetImpersonationToken(ctx context.Context) (*gocloak.JWT, error)
+	// GetImpersonationTokenByAdminToken: adminToken을 이용해 특정 사용자의 impersonation 토큰을 발급
+	GetImpersonationTokenByAdminToken(ctx context.Context, userID string, targetClientID string) (string, error)
+	// GetImpersonationTokenByServiceAccount: 서비스 계정을 이용해 특정 클라이언트에 로그인한 토큰을 발급
+	GetImpersonationTokenByServiceAccount(ctx context.Context) (*gocloak.JWT, error)
 }
 
 // keycloakService is now stateless, methods directly use config.KC
@@ -50,19 +65,16 @@ func NewKeycloakService() KeycloakService {
 
 // GetUser retrieves a user from Keycloak by their Keycloak ID.
 func (s *keycloakService) GetUser(ctx context.Context, kcId string) (*gocloak.User, error) {
-	// Directly use config.KC
 	if config.KC == nil || config.KC.Client == nil {
 		return nil, fmt.Errorf("keycloak configuration not initialized")
 	}
-	token, err := config.KC.LoginAdmin(ctx) // Use admin token for broad access
+	token, err := config.KC.GetAdminToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin token: %w", err)
 	}
 	user, err := config.KC.Client.GetUserByID(ctx, token.AccessToken, config.KC.Realm, kcId)
 	if err != nil {
-		// Check for 404 specifically
 		if strings.Contains(err.Error(), "404") {
-			// Consider returning a more specific error, maybe repository.ErrUserNotFound if appropriate
 			return nil, fmt.Errorf("user not found in keycloak (kcId: %s): %w", kcId, repository.ErrUserNotFound)
 		}
 		return nil, fmt.Errorf("failed to get user from keycloak (kcId: %s): %w", kcId, err)
@@ -72,23 +84,22 @@ func (s *keycloakService) GetUser(ctx context.Context, kcId string) (*gocloak.Us
 
 // GetUserByUsername retrieves a user from Keycloak by username.
 func (s *keycloakService) GetUserByUsername(ctx context.Context, username string) (*gocloak.User, error) {
-	// Directly use config.KC
 	if config.KC == nil || config.KC.Client == nil {
 		return nil, fmt.Errorf("keycloak configuration not initialized")
 	}
-	token, err := config.KC.LoginAdmin(ctx)
+	token, err := config.KC.GetAdminToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin token: %v", err)
 	}
 	users, err := config.KC.Client.GetUsers(ctx, token.AccessToken, config.KC.Realm, gocloak.GetUsersParams{
 		Username: gocloak.StringP(username),
-		Exact:    gocloak.BoolP(true), // Ensure exact match
+		Exact:    gocloak.BoolP(true),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user from keycloak by username %s: %w", username, err)
 	}
 	if len(users) == 0 {
-		return nil, repository.ErrUserNotFound // Use repository error
+		return nil, repository.ErrUserNotFound
 	}
 	if len(users) > 1 {
 		log.Printf("Warning: Found multiple users with username %s in Keycloak", username)
@@ -437,13 +448,27 @@ func (s *keycloakService) Login(ctx context.Context, username, password string) 
 	log.Printf("[DEBUG] - ClientID: %s", config.KC.ClientID)
 	log.Printf("[DEBUG] - ClientSecret: %s", config.KC.ClientSecret)
 	log.Printf("[DEBUG] - Username: %s", username)
-	log.Printf("[DEBUG] - password: %s", password)
 
 	token, err := config.KC.Client.Login(ctx, config.KC.ClientID, config.KC.ClientSecret, config.KC.Realm, username, password)
 	if err != nil {
 		// Consider more specific error handling for invalid credentials vs other errors
 		return nil, fmt.Errorf("keycloak login failed: %w", err)
 	}
+
+	// 사용자 정보 가져오기
+	userInfo, err := config.KC.Client.GetUserInfo(ctx, token.AccessToken, config.KC.Realm)
+	if err != nil {
+		log.Printf("[DEBUG] 사용자 정보 조회 실패: %v", err)
+		return token, nil // 토큰은 성공했으므로 반환
+	}
+
+	// 로컬 DB에 사용자 동기화
+	if userInfo.Sub != nil {
+		log.Printf("[DEBUG] 로컬 DB 동기화 시작 (kc_id: %s)", *userInfo.Sub)
+		// 여기서 로컬 DB 동기화 로직을 호출
+		// 중복 키 에러는 무시하고 계속 진행
+	}
+
 	return token, nil
 }
 
@@ -581,6 +606,9 @@ func (s *keycloakService) SetupInitialAdmin(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("admin login failed: %w", err)
 	}
+
+	log.Printf("[DEBUG] adminToken: %s", adminToken.AccessToken)
+
 	log.Printf("[DEBUG] Admin login successful")
 
 	// 2. platformAdmin 사용자 생성
@@ -629,39 +657,110 @@ func (s *keycloakService) SetupInitialAdmin(ctx context.Context) error {
 	}
 	log.Printf("[DEBUG] Password set successfully")
 
-	// 3. platformAdmin 역할을 기본 역할로 설정
-	log.Printf("[DEBUG] Setting platformAdmin as default role")
+	// 3. 기본 역할 설정
+	log.Printf("[DEBUG] Setting default roles")
+
+	// 기본 역할 가져오기
+	defaultRoles, err := config.KC.Client.GetRealmRoles(ctx, adminToken.AccessToken, config.KC.Realm, gocloak.GetRoleParams{})
+	if err != nil {
+		return fmt.Errorf("failed to get default roles: %w", err)
+	}
+
+	// 기본 역할 할당
+	var rolesToAssign []gocloak.Role
+	for _, role := range defaultRoles {
+		if role.Name != nil && (*role.Name == "basic" || *role.Name == "user") {
+			rolesToAssign = append(rolesToAssign, *role)
+		}
+	}
+
+	if len(rolesToAssign) > 0 {
+		err = config.KC.Client.AddRealmRoleToUser(ctx, adminToken.AccessToken, config.KC.Realm, userID, rolesToAssign)
+		if err != nil {
+			return fmt.Errorf("failed to assign default roles: %w", err)
+		}
+		log.Printf("[DEBUG] Default roles assigned")
+	}
+
+	// 4. platformAdmin 역할 할당
+	log.Printf("[DEBUG] Setting platformAdmin role")
 	platformAdminRole, err := config.KC.Client.GetRealmRole(ctx, adminToken.AccessToken, config.KC.Realm, "platformAdmin")
 	if err != nil {
 		return fmt.Errorf("failed to get platformAdmin role: %w", err)
 	}
 
-	// platformAdmin 역할을 기본 역할로 설정
 	err = config.KC.Client.AddRealmRoleToUser(ctx, adminToken.AccessToken, config.KC.Realm, userID, []gocloak.Role{*platformAdminRole})
 	if err != nil {
 		return fmt.Errorf("failed to assign platformAdmin role: %w", err)
 	}
-	log.Printf("[DEBUG] PlatformAdmin role assigned as default role")
+	log.Printf("[DEBUG] PlatformAdmin role assigned")
 
-	// 4. 필요한 권한 부여 (Realm 내부 관리자 권한)
-	requiredPermissions := []string{
-		"view-users",
-		"view-identity-providers",
-		"view-clients",
-		"view-events",
-		"view-realm",
-		"view-authorization",
-		"manage-users",
-		"manage-identity-providers",
-		"manage-clients",
-		"manage-events",
-		"manage-realm",
-		"manage-authorization",
-		"impersonation",
-		"create-client",
-		"manage-account",
-		"manage-account-links",
-		"view-profile",
+	return nil
+}
+
+// CheckUserRoles checks and logs all roles assigned to a user
+func (s *keycloakService) CheckUserRoles(ctx context.Context, username string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	// Admin 로그인
+	log.Printf("[DEBUG] === Keycloak 설정 정보 ===")
+	log.Printf("[DEBUG] Realm: %s", config.KC.Realm)
+	log.Printf("[DEBUG] ClientID: %s", config.KC.ClientID)
+	log.Printf("[DEBUG] Host: %s", config.KC.Host)
+	log.Printf("[DEBUG] ======================")
+
+	adminToken, err := config.KC.LoginAdmin(ctx)
+	if err != nil {
+		return fmt.Errorf("admin login failed: %w", err)
+	}
+	log.Printf("[DEBUG] Admin 로그인 성공")
+
+	// 모든 사용자 목록 가져오기
+	users, err := config.KC.Client.GetUsers(ctx, adminToken.AccessToken, config.KC.Realm, gocloak.GetUsersParams{})
+	if err != nil {
+		log.Printf("[DEBUG] 사용자 목록 조회 실패: %v", err)
+		return fmt.Errorf("failed to get users: %w", err)
+	}
+
+	log.Printf("[DEBUG] === 사용자 목록 (%d명) ===", len(users))
+	for _, user := range users {
+		if user.Username != nil {
+			log.Printf("[DEBUG] 사용자: %s (ID: %s)", *user.Username, *user.ID)
+		}
+	}
+	log.Printf("[DEBUG] =======================")
+
+	// 대소문자 구분 없이 사용자 찾기
+	var targetUser *gocloak.User
+	for _, user := range users {
+		if user.Username != nil && strings.EqualFold(*user.Username, username) {
+			targetUser = user
+			break
+		}
+	}
+
+	if targetUser == nil {
+		log.Printf("[DEBUG] 사용자를 찾을 수 없음: %s", username)
+		return fmt.Errorf("사용자를 찾을 수 없습니다: %s", username)
+	}
+
+	userID := *targetUser.ID
+	log.Printf("[DEBUG] 찾은 사용자 ID: %s", userID)
+
+	// Realm 역할 확인
+	realmRoles, err := config.KC.Client.GetRealmRolesByUserID(ctx, adminToken.AccessToken, config.KC.Realm, userID)
+	if err != nil {
+		log.Printf("[DEBUG] Realm 역할 조회 실패: %v", err)
+	} else {
+		log.Printf("[DEBUG] === Realm 역할 목록 (%d개) ===", len(realmRoles))
+		for _, role := range realmRoles {
+			if role.Name != nil {
+				log.Printf("[DEBUG] - %s", *role.Name)
+			}
+		}
+		log.Printf("[DEBUG] =======================")
 	}
 
 	// 클라이언트 정보 가져오기
@@ -669,30 +768,235 @@ func (s *keycloakService) SetupInitialAdmin(ctx context.Context) error {
 		ClientID: &config.KC.ClientID,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to get client info: %w", err)
+		log.Printf("[DEBUG] 클라이언트 목록 조회 실패: %v", err)
+		return fmt.Errorf("클라이언트 정보 조회 실패: %w", err)
 	}
 	if len(clients) == 0 {
-		return fmt.Errorf("client '%s' not found", config.KC.ClientID)
+		log.Printf("[DEBUG] 클라이언트를 찾을 수 없음: %s", config.KC.ClientID)
+		return fmt.Errorf("클라이언트를 찾을 수 없습니다: %s", config.KC.ClientID)
 	}
 	clientID := *clients[0].ID
+	log.Printf("[DEBUG] 클라이언트 ID: %s", clientID)
 
-	// 각 권한에 대해 부여
-	for _, permission := range requiredPermissions {
-		log.Printf("[DEBUG] Assigning permission: %s", permission)
-
-		// 권한을 클라이언트 역할로 변환하여 부여
-		clientRole := gocloak.Role{
-			Name: &permission,
+	// 클라이언트 역할 확인
+	clientRoles, err := config.KC.Client.GetClientRolesByUserID(ctx, adminToken.AccessToken, config.KC.Realm, clientID, userID)
+	if err != nil {
+		log.Printf("[DEBUG] 클라이언트 역할 조회 실패: %v", err)
+	} else {
+		log.Printf("[DEBUG] === 클라이언트 역할 목록 (%d개) ===", len(clientRoles))
+		for _, role := range clientRoles {
+			if role.Name != nil {
+				log.Printf("[DEBUG] - %s", *role.Name)
+			}
 		}
+		log.Printf("[DEBUG] ==========================")
+	}
 
-		err = config.KC.Client.AddClientRoleToUser(ctx, adminToken.AccessToken, config.KC.Realm, clientID, userID, []gocloak.Role{clientRole})
-		if err != nil {
-			log.Printf("[DEBUG] Failed to assign permission %s: %v", permission, err)
-			continue
+	// 기본 역할 확인
+	defaultRoles, err := config.KC.Client.GetRealmRoles(ctx, adminToken.AccessToken, config.KC.Realm, gocloak.GetRoleParams{
+		Search: gocloak.StringP("default"),
+	})
+	if err != nil {
+		log.Printf("[DEBUG] 기본 역할 조회 실패: %v", err)
+	} else {
+		log.Printf("[DEBUG] === 사용 가능한 기본 역할 목록 (%d개) ===", len(defaultRoles))
+		for _, role := range defaultRoles {
+			if role.Name != nil {
+				log.Printf("[DEBUG] - %s", *role.Name)
+			}
 		}
-
-		log.Printf("[DEBUG] Successfully assigned permission: %s", permission)
+		log.Printf("[DEBUG] ==============================")
 	}
 
 	return nil
+}
+
+// GetUserPermissions gets all permissions for the given roles
+func (s *keycloakService) GetUserPermissions(ctx context.Context, roles []string) ([]string, error) {
+	if config.KC == nil || config.KC.Client == nil {
+		return nil, fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	// Get admin token
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	// Get client ID
+	clients, err := config.KC.Client.GetClients(ctx, token.AccessToken, config.KC.Realm, gocloak.GetClientsParams{
+		ClientID: &config.KC.ClientID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client: %w", err)
+	}
+	if len(clients) == 0 {
+		return nil, fmt.Errorf("client not found")
+	}
+	clientID := *clients[0].ID
+
+	// Get all permissions for the roles
+	var allPermissions []string
+	for _, role := range roles {
+		// Get role details
+		roleDetails, err := config.KC.Client.GetClientRole(ctx, token.AccessToken, config.KC.Realm, clientID, role)
+		if err != nil {
+			log.Printf("Warning: Failed to get role details for %s: %v", role, err)
+			continue
+		}
+
+		// Add the role itself as a permission
+		if roleDetails.Name != nil {
+			allPermissions = append(allPermissions, *roleDetails.Name)
+		}
+
+		// Add role attributes as permissions
+		if roleDetails.Attributes != nil {
+			for key, values := range *roleDetails.Attributes {
+				for _, value := range values {
+					allPermissions = append(allPermissions, fmt.Sprintf("%s:%s", key, value))
+				}
+			}
+		}
+	}
+
+	return allPermissions, nil
+}
+
+// GetImpersonationToken gets an impersonation token for a user
+func (s *keycloakService) GetImpersonationToken(ctx context.Context) (*gocloak.JWT, error) {
+	if config.KC == nil || config.KC.Client == nil {
+		return nil, fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	// Get user's access token from context
+	accessToken, ok := ctx.Value("access_token").(string)
+	if !ok || accessToken == "" {
+		return nil, fmt.Errorf("access token not found in context")
+	}
+
+	// Get user ID from context
+	kcUserId, ok := ctx.Value("kcUserId").(string)
+	if !ok || kcUserId == "" {
+		return nil, fmt.Errorf("user ID not found in context")
+	}
+
+	// adminToken, err := config.KC.GetAdminToken(ctx)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("admin login failed: %w", err)
+	// }
+	// log.Printf("[DEBUG] adminToken: %s", adminToken.AccessToken)
+	//stsClientID := "aws-sts-client"
+	username := "leeman"
+	// Set up token exchange options
+	tokenOptions := gocloak.TokenOptions{
+		//GrantType:          gocloak.StringP("urn:ietf:params:oauth:grant-type:token-exchange"),
+		GrantType: gocloak.StringP("urn:ietf:params:oauth:grant-type:token-exchange"),
+
+		SubjectToken: gocloak.StringP(accessToken),
+		// SubjectToken:       gocloak.StringP(adminToken.AccessToken),
+		RequestedTokenType: gocloak.StringP("urn:ietf:params:oauth:token-type:refresh_token"),
+		ClientID:           &config.KC.OIDCClientID,
+		ClientSecret:       &config.KC.OIDCClientSecret,
+		RequestedSubject:   &kcUserId,
+		Username:           &username,
+	}
+	log.Printf("[DEBUG] adminToken: %s", accessToken)
+	// Get impersonation token using TokenExchange
+	token, err := config.KC.Client.GetToken(ctx, config.KC.Realm, tokenOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get impersonation token: %w", err)
+	}
+
+	return token, nil
+}
+
+// GetImpersonationTokenByAdminToken: adminToken을 이용해 특정 사용자의 impersonation 토큰을 발급
+func (s *keycloakService) GetImpersonationTokenByAdminToken(ctx context.Context, userID string, targetClientID string) (string, error) {
+
+	// 1. admin 계정으로 로그인
+	if config.KC == nil || config.KC.Client == nil {
+		return "", fmt.Errorf("keycloak configuration not initialized")
+	}
+	adminToken, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return "", fmt.Errorf("admin login failed: %w", err)
+	}
+	//user, err := config.KC.Client.GetUserByID(ctx, adminToken.AccessToken, config.KC.Realm, kcId)
+	// var result User
+	// resp, err := g.GetRequestWithBearerAuth(ctx, accessToken).
+	// 	SetResult(&result).
+	// 	Get(g.getAdminRealmURL(realm, "users", userID))
+
+	// if err := checkForError(resp, err, errMessage); err != nil {
+	// 	return nil, err
+	// }
+
+	log.Printf("[DEBUG] adminToken: %s", adminToken.AccessToken)
+	// 2. Keycloak REST API로 impersonation 요청
+	url := fmt.Sprintf("%s/admin/realms/%s/users/%s/impersonation", config.KC.Host, config.KC.Realm, userID)
+	body := map[string]interface{}{}
+	// if targetClientID != "" {
+	// 	body["client_id"] = targetClientID
+	// }
+	body["client_id"] = "4d379bce-e16a-49a5-bb82-7b5d8ee9bd8d" //"mciam-oidc-client-demp3"
+	jsonBody, _ := json.Marshal(body)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return "", fmt.Errorf("failed to create impersonation request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+adminToken.AccessToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("impersonation request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := ioutil.ReadAll(resp.Body)
+		return "", fmt.Errorf("impersonation failed: %s", string(respBody))
+	}
+
+	var result struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode impersonation response: %w", err)
+	}
+
+	log.Printf("[DEBUG] Impersonation resp.StatusCode : ", resp.StatusCode) //if result.Token == "" {
+	// resp.Body를 다시 읽기 위해 전체 바이트로 읽음
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	log.Printf("[DEBUG] Impersonation response body: %s", string(respBody))
+	//}
+
+	log.Printf("[DEBUG] Impersonation token: %s", result.Token)
+
+	return result.Token, nil
+}
+
+// GetImpersonationTokenByServiceAccount: 서비스 계정을 이용해 특정 클라이언트에 로그인한 토큰을 발급
+func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Context) (*gocloak.JWT, error) {
+	if config.KC == nil || config.KC.Client == nil {
+		return nil, fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	// KeycloakConfig에서 OIDC 클라이언트 ID와 시크릿 가져오기
+	clientID := config.KC.OIDCClientID
+	clientSecret := config.KC.OIDCClientSecret
+
+	if clientID == "" || clientSecret == "" {
+		return nil, fmt.Errorf("OIDC client ID or secret not configured in KeycloakConfig")
+	}
+
+	// 서비스 계정으로 로그인
+	token, err := config.KC.Client.LoginClient(ctx, clientID, clientSecret, config.KC.Realm)
+	if err != nil {
+		return nil, fmt.Errorf("failed to login with service account: %w", err)
+	}
+
+	return token, nil
 }

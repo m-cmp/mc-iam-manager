@@ -443,3 +443,14 @@ KEYCLOAK_CLIENT_SECRET=
   - 권한 관리 API
   - MCMP API
   - CSP 자격 증명 API
+
+
+## 7. 조치방법
+- 권한이 부족합니다 : 
+- Method Not Allowd : 라우팅 경로가 없는 경우임. 호출 경로를 확인할 것.
+- Failed to get workspace ID from token: authorization claim not found : 사용하는 Middleware가 잘못됨. workspace ticket을 사용하는 경우 선택한 workspace를 middleware에서 추출하는데 ticket 발급을 안받으면 못찾아서 나는 오류임.
+- "error": "Failed to issue RPT: failed to get requesting party token: 400 Bad Request:   invalid_request: Unknown resource server id: [mciam-oidc-Client]"
+- Not authorized to perform sts:AssumeRoleWithWebIdentity : aws role의 trust relation에 aud 설정이 잘못됨(대소문자 등)
+- No suitable CSP role mapping found for user in this workspace: no suitable CSP role mapping found for the user's roles in this workspace : mcmp_user_workspace_roles 테이블에 data 없음( 유저에게 workspace role 할당이 되어있지 않음)
+- Failed to get temporary credentials: failed to get impersonation token: access token not found in context"
+- Client not allowed to exchange : token exchange 설정

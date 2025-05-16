@@ -40,7 +40,7 @@ func (r *WorkspaceRepository) List() ([]model.Workspace, error) {
 func (r *WorkspaceRepository) GetByID(id uint) (*model.Workspace, error) {
 	var workspace model.Workspace
 	// Preload Projects to fetch associated projects
-	if err := r.db.Preload("Projects").First(&workspace, id).Error; err != nil {
+	if err := r.db.Preload("Projects").First(&workspace, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrWorkspaceNotFound
 		}
@@ -81,7 +81,7 @@ func (r *WorkspaceRepository) Update(id uint, updates map[string]interface{}) er
 func (r *WorkspaceRepository) Delete(id uint) error {
 	// GORM will automatically handle deleting associations in the join table
 	// due to the ON DELETE CASCADE constraint in the DB schema.
-	result := r.db.Delete(&model.Workspace{}, id)
+	result := r.db.Delete(&model.Workspace{}, "id = ?", id)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -167,4 +167,13 @@ func (r *WorkspaceRepository) FindUsersAndRolesByWorkspaceID(workspaceID uint) (
 	}
 
 	return userWorkspaceRoles, nil
+}
+
+// FindAll 모든 워크스페이스를 조회합니다.
+func (r *WorkspaceRepository) FindAll() ([]*model.Workspace, error) {
+	var workspaces []*model.Workspace
+	if err := r.db.Find(&workspaces).Error; err != nil {
+		return nil, err
+	}
+	return workspaces, nil
 }

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"log"
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	// "github.com/m-cmp/mc-iam-manager/service" // Remove service import
@@ -28,52 +29,84 @@ func NewProjectRepository(db *gorm.DB) *ProjectRepository { // Removed parameter
 
 // Create 프로젝트 생성
 func (r *ProjectRepository) Create(project *model.Project) error {
-	return r.db.Create(project).Error
+	query := r.db.Create(project)
+	if err := query.Error; err != nil {
+		return err
+	}
+
+	// SQL 쿼리 로깅
+	sql := query.Statement.SQL.String()
+	args := query.Statement.Vars
+	log.Printf("Create SQL Query: %s", sql)
+	log.Printf("Create SQL Args: %v", args)
+	log.Printf("Create Created ID: %d", project.ID)
+
+	return nil
 }
 
 // List 모든 프로젝트 조회 (워크스페이스 정보 포함)
 func (r *ProjectRepository) List() ([]model.Project, error) {
 	var projects []model.Project
-	// Preload Workspaces to fetch associated workspaces
-	if err := r.db.Preload("Workspaces").Find(&projects).Error; err != nil {
+	query := r.db.Preload("Workspaces").Find(&projects)
+	if err := query.Error; err != nil {
 		return nil, err
 	}
+
+	// SQL 쿼리 로깅
+	sql := query.Statement.SQL.String()
+	args := query.Statement.Vars
+	log.Printf("List SQL Query: %s", sql)
+	log.Printf("List SQL Args: %v", args)
+	log.Printf("List Result Count: %d", len(projects))
+
 	return projects, nil
 }
 
-// GetByID ID로 프로젝트 조회 (워크스페이스 정보 포함)
+// GetByID ID로 프로젝트 조회
 func (r *ProjectRepository) GetByID(id uint) (*model.Project, error) {
 	var project model.Project
-	// Preload Workspaces to fetch associated workspaces
-	if err := r.db.Preload("Workspaces").First(&project, id).Error; err != nil {
+	query := r.db.First(&project, "id = ?", id)
+	if err := query.Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrProjectNotFound
 		}
 		return nil, err
 	}
+
+	// SQL 쿼리 로깅
+	sql := query.Statement.SQL.String()
+	args := query.Statement.Vars
+	log.Printf("GetByID SQL Query: %s", sql)
+	log.Printf("GetByID SQL Args: %v", args)
+
 	return &project, nil
 }
 
 // GetByName 이름으로 프로젝트 조회 (워크스페이스 정보 포함)
 func (r *ProjectRepository) GetByName(name string) (*model.Project, error) {
 	var project model.Project
-	// Preload Workspaces and find by name
-	if err := r.db.Preload("Workspaces").Where("name = ?", name).First(&project).Error; err != nil {
+	query := r.db.Preload("Workspaces").Where("name = ?", name).First(&project)
+	if err := query.Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrProjectNotFound
 		}
 		return nil, err
 	}
+
+	// SQL 쿼리 로깅
+	sql := query.Statement.SQL.String()
+	args := query.Statement.Vars
+	log.Printf("GetByName SQL Query: %s", sql)
+	log.Printf("GetByName SQL Args: %v", args)
+
 	return &project, nil
 }
 
-// Update 프로젝트 정보 부분 업데이트
+// Update 프로젝트 정보 업데이트
 func (r *ProjectRepository) Update(id uint, updates map[string]interface{}) error {
 	if len(updates) == 0 {
 		return errors.New("no fields provided for update")
 	}
-	// Prevent updating the ID via map
-	delete(updates, "id")
 	result := r.db.Model(&model.Project{}).Where("id = ?", id).Updates(updates)
 	if result.Error != nil {
 		return result.Error
@@ -104,14 +137,21 @@ func (r *ProjectRepository) GetAllProjectWorkspaceAssignments() (map[uint]bool, 
 
 // Delete 프로젝트 삭제
 func (r *ProjectRepository) Delete(id uint) error {
-	// GORM will automatically handle deleting associations in the join table
-	result := r.db.Delete(&model.Project{}, id)
-	if result.Error != nil {
-		return result.Error
+	query := r.db.Delete(&model.Project{}, id)
+	if err := query.Error; err != nil {
+		return err
 	}
-	if result.RowsAffected == 0 {
+	if query.RowsAffected == 0 {
 		return ErrProjectNotFound
 	}
+
+	// SQL 쿼리 로깅
+	sql := query.Statement.SQL.String()
+	args := query.Statement.Vars
+	log.Printf("Delete SQL Query: %s", sql)
+	log.Printf("Delete SQL Args: %v", args)
+	log.Printf("Delete Affected Rows: %d", query.RowsAffected)
+
 	return nil
 }
 
@@ -126,6 +166,10 @@ func (r *ProjectRepository) AddWorkspaceAssociation(projectID, workspaceID uint)
 	if err != nil {
 		return err
 	}
+
+	// SQL 쿼리 로깅
+	log.Printf("AddWorkspaceAssociation: Project ID %d, Workspace ID %d", projectID, workspaceID)
+
 	return nil
 }
 
@@ -140,5 +184,9 @@ func (r *ProjectRepository) RemoveWorkspaceAssociation(projectID, workspaceID ui
 	if err != nil {
 		return err
 	}
+
+	// SQL 쿼리 로깅
+	log.Printf("RemoveWorkspaceAssociation: Project ID %d, Workspace ID %d", projectID, workspaceID)
+
 	return nil
 }

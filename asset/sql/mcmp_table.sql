@@ -112,10 +112,10 @@ CREATE TABLE mcmp_mciam_permissions (
 -- mcmp_mciam_role_permissions join table (Added)
 CREATE TABLE mcmp_mciam_role_permissions (
     role_type VARCHAR(50) NOT NULL, -- Should likely always be 'workspace' for this table
-    workspace_role_id INT NOT NULL, -- Renamed column for clarity
+    role_id INT NOT NULL, -- Renamed column for clarity
     permission_id VARCHAR(255) NOT NULL, -- FK to mcmp_mciam_permissions.id
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (role_type, workspace_role_id, permission_id), -- Updated PK columns
+    PRIMARY KEY (role_type, role_id, permission_id), -- Updated PK columns
     FOREIGN KEY (permission_id) REFERENCES mcmp_mciam_permissions(id) ON DELETE CASCADE, -- Updated FK target table
     FOREIGN KEY (workspace_role_id) REFERENCES mcmp_workspace_roles(id) ON DELETE CASCADE -- Added FK to workspace roles
 );
@@ -244,7 +244,48 @@ CREATE TABLE mcmp_mciam_permission_action_mappings (
     UNIQUE (permission_id, action_id)     -- 중복 매핑 방지
 );
 
+-- MCMP API 권한-액션 매핑 테이블
+CREATE TABLE IF NOT EXISTS mcmp_api_permission_action_mappings (
+    id SERIAL PRIMARY KEY,
+    permission_id VARCHAR(255) NOT NULL,
+    action_id INTEGER NOT NULL,
+    action_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(permission_id, action_id)
+);
+
 -- Trigger for mcmp_mciam_permission_action_mappings
 CREATE TRIGGER update_mcmp_mciam_permission_action_mappings_updated_at 
 BEFORE UPDATE ON mcmp_mciam_permission_action_mappings 
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Create menu mapping table
+CREATE TABLE IF NOT EXISTS mcmp_platform_role_menu_mappings (
+    id SERIAL PRIMARY KEY,
+    platform_role VARCHAR(100) NOT NULL,
+    menu_id VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(platform_role, menu_id)
+);
+
+-- Add foreign key constraints
+ALTER TABLE mcmp_platform_role_menu_mappings
+    ADD CONSTRAINT fk_platform_role
+    FOREIGN KEY (platform_role)
+    REFERENCES mcmp_platform_roles(name)
+    ON DELETE CASCADE;
+
+ALTER TABLE mcmp_platform_role_menu_mappings
+    ADD CONSTRAINT fk_menu_id
+    FOREIGN KEY (menu_id)
+    REFERENCES mcmp_menu(id)
+    ON DELETE CASCADE;
+
+-- Create index for faster lookups
+CREATE INDEX idx_platform_role_menu_mappings_platform_role
+    ON mcmp_platform_role_menu_mappings(platform_role);
+
+CREATE INDEX idx_platform_role_menu_mappings_menu_id
+    ON mcmp_platform_role_menu_mappings(menu_id); 

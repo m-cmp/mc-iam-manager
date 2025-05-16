@@ -24,8 +24,6 @@ func NewCspMappingRepository(db *gorm.DB) *CspMappingRepository {
 
 // Create 역할-CSP 역할 매핑 생성
 func (r *CspMappingRepository) Create(mapping *model.WorkspaceRoleCspRoleMapping) error {
-	// Check if mapping for this role and csp type already exists (optional, depends on desired logic - maybe allow multiple ARNs per role/csp?)
-	// Let's assume composite PK handles uniqueness for now.
 	return r.db.Create(mapping).Error
 }
 
@@ -87,14 +85,42 @@ func (r *CspMappingRepository) Update(workspaceRoleID uint, cspType string, cspR
 
 // Delete 역할-CSP 역할 매핑 삭제
 func (r *CspMappingRepository) Delete(workspaceRoleID uint, cspType string, cspRoleArn string) error {
-	result := r.db.Where("workspace_role_id = ? AND csp_type = ? AND csp_role_arn = ?", workspaceRoleID, cspType, cspRoleArn).
-		Delete(&model.WorkspaceRoleCspRoleMapping{})
-
-	if result.Error != nil {
-		return result.Error
+	query := r.db.Where("workspace_role_id = ? AND csp_type = ? AND csp_role_arn = ?", workspaceRoleID, cspType, cspRoleArn).Delete(&model.WorkspaceRoleCspRoleMapping{})
+	if err := query.Error; err != nil {
+		return err
 	}
-	if result.RowsAffected == 0 {
+
+	if query.RowsAffected == 0 {
 		return ErrCspMappingNotFound
 	}
 	return nil
+}
+
+// GetByCspID CSP ID로 매핑 조회
+func (r *CspMappingRepository) GetByCspID(cspID uint) ([]model.WorkspaceRoleCspRoleMapping, error) {
+	var mappings []model.WorkspaceRoleCspRoleMapping
+	err := r.db.Where("csp_id = ?", cspID).Find(&mappings).Error
+	return mappings, err
+}
+
+// GetByPermissionID 권한 ID로 매핑 조회
+func (r *CspMappingRepository) GetByPermissionID(permissionID uint) ([]model.WorkspaceRoleCspRoleMapping, error) {
+	var mappings []model.WorkspaceRoleCspRoleMapping
+	err := r.db.Where("permission_id = ?", permissionID).Find(&mappings).Error
+	return mappings, err
+}
+
+// DeleteByCspID CSP ID로 매핑 삭제
+func (r *CspMappingRepository) DeleteByCspID(cspID uint) error {
+	return r.db.Where("csp_id = ?", cspID).Delete(&model.WorkspaceRoleCspRoleMapping{}).Error
+}
+
+// DeleteByPermissionID 권한 ID로 매핑 삭제
+func (r *CspMappingRepository) DeleteByPermissionID(permissionID uint) error {
+	return r.db.Where("permission_id = ?", permissionID).Delete(&model.WorkspaceRoleCspRoleMapping{}).Error
+}
+
+// DeleteByCspIDAndPermissionID CSP ID와 권한 ID로 매핑 삭제
+func (r *CspMappingRepository) DeleteByCspIDAndPermissionID(cspID, permissionID uint) error {
+	return r.db.Where("csp_id = ? AND permission_id = ?", cspID, permissionID).Delete(&model.WorkspaceRoleCspRoleMapping{}).Error
 }

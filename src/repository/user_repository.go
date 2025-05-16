@@ -25,6 +25,7 @@ type UserRepository struct {
 
 // NewUserRepository creates a new UserRepository.
 func NewUserRepository(db *gorm.DB) *UserRepository {
+	// 단순히 DB 연결만 저장하고, 실제 쿼리는 API 요청 시점에 수행
 	return &UserRepository{
 		db: db,
 	}
@@ -67,6 +68,7 @@ func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 		}
 		return nil, fmt.Errorf("error finding user by username %s: %w", username, err)
 	}
+	log.Printf("[DEBUG] GetDbUser: ", &dbUser)
 	return &dbUser, nil
 }
 

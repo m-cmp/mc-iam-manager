@@ -2,6 +2,8 @@ package repository
 
 import (
 	"errors"
+	"fmt"
+	"log"
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"gorm.io/gorm"
@@ -106,12 +108,11 @@ func (r *MciamPermissionRepository) AssignMciamPermissionToRole(roleType string,
 	if _, err := r.GetByID(permissionID); err != nil {
 		return err // Return ErrPermissionNotFound or other DB error
 	}
-	// TODO: Check if role exists (might require PlatformRoleRepo and WorkspaceRoleRepo)
 
 	mapping := model.MciamRoleMciamPermission{ // Use new model name
-		RoleType:        roleType,
-		WorkspaceRoleID: roleID, // Assuming roleID corresponds to workspace_role_id for 'workspace' type
-		PermissionID:    permissionID,
+		RoleType:     roleType,
+		RoleID:       roleID,
+		PermissionID: permissionID,
 	}
 	// Use FirstOrCreate or similar to avoid duplicate errors, or handle constraint violation error
 	return r.db.Create(&mapping).Error // Simple create for now
@@ -119,7 +120,7 @@ func (r *MciamPermissionRepository) AssignMciamPermissionToRole(roleType string,
 
 // RemoveMciamPermissionFromRole 역할에서 MC-IAM 권한 제거 - Renamed
 func (r *MciamPermissionRepository) RemoveMciamPermissionFromRole(roleType string, roleID uint, permissionID string) error {
-	result := r.db.Where("role_type = ? AND workspace_role_id = ? AND permission_id = ?", roleType, roleID, permissionID).Delete(&model.MciamRoleMciamPermission{}) // Use new model name and column name
+	result := r.db.Where("role_type = ? AND role_id = ? AND permission_id = ?", roleType, roleID, permissionID).Delete(&model.MciamRoleMciamPermission{}) // Use new model name and column name
 	if result.Error != nil {
 		return result.Error
 	}
@@ -130,12 +131,37 @@ func (r *MciamPermissionRepository) RemoveMciamPermissionFromRole(roleType strin
 	return nil
 }
 
-// GetRoleMciamPermissions 특정 역할이 가진 모든 MC-IAM 권한 ID 조회 - Renamed
-func (r *MciamPermissionRepository) GetRoleMciamPermissions(roleType string, roleID uint) ([]string, error) {
+// GetPlatformRolePermissions 플랫폼 역할이 가진 모든 MC-IAM 권한 ID 조회
+func (r *MciamPermissionRepository) GetPlatformRolePermissions(platformRole string) ([]string, error) {
+	log.Printf("GetPlatformRolePermissions platformRole: %s", platformRole)
+
+	// 먼저 platform role의 ID를 조회
+	var platformRoleID uint
+	err := r.db.Model(&model.PlatformRole{}).
+		Where("name = ?", platformRole).
+		Pluck("id", &platformRoleID).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get platform role ID: %w", err)
+	}
+
 	var permissionIDs []string
-	err := r.db.Model(&model.MciamRoleMciamPermission{}). // Use new model name
-								Where("role_type = ? AND workspace_role_id = ?", roleType, roleID). // Use new column name
-								Pluck("permission_id", &permissionIDs).Error
+	err = r.db.Model(&model.MciamRoleMciamPermission{}).
+		Where("role_type = 'platform' AND role_id = ?", platformRoleID).
+		Pluck("permission_id", &permissionIDs).Error
+	if err != nil {
+		return nil, err
+	}
+	return permissionIDs, nil
+}
+
+// GetRoleMciamPermissions 워크스페이스 역할이 가진 모든 MC-IAM 권한 ID 조회
+func (r *MciamPermissionRepository) GetRoleMciamPermissions(roleType string, workspaceRoleID uint) ([]string, error) {
+	log.Printf("GetRoleMciamPermissions roleType: %s RoleID: %d", roleType, workspaceRoleID)
+
+	var permissionIDs []string
+	err := r.db.Model(&model.MciamRoleMciamPermission{}).
+		Where("role_type = ? AND role_id = ?", roleType, workspaceRoleID).
+		Pluck("permission_id", &permissionIDs).Error
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +172,7 @@ func (r *MciamPermissionRepository) GetRoleMciamPermissions(roleType string, rol
 func (r *MciamPermissionRepository) CheckRoleMciamPermission(roleType string, roleID uint, permissionID string) (bool, error) {
 	var count int64
 	err := r.db.Model(&model.MciamRoleMciamPermission{}). // Use new model name
-								Where("role_type = ? AND workspace_role_id = ? AND permission_id = ?", roleType, roleID, permissionID). // Use new column name
+								Where("role_type = ? AND role_id = ? AND permission_id = ?", roleType, roleID, permissionID). // Use new column name
 								Count(&count).Error
 	if err != nil {
 		return false, err

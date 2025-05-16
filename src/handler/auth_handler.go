@@ -5,53 +5,58 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
-	"github.com/Nerzal/gocloak/v13" // Import gocloak
+	// Import gocloak
 	// "github.com/m-cmp/mc-iam-manager/config" // Removed duplicate import
 	// "github.com/m-cmp/mc-iam-manager/model"  // Removed duplicate import
 
 	// Needed for token type in GetUserIDFromToken
-	"gorm.io/gorm" // Ensure gorm is imported
+	// Ensure gorm is imported
 
 	// "github.com/golang-jwt/jwt/v5" // No longer directly needed
+	"github.com/Nerzal/gocloak/v13"
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/config" // Keep this one
 	"github.com/m-cmp/mc-iam-manager/model"  // Keep this one
 	"github.com/m-cmp/mc-iam-manager/model/idp"
 	"github.com/m-cmp/mc-iam-manager/repository" // Needed for error check
 	"github.com/m-cmp/mc-iam-manager/service"
+	"gorm.io/gorm"
 )
 
 type AuthHandler struct {
-	// keycloakService service.KeycloakService // Removed dependency
-	userService *service.UserService // Use concrete type
-	// db *gorm.DB // Not needed directly
+	userService     *service.UserService
+	keycloakService service.KeycloakService
 }
 
 // NewAuthHandler creates a new AuthHandler instance
-func NewAuthHandler(db *gorm.DB) *AuthHandler { // Remove keycloakService parameter
-	// Initialize UserService internally
-	userService := service.NewUserService(db) // Pass only db
+func NewAuthHandler(db *gorm.DB) *AuthHandler {
+	userService := service.NewUserService(db)
+	keycloakService := service.NewKeycloakService()
 	return &AuthHandler{
-		// keycloakService: keycloakService, // Removed
-		userService: userService, // Store initialized userService
+		userService:     userService,
+		keycloakService: keycloakService,
 	}
 }
 
 // Login godoc
-// @Summary 로그인
-// @Description 사용자 ID와 비밀번호로 로그인하여 JWT 토큰을 발급받습니다.
+// @Summary 사용자 로그인
+// @Description 사용자 인증 및 JWT 토큰 발급 (Keycloak 연동)
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param login body idp.UserLogin true "로그인 정보 (Id, Password)"
-// @Success 200 {object} model.JWTResponse "로그인 성공 및 토큰 정보" // Updated response type for Swagger
-// @Failure 400 {object} map[string]string "error: 잘못된 요청 형식"
-// @Failure 401 {object} map[string]string "error: 인증 실패 (자격 증명 오류)"
+// @Param credentials body idp.UserLogin true "사용자 로그인 정보 (ID, Password)"
+// @Success 200 {object} string "JWT 토큰"
+// @Failure 400 {object} map[string]string "error: 잘못된 요청 형식입니다"
+// @Failure 400 {object} map[string]string "error: 사용자 ID와 비밀번호를 입력해주세요"
+// @Failure 401 {object} map[string]string "error: Keycloak 인증 실패"
 // @Failure 403 {object} map[string]string "error: 계정이 비활성화되었거나 승인 대기 중입니다"
-// @Failure 500 {object} map[string]string "error: 서버 내부 오류 (Keycloak 통신, DB 동기화 등)"
-// @Router /auth/login [post] // Changed method to POST
+// @Failure 403 {object} map[string]string "error: Keycloak 사용자 정보를 찾을 수 없습니다 (계정 동기화 문제 가능성)"
+// @Failure 500 {object} map[string]string "error: 토큰에서 사용자 ID 추출 실패"
+// @Failure 500 {object} map[string]string "error: Keycloak 사용자 정보 조회 실패"
+// @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c echo.Context) error {
 	var userLogin idp.UserLogin
 	if err := c.Bind(&userLogin); err != nil {
@@ -136,22 +141,32 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // 	return c.JSON(http.StatusOK, token)
 // }
 
+// Logout godoc
+// @Summary 사용자 로그아웃
+// @Description 사용자 로그아웃 처리
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]string "message: Successfully logged out"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Security BearerAuth
+// @Router /api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(c echo.Context) error {
 	// Keycloak에서는 클라이언트 측에서 토큰을 삭제하면 됩니다
 	return c.JSON(http.StatusOK, map[string]string{"message": "로그아웃되었습니다"})
 }
 
 // RefreshToken godoc
-// @Summary 토큰 갱신
-// @Description 리프레시 토큰을 사용하여 새로운 액세스 토큰 및 리프레시 토큰을 발급받습니다.
+// @Summary Access 토큰 갱신
+// @Description Refresh 토큰을 사용하여 새로운 Access 토큰을 발급합니다.
 // @Tags auth
-// @Accept x-www-form-urlencoded
+// @Accept application/x-www-form-urlencoded
 // @Produce json
-// @Param refresh_token formData string true "리프레시 토큰"
-// @Success 200 {object} model.JWTResponse "토큰 갱신 성공 및 새 토큰 정보" // Added response type for Swagger
-// @Failure 400 {object} map[string]string "error: 리프레시 토큰 누락"
-// @Failure 401 {object} map[string]string "error: 토큰 갱신 실패 (유효하지 않은 토큰 등)"
-// @Router /auth/refresh [post]
+// @Param refresh_token formData string true "갱신할 Refresh 토큰"
+// @Success 200 {object} string "새로운 Access 토큰"
+// @Failure 400 {object} map[string]string "error: 리프레시 토큰이 필요합니다"
+// @Failure 401 {object} map[string]string "error: 토큰 갱신 실패"
+// @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	refreshToken := c.FormValue("refresh_token")
 	if refreshToken == "" {
@@ -171,80 +186,104 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 }
 
 // WorkspaceTicket godoc
-// @Summary 워크스페이스 티켓(RPT) 발급
-// @Description 사용자가 선택한 워크스페이스 및 요청 권한에 대한 RPT(Requesting Party Token)를 Keycloak으로부터 발급받습니다.
+// @Summary 워크스페이스 티켓 설정
+// @Description 워크스페이스 티켓 설정
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param ticketRequest body model.WorkspaceTicketRequest true "워크스페이스 ID 및 요청 권한"
-// @Success 200 {object} model.JWTResponse "발급된 RPT 토큰" // Updated response type for Swagger
-// @Failure 400 {object} map[string]string "error: 잘못된 요청 형식"
-// @Failure 401 {object} map[string]string "error: 인증 실패 또는 유효하지 않은 토큰"
-// @Failure 403 {object} map[string]string "error: 권한 부족 (Keycloak 정책 평가 실패)"
-// @Failure 500 {object} map[string]string "error: 서버 내부 오류 또는 Keycloak 통신 실패"
+// @Success 200 {object} map[string]string "message: Workspace ticket set successfully"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Security BearerAuth
-// @Router /auth/workspace-ticket [post]
+// @Router /api/v1/workspace/set [post]
 func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
-	// 1. Get original Access Token from header
+	// 1. 기존 액세스 토큰 확인
 	authHeader := c.Request().Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Authorization header is missing or invalid"})
 	}
 	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
 
-	// 2. Bind request body
+	// 2. 요청 바인딩
 	var req model.WorkspaceTicketRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body: " + err.Error()})
 	}
-	// Comment out c.Validate(&req) call as requested, validator is not registered in main.go
-	// if err := c.Validate(&req); err != nil {
-	// 	return c.JSON(http.StatusBadRequest, map[string]string{"error": "Validation failed: " + err.Error()})
-	// }
 
-	// 3. Prepare permissions for Keycloak UMA request
-	// The request model expects permissions like "resource#scope".
-	// We need to convert this to gocloak.Permission objects.
-	// This assumes Keycloak resources are named like "resource_vm" and scopes like "scope_create".
-	// The exact format depends heavily on how resources/scopes are defined in Keycloak.
-	var permissions []string // Permissions should be a slice of strings like "resource_id#scope_name"
-	for _, p := range req.Permissions {
-		// Basic format validation (contains '#')
-		if strings.Contains(p, "#") {
-			permissions = append(permissions, p)
-		} else {
-			log.Printf("Warning: Invalid permission format in request: %s", p)
-			// Optionally return bad request here
-		}
-	}
-	if len(permissions) == 0 && len(req.Permissions) > 0 {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "No valid permissions found in request after parsing"})
+	// 3. 워크스페이스 ID 유효성 검사
+	if _, err := strconv.ParseUint(req.WorkspaceID, 10, 32); err != nil {
+		log.Printf("req.WorkspaceID: %v", req.WorkspaceID)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid workspace ID"})
 	}
 
-	// 4. Prepare options for GetRequestingPartyToken
-	// The Audience should likely be the client ID itself or a specific resource server ID
-	// WorkspaceID from the request might be used to construct resource IDs or passed differently if needed by policies
-	options := gocloak.RequestingPartyTokenOptions{
-		GrantType:   gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
-		Permissions: &permissions,
-		Audience:    &config.KC.ClientID, // Requesting token for our client
-		// We might need to pass workspaceId differently, e.g., via ClaimToken if using claims-based policies
-		// ClaimToken: &claimToken,
-		// ClaimTokenFormat: gocloak.StringP("urn:ietf:params:oauth:token-type:jwt"),
-	}
-
-	// 5. Call KeycloakService to get RPT
-	ks := service.NewKeycloakService() // Instantiate KeycloakService locally
-	rpt, err := ks.GetRequestingPartyToken(c.Request().Context(), accessToken, options)
+	// 4. 사용자의 워크스페이스 역할 확인
+	userID, err := h.userService.GetUserIDByKcID(c.Request().Context(), c.Get("kcUserId").(string))
 	if err != nil {
-		// Check for specific Keycloak errors (e.g., 403 Forbidden)
-		if strings.Contains(err.Error(), "403") {
-			return c.JSON(http.StatusForbidden, map[string]string{"error": "Permission denied by Keycloak policy"})
-		}
-		log.Printf("Error getting RPT: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get workspace ticket from Keycloak"})
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
 	}
 
-	// 6. Return the RPT
-	return c.JSON(http.StatusOK, rpt)
+	// 5. 워크스페이스 권한 조회
+	workspaceRoles, err := h.userService.GetUserWorkspaceRoles(c.Request().Context(), userID, req.WorkspaceID)
+	if err != nil {
+		log.Printf("워크스페이스 권한 조회 실패: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get workspace permissions"})
+	}
+
+	// 권한을 scope 형식으로 변환
+	scopes := make([]string, 0)
+	for _, role := range workspaceRoles {
+		scopes = append(scopes, fmt.Sprintf("workspace:%s", role))
+	}
+
+	// 6. KeycloakService를 사용하여 RPT 발급
+	ks := service.NewKeycloakService()
+
+	// authorization.permissions 형식으로 클레임 토큰 생성
+	claimToken := fmt.Sprintf(`{
+		"authorization": {
+			"permissions": [
+				{
+					"rsid": "%s",
+					"rsname": "workspace",
+					"scopes": %v
+				}
+			]
+		}
+	}`, req.WorkspaceID, scopes)
+
+	log.Printf("Requesting RPT with claim token: %s", claimToken)
+
+	rptOptions := gocloak.RequestingPartyTokenOptions{
+		GrantType:   gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
+		Audience:    gocloak.StringP(config.KC.OIDCClientID),
+		Permissions: &scopes,
+		ClaimToken:  gocloak.StringP(claimToken),
+	}
+
+	rpt, err := ks.GetRequestingPartyToken(c.Request().Context(), accessToken, rptOptions)
+	if err != nil {
+		log.Printf("RPT 발급 실패: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to issue RPT: " + err.Error()})
+	}
+
+	// RPT 내용 로깅
+	log.Printf("RPT 응답 전체 내용: %+v", rpt)
+	log.Printf("RPT Access Token: %s", rpt.AccessToken)
+	log.Printf("RPT Token Type: %s", rpt.TokenType)
+	log.Printf("RPT Expires In: %d", rpt.ExpiresIn)
+	log.Printf("RPT Refresh Expires In: %d", rpt.RefreshExpiresIn)
+	log.Printf("RPT Refresh Token: %s", rpt.RefreshToken)
+	log.Printf("RPT Session State: %s", rpt.SessionState)
+	log.Printf("RPT Scope: %s", rpt.Scope)
+
+	// RPT 토큰 검증
+	_, err = ks.ValidateTokenAndGetClaims(c.Request().Context(), rpt.AccessToken)
+	if err != nil {
+		log.Printf("RPT 토큰 검증 실패: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to validate RPT: " + err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"access_token":     accessToken,
+		"workspace_ticket": rpt.AccessToken,
+	})
 }

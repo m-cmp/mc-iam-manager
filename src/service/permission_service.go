@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"log"
+
 	// "errors" // Removed unused import
 
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -90,3 +93,42 @@ func (s *MciamPermissionService) GetRoleMciamPermissions(ctx context.Context, ro
 }
 
 // Note: Need similar service for CSP permissions and role-csp mappings later.
+
+func (s *MciamPermissionService) checkPermission(ctx context.Context, userID uint, workspaceID string, requiredPermission string) error {
+	// 1. 사용자의 워크스페이스 역할 조회
+	var roles []string
+	query := s.db.Table("mcmp_user_workspace_roles").
+		Joins("JOIN mcmp_workspace_roles ON mcmp_user_workspace_roles.workspace_role_id = mcmp_workspace_roles.id").
+		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ?", userID, workspaceID).
+		Pluck("mcmp_workspace_roles.name", &roles)
+
+	// SQL 쿼리 로깅
+	sql := query.Statement.SQL.String()
+	args := query.Statement.Vars
+	log.Printf("Permission Check SQL Query: %s", sql)
+	log.Printf("Permission Check SQL Args: %v", args)
+
+	if err := query.Error; err != nil {
+		return fmt.Errorf("failed to get user workspace roles: %w", err)
+	}
+
+	// 2. 역할별 권한 매핑
+	rolePermissions := map[string][]string{
+		"admin":    {"read", "write", "delete", "manage"},
+		"operator": {"read", "write"},
+		"viewer":   {"read"},
+	}
+
+	// 3. 사용자의 권한 확인
+	for _, role := range roles {
+		if permissions, exists := rolePermissions[role]; exists {
+			for _, permission := range permissions {
+				if permission == requiredPermission {
+					return nil
+				}
+			}
+		}
+	}
+
+	return fmt.Errorf("permission denied: user does not have %s permission in workspace %s", requiredPermission, workspaceID)
+}

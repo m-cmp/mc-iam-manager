@@ -7,8 +7,9 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
+	"github.com/m-cmp/mc-iam-manager/middleware"
 	"github.com/m-cmp/mc-iam-manager/model"
-	"github.com/m-cmp/mc-iam-manager/service" // Import service package
+	"github.com/m-cmp/mc-iam-manager/service"
 	"gorm.io/gorm"
 )
 
@@ -42,41 +43,28 @@ func NewCspCredentialHandler(db *gorm.DB) *CspCredentialHandler {
 // @Failure 404 {object} map[string]string "error: 사용자 또는 워크스페이스를 찾을 수 없음"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류 또는 CSP 통신 실패"
 // @Security BearerAuth
-// @Router /csp/credentials [post]
+// @Router /admin/credentials [post]
 func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
-	// 1. Get original OIDC Access Token from header
-	authHeader := c.Request().Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Authorization header is missing or invalid"})
+	// 1. Get values from context
+	ctx := c.Request().Context()
+	tokenString, ok := ctx.Value(middleware.AccessTokenKey).(string)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Access token not found in context"})
 	}
-	oidcTokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+	kcUserId, ok := ctx.Value(middleware.KcUserIdKey).(string)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User ID not found in context"})
+	}
 
 	// 2. Bind request body
 	var req model.CspCredentialRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body: " + err.Error()})
 	}
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Validation failed: " + err.Error()})
-	}
 
-	// 3. Get Keycloak User ID (Subject) from the token
-	// We need the gocloak.JWT object for GetUserIDFromToken, but we only have the string.
-	// We should ideally validate the token *and* get claims here.
-	// Let's reuse the logic from AuthMiddleware or call KeycloakService's validation/decode method.
-	// For simplicity here, assume we can get kcUserId (this needs proper implementation).
-	// THIS IS A PLACEHOLDER - Replace with actual token validation and user ID extraction
-	claims, err := h.keycloakService.ValidateTokenAndGetClaims(c.Request().Context(), oidcTokenString) // Call the actual service method
-	if err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid or expired OIDC token: " + err.Error()})
-	}
-	kcUserId, ok := (*claims)["sub"].(string) // Extract sub claim correctly
-	if !ok || kcUserId == "" {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Cannot extract user ID from token"})
-	}
-
-	// 4. Call the CspCredentialService with correct arguments
-	credentials, err := h.credService.GetTemporaryCredentials(c.Request().Context(), kcUserId, oidcTokenString, req.WorkspaceID, req.CspType)
+	// 3. Call the CspCredentialService with values from context
+	credentials, err := h.credService.GetTemporaryCredentials(ctx, kcUserId, tokenString, req.WorkspaceID, req.CspType, req.Region)
 	if err != nil {
 		// Handle specific errors from the service
 		if errors.Is(err, service.ErrUserNotFound) || errors.Is(err, service.ErrWorkspaceNotFound) {
@@ -96,8 +84,78 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get temporary credentials: %v", err)})
 	}
 
-	// 5. Return the credentials
+	// 4. Return the credentials
 	return c.JSON(http.StatusOK, credentials)
 }
 
 // Removed placeholder ValidateTokenAndGetClaims function from handler
+
+// ListCredentials godoc
+// @Summary CSP 인증 정보 목록 조회
+// @Description 모든 CSP 인증 정보 목록을 조회합니다
+// @Tags csp-credentials
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.CSPCredential
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Security BearerAuth
+// @Router /api/v1/csp-credentials [get]
+
+// GetCredentialByID godoc
+// @Summary CSP 인증 정보 ID로 조회
+// @Description 특정 CSP 인증 정보를 ID로 조회합니다
+// @Tags csp-credentials
+// @Accept json
+// @Produce json
+// @Param id path string true "Credential ID"
+// @Success 200 {object} model.CSPCredential
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 404 {object} map[string]string "error: Credential not found"
+// @Security BearerAuth
+// @Router /api/v1/csp-credentials/{id} [get]
+
+// CreateCredential godoc
+// @Summary 새 CSP 인증 정보 생성
+// @Description 새로운 CSP 인증 정보를 생성합니다
+// @Tags csp-credentials
+// @Accept json
+// @Produce json
+// @Param credential body model.CSPCredential true "Credential Info"
+// @Success 201 {object} model.CSPCredential
+// @Failure 400 {object} map[string]string "error: Invalid request"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Security BearerAuth
+// @Router /api/v1/csp-credentials [post]
+
+// UpdateCredential godoc
+// @Summary CSP 인증 정보 업데이트
+// @Description CSP 인증 정보를 업데이트합니다
+// @Tags csp-credentials
+// @Accept json
+// @Produce json
+// @Param id path string true "Credential ID"
+// @Param credential body model.CSPCredential true "Credential Info"
+// @Success 200 {object} model.CSPCredential
+// @Failure 400 {object} map[string]string "error: Invalid request"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 404 {object} map[string]string "error: Credential not found"
+// @Security BearerAuth
+// @Router /api/v1/csp-credentials/{id} [put]
+
+// DeleteCredential godoc
+// @Summary CSP 인증 정보 삭제
+// @Description CSP 인증 정보를 삭제합니다
+// @Tags csp-credentials
+// @Accept json
+// @Produce json
+// @Param id path string true "Credential ID"
+// @Success 204 "No Content"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 404 {object} map[string]string "error: Credential not found"
+// @Security BearerAuth
+// @Router /api/v1/csp-credentials/{id} [delete]

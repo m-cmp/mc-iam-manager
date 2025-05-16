@@ -477,3 +477,16 @@ func (s *UserService) GetUserIDByKcID(ctx context.Context, kcUserID string) (uin
 // func (s *UserService) getValidToken(ctx context.Context) (string, error) {
 // 	// ... (Implementation) ...
 // }
+
+// GetUserWorkspaceRoles 사용자의 워크스페이스 권한을 조회
+func (s *UserService) GetUserWorkspaceRoles(ctx context.Context, userID uint, workspaceID string) ([]string, error) {
+	var roles []string
+	err := s.db.Table("mcmp_user_workspace_roles").
+		Joins("JOIN mcmp_workspace_roles ON mcmp_user_workspace_roles.workspace_role_id = mcmp_workspace_roles.id").
+		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ?", userID, workspaceID).
+		Pluck("mcmp_workspace_roles.name", &roles).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user workspace roles: %w", err)
+	}
+	return roles, nil
+}
