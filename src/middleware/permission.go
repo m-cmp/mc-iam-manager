@@ -44,21 +44,43 @@ func PlatformAdminMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 func PlatformRoleMiddleware(level PermissionLevel) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// 플랫폼 관리자는 모든 권한을 가집니다
-			if isPlatformAdmin(c) {
-				return next(c)
-			}
-
 			// 플랫폼 역할 가져오기
 			platformRoles, ok := c.Get("platformRoles").([]string)
 			if !ok {
 				return echo.NewHTTPError(http.StatusUnauthorized, "플랫폼 역할을 가져올 수 없습니다")
 			}
 
-			// 권한 체크
-			hasPermission, err := checkPlatformPermission(c.Request().Context(), platformRoles, level)
-			if err != nil {
-				return echo.NewHTTPError(http.StatusInternalServerError, "권한 체크에 실패했습니다")
+			// platformAdmin 역할 확인
+			for _, role := range platformRoles {
+				if role == "platformAdmin" {
+					return next(c)
+				}
+			}
+
+			// 플랫폼 역할 로그 출력
+			fmt.Printf("Platform Roles: %v, Required Level: %s\n", platformRoles, level)
+
+			hasPermission := false
+
+			// read 레벨은 모든 사용자에게 허용
+			if level == Read {
+				hasPermission = true
+			} else if level == Write {
+				// write 레벨은 admin 또는 platformAdmin 역할이 필요
+				for _, role := range platformRoles {
+					if role == "admin" || role == "platformAdmin" {
+						hasPermission = true
+						break
+					}
+				}
+			} else if level == Manage {
+				// manage 레벨은 platformAdmin 역할만 가능
+				for _, role := range platformRoles {
+					if role == "platformAdmin" {
+						hasPermission = true
+						break
+					}
+				}
 			}
 
 			if !hasPermission {

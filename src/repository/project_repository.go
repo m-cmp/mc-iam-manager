@@ -190,3 +190,15 @@ func (r *ProjectRepository) RemoveWorkspaceAssociation(projectID, workspaceID ui
 
 	return nil
 }
+
+// GetAssignedWorkspaces 프로젝트에 할당된 워크스페이스 목록을 조회합니다.
+func (r *ProjectRepository) GetAssignedWorkspaces(projectID uint) ([]model.Workspace, error) {
+	var workspaces []model.Workspace
+	err := r.db.Model(&model.Project{ID: projectID}).
+		Association("Workspaces").
+		Find(&workspaces)
+	if err != nil {
+		return nil, err
+	}
+	return workspaces, nil
+}

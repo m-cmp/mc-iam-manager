@@ -18,3 +18,23 @@ type Workspace struct {
 func (Workspace) TableName() string {
 	return "mcmp_workspaces"
 }
+
+// WorkspaceWithProjects 워크스페이스와 연관된 프로젝트 정보를 포함하는 구조체
+type WorkspaceWithProjects struct {
+	ID          uint      `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Projects    []Project `json:"projects"`
+}
+
+// WorkspaceWithUsersAndRoles 워크스페이스와 연관된 사용자 및 역할 정보를 포함하는 구조체
+type WorkspaceWithUsersAndRoles struct {
+	ID          uint                        `json:"id"`
+	Name        string                      `json:"name"`
+	Description string                      `json:"description"`
+	CreatedAt   time.Time                   `json:"created_at"`
+	UpdatedAt   time.Time                   `json:"updated_at"`
+	Users       []UserWorkspaceRoleResponse `json:"users"`
+}

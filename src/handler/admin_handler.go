@@ -43,7 +43,7 @@ type SetupInitialAdminRequest struct {
 // @Produce json
 // @Param request body SetupInitialAdminRequest true "Setup Initial Admin Request"
 // @Success 200 {object} Response
-// @Router /api/admin/setup [post]
+// @Router /api/setup/user [post]
 func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	var req SetupInitialAdminRequest
 	if err := c.Bind(&req); err != nil {
@@ -75,7 +75,7 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 // @Success 200 {object} Response
 // @Failure 400 {object} Response
 // @Failure 500 {object} Response
-// @Router /api/admin/check-roles [get]
+// @Router /api/setup/check-roles [get]
 func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 	username := c.QueryParam("username")
 	if username == "" {

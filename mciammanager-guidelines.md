@@ -29,18 +29,19 @@
 │   ├── mc-iam-manager/         # mc-iam-manager by src
 │   ├── nginx/         # nginx
 │   ├── postgres/         # postgres
-├── src/
-│   ├── config/         # 설정 관련 코드
-│   ├── docs/         # API 문서(원본)
-│   ├── handler/        # HTTP 요청 처리 (e.g., user_handler.go)
-│   ├── middleware/     # 미들웨어
-│   ├── model/         # 데이터 모델 (e.g., model/mcmpapi/)
-│   ├── repository/    # 데이터베이스 작업 (e.g., mcmpapi_repository.go)
-│   ├── service/       # 비즈니스 로직 (e.g., user_service.go, mcmpapi_service.go)
-│   └── main.go        # 애플리케이션 진입점
-├── migrations/        # 데이터베이스 마이그레이션
-├── docs/             # API 문서(복사본)
-└── docker/           # Docker 관련 파일
+├── dockercontainer-volume/    # Docker Container의 내용 저장 관련 파일
+├── docs/    # 문서파일 최종본 ( api문서 등 )
+└── src/
+    ├── config/         # 설정 관련 코드 (db설정, keycloak 설정)
+    ├── docs/         # API 문서(원본)
+    ├── handler/        # HTTP 요청 처리 (e.g., user_handler.go)
+    ├── middleware/     # 미들웨어
+    ├── model/         # 데이터 모델 (e.g., model/mcmpapi/)
+    ├── repository/    # 데이터베이스 작업 (e.g., mcmpapi_repository.go)
+    ├── service/       # 비즈니스 로직 (e.g., user_service.go, mcmpapi_service.go)
+    └── main.go        # 애플리케이션 진입점
+
+
 ```
 
 ## 4. 개발 단계
@@ -51,6 +52,7 @@
    - 필요한 환경 변수 정의
    - 데이터베이스 연결 정보 설정
    - Keycloak 설정 정보 추가
+   - MENU YAML 파일 경로 설정 (`MCWEBCONSOLE_MENUYAML` in `.env`)
    - MCMP API YAML 파일 경로 설정 (`MCADMINCLI_APIYAML` in `.env`)
 
 #### 4.1.1 메뉴 YAML 파일 준비 (선택 사항)
@@ -68,22 +70,23 @@
      ```bash
      psql -h <호스트> -p <포트> -U <사용자> -d <데이터베이스명> -f asset/sql/mcmp_init_data.sql
      ```
+   - **Docker 데이터 설정:** DockerMode에서 필요한 초기 데이터는 `dockerfiles/postgres/init.sql` 파일을 로드하는데 실제로는 `asset/sql/mcmp_table.sql`과 `asset/sql/mcmp_init_data.sql`을 합친 것이다.
 
 3. Keycloak 설정
    - Keycloak 컨테이너 실행
-   - Realm 생성
-   - 클라이언트 설정 (`mciamClient` 등)
+   - Realm 생성 : `.env` 파일의 `KEYCLOAK_REALM` 환경 변수를 통해 지정한다.
+   - 클라이언트 설정 : `.env` 파일의 `KEYCLOAK_CLIENT` 환경 변수를 통해 지정한다. (`mciamClient` 등)
    - 사용자 및 역할 설정
    - **서비스 계정 역할 설정 (중요):**
-     - `mciamClient` (또는 `.env`의 `MCIAMMANAGER_KEYCLOAK_CLIENTID` 클라이언트)의 서비스 계정이 활성화되어 있는지 확인합니다.
-     - 해당 서비스 계정에 필요한 역할(Role)을 부여해야 합니다.
+     - `mciamClient` (또는 `.env`의 `KEYCLOAK_CLIENT` 클라이언트)의 서비스 계정이 활성화되어 있는지 확인합니다.
+     - 해당 서비스 계정에 필요한 역할(Role)을 부여해야 합니다. : `.env` 파일의 `PREDEFINED_ROLE`에 구분자가 comma로 정의된된 환경 변수를 통해 지정한다.
      - 사용자 정보 조회 (`GET /users` 등)에는 **`realm-management` 클라이언트의 `view-users` 역할**이 필요합니다.
      - 사용자 생성/수정/삭제 (`POST /users`, `PUT /users/{id}`, `DELETE /users/{id}` 등)에는 **`realm-management` 클라이언트의 `manage-users` 역할**이 필요합니다. (다른 관리 API 사용 시 추가 역할 필요)
 
 ### 4.2 핵심 기능 구현
 
 #### 4.2.1 MCMP API 동기화 (`mcmp_api_services`, `mcmp_api_actions` 테이블)
-- **동기화 트리거:** `POST /api/v1/mcmp-apis/sync` API를 호출하여 동기화를 시작합니다.
+- **동기화 트리거:** `POST /api/mcmp-apis/sync` API를 호출하여 동기화를 시작합니다.
 - **YAML 소스:** `.env` 파일의 `MCADMINCLI_APIYAML` 환경 변수에 지정된 URL에서 `mcmp_api.yaml` (또는 지정된 파일)을 다운로드합니다.
 - **동기화 로직:**
     - YAML 파일을 파싱하여 서비스 및 액션 정보를 읽습니다.
@@ -95,43 +98,43 @@
 #### 4.2.2 사용자 관리 (`mcmp_users` 테이블 및 Keycloak)
 - **사용자 등록:** Keycloak 자체 등록 기능 사용 (초기 상태: 비활성).
 - **사용자 승인:**
-    - 관리자(admin/platformadmin)가 Keycloak 콘솔 또는 `POST /api/v1/users/{id}/approve` API를 통해 사용자를 활성화(`enabled=true`). (`{id}`는 Keycloak User ID)
+    - 관리자(admin/platformadmin)가 Keycloak 콘솔 또는 `POST /api/users/{id}/approve` API를 통해 사용자를 활성화(`enabled=true`). (`{id}`는 Keycloak User ID)
 - **로그인 및 동기화:**
-    - 사용자가 `POST /api/v1/auth/login`으로 로그인 시도.
+    - 사용자가 `POST /api/auth/login`으로 로그인 시도.
     - Keycloak 인증 성공 후, 사용자의 `enabled` 상태 확인. 비활성 시 403 Forbidden 반환.
     - 활성 상태이면, 로컬 `mcmp_users` DB에 해당 사용자 정보가 있는지 확인하고 없으면 Keycloak 정보를 바탕으로 생성 (DB 동기화 - `UserService.SyncUser` 또는 `GetUserDbIDByKcID` 호출 시 트리거될 수 있음).
     - 동기화 후 로그인 토큰 발급.
-- **관리자용 사용자 생성:** `POST /api/v1/users` API (admin/platformadmin 권한 필요)는 Keycloak에 즉시 활성 상태로 사용자를 생성하고 로컬 DB에도 동기화.
-- **기타 관리:** 사용자 조회(`GET /api/v1/users`, `GET /api/v1/users/{id}`, `GET /api/v1/users/username/{username}`), 수정(`PUT /api/v1/users/{id}`), 삭제(`DELETE /api/v1/users/{id}`) API 제공 (적절한 권한 필요).
+- **관리자용 사용자 생성:** `POST /api/users` API (admin/platformadmin 권한 필요)는 Keycloak에 즉시 활성 상태로 사용자를 생성하고 로컬 DB에도 동기화.
+- **기타 관리:** 사용자 조회(`GET /api/users`, `GET /api/users/{id}`, `GET /api/users/username/{username}`), 수정(`PUT /api/users/{id}`), 삭제(`DELETE /api/users/{id}`) API 제공 (적절한 권한 필요).
 - **내 정보 조회:**
-    - 내 워크스페이스/역할 목록 조회: `GET /api/v1/user/workspaces`
-    - 내 메뉴 트리 조회: `GET /api/v1/user/menus`
+    - 내 워크스페이스/역할 목록 조회: `GET /api/user/workspaces`
+    - 내 메뉴 트리 조회: `GET /api/user/menus`
 - 로컬 DB(`mcmp_users`)에는 DB 자체 ID(`id`), Keycloak User ID (`kc_id`), 사용자 이름(`username`), 추가 정보(예: `description`)가 저장됩니다. (Email, FirstName, LastName 등은 Keycloak에서 관리)
 - **최고 관리자 동기화:** 애플리케이션 시작 시 `.env`의 `MCIAMMANAGER_PLATFORMADMIN_ID` 사용자를 확인하고, 로컬 DB에 동기화하며 'platformadmin' 역할을 부여합니다 (`UserService.SyncPlatformAdmin` 로직).
 
 #### 4.2.2 워크스페이스 관리 (`mcmp_workspaces` 테이블)
-- 워크스페이스 CRUD API 구현 (`/api/v1/workspaces`, `/api/v1/workspaces/{id}`)
-- 워크스페이스 이름으로 조회 API 구현 (`/api/v1/workspaces/name/{name}`)
-- 워크스페이스-프로젝트 연결/해제 API 구현 (`POST`/`DELETE /api/v1/workspaces/{id}/projects/{projectId}`)
-- 워크스페이스별 프로젝트 목록 조회 API 구현 (`GET /api/v1/workspaces/{id}/projects`)
-- 워크스페이스별 사용자 및 역할 목록 조회 API 구현 (`GET /api/v1/workspaces/{id}/users`)
+- 워크스페이스 CRUD API 구현 (`/api/workspaces`, `/api/workspaces/{id}`)
+- 워크스페이스 이름으로 조회 API 구현 (`/api/workspaces/name/{name}`)
+- 워크스페이스-프로젝트 연결/해제 API 구현 (`POST`/`DELETE /api/workspaces/{id}/projects/{projectId}`)
+- 워크스페이스별 프로젝트 목록 조회 API 구현 (`GET /api/workspaces/{id}/projects`)
+- 워크스페이스별 사용자 및 역할 목록 조회 API 구현 (`GET /api/workspaces/{id}/users`)
 
 #### 4.2.3 프로젝트 관리 (`mcmp_projects` 테이블)
-- 프로젝트 CRUD API 구현 (`/api/v1/projects`, `/api/v1/projects/{id}`)
-  - **참고:** 프로젝트 생성(`POST /api/v1/projects`) 시, 해당 프로젝트는 `.env` 파일의 `DEFAULT_WORKSPACE_NAME` 환경 변수에 지정된 이름의 워크스페이스(기본값: "default")에 자동으로 할당됩니다.
-- 프로젝트 이름으로 조회 API 구현 (`/api/v1/projects/name/{name}`)
-- 프로젝트-워크스페이스 연결/해제 API 구현 (`POST`/`DELETE /api/v1/projects/{id}/workspaces/{workspaceId}`)
+- 프로젝트 CRUD API 구현 (`/api/projects`, `/api/projects/{id}`)
+  - **참고:** 프로젝트 생성(`POST /api/projects`) 시, 해당 프로젝트는 `.env` 파일의 `DEFAULT_WORKSPACE_NAME` 환경 변수에 지정된 이름의 워크스페이스(기본값: "default")에 자동으로 할당됩니다.
+- 프로젝트 이름으로 조회 API 구현 (`/api/projects/name/{name}`)
+- 프로젝트-워크스페이스 연결/해제 API 구현 (`POST`/`DELETE /api/projects/{id}/workspaces/{workspaceId}`)
 - 워크스페이스와 프로젝트는 M:N 관계 (`mcmp_workspace_projects` 매핑 테이블 사용)
-- **프로젝트 동기화 API:** `POST /api/v1/projects/sync`
+- **프로젝트 동기화 API:** `POST /api/projects/sync`
   - `mc-infra-manager`의 네임스페이스 목록을 조회합니다.
   - 로컬 DB(`mcmp_projects`)에 존재하지 않는 네임스페이스를 새로운 프로젝트로 생성합니다.
   - 동기화 과정에서 **새로 생성되었거나, 기존에 존재했지만 어떤 워크스페이스에도 할당되지 않은 프로젝트**를 `.env` 파일의 `DEFAULT_WORKSPACE_NAME` 환경 변수에 지정된 이름의 워크스페이스(기본값: "default")에 자동으로 할당합니다.
 
 #### 4.2.4 역할 관리 (`mcmp_platform_roles`, `mcmp_workspace_roles`, `mcmp_user_workspace_roles` 테이블)
-- 플랫폼 역할 CRUD API 구현 (`/api/v1/platform-roles`)
-- 워크스페이스 역할 CRUD API 구현 (`/api/v1/workspace-roles`) - 워크스페이스 역할 자체는 특정 워크스페이스에 종속되지 않음.
+- 플랫폼 역할 CRUD API 구현 (`/api/platform-roles`)
+- 워크스페이스 역할 CRUD API 구현 (`/api/workspace-roles`) - 워크스페이스 역할 자체는 특정 워크스페이스에 종속되지 않음.
 - 사용자에게 플랫폼 역할 할당/제거 API 구현 (현재 미구현, 필요시 추가)
-- 사용자에게 워크스페이스 역할 할당/제거 API 구현 (`POST`/`DELETE /api/v1/workspaces/{workspaceId}/users/{userId}/roles/{roleId}`) - `{userId}`는 DB ID(`id`) 사용.
+- 사용자에게 워크스페이스 역할 할당/제거 API 구현 (`POST`/`DELETE /api/workspaces/{workspaceId}/users/{userId}/roles/{roleId}`) - `{userId}`는 DB ID(`id`) 사용.
 - 역할 기반 접근 제어 (미들웨어 등에서 활용)
 
 #### 4.2.5 권한 관리 (MC-IAM 내부 권한) (`mcmp_mciam_permissions`, `mciam_role_mciam_permissions` 테이블)
@@ -167,17 +170,17 @@
 
 #### 4.2.6 메뉴 관리 (`mcmp_menu` 테이블)
 - 메뉴 데이터는 PostgreSQL 데이터베이스의 `mcmp_menu` 테이블에 저장 및 관리됩니다.
-- **내 메뉴 트리 조회:** `GET /api/v1/user/menus` API는 현재 로그인한 사용자의 Platform Role에 따라 접근 가능한 메뉴 목록을 트리 구조(`[]model.MenuTreeNode`)로 반환합니다. 하위 메뉴 접근 권한이 있으면 상위 메뉴도 포함됩니다.
-- **전체 메뉴 트리 조회 (관리자용):** `GET /api/v1/menus/all` API로 모든 메뉴를 트리 구조로 조회합니다.
-- **개별 메뉴 조회:** `GET /api/v1/menus/{id}` API로 특정 메뉴 정보를 조회합니다.
-- **메뉴 생성/수정/삭제:** `POST /api/v1/menus`, `PUT /api/v1/menus/{id}` (부분 업데이트 지원), `DELETE /api/v1/menus/{id}` API를 통해 메뉴를 직접 관리할 수 있습니다.
-- **YAML 파일/URL 등록/동기화:** `POST /api/v1/menus/register-from-yaml` API를 호출합니다.
+- **내 메뉴 트리 조회:** `GET /api/user/menus` API는 현재 로그인한 사용자의 Platform Role에 따라 접근 가능한 메뉴 목록을 트리 구조(`[]model.MenuTreeNode`)로 반환합니다. 하위 메뉴 접근 권한이 있으면 상위 메뉴도 포함됩니다.
+- **전체 메뉴 트리 조회 (관리자용):** `GET /api/menus/all` API로 모든 메뉴를 트리 구조로 조회합니다.
+- **개별 메뉴 조회:** `GET /api/menus/{id}` API로 특정 메뉴 정보를 조회합니다.
+- **메뉴 생성/수정/삭제:** `POST /api/menus`, `PUT /api/menus/{id}` (부분 업데이트 지원), `DELETE /api/menus/{id}` API를 통해 메뉴를 직접 관리할 수 있습니다.
+- **YAML 파일/URL 등록/동기화:** `POST /api/menus/register-from-yaml` API를 호출합니다.
     - `filePath` 쿼리 파라미터가 있으면 해당 로컬 경로의 YAML 파일을 읽어 DB에 Upsert합니다.
     - `filePath` 파라미터가 없으면, `.env` 파일의 `MCWEBCONSOLE_MENUYAML` 환경 변수를 확인합니다.
         - 값이 URL이면 해당 URL에서 YAML을 다운로드하여 `asset/menu/menu.yaml`에 저장한 후, 이 파일을 읽어 DB에 Upsert합니다.
         - 값이 로컬 경로이면 해당 경로의 파일을 읽어 DB에 Upsert합니다.
         - 값이 없거나 URL이 아니면 기본 로컬 경로(`asset/menu/menu.yaml`)를 읽어 DB에 Upsert합니다.
-- **YAML 본문 등록/동기화:** `POST /api/v1/menus/register-from-body` API를 호출하여 요청 본문에 포함된 YAML 텍스트 내용을 읽어 DB에 Upsert할 수 있습니다. (Content-Type: text/plain, text/yaml, application/yaml 등)
+- **YAML 본문 등록/동기화:** `POST /api/menus/register-from-body` API를 호출하여 요청 본문에 포함된 YAML 텍스트 내용을 읽어 DB에 Upsert할 수 있습니다. (Content-Type: text/plain, text/yaml, application/yaml 등)
 - 테이블 스키마는 `asset/sql/mcmp_table.sql` 파일로 관리됩니다. (FK 제약 조건 지연 설정 포함)
 
 ### 4.3 API 문서화 (Swagger)

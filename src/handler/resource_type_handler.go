@@ -23,7 +23,7 @@ func NewResourceTypeHandler(db *gorm.DB) *ResourceTypeHandler {
 }
 
 // CreateResourceType godoc
-// @Summary 새 리소스 타입 생성
+// @Summary Cloud에서 관리되는 Resource(vm, nlb, k8s 등의 그룹) 새 리소스 타입 생성
 // @Description 새로운 리소스 타입을 생성합니다
 // @Tags resource-types
 // @Accept json
@@ -35,7 +35,7 @@ func NewResourceTypeHandler(db *gorm.DB) *ResourceTypeHandler {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
 // @Router /api/v1/resource-types [post]
-func (h *ResourceTypeHandler) CreateResourceType(c echo.Context) error {
+func (h *ResourceTypeHandler) CreateCloudResourceType(c echo.Context) error {
 	var rt model.ResourceType
 	if err := c.Bind(&rt); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다: " + err.Error()})
@@ -66,7 +66,7 @@ func (h *ResourceTypeHandler) CreateResourceType(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
 // @Router /api/v1/resource-types [get]
-func (h *ResourceTypeHandler) ListResourceTypes(c echo.Context) error {
+func (h *ResourceTypeHandler) ListCloudResourceTypes(c echo.Context) error {
 	frameworkID := c.QueryParam("frameworkId")
 	resourceTypes, err := h.service.List(frameworkID)
 	if err != nil {
@@ -88,7 +88,7 @@ func (h *ResourceTypeHandler) ListResourceTypes(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Resource Type not found"
 // @Security BearerAuth
 // @Router /api/v1/resource-types/{id} [get]
-func (h *ResourceTypeHandler) GetResourceTypeByID(c echo.Context) error {
+func (h *ResourceTypeHandler) GetCloudResourceTypeByID(c echo.Context) error {
 	frameworkID := c.Param("frameworkId")
 	id := c.Param("id")
 	if frameworkID == "" || id == "" {

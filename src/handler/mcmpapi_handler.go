@@ -37,7 +37,7 @@ func NewMcmpApiHandler(db *gorm.DB) *McmpApiHandler { // Accept db, remove servi
 // @Produce json
 // @Success 200 {object} map[string]string "message: Successfully triggered MCMP API sync"
 // @Failure 500 {object} map[string]string "message: Failed to trigger MCMP API sync"
-// @Router /sync-apis/sync [post]
+// @Router /setup/sync-apis [post]
 // @Security BearerAuth
 func (h *McmpApiHandler) SyncMcmpAPIs(c echo.Context) error {
 	err := h.service.SyncMcmpAPIsFromYAML()

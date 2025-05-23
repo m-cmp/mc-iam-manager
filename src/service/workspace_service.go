@@ -1,6 +1,9 @@
 package service
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gorm.io/gorm" // Import gorm
@@ -27,7 +30,15 @@ func NewWorkspaceService(db *gorm.DB) *WorkspaceService { // Accept only db
 
 // Create 워크스페이스 생성
 func (s *WorkspaceService) Create(workspace *model.Workspace) error {
-	// TODO: Add validation logic if needed
+	// 이름 중복 체크
+	existingWorkspace, err := s.workspaceRepo.GetByName(workspace.Name)
+	if err == nil && existingWorkspace != nil {
+		return fmt.Errorf("workspace with name '%s' already exists", workspace.Name)
+	}
+	if err != nil && err.Error() != "workspace not found" {
+		return err
+	}
+
 	return s.workspaceRepo.Create(workspace)
 }
 
@@ -84,21 +95,55 @@ func (s *WorkspaceService) AddProjectToWorkspace(workspaceID, projectID uint) er
 	return s.workspaceRepo.AddProjectAssociation(workspaceID, projectID)
 }
 
-// RemoveProjectFromWorkspace 워크스페이스에서 프로젝트 연결 해제
+// RemoveProjectFromWorkspace 워크스페이스에서 프로젝트 제거
 func (s *WorkspaceService) RemoveProjectFromWorkspace(workspaceID, projectID uint) error {
-	// Check if both workspace and project exist
-	_, errWs := s.workspaceRepo.GetByID(workspaceID)
-	if errWs != nil {
-		return errWs // Workspace not found or DB error
+	// 프로젝트가 다른 워크스페이스에 할당되어 있는지 확인
+	assignedWorkspaces, err := s.projectRepo.GetAssignedWorkspaces(projectID)
+	if err != nil {
+		return fmt.Errorf("워크스페이스 할당 정보를 가져오는데 실패했습니다: %v", err)
 	}
-	// TODO: Check if project exists using projectRepo
-	// _, errProj := s.projectRepo.GetByID(projectID)
-	// if errProj != nil {
-	//     return errProj // Project not found or DB error
-	// }
 
-	// Remove the association
-	return s.workspaceRepo.RemoveProjectAssociation(workspaceID, projectID)
+	// 현재 워크스페이스에서만 할당되어 있는 경우에만 기본 워크스페이스에 할당
+	if len(assignedWorkspaces) == 1 && assignedWorkspaces[0].ID == workspaceID {
+		// 기본 워크스페이스 조회
+		defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
+		if defaultWsName == "" {
+			defaultWsName = "default"
+		}
+		defaultWs, err := s.workspaceRepo.GetByName(defaultWsName)
+		if err != nil {
+			if err.Error() == "workspace not found" {
+				// 기본 워크스페이스가 없으면 생성
+				newWorkspace := &model.Workspace{
+					Name:        defaultWsName,
+					Description: "Default workspace for automatically synced projects",
+				}
+				if err := s.workspaceRepo.Create(newWorkspace); err != nil {
+					return fmt.Errorf("기본 워크스페이스 생성에 실패했습니다: %v", err)
+				}
+				defaultWs = newWorkspace
+			} else {
+				return fmt.Errorf("기본 워크스페이스를 찾는데 실패했습니다: %v", err)
+			}
+		}
+
+		// 기존 워크스페이스에서 제거
+		if err := s.workspaceRepo.RemoveProjectAssociation(workspaceID, projectID); err != nil {
+			return fmt.Errorf("워크스페이스 연결 제거에 실패했습니다: %v", err)
+		}
+
+		// 기본 워크스페이스에 할당
+		if err := s.workspaceRepo.AddProjectAssociation(defaultWs.ID, projectID); err != nil {
+			return fmt.Errorf("기본 워크스페이스 할당에 실패했습니다: %v", err)
+		}
+	} else {
+		// 다른 워크스페이스에도 할당되어 있는 경우 단순히 현재 워크스페이스에서만 제거
+		if err := s.workspaceRepo.RemoveProjectAssociation(workspaceID, projectID); err != nil {
+			return fmt.Errorf("워크스페이스 연결 제거에 실패했습니다: %v", err)
+		}
+	}
+
+	return nil
 }
 
 // GetProjectsByWorkspaceID 워크스페이스에 연결된 프로젝트 목록 조회
@@ -129,24 +174,45 @@ type UserWithRoles struct {
 }
 
 // GetUsersAndRolesByWorkspaceID 워크스페이스에 속한 사용자와 역할 조회
-func (s *WorkspaceService) GetUsersAndRolesByWorkspaceID(workspaceID uint) ([]model.UserWorkspaceRole, error) {
-	// Get all user-workspace-role associations for the workspace
+func (s *WorkspaceService) GetUsersAndRolesByWorkspaceID(workspaceID uint) ([]model.UserWorkspaceRoleResponse, error) {
 	var uwrs []model.UserWorkspaceRole
 	if err := s.db.Where("workspace_id = ?", workspaceID).Find(&uwrs).Error; err != nil {
 		return nil, err
 	}
 
-	// Preload User and WorkspaceRole for each association
-	for i := range uwrs {
-		if err := s.db.Model(&uwrs[i]).Association("User").Find(&uwrs[i].User); err != nil {
+	var responses []model.UserWorkspaceRoleResponse
+	for _, uwr := range uwrs {
+		// Load User details
+		var user model.User
+		if err := s.db.Model(&uwr).Association("User").Find(&user); err != nil {
 			return nil, err
 		}
-		if err := s.db.Model(&uwrs[i]).Association("WorkspaceRole").Find(&uwrs[i].WorkspaceRole); err != nil {
+
+		// Load WorkspaceRole details
+		var role model.WorkspaceRole
+		if err := s.db.Model(&uwr).Association("WorkspaceRole").Find(&role); err != nil {
 			return nil, err
 		}
+
+		// Load Workspace details
+		workspace, err := s.workspaceRepo.GetByID(workspaceID)
+		if err != nil {
+			return nil, err
+		}
+
+		response := model.UserWorkspaceRoleResponse{
+			UserID:            uwr.UserID,
+			Username:          user.Username,
+			WorkspaceID:       uwr.WorkspaceID,
+			WorkspaceName:     workspace.Name,
+			WorkspaceRoleID:   uwr.WorkspaceRoleID,
+			WorkspaceRoleName: role.Name,
+			CreatedAt:         uwr.CreatedAt,
+		}
+		responses = append(responses, response)
 	}
 
-	return uwrs, nil
+	return responses, nil
 }
 
 // GetAllWorkspaces 모든 워크스페이스를 조회합니다.
@@ -172,4 +238,31 @@ func (s *WorkspaceService) UpdateWorkspace(workspace *model.Workspace) error {
 // DeleteWorkspace 워크스페이스를 삭제합니다.
 func (s *WorkspaceService) DeleteWorkspace(id uint) error {
 	return s.workspaceRepo.Delete(id)
+}
+
+// ListAllWorkspaces 모든 워크스페이스와 연관된 프로젝트 목록을 조회합니다.
+func (s *WorkspaceService) ListAllWorkspaces() ([]model.WorkspaceWithProjects, error) {
+	workspaces, err := s.workspaceRepo.List()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []model.WorkspaceWithProjects
+	for _, workspace := range workspaces {
+		projects, err := s.workspaceRepo.FindProjectsByWorkspaceID(workspace.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, model.WorkspaceWithProjects{
+			ID:          workspace.ID,
+			Name:        workspace.Name,
+			Description: workspace.Description,
+			CreatedAt:   workspace.CreatedAt,
+			UpdatedAt:   workspace.UpdatedAt,
+			Projects:    projects,
+		})
+	}
+
+	return result, nil
 }

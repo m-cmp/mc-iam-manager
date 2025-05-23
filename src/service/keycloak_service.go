@@ -40,7 +40,7 @@ type KeycloakService interface {
 	// Method for UMA RPT Token
 	GetRequestingPartyToken(ctx context.Context, accessToken string, options gocloak.RequestingPartyTokenOptions) (*gocloak.JWT, error)
 	// Method to validate token and get claims
-	ValidateTokenAndGetClaims(ctx context.Context, token string) (*jwt.MapClaims, error) // Changed return type
+	ValidateTokenAndGetClaims(ctx context.Context, token string) (*jwt.MapClaims, error)
 	// SetupInitialAdmin creates the initial platform admin user and sets up necessary permissions
 	SetupInitialAdmin(ctx context.Context) error
 	// CheckUserRoles checks and logs all roles assigned to a user
@@ -53,6 +53,10 @@ type KeycloakService interface {
 	GetImpersonationTokenByAdminToken(ctx context.Context, userID string, targetClientID string) (string, error)
 	// GetImpersonationTokenByServiceAccount: 서비스 계정을 이용해 특정 클라이언트에 로그인한 토큰을 발급
 	GetImpersonationTokenByServiceAccount(ctx context.Context) (*gocloak.JWT, error)
+	// AssignRealmRoleToUser assigns a realm role to a user
+	AssignRealmRoleToUser(ctx context.Context, kcUserId, roleName string) error
+	// IssueWorkspaceTicket 워크스페이스 티켓을 발행합니다.
+	IssueWorkspaceTicket(ctx context.Context, kcUserId string, workspaceID uint) (string, map[string]interface{}, error)
 }
 
 // keycloakService is now stateless, methods directly use config.KC
@@ -999,4 +1003,55 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 	}
 
 	return token, nil
+}
+
+// AssignRealmRoleToUser assigns a realm role to a user
+func (s *keycloakService) AssignRealmRoleToUser(ctx context.Context, kcUserId, roleName string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	// Get the role by name
+	roles, err := config.KC.Client.GetRealmRoles(ctx, token.AccessToken, config.KC.Realm, gocloak.GetRoleParams{
+		Search: &roleName,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get realm role %s: %w", roleName, err)
+	}
+	if len(roles) == 0 {
+		return fmt.Errorf("realm role %s not found", roleName)
+	}
+	if len(roles) > 1 {
+		log.Printf("Warning: Found multiple roles matching '%s'. Using the first one.", roleName)
+	}
+
+	// Assign the role to the user
+	err = config.KC.Client.AddRealmRoleToUser(ctx, token.AccessToken, config.KC.Realm, kcUserId, []gocloak.Role{*roles[0]})
+	if err != nil {
+		return fmt.Errorf("failed to assign realm role %s to user %s: %w", roleName, kcUserId, err)
+	}
+
+	log.Printf("Successfully assigned realm role %s to user %s", roleName, kcUserId)
+	return nil
+}
+
+// IssueWorkspaceTicket 워크스페이스 티켓을 발행합니다.
+func (s *keycloakService) IssueWorkspaceTicket(ctx context.Context, kcUserId string, workspaceID uint) (string, map[string]interface{}, error) {
+	// Keycloak에 워크스페이스 티켓 발행 요청
+	// TODO: 실제 Keycloak API 호출 구현
+	ticket := fmt.Sprintf("workspace_ticket_%s_%d", kcUserId, workspaceID)
+
+	// 임시 권한 정보 생성
+	permissions := map[string]interface{}{
+		"workspace_id": workspaceID,
+		"kc_user_id":   kcUserId,
+		"roles":        []string{"admin"}, // TODO: 실제 사용자 역할 조회
+	}
+
+	return ticket, permissions, nil
 }

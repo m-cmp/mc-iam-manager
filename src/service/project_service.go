@@ -22,26 +22,32 @@ import (
 // ProjectService 프로젝트 관리 서비스
 type ProjectService struct {
 	projectRepo    *repository.ProjectRepository
-	workspaceRepo  *repository.WorkspaceRepository // Needed for association checks
-	mcmpApiService McmpApiService                  // Added dependency back
-	db             *gorm.DB                        // Add DB field
+	workspaceRepo  *repository.WorkspaceRepository
+	mcmpApiService McmpApiService // Added dependency back
+	db             *gorm.DB       // Add DB field
 }
 
 // NewProjectService 새 ProjectService 인스턴스 생성
-func NewProjectService(db *gorm.DB, mcmpApiService McmpApiService) *ProjectService { // Accept db and mcmpApiService
-	// Initialize repositories internally
-	projectRepo := repository.NewProjectRepository(db)
-	workspaceRepo := repository.NewWorkspaceRepository(db)
+func NewProjectService(db *gorm.DB, mcmpApiService McmpApiService) *ProjectService {
 	return &ProjectService{
-		db:             db, // Store db
-		projectRepo:    projectRepo,
-		workspaceRepo:  workspaceRepo,
-		mcmpApiService: mcmpApiService, // Initialize dependency
+		projectRepo:    repository.NewProjectRepository(db),
+		workspaceRepo:  repository.NewWorkspaceRepository(db),
+		mcmpApiService: mcmpApiService,
+		db:             db,
 	}
 }
 
 // Create 프로젝트 생성 (mc-infra-manager 호출 및 DB 저장)
-func (s *ProjectService) Create(ctx context.Context, project *model.Project) error { // Added context parameter back
+func (s *ProjectService) Create(ctx context.Context, project *model.Project) error {
+	// 이름 중복 체크
+	existingProject, err := s.projectRepo.GetByName(project.Name)
+	if err == nil && existingProject != nil {
+		return fmt.Errorf("project with name '%s' already exists", project.Name)
+	}
+	if err != nil && err.Error() != "project not found" {
+		return err
+	}
+
 	log.Printf("Attempting to create namespace in mc-infra-manager for project: %s", project.Name)
 
 	// 1. Call mc-infra-manager PostNs API
@@ -192,11 +198,6 @@ func (s *ProjectService) AddWorkspaceAssociation(projectID, workspaceID uint) er
 		return errWs
 	}
 	return s.projectRepo.AddWorkspaceAssociation(projectID, workspaceID)
-}
-
-// RemoveWorkspaceAssociation 프로젝트에서 워크스페이스 연결 제거
-func (s *ProjectService) RemoveWorkspaceAssociation(projectID, workspaceID uint) error {
-	return s.projectRepo.RemoveWorkspaceAssociation(projectID, workspaceID)
 }
 
 // SyncProjectsWithInfraManager mc-infra-manager의 네임스페이스와 로컬 프로젝트 동기화
@@ -360,5 +361,29 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 	}
 
 	log.Printf("Project synchronization finished. Added %d new projects. Assigned %d existing unassigned projects to default workspace.", addedCount, assignedToDefaultCount)
+	return nil
+}
+
+// CreateProject 새로운 프로젝트를 생성하고 기본 워크스페이스에 할당합니다.
+func (s *ProjectService) CreateProject(project *model.Project) error {
+	// 프로젝트 생성
+	if err := s.projectRepo.Create(project); err != nil {
+		return err
+	}
+
+	// 기본 워크스페이스 조회
+	defaultWorkspace, err := s.workspaceRepo.GetByName(os.Getenv("DEFAULT_WORKSPACE_NAME"))
+	if err != nil {
+		return fmt.Errorf("기본 워크스페이스를 찾을 수 없습니다: %v", err)
+	}
+
+	// 프로젝트를 기본 워크스페이스에 할당
+	if err := s.workspaceRepo.AddProjectAssociation(defaultWorkspace.ID, project.ID); err != nil {
+		// 프로젝트 생성은 성공했지만 워크스페이스 할당에 실패한 경우
+		// 프로젝트를 삭제하고 에러 반환
+		s.projectRepo.Delete(project.ID)
+		return fmt.Errorf("프로젝트를 기본 워크스페이스에 할당하는데 실패했습니다: %v", err)
+	}
+
 	return nil
 }

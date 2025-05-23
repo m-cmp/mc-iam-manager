@@ -397,7 +397,7 @@ func (h *WorkspaceHandler) ListProjectsByWorkspace(c echo.Context) error {
 // @Security BearerAuth
 // @Router /api/v1/workspaces/{id}/projects/{projectId} [post]
 func (h *WorkspaceHandler) AddProjectToWorkspace(c echo.Context) error {
-	workspaceID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	workspaceID, err := strconv.ParseUint(c.Param("workspaceId"), 10, 32)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID입니다"})
 	}
@@ -417,32 +417,84 @@ func (h *WorkspaceHandler) AddProjectToWorkspace(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// RemoveProjectFromWorkspace godoc
-// @Summary 워크스페이스에서 프로젝트 제거
-// @Description 워크스페이스에서 프로젝트를 제거합니다
-// @Tags workspaces
-// @Accept json
-// @Produce json
-// @Param id path string true "Workspace ID"
-// @Param projectId path string true "Project ID"
-// @Success 204 "No Content"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Failure 404 {object} map[string]string "error: Workspace or Project not found"
-// @Security BearerAuth
-// @Router /api/v1/workspaces/{id}/projects/{projectId} [delete]
+// RemoveProjectFromWorkspace 워크스페이스에서 프로젝트 제거
 func (h *WorkspaceHandler) RemoveProjectFromWorkspace(c echo.Context) error {
-	workspaceID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	workspaceID, err := strconv.ParseUint(c.Param("workspaceId"), 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid workspace ID"})
 	}
+
 	projectID, err := strconv.ParseUint(c.Param("projectId"), 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid project ID"})
 	}
 
 	if err := h.workspaceService.RemoveProjectFromWorkspace(uint(workspaceID), uint(projectID)); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 연결 해제 실패: %v", err)})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
+
 	return c.NoContent(http.StatusNoContent)
+}
+
+// ListAllWorkspaces godoc
+// @Summary 워크스페이스와 연관된 프로젝트 목록 조회
+// @Description 모든 워크스페이스와 각 워크스페이스에 연관된 프로젝트 목록을 조회합니다.
+// @Tags workspaces
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} model.WorkspaceWithProjects
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 401 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
+// @Router /api/workspaces/all [get]
+func (h *WorkspaceHandler) ListAllWorkspaces(c echo.Context) error {
+	workspaces, err := h.workspaceService.ListAllWorkspaces()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "워크스페이스 목록 조회에 실패했습니다",
+		})
+	}
+
+	return c.JSON(http.StatusOK, workspaces)
+}
+
+// ListAllWorkspaceUsersAndRoles godoc
+// @Summary 모든 워크스페이스의 사용자와 역할 목록 조회
+// @Description 모든 워크스페이스에 할당된 사용자와 역할 목록을 조회합니다.
+// @Tags workspaces
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.WorkspaceWithUsersAndRoles
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 500 {object} map[string]string "error: Internal server error"
+// @Security BearerAuth
+// @Router /api/workspaces/all/users [get]
+func (h *WorkspaceHandler) ListAllWorkspaceUsersAndRoles(c echo.Context) error {
+	// 모든 워크스페이스 조회
+	workspaces, err := h.workspaceService.GetAllWorkspaces()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "워크스페이스 조회 실패"})
+	}
+
+	var result []model.WorkspaceWithUsersAndRoles
+	for _, workspace := range workspaces {
+		// 각 워크스페이스의 사용자와 역할 조회
+		usersWithRoles, err := h.workspaceService.GetUsersAndRolesByWorkspaceID(workspace.ID)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "사용자 및 역할 조회 실패"})
+		}
+
+		result = append(result, model.WorkspaceWithUsersAndRoles{
+			ID:          workspace.ID,
+			Name:        workspace.Name,
+			Description: workspace.Description,
+			CreatedAt:   workspace.CreatedAt,
+			UpdatedAt:   workspace.UpdatedAt,
+			Users:       usersWithRoles,
+		})
+	}
+
+	return c.JSON(http.StatusOK, result)
 }
