@@ -69,9 +69,9 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, kcUs
 	// 4. Find the first matching CSP role mapping
 	var targetMapping *model.WorkspaceRoleCspRoleMapping
 	for _, role := range userWorkspaceRoles {
-		mappings, err := s.mappingRepo.FindByRoleAndCspType(role.WorkspaceRoleID, cspType)
+		mappings, err := s.mappingRepo.FindByRoleAndCspType(role.RoleID, cspType)
 		if err != nil {
-			log.Printf("Error finding CSP role mapping for role %d: %v", role.WorkspaceRoleID, err)
+			log.Printf("Error finding CSP role mapping for role %d: %v", role.RoleID, err)
 			continue
 		}
 		if len(mappings) > 0 {
@@ -107,4 +107,69 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, kcUs
 	default:
 		return nil, ErrUnsupportedCspType
 	}
+}
+
+// GetUserWorkspaceRoles 사용자의 워크스페이스 역할 목록 조회
+func (s *CspCredentialService) GetUserWorkspaceRoles(userID, workspaceID uint) ([]model.UserWorkspaceRole, error) {
+	var roles []model.UserWorkspaceRole
+	if err := s.db.Where("user_id = ? AND workspace_id = ?", userID, workspaceID).Find(&roles).Error; err != nil {
+		return nil, err
+	}
+	return roles, nil
+}
+
+// GetUserWorkspaceRoleIDs 사용자의 워크스페이스 역할 ID 목록 조회
+func (s *CspCredentialService) GetUserWorkspaceRoleIDs(userID uint) ([]uint, error) {
+	var userWorkspaceRoles []model.UserWorkspaceRole
+	if err := s.db.Where("user_id = ?", userID).Find(&userWorkspaceRoles).Error; err != nil {
+		return nil, fmt.Errorf("failed to get user workspace roles: %w", err)
+	}
+
+	roleIDs := make([]uint, len(userWorkspaceRoles))
+	for i, role := range userWorkspaceRoles {
+		roleIDs[i] = role.RoleID
+	}
+	return roleIDs, nil
+}
+
+// GetUserWorkspaceRoleNames 사용자의 워크스페이스 역할 이름 목록 조회
+func (s *CspCredentialService) GetUserWorkspaceRoleNames(userID uint) ([]string, error) {
+	var userWorkspaceRoles []model.UserWorkspaceRole
+	if err := s.db.Preload("Role").Where("user_id = ?", userID).Find(&userWorkspaceRoles).Error; err != nil {
+		return nil, fmt.Errorf("failed to get user workspace roles: %w", err)
+	}
+
+	roleNames := make([]string, len(userWorkspaceRoles))
+	for i, role := range userWorkspaceRoles {
+		roleNames[i] = role.Role.Name
+	}
+	return roleNames, nil
+}
+
+// GetUserPlatformRoleIDs 사용자의 플랫폼 역할 ID 목록 조회
+func (s *CspCredentialService) GetUserPlatformRoleIDs(userID uint) ([]uint, error) {
+	var userRoles []model.UserPlatformRole
+	if err := s.db.Where("user_id = ?", userID).Find(&userRoles).Error; err != nil {
+		return nil, fmt.Errorf("failed to get user platform roles: %w", err)
+	}
+
+	roleIDs := make([]uint, len(userRoles))
+	for i, role := range userRoles {
+		roleIDs[i] = role.RoleID
+	}
+	return roleIDs, nil
+}
+
+// GetUserPlatformRoleNames 사용자의 플랫폼 역할 이름 목록 조회
+func (s *CspCredentialService) GetUserPlatformRoleNames(userID uint) ([]string, error) {
+	var userRoles []model.UserPlatformRole
+	if err := s.db.Preload("Role").Where("user_id = ?", userID).Find(&userRoles).Error; err != nil {
+		return nil, fmt.Errorf("failed to get user platform roles: %w", err)
+	}
+
+	roleNames := make([]string, len(userRoles))
+	for i, role := range userRoles {
+		roleNames[i] = role.Role.Name
+	}
+	return roleNames, nil
 }

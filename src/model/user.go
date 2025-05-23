@@ -18,9 +18,9 @@ type User struct {
 	CreatedAt   time.Time `json:"created_at" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
 
-	// 관계 정의 (Foreign Key는 DB ID인 'ID' 필드를 참조해야 함)
-	PlatformRoles  []*PlatformRole  `json:"platform_roles,omitempty" gorm:"many2many:mcmp_user_platform_roles;foreignKey:ID;joinForeignKey:user_id;References:ID;joinReferences:platform_role_id"`    // Changed foreignKey to ID
-	WorkspaceRoles []*WorkspaceRole `json:"workspace_roles,omitempty" gorm:"many2many:mcmp_user_workspace_roles;foreignKey:ID;joinForeignKey:user_id;References:ID;joinReferences:workspace_role_id"` // Changed foreignKey to ID
+	// 관계 정의
+	PlatformRoles  []*RoleMaster `json:"platform_roles,omitempty" gorm:"many2many:mcmp_user_platform_roles;foreignKey:ID;joinForeignKey:user_id;References:ID;joinReferences:role_id;joinTable:mcmp_user_platform_roles;where:role_type='platform'"`
+	WorkspaceRoles []*RoleMaster `json:"workspace_roles,omitempty" gorm:"many2many:mcmp_user_workspace_roles;foreignKey:ID;joinForeignKey:user_id;References:ID;joinReferences:role_id;joinTable:mcmp_user_workspace_roles;where:role_type='workspace'"`
 }
 
 // TableName User의 테이블 이름을 지정합니다

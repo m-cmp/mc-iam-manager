@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -11,20 +12,26 @@ import (
 
 // WorkspaceService 워크스페이스 관리 서비스
 type WorkspaceService struct {
-	workspaceRepo *repository.WorkspaceRepository
-	projectRepo   *repository.ProjectRepository // Needed for association checks
-	db            *gorm.DB                      // Add DB field
+	workspaceRepo     *repository.WorkspaceRepository
+	workspaceRoleRepo *repository.WorkspaceRoleRepository
+	projectRepo       *repository.ProjectRepository
+	roleRepo          *repository.RoleRepository
+	db                *gorm.DB
 }
 
 // NewWorkspaceService 새 WorkspaceService 인스턴스 생성
-func NewWorkspaceService(db *gorm.DB) *WorkspaceService { // Accept only db
+func NewWorkspaceService(db *gorm.DB) *WorkspaceService {
 	// Initialize repositories internally
 	workspaceRepo := repository.NewWorkspaceRepository(db)
 	projectRepo := repository.NewProjectRepository(db)
+	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
 	return &WorkspaceService{
-		db:            db, // Store db
-		workspaceRepo: workspaceRepo,
-		projectRepo:   projectRepo,
+		db:                db,
+		workspaceRepo:     workspaceRepo,
+		projectRepo:       projectRepo,
+		workspaceRoleRepo: workspaceRoleRepo,
+		roleRepo:          roleRepo,
 	}
 }
 
@@ -169,8 +176,8 @@ func (s *WorkspaceService) GetProjectsByWorkspaceID(workspaceID uint) ([]model.P
 
 // UserWithRoles 워크스페이스 내 사용자 및 역할 정보를 담는 구조체
 type UserWithRoles struct {
-	User  model.User            `json:"user"`
-	Roles []model.WorkspaceRole `json:"roles"`
+	User  model.User         `json:"user"`
+	Roles []model.RoleMaster `json:"roles"`
 }
 
 // GetUsersAndRolesByWorkspaceID 워크스페이스에 속한 사용자와 역할 조회
@@ -188,9 +195,9 @@ func (s *WorkspaceService) GetUsersAndRolesByWorkspaceID(workspaceID uint) ([]mo
 			return nil, err
 		}
 
-		// Load WorkspaceRole details
-		var role model.WorkspaceRole
-		if err := s.db.Model(&uwr).Association("WorkspaceRole").Find(&role); err != nil {
+		// Load Role details
+		var role model.RoleMaster
+		if err := s.db.Model(&uwr).Association("Role").Find(&role); err != nil {
 			return nil, err
 		}
 
@@ -201,13 +208,13 @@ func (s *WorkspaceService) GetUsersAndRolesByWorkspaceID(workspaceID uint) ([]mo
 		}
 
 		response := model.UserWorkspaceRoleResponse{
-			UserID:            uwr.UserID,
-			Username:          user.Username,
-			WorkspaceID:       uwr.WorkspaceID,
-			WorkspaceName:     workspace.Name,
-			WorkspaceRoleID:   uwr.WorkspaceRoleID,
-			WorkspaceRoleName: role.Name,
-			CreatedAt:         uwr.CreatedAt,
+			UserID:        uwr.UserID,
+			Username:      user.Username,
+			WorkspaceID:   uwr.WorkspaceID,
+			WorkspaceName: workspace.Name,
+			RoleID:        uwr.RoleID,
+			RoleName:      role.Name,
+			CreatedAt:     uwr.CreatedAt,
 		}
 		responses = append(responses, response)
 	}
@@ -265,4 +272,47 @@ func (s *WorkspaceService) ListAllWorkspaces() ([]model.WorkspaceWithProjects, e
 	}
 
 	return result, nil
+}
+
+// GetWorkspaceRoles 워크스페이스의 모든 역할 목록 조회
+func (s *WorkspaceService) GetWorkspaceRoles(workspaceID uint) ([]model.RoleMaster, error) {
+	return s.workspaceRoleRepo.GetWorkspaceRoles(workspaceID)
+}
+
+// AssignRole 워크스페이스에 사용자 역할 할당
+func (s *WorkspaceService) AssignRole(userID, workspaceID, roleID uint) error {
+	// 워크스페이스 존재 여부 확인
+	workspace, err := s.workspaceRepo.FindByID(workspaceID)
+	if err != nil {
+		return fmt.Errorf("워크스페이스를 찾을 수 없습니다: %w", err)
+	}
+	if workspace == nil {
+		return fmt.Errorf("워크스페이스를 찾을 수 없습니다")
+	}
+
+	// 역할 존재 여부 확인
+	role, err := s.roleRepo.FindByID(roleID)
+	if err != nil {
+		return fmt.Errorf("역할을 찾을 수 없습니다: %w", err)
+	}
+	if role == nil {
+		return fmt.Errorf("역할을 찾을 수 없습니다")
+	}
+
+	// 워크스페이스 역할 타입 검증
+	var roleSub model.RoleSub
+	if err := s.db.Where("role_id = ? AND role_type = ?", roleID, model.RoleTypeWorkspace).First(&roleSub).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("워크스페이스 역할이 아닙니다")
+		}
+		return fmt.Errorf("역할 타입 확인 중 오류 발생: %w", err)
+	}
+
+	// 역할 할당
+	return s.roleRepo.AssignWorkspaceRole(userID, workspaceID, roleID)
+}
+
+// GetDB DB 인스턴스를 반환합니다.
+func (s *WorkspaceService) GetDB() *gorm.DB {
+	return s.db
 }

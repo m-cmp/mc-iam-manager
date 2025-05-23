@@ -39,6 +39,13 @@ login_as_user() {
     log "로그인 성공"
 }
 
+list_workspaces_for_admin() {
+    log "워크스페이스 목록 조회 중..."
+    response=$(curl -s -X GET "$MCIAMMANAGER_HOST/api/admin/workspaces" \
+        --header "Authorization: Bearer $MCIAMMANAGER_ACCESSTOKEN")
+    log "워크스페이스 목록: $response"
+}
+
 # 워크스페이스 조회
 list_workspaces() {
     log "워크스페이스 목록 조회 중..."
@@ -58,9 +65,8 @@ assign_workspace_role() {
     response=$(curl -s -X POST \
         -H "Authorization: Bearer $MCIAMMANAGER_ACCESSTOKEN" \
         -H "Content-Type: application/json" \
-        -d '{"role": "'"$workspaceRoleName"'"}' \
+        -d '{"username": "'"$username"'", "workspaceId": "'"$workspaceId"'", "role": "'"$workspaceRoleName"'"}' \
         "$url")
-    
     log "역할 할당 응답: $response"
 }
 
@@ -148,13 +154,14 @@ while true; do
     log "=== 워크스페이스 역할 관리 테스트 ==="
     log "1. Platform Admin 로그인"
     log "2. 일반 사용자 로그인"
-    log "3. 워크스페이스 조회"
-    log "4. 워크스페이스에 사용자 역할 할당"
-    log "5. 워크스페이스에서 사용자 역할 해제"
-    log "6. 사용자의 워크스페이스와 역할 목록 조회"
-    log "7. 모든 사용자의 워크스페이스와 역할 목록 조회"
-    log "8. 워크스페이스에 할당된 사용자와 역할 목록 조회"
-    log "9. 종료"
+    log "3. 워크스페이스 조회(관리자)"
+    log "4. 워크스페이스 조회"
+    log "5. 워크스페이스에 사용자 역할 할당"
+    log "6. 워크스페이스에서 사용자 역할 해제"
+    log "7. 사용자의 워크스페이스와 역할 목록 조회"
+    log "8. 모든 사용자의 워크스페이스와 역할 목록 조회"
+    log "9. 워크스페이스에 할당된 사용자와 역할 목록 조회"
+    log "0. 종료"
     read -p "선택 (1-9): " choice
 
     case $choice in
@@ -165,24 +172,27 @@ while true; do
             login_as_user
             ;;
         3)
-            list_workspaces
+            list_workspaces_for_admin
             ;;
         4)
-            assign_workspace_role
+            list_workspaces
             ;;
         5)
-            remove_workspace_role
+            assign_workspace_role
             ;;
         6)
-            list_user_workspaces
+            remove_workspace_role
             ;;
         7)
-            list_all_users_workspaces
+            list_user_workspaces
             ;;
         8)
-            list_workspace_users
+            list_all_users_workspaces
             ;;
         9)
+            list_workspace_users
+            ;;
+        0)
             log "프로그램을 종료합니다."
             exit 0
             ;;

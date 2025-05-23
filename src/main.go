@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
@@ -73,11 +74,13 @@ func main() {
 	mcmpApiPermissionActionMappingHandler := handler.NewMcmpApiPermissionActionMappingHandler(db)
 	healthHandler := handler.NewHealthHandler()
 	permissionHandler := handler.NewMciamPermissionHandler(db)
-	platformRoleHandler := handler.NewPlatformRoleHandler(db)
-	workspaceRoleHandler := handler.NewWorkspaceRoleHandler(db)
+	roleHandler := handler.NewRoleHandler(db)
 
 	// Echo 인스턴스 생성
 	e := echo.New()
+
+	// Validator 설정
+	e.Validator = &CustomValidator{validator: validator.New()}
 
 	// 로그 레벨 설정
 	e.Debug = true
@@ -154,24 +157,22 @@ func main() {
 
 	}
 
-	// 플랫폼 역할 CRUD
-	platformRoles := api.Group("/platform-roles", middleware.PlatformRoleMiddleware(middleware.Manage))
+	// 역할 관리 라우트
+	roles := api.Group("/roles")
 	{
-		platformRoles.GET("", platformRoleHandler.List)
-		platformRoles.POST("", platformRoleHandler.Create)
-		platformRoles.GET("/:id", platformRoleHandler.GetByID)
-		platformRoles.PUT("/:id", platformRoleHandler.Update)
-		platformRoles.DELETE("/:id", platformRoleHandler.Delete)
-	}
+		roles.GET("", roleHandler.RoleList)
+		roles.POST("", roleHandler.RoleCreate)
+		roles.GET("/:id", roleHandler.GetRoleByID)
+		roles.PUT("/:id", roleHandler.RoleUpdate)
+		roles.DELETE("/:id", roleHandler.RoleDelete)
 
-	// Workspace 역할 CRUD
-	workspaceRoles := api.Group("/workspace-roles", middleware.PlatformRoleMiddleware(middleware.Manage))
-	{
-		workspaceRoles.GET("", workspaceRoleHandler.List)
-		workspaceRoles.POST("", workspaceRoleHandler.Create)
-		workspaceRoles.GET("/:id", workspaceRoleHandler.GetByID)
-		workspaceRoles.PUT("/:id", workspaceRoleHandler.Update)
-		workspaceRoles.DELETE("/:id", workspaceRoleHandler.Delete)
+		roles.POST("/assign", roleHandler.AssignRole)
+		roles.POST("/remove", roleHandler.RemoveRole)
+		roles.POST("/assign/platform", roleHandler.AssignPlatformRole)
+		roles.POST("/remove/platform", roleHandler.RemovePlatformRole)
+		roles.POST("/assign/workspace", roleHandler.AssignWorkspaceRole)
+		roles.POST("/remove/workspace", roleHandler.RemoveWorkspaceRole)
+		roles.GET("/users/:user_id/workspaces/:workspace_id", roleHandler.GetUserWorkspaceRoles)
 	}
 
 	cspRoles := api.Group("/csp-roles", middleware.PlatformRoleMiddleware(middleware.Manage))
@@ -198,9 +199,9 @@ func main() {
 		users.GET("/workspaces", userHandler.GetUserWorkspaceAndWorkspaceRoles)
 
 		// 사용자에게 플랫폼 역할 할당
-		users.POST("/assign/platform-roles", platformRoleHandler.AssignPlatformRoleToUser, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.POST("/assign/platform-roles", roleHandler.AssignPlatformRole, middleware.PlatformRoleMiddleware(middleware.Manage))
 		// 사용자에게 워크스페이스 역할 할당
-		users.POST("/assign/workspace-roles", workspaceRoleHandler.AssignWorkspaceRoleToUser, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.POST("/assign/workspace-roles", roleHandler.AssignWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Manage))
 	}
 
 	// 메뉴 라우트
@@ -235,9 +236,9 @@ func main() {
 		workspaces.POST("/id/:workspaceId/projects/:projectId", workspaceHandler.AddProjectToWorkspace, middleware.WorkspaceRoleMiddleware(db))
 		workspaces.DELETE("/id/:workspaceId/projects/:projectId", workspaceHandler.RemoveProjectFromWorkspace, middleware.WorkspaceRoleMiddleware(db))
 
-		workspaces.POST("/id/:workspaceId/users/:username/roles/:workspaceRoleName", workspaceRoleHandler.AssignWorkspaceRoleToUser, middleware.PlatformRoleMiddleware(middleware.Write))
-		workspaces.DELETE("/id/:workspaceId/users/:username/roles/:workspaceRoleName", workspaceRoleHandler.RemoveWorkspaceRoleFromUser, middleware.PlatformRoleMiddleware(middleware.Write))
-		workspaces.GET("/id/:workspaceId/users/:username/roles", workspaceRoleHandler.GetUserWorkspaceRoles, middleware.PlatformRoleMiddleware(middleware.Read))
+		workspaces.POST("/id/:workspaceId/users/:username/roles/:workspaceRoleName", roleHandler.AssignWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
+		workspaces.DELETE("/id/:workspaceId/users/:username/roles/:workspaceRoleName", roleHandler.RemoveWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
+		workspaces.GET("/id/:workspaceId/users/:username/roles", roleHandler.GetUserWorkspaceRoles, middleware.PlatformRoleMiddleware(middleware.Read))
 	}
 
 	// 프로젝트 라우트 : workspace ticket과 workspaceId가 있으면 됨.
@@ -324,4 +325,14 @@ func main() {
 	if err := e.Shutdown(ctx); err != nil {
 		e.Logger.Fatal(err)
 	}
+}
+
+// CustomValidator 커스텀 validator 구조체
+type CustomValidator struct {
+	validator *validator.Validate
+}
+
+// Validate 구조체 검증 메서드
+func (cv *CustomValidator) Validate(i interface{}) error {
+	return cv.validator.Struct(i)
 }

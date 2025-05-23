@@ -21,12 +21,12 @@ init_roles() {
     for role in "${ROLES[@]}"; do
         echo "Creating role: $role"
         json_data=$(jq -n --arg name "$role" --arg description "$role Role" \
-            '{name: $name, description: $description}')
+            '{name: $name, description: $description, role_types: ["workspace", "platform"]}')
         response=$(curl -s -X POST \
             --header 'Content-Type: application/json' \
             --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
             --data "$json_data" \
-            "$MCIAMMANAGER_HOST/api/platform-roles/")
+            "$MCIAMMANAGER_HOST/api/roles/")
         echo "Response for role $role: $response"
     done
     echo "Platform roles initialized"
@@ -75,22 +75,6 @@ map_api_cloud_resources() {
     echo "API-Cloud resources mapping completed"
 }
 
-init_workspace_roles() {
-    echo "Initializing workspace roles..."
-    IFS=',' read -ra ROLES <<< "$PREDEFINED_ROLE"
-    for role in "${ROLES[@]}"; do
-        echo "Creating workspace role: $role"
-        json_data=$(jq -n --arg name "$role" --arg description "$role Workspace Role" \
-            '{name: $name, description: $description}')
-        response=$(curl -s -X POST \
-            --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
-            --header 'Content-Type: application/json' \
-            --data "$json_data" \
-            "$MCIAMMANAGER_HOST/api/workspace-roles/")
-        echo "Response for workspace role $role: $response"
-    done
-    echo "Workspace roles initialized"
-}
 
 map_workspace_csp_roles() {
     echo "Mapping workspace roles to CSP IAM roles..."
@@ -160,13 +144,7 @@ while true; do
             fi
             ;;
         7)
-            if [ -z "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
-                echo "Please login first (option 1)"
-            else
-                init_workspace_roles
-            fi
-            ;;
-        8)
+            
             if [ -z "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
                 echo "Please login first (option 1)"
             else

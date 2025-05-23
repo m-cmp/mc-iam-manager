@@ -159,8 +159,9 @@ func (r *UserRepository) DB() *gorm.DB {
 func (r *UserRepository) FindWorkspaceAndWorkspaceRolesByUserID(userID uint) ([]model.UserWorkspaceRole, error) {
 	var userWorkspaceRoles []model.UserWorkspaceRole
 	err := r.db.Where("user_id = ?", userID).
-		Preload("WorkspaceRole").
-		// Preload("Workspace"). // Need to preload Workspace via UserWorkspaceRole if relation exists
+		Preload("User").
+		Preload("Workspace").
+		Preload("Role").
 		Find(&userWorkspaceRoles).Error
 	if err != nil {
 		return nil, fmt.Errorf("error finding workspace roles for user %d: %w", userID, err)
@@ -185,12 +186,12 @@ func (r *UserRepository) FindWorkspacesByUserID(userID uint) ([]model.Workspace,
 // GetUserRolesInWorkspace finds all roles assigned to a user within a specific workspace.
 func (r *UserRepository) GetUserRolesInWorkspace(userID, workspaceID uint) ([]model.UserWorkspaceRole, error) {
 	var userWorkspaceRoles []model.UserWorkspaceRole
-	// Query the join table directly
 	err := r.db.Where("user_id = ? AND workspace_id = ?", userID, workspaceID).
-		Preload("WorkspaceRole"). // Preload the role details
+		Preload("Workspace").
+		Preload("Role").
 		Find(&userWorkspaceRoles).Error
 	if err != nil {
-		return nil, fmt.Errorf("error finding roles for user %d in workspace %d: %w", userID, workspaceID, err)
+		return nil, err
 	}
 	return userWorkspaceRoles, nil
 }

@@ -16,10 +16,11 @@ import (
 	// Ensure gorm is imported
 
 	// "github.com/golang-jwt/jwt/v5" // No longer directly needed
+
 	"github.com/Nerzal/gocloak/v13"
-	"github.com/labstack/echo/v4"
-	"github.com/m-cmp/mc-iam-manager/config" // Keep this one
-	"github.com/m-cmp/mc-iam-manager/model"  // Keep this one
+	"github.com/labstack/echo/v4" // Keep this one
+	"github.com/m-cmp/mc-iam-manager/config"
+	"github.com/m-cmp/mc-iam-manager/model" // Keep this one
 	"github.com/m-cmp/mc-iam-manager/model/idp"
 	"github.com/m-cmp/mc-iam-manager/repository" // Needed for error check
 	"github.com/m-cmp/mc-iam-manager/service"
@@ -211,7 +212,7 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 
 	// 3. 워크스페이스 ID 유효성 검사
 	if _, err := strconv.ParseUint(req.WorkspaceID, 10, 32); err != nil {
-		log.Printf("req.WorkspaceID: %v", req.WorkspaceID)
+		log.Printf("워크스페이스 ID 형식 오류: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid workspace ID"})
 	}
 
@@ -222,7 +223,7 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 	}
 
 	// 5. 워크스페이스 권한 조회
-	workspaceRoles, err := h.userService.GetUserWorkspaceRoles(c.Request().Context(), userID, req.WorkspaceID)
+	workspaceRoles, err := h.userService.GetUserWorkspaceRoles(userID)
 	if err != nil {
 		log.Printf("워크스페이스 권한 조회 실패: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get workspace permissions"})
@@ -250,40 +251,36 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 		}
 	}`, req.WorkspaceID, scopes)
 
-	log.Printf("Requesting RPT with claim token: %s", claimToken)
-
 	rptOptions := gocloak.RequestingPartyTokenOptions{
-		GrantType:   gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
-		Audience:    gocloak.StringP(config.KC.OIDCClientID),
-		Permissions: &scopes,
-		ClaimToken:  gocloak.StringP(claimToken),
+		GrantType:  gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
+		Audience:   gocloak.StringP(config.KC.OIDCClientID),
+		ClaimToken: gocloak.StringP(claimToken),
 	}
-
 	rpt, err := ks.GetRequestingPartyToken(c.Request().Context(), accessToken, rptOptions)
 	if err != nil {
 		log.Printf("RPT 발급 실패: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to issue RPT: " + err.Error()})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get RPT"})
 	}
 
-	// RPT 내용 로깅
-	log.Printf("RPT 응답 전체 내용: %+v", rpt)
-	log.Printf("RPT Access Token: %s", rpt.AccessToken)
-	log.Printf("RPT Token Type: %s", rpt.TokenType)
-	log.Printf("RPT Expires In: %d", rpt.ExpiresIn)
-	log.Printf("RPT Refresh Expires In: %d", rpt.RefreshExpiresIn)
-	log.Printf("RPT Refresh Token: %s", rpt.RefreshToken)
-	log.Printf("RPT Session State: %s", rpt.SessionState)
-	log.Printf("RPT Scope: %s", rpt.Scope)
+	return c.JSON(http.StatusOK, map[string]interface{}{"rpt": rpt})
+}
 
-	// RPT 토큰 검증
-	_, err = ks.ValidateTokenAndGetClaims(c.Request().Context(), rpt.AccessToken)
+// GetUserWorkspaceRoles 사용자의 특정 워크스페이스 내 역할 목록 조회
+func (h *AuthHandler) GetUserWorkspaceRoles(c echo.Context) error {
+	userID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		log.Printf("RPT 토큰 검증 실패: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to validate RPT: " + err.Error()})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID"})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"access_token":     accessToken,
-		"workspace_ticket": rpt.AccessToken,
-	})
+	workspaceID, err := strconv.ParseUint(c.QueryParam("workspace_id"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid workspace ID"})
+	}
+
+	roles, err := h.userService.GetUserRolesInWorkspace(uint(userID), uint(workspaceID))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, roles)
 }

@@ -315,9 +315,33 @@ func (s *UserService) FindWorkspacesByUserID(userID uint) ([]model.Workspace, er
 	return s.userRepo.FindWorkspacesByUserID(userID)
 }
 
-// GetUserRolesInWorkspace 사용자의 특정 워크스페이스 내 역할 목록 조회
-func (s *UserService) GetUserRolesInWorkspace(userID, workspaceID uint) ([]model.UserWorkspaceRole, error) {
-	return s.userRepo.GetUserRolesInWorkspace(userID, workspaceID)
+// GetUserRolesInWorkspace 특정 워크스페이스에서 유저가 가진 롤만 반환
+func (s *UserService) GetUserRolesInWorkspace(userID, workspaceID uint) ([]model.UserWorkspaceRoleResponse, error) {
+	userWorkspaceRoles, err := s.userRepo.GetUserRolesInWorkspace(userID, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	response := make([]model.UserWorkspaceRoleResponse, len(userWorkspaceRoles))
+	for i, uwr := range userWorkspaceRoles {
+		roleName := ""
+		if uwr.Role != nil {
+			roleName = uwr.Role.Name
+		}
+		workspaceName := ""
+		if uwr.Workspace != nil {
+			workspaceName = uwr.Workspace.Name
+		}
+		response[i] = model.UserWorkspaceRoleResponse{
+			UserID:        uwr.UserID,
+			Username:      "", // 필요시 user 조회
+			WorkspaceID:   uwr.WorkspaceID,
+			WorkspaceName: workspaceName,
+			RoleID:        uwr.RoleID,
+			RoleName:      roleName,
+			CreatedAt:     uwr.CreatedAt,
+		}
+	}
+	return response, nil
 }
 
 // UpdateUser updates a user in Keycloak and the local DB.
@@ -388,54 +412,40 @@ func (s *UserService) ApproveUser(ctx context.Context, kcUserID string) error {
 }
 
 // WorkspaceRoleInfo 사용자별 워크스페이스 및 역할 정보를 담는 구조체
-type WorkspaceRoleInfo struct { // Uncomment struct definition
-	Workspace model.Workspace     `json:"workspace"`
-	Role      model.WorkspaceRole `json:"role"`
+type WorkspaceRoleInfo struct {
+	Workspace model.Workspace  `json:"workspace"`
+	Role      model.RoleMaster `json:"role"`
 }
 
-// GetUserWorkspaceAndWorkspaceRoles 현재 사용자가 속한 워크스페이스 및 역할 목록 조회
-func (s *UserService) GetUserWorkspaceAndWorkspaceRoles(ctx context.Context, userID uint) ([]WorkspaceRoleInfo, error) { // Uncomment function
-	// 1. Check if user exists by DB ID
-	_, err := s.userRepo.FindByID(userID) // Use correct repo method name
+// GetUserWorkspaceAndWorkspaceRoles 사용자의 워크스페이스와 역할 정보를 조회합니다.
+func (s *UserService) GetUserWorkspaceAndWorkspaceRoles(ctx context.Context, userID uint) ([]WorkspaceRoleInfo, error) {
+	// 사용자 존재 여부 확인
+	_, err := s.userRepo.FindByID(userID)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
-			return nil, ErrUserNotFound // Use service level error
-		}
-		return nil, fmt.Errorf("failed to verify user existence: %w", err)
+		return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %w", err)
 	}
 
-	// 2. Call repository method to get workspace roles for the user
-	userWorkspaceRoles, err := s.userRepo.FindWorkspaceAndWorkspaceRolesByUserID(userID) // Use correct repo method name
+	// 사용자의 워크스페이스 역할 조회
+	userWorkspaceRoles, err := s.userRepo.FindWorkspaceAndWorkspaceRolesByUserID(userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find workspace roles for user %d: %w", userID, err)
+		return nil, fmt.Errorf("워크스페이스 역할 조회 실패: %w", err)
 	}
 
-	// Process the results
+	// 워크스페이스별로 역할 정보를 그룹화
 	workspaceMap := make(map[uint]*WorkspaceRoleInfo)
 	for _, uwr := range userWorkspaceRoles {
 		workspaceID := uwr.WorkspaceID
-		if workspaceID == 0 {
-			continue
-		}
-
 		if _, exists := workspaceMap[workspaceID]; !exists {
-			workspaceInfo, err := s.workspaceRepo.GetByID(workspaceID) // Assuming workspaceRepo exists and has GetByID
-			if err != nil {
-				fmt.Printf("Warning: Could not fetch workspace details for ID %d: %v\n", workspaceID, err)
-				workspaceMap[workspaceID] = &WorkspaceRoleInfo{
-					Workspace: model.Workspace{ID: workspaceID, Name: fmt.Sprintf("Workspace %d (Fetch Failed)", workspaceID)},
-				}
-			} else {
-				workspaceMap[workspaceID] = &WorkspaceRoleInfo{
-					Workspace: *workspaceInfo,
-				}
+			workspaceMap[workspaceID] = &WorkspaceRoleInfo{
+				Workspace: *uwr.Workspace,
 			}
 		}
-		if uwr.WorkspaceRole.ID != 0 {
-			workspaceMap[workspaceID].Role = uwr.WorkspaceRole
+		if uwr.Role != nil {
+			workspaceMap[workspaceID].Role = *uwr.Role
 		}
 	}
 
+	// 맵을 슬라이스로 변환
 	result := make([]WorkspaceRoleInfo, 0, len(workspaceMap))
 	for _, info := range workspaceMap {
 		result = append(result, *info)
@@ -478,15 +488,60 @@ func (s *UserService) GetUserIDByKcID(ctx context.Context, kcUserID string) (uin
 // 	// ... (Implementation) ...
 // }
 
-// GetUserWorkspaceRoles 사용자의 워크스페이스 권한을 조회
-func (s *UserService) GetUserWorkspaceRoles(ctx context.Context, userID uint, workspaceID string) ([]string, error) {
-	var roles []string
-	err := s.db.Table("mcmp_user_workspace_roles").
-		Joins("JOIN mcmp_workspace_roles ON mcmp_user_workspace_roles.workspace_role_id = mcmp_workspace_roles.id").
-		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ?", userID, workspaceID).
-		Pluck("mcmp_workspace_roles.name", &roles).Error
+// GetUserWorkspaceRoles 사용자의 워크스페이스 역할 목록을 조회합니다.
+func (s *UserService) GetUserWorkspaceRoles(userID uint) ([]model.UserWorkspaceRoleResponse, error) {
+	// 사용자 존재 여부 확인
+	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user workspace roles: %w", err)
+		return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %w", err)
 	}
-	return roles, nil
+
+	// 사용자의 워크스페이스 역할 조회
+	userWorkspaceRoles, err := s.userRepo.FindWorkspaceAndWorkspaceRolesByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("워크스페이스 역할 조회 실패: %w", err)
+	}
+
+	// 응답 형식으로 변환
+	response := make([]model.UserWorkspaceRoleResponse, len(userWorkspaceRoles))
+	for i, uwr := range userWorkspaceRoles {
+		roleName := ""
+		if uwr.Role != nil {
+			roleName = uwr.Role.Name
+		}
+
+		workspaceName := ""
+		if uwr.Workspace != nil {
+			workspaceName = uwr.Workspace.Name
+		}
+
+		response[i] = model.UserWorkspaceRoleResponse{
+			UserID:        uwr.UserID,
+			Username:      user.Username,
+			WorkspaceID:   uwr.WorkspaceID,
+			WorkspaceName: workspaceName,
+			RoleID:        uwr.RoleID,
+			RoleName:      roleName,
+			CreatedAt:     uwr.CreatedAt,
+		}
+	}
+
+	return response, nil
+}
+
+// GetUserPlatformRoles 사용자의 플랫폼 역할 목록 조회
+func (s *UserService) GetUserPlatformRoles(userID uint) ([]model.RoleMaster, error) {
+	return s.platformRoleRepo.GetUserRoles(userID)
+}
+
+// GetByUsername 사용자 이름으로 사용자 조회
+func (s *UserService) GetByUsername(username string) (*model.User, error) {
+	var user model.User
+	if err := s.db.Where("username = ?", username).First(&user).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("사용자 조회 실패: %w", err)
+	}
+	return &user, nil
 }
