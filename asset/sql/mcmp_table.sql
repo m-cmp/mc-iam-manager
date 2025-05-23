@@ -17,6 +17,7 @@ DROP TABLE IF EXISTS mcmp_users CASCADE;
 DROP TABLE IF EXISTS mcmp_token CASCADE;
 DROP TABLE IF EXISTS mcmp_api_actions CASCADE;
 DROP TABLE IF EXISTS mcmp_api_services CASCADE;
+DROP TABLE IF EXISTS mcmp_workspace_tickets CASCADE; -- 워크스페이스 티켓 테이블 추가
 -- Drop old/incorrect CSP mapping tables
 DROP TABLE IF EXISTS mcmp_csp_permissions CASCADE;
 DROP TABLE IF EXISTS mciam_role_csp_permissions CASCADE;
@@ -288,4 +289,27 @@ CREATE INDEX idx_platform_role_menu_mappings_platform_role
     ON mcmp_platform_role_menu_mappings(platform_role);
 
 CREATE INDEX idx_platform_role_menu_mappings_menu_id
-    ON mcmp_platform_role_menu_mappings(menu_id); 
+    ON mcmp_platform_role_menu_mappings(menu_id);
+
+-- mcmp_workspace_tickets table
+CREATE TABLE mcmp_workspace_tickets (
+    id SERIAL PRIMARY KEY,
+    kc_user_id VARCHAR(255) NOT NULL,
+    workspace_id INT NOT NULL,
+    ticket TEXT NOT NULL,
+    permissions JSONB NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    last_used_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (workspace_id) REFERENCES mcmp_workspaces(id) ON DELETE CASCADE
+);
+
+-- Index for faster lookups
+CREATE INDEX idx_workspace_tickets_kc_user_workspace ON mcmp_workspace_tickets(kc_user_id, workspace_id);
+CREATE INDEX idx_workspace_tickets_expires_at ON mcmp_workspace_tickets(expires_at);
+
+-- Trigger for updated_at
+CREATE TRIGGER update_mcmp_workspace_tickets_updated_at 
+    BEFORE UPDATE ON mcmp_workspace_tickets 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 

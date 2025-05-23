@@ -50,16 +50,27 @@ func (UserPlatformRole) TableName() string {
 // UserWorkspaceRole 사용자-워크스페이스-역할 매핑 모델 (DB 테이블: mcmp_user_workspace_roles)
 // WorkspaceID 추가 및 복합 기본 키 설정 필요
 type UserWorkspaceRole struct {
-	UserID          uint          `json:"user_id" gorm:"primaryKey;column:user_id;autoIncrement:false"`                     // 복합 키의 일부
-	WorkspaceID     uint          `json:"workspace_id" gorm:"primaryKey;column:workspace_id;autoIncrement:false"`           // 복합 키의 일부, FK
-	WorkspaceRoleID uint          `json:"workspace_role_id" gorm:"primaryKey;column:workspace_role_id;autoIncrement:false"` // 복합 키의 일부, FK
+	UserID          uint          `json:"user_id" gorm:"primaryKey;column:user_id;autoIncrement:false"`
+	WorkspaceID     uint          `json:"workspace_id" gorm:"primaryKey;column:workspace_id;autoIncrement:false"`
+	WorkspaceRoleID uint          `json:"workspace_role_id" gorm:"primaryKey;column:workspace_role_id;autoIncrement:false"`
 	CreatedAt       time.Time     `json:"created_at" gorm:"column:created_at;autoCreateTime"`
-	User            User          `json:"-" gorm:"foreignKey:UserID;references:ID"` // Corrected references to ID
-	Workspace       Workspace     `json:"-" gorm:"foreignKey:WorkspaceID"`          // Belongs To Workspace
-	WorkspaceRole   WorkspaceRole `json:"-" gorm:"foreignKey:WorkspaceRoleID"`      // Belongs To WorkspaceRole
+	User            User          `json:"user" gorm:"foreignKey:UserID;references:ID"`
+	Workspace       Workspace     `json:"workspace" gorm:"foreignKey:WorkspaceID"`
+	WorkspaceRole   WorkspaceRole `json:"workspace_role" gorm:"foreignKey:WorkspaceRoleID"`
 }
 
 // TableName UserWorkspaceRole의 테이블 이름을 지정합니다
 func (UserWorkspaceRole) TableName() string {
 	return "mcmp_user_workspace_roles"
+}
+
+// UserWorkspaceRoleResponse 사용자-워크스페이스-역할 정보를 담는 응답 구조체
+type UserWorkspaceRoleResponse struct {
+	UserID            uint      `json:"user_id"`
+	Username          string    `json:"username"`
+	WorkspaceID       uint      `json:"workspace_id"`
+	WorkspaceName     string    `json:"workspace_name"`
+	WorkspaceRoleID   uint      `json:"workspace_role_id"`
+	WorkspaceRoleName string    `json:"workspace_role_name"`
+	CreatedAt         time.Time `json:"created_at"`
 }

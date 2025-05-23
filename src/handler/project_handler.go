@@ -13,24 +13,27 @@ import (
 
 	// Removed duplicate echo import
 	"github.com/m-cmp/mc-iam-manager/model" // Import mcmpapi model for request
+	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/service"
 )
 
 // ProjectHandler 프로젝트 관리 핸들러
 type ProjectHandler struct {
-	projectService *service.ProjectService
-	mcmpApiService service.McmpApiService // Added dependency
-	// db *gorm.DB // Not needed directly in handler
+	projectService   *service.ProjectService
+	workspaceService *service.WorkspaceService // WorkspaceService 추가
+	userService      *service.UserService
+	permissionRepo   *repository.MciamPermissionRepository
+	db               *gorm.DB
 }
 
 // NewProjectHandler 새 ProjectHandler 인스턴스 생성
-func NewProjectHandler(db *gorm.DB) *ProjectHandler { // Accept db, remove service params
-	// Initialize services internally
-	mcmpApiService := service.NewMcmpApiService(db)
-	projectService := service.NewProjectService(db, mcmpApiService)
+func NewProjectHandler(db *gorm.DB) *ProjectHandler {
 	return &ProjectHandler{
-		projectService: projectService,
-		mcmpApiService: mcmpApiService, // Initialize dependency
+		projectService:   service.NewProjectService(db, nil), // McmpApiService는 nil로 전달
+		workspaceService: service.NewWorkspaceService(db),    // WorkspaceService 초기화
+		userService:      service.NewUserService(db),
+		permissionRepo:   repository.NewMciamPermissionRepository(db),
+		db:               db,
 	}
 }
 
@@ -223,7 +226,7 @@ func (h *ProjectHandler) DeleteProject(c echo.Context) error {
 // @Success 200 {object} map[string]string "message: Project synchronization successful"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류 또는 동기화 실패"
 // @Security BearerAuth
-// @Router /admin/sync-projects [post]
+// @Router /setup/sync-projects [post]
 func (h *ProjectHandler) SyncProjects(c echo.Context) error {
 	log.Println("Received request to sync projects with mc-infra-manager")
 	if err := h.projectService.SyncProjectsWithInfraManager(c.Request().Context()); err != nil {
@@ -267,35 +270,22 @@ func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// RemoveWorkspaceFromProject godoc
-// @Summary 프로젝트에서 워크스페이스 연결 해제
-// @Description 프로젝트에서 워크스페이스 연결을 해제합니다.
-// @Tags projects
-// @Accept json
-// @Produce json
-// @Param id path int true "프로젝트 ID"
-// @Param workspaceId path int true "워크스페이스 ID"
-// @Success 204 "No Content"
-// @Failure 400 {object} map[string]string "error: 잘못된 ID 형식"
-// @Failure 404 {object} map[string]string "error: 프로젝트 또는 워크스페이스를 찾을 수 없습니다"
-// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
-// @Security BearerAuth
-// @Router /projects/{id}/workspaces/{workspaceId} [delete]
+// RemoveWorkspaceFromProject 프로젝트에서 워크스페이스 연결 해제
 func (h *ProjectHandler) RemoveWorkspaceFromProject(c echo.Context) error {
-	projectID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	projectID, err := strconv.ParseUint(c.Param("projectId"), 10, 32)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID입니다"})
 	}
+
 	workspaceID, err := strconv.ParseUint(c.Param("workspaceId"), 10, 32)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID입니다"})
 	}
 
-	if err := h.projectService.RemoveWorkspaceAssociation(uint(projectID), uint(workspaceID)); err != nil {
-		if err.Error() == "project not found" || err.Error() == "workspace not found" {
-			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 연결 해제 실패: %v", err)})
+	// WorkspaceService의 RemoveProjectFromWorkspace 호출
+	if err := h.workspaceService.RemoveProjectFromWorkspace(uint(workspaceID), uint(projectID)); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
+
 	return c.NoContent(http.StatusNoContent)
 }

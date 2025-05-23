@@ -32,3 +32,4 @@ generated/
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+asset/mcmpapi/mcmpapi-*.yaml

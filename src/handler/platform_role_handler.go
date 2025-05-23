@@ -1,25 +1,34 @@
 package handler
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/model"
+	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/service"
 	"gorm.io/gorm" // Import gorm
 )
 
 type PlatformRoleHandler struct {
-	service *service.PlatformRoleService
+	service         *service.PlatformRoleService
+	userService     *service.UserService
+	keycloakService service.KeycloakService
 	// db *gorm.DB // Not needed directly in handler
 }
 
 func NewPlatformRoleHandler(db *gorm.DB) *PlatformRoleHandler { // Accept db, remove service param
 	// Initialize service internally
 	platformRoleService := service.NewPlatformRoleService(db)
+	userService := service.NewUserService(db)
+	keycloakService := service.NewKeycloakService()
 	return &PlatformRoleHandler{
-		service: platformRoleService,
+		service:         platformRoleService,
+		userService:     userService,
+		keycloakService: keycloakService,
 	}
 }
 
@@ -149,4 +158,79 @@ func (h *PlatformRoleHandler) Delete(c echo.Context) error {
 		})
 	}
 	return c.NoContent(http.StatusNoContent)
+}
+
+// AssignPlatformRoleToUser assigns a platform role to a user
+// @Summary Assign a platform role to a user
+// @Description Assigns a platform role to a user by their ID or username
+// @Tags platform-roles
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Request body containing either 'id' or 'username' and 'role'"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/users/assign/platform-roles [post]
+func (h *PlatformRoleHandler) AssignPlatformRoleToUser(c echo.Context) error {
+	// 요청 본문에서 파라미터 가져오기
+	var requestBody map[string]string
+	if err := c.Bind(&requestBody); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": "Invalid request body format",
+		})
+	}
+
+	// 필수 파라미터 확인
+	roleName, exists := requestBody["role"]
+	if !exists {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": "Role name is required",
+		})
+	}
+
+	var user *model.User
+	var err error
+
+	// ID 또는 username으로 사용자 찾기
+	if id, exists := requestBody["id"]; exists {
+		// ID를 uint로 변환
+		userIDUint, err := strconv.ParseUint(id, 10, 32)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]interface{}{
+				"error": "Invalid user ID format",
+			})
+		}
+		user, err = h.userService.GetUserByID(c.Request().Context(), uint(userIDUint))
+	} else if username, exists := requestBody["username"]; exists {
+		user, err = h.userService.GetUserByUsername(c.Request().Context(), username)
+	} else {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": "Either 'id' or 'username' is required",
+		})
+	}
+
+	// 사용자 찾기 오류 처리
+	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return c.JSON(http.StatusNotFound, map[string]interface{}{
+				"error": "User not found",
+			})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": fmt.Sprintf("Failed to find user: %v", err),
+		})
+	}
+
+	// 역할 할당
+	err = h.keycloakService.AssignRealmRoleToUser(c.Request().Context(), user.KcId, roleName)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": fmt.Sprintf("Failed to assign role: %v", err),
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": fmt.Sprintf("Successfully assigned role %s to user %s", roleName, user.Username),
+	})
 }

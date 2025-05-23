@@ -68,7 +68,7 @@ func main() {
 	resourceTypeHandler := handler.NewResourceTypeHandler(db)
 	cspMappingHandler := handler.NewCspMappingHandler(db)
 	cspCredentialHandler := handler.NewCspCredentialHandler(db)
-	cspRoleHandler := handler.NewCspRoleHandler(db)
+	cspRoleHandler := handler.NewCspRoleHandler()
 	mcmpApiHandler := handler.NewMcmpApiHandler(db)
 	mcmpApiPermissionActionMappingHandler := handler.NewMcmpApiPermissionActionMappingHandler(db)
 	healthHandler := handler.NewHealthHandler()
@@ -122,116 +122,21 @@ func main() {
 		auth.POST("/refresh", authHandler.RefreshToken)
 	}
 
-	// 사용자 라우트
-	users := api.Group("/users")
+	// 관리자 setup 라우트
+	setup := api.Group("/setup", middleware.PlatformAdminMiddleware)
 	{
-		users.GET("", userHandler.GetUsers, middleware.PlatformRoleMiddleware(middleware.Read))
-		users.GET("/:id", userHandler.GetUserByID, middleware.PlatformRoleMiddleware(middleware.Read))
-		users.GET("/username/:username", userHandler.GetUserByUsername, middleware.PlatformRoleMiddleware(middleware.Read))
-		users.POST("", userHandler.CreateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
-		users.PUT("/:id", userHandler.UpdateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
-		users.DELETE("/:id", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
-		users.POST("/:id/approve", userHandler.ApproveUser, middleware.PlatformRoleMiddleware(middleware.Manage))
-
-		users.GET("/menus", menuHandler.GetUserMenuTree)
-		users.GET("/workspaces", userHandler.GetUserWorkspaceAndWorkspaceRoles)
+		setup.POST("/user", adminHandler.SetupInitialAdmin)
+		setup.GET("/check-roles", adminHandler.CheckUserRoles)
+		setup.POST("/sync-projects", projectHandler.SyncProjects)
+		setup.POST("/sync-apis", mcmpApiHandler.SyncMcmpAPIs)
+		setup.POST("/sync-menu", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
+		// setup.POST("/menus/register-from-yaml", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
+		// setup.POST("/menus/register-from-body", menuHandler.RegisterMenusFromBody, middleware.PlatformAdminMiddleware)
 	}
 
-	// 관리자 메뉴 라우트
-	menus := api.Group("/menus")
-	{
-		menus.GET("/", menuHandler.GetAllMenusTree)
-		menus.POST("", menuHandler.Create, middleware.PlatformAdminMiddleware)
-		menus.PUT("/:id", menuHandler.Update, middleware.PlatformAdminMiddleware)
-		menus.DELETE("/:id", menuHandler.Delete, middleware.PlatformAdminMiddleware)
-		menus.POST("/register-from-yaml", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
-		menus.POST("/register-from-body", menuHandler.RegisterMenusFromBody, middleware.PlatformAdminMiddleware)
-		menus.GET("/platform-roles/:role", menuHandler.GetMappedMenusByRole, middleware.PlatformAdminMiddleware)
-		menus.POST("/platform-roles/:role/menus/:menuId", menuHandler.CreateMenuMapping, middleware.PlatformAdminMiddleware)
-		menus.DELETE("/platform-roles/:role/menus/:menuId", menuHandler.DeleteMenuMapping, middleware.PlatformAdminMiddleware)
-	}
-
-	// 1개 워크스페이스에 대한 티켓 설정
-	api.POST("/workspace/set", authHandler.WorkspaceTicket)
-
-	// 워크스페이스 라우트
-	workspaces := api.Group("/workspaces")
-	{
-		workspaces.GET("", workspaceHandler.ListWorkspaces)
-		workspaces.GET("/workspace-name/:workspaceName", workspaceHandler.GetWorkspaceByName)
-		workspaces.GET("/:workspaceId", workspaceHandler.GetWorkspaceByID)
-		workspaces.GET("/:workspaceId/projects", workspaceHandler.ListProjectsByWorkspace)
-		workspaces.GET("/:workspaceId/users", workspaceHandler.ListUsersAndRolesByWorkspace)
-
-		workspaces.POST("", workspaceHandler.CreateWorkspace)
-		workspaces.PUT("/:workspaceId", workspaceHandler.UpdateWorkspace, middleware.WorkspaceRoleMiddleware(db))
-		workspaces.DELETE("/:workspaceId", workspaceHandler.DeleteWorkspace, middleware.WorkspaceRoleMiddleware(db))
-		workspaces.POST("/:workspaceId/projects/:projectId", workspaceHandler.AddProjectToWorkspace, middleware.WorkspaceRoleMiddleware(db))
-		workspaces.DELETE("/:workspaceId/projects/:projectId", workspaceHandler.RemoveProjectFromWorkspace, middleware.WorkspaceRoleMiddleware(db))
-
-		workspaces.POST("/:workspaceId/users/:username/roles/:workspaceRoleName", workspaceRoleHandler.AssignWorkspaceRoleToUser, middleware.PlatformRoleMiddleware(middleware.Manage))
-		workspaces.DELETE("/:workspaceId/users/:username/roles/:workspaceRoleName", workspaceRoleHandler.RemoveWorkspaceRoleFromUser, middleware.PlatformRoleMiddleware(middleware.Manage))
-		workspaces.GET("/:workspaceId/users/:username/roles", workspaceRoleHandler.GetUserWorkspaceRoles, middleware.PlatformRoleMiddleware(middleware.Manage))
-	}
-
-	// 프로젝트 라우트 : workspace ticket과 workspaceId가 있으면 됨.
-	projects := api.Group("/projects")
-	{
-		projects.GET("", projectHandler.ListProjects)
-		projects.POST("", projectHandler.CreateProject, middleware.PlatformRoleMiddleware(middleware.Manage)) // platformRole에서 관리자
-		projects.GET("/name/:name", projectHandler.GetProjectByName)
-		projects.GET("/:id", projectHandler.GetProjectByID)
-		projects.PUT("/:id", projectHandler.UpdateProject, middleware.PlatformRoleMiddleware(middleware.Manage))
-		projects.DELETE("/:id", projectHandler.DeleteProject, middleware.PlatformRoleMiddleware(middleware.Manage))
-		projects.POST("/:id/workspaces/:workspaceId", projectHandler.AddWorkspaceToProject, middleware.PlatformRoleMiddleware(middleware.Manage))
-		projects.DELETE("/:id/workspaces/:workspaceId", projectHandler.RemoveWorkspaceFromProject, middleware.PlatformAdminMiddleware)
-	}
-
-	// 리소스 타입 라우트
-	resourceTypes := api.Group("/resource-types", middleware.PlatformAdminMiddleware)
-	{
-		resourceTypes.GET("", resourceTypeHandler.ListResourceTypes)
-		resourceTypes.POST("", resourceTypeHandler.CreateResourceType)
-		resourceTypes.GET("/:frameworkId/:id", resourceTypeHandler.GetResourceTypeByID)
-		resourceTypes.PUT("/:frameworkId/:id", resourceTypeHandler.UpdateResourceType)
-		resourceTypes.DELETE("/:frameworkId/:id", resourceTypeHandler.DeleteResourceType)
-	}
-
-	// 플랫폼 역할 라우트
-	platformRoles := api.Group("/platform-roles", middleware.PlatformRoleMiddleware(middleware.Manage))
-	{
-		platformRoles.GET("", platformRoleHandler.List)
-		platformRoles.POST("", platformRoleHandler.Create)
-		platformRoles.GET("/:id", platformRoleHandler.GetByID)
-		platformRoles.PUT("/:id", platformRoleHandler.Update)
-		platformRoles.DELETE("/:id", platformRoleHandler.Delete)
-	}
-
-	// Workspace 역할 라우트
-	workspaceRoles := api.Group("/workspace-roles", middleware.PlatformRoleMiddleware(middleware.Manage))
-	{
-		workspaceRoles.GET("", workspaceRoleHandler.List)
-		workspaceRoles.POST("", workspaceRoleHandler.Create)
-		workspaceRoles.GET("/:id", workspaceRoleHandler.GetByID)
-		workspaceRoles.PUT("/:id", workspaceRoleHandler.Update)
-		workspaceRoles.DELETE("/:id", workspaceRoleHandler.Delete)
-	}
-
-	// CSP 역할 매핑 라우트
-	cspRoleMappings := api.Group("/workspace-roles/:roleId/csp-role-mappings")
-	{
-		cspRoleMappings.GET("", cspMappingHandler.ListCspRoleMappingsByRole, middleware.WorkspaceRoleMiddleware(db))
-		cspRoleMappings.POST("", cspMappingHandler.CreateCspRoleMapping, middleware.WorkspaceRoleMiddleware(db))
-		cspRoleMappings.PUT("/:cspType/:cspRoleArn", cspMappingHandler.UpdateCspRoleMapping, middleware.WorkspaceRoleMiddleware(db))
-		cspRoleMappings.DELETE("/:cspType/:cspRoleArn", cspMappingHandler.DeleteCspRoleMapping, middleware.WorkspaceRoleMiddleware(db))
-	}
-
-	// 관리자 라우트
+	// 관리자 전용 라우트
 	admin := api.Group("/admin", middleware.PlatformAdminMiddleware)
 	{
-		admin.POST("/setup", adminHandler.SetupInitialAdmin)
-		admin.GET("/check-roles", adminHandler.CheckUserRoles)
-
 		admin.GET("/workspaces", workspaceHandler.GetAllWorkspaces)
 		admin.POST("/workspaces", workspaceHandler.CreateWorkspace)
 		admin.PUT("/workspaces/:id", workspaceHandler.UpdateWorkspace)
@@ -243,17 +148,129 @@ func main() {
 		admin.PUT("/projects/:id", projectHandler.UpdateProject)
 		admin.DELETE("/projects/:id", projectHandler.DeleteProject)
 
-		admin.POST("/sync-projects", projectHandler.SyncProjects)
-		admin.POST("/sync-apis", mcmpApiHandler.SyncMcmpAPIs)
-
-		admin.GET("/csp-roles", cspRoleHandler.GetAllCSPRoles)
-		admin.POST("/csp-roles", cspRoleHandler.CreateCSPRole)
-		admin.PUT("/csp-roles/:id", cspRoleHandler.UpdateCSPRole)
-		admin.DELETE("/csp-roles/:id", cspRoleHandler.DeleteCSPRole)
-
 		admin.GET("/mcmp-api", mcmpApiHandler.GetAllAPIDefinitions)
 
 		admin.POST("/credentials", cspCredentialHandler.GetTemporaryCredentials)
+
+	}
+
+	// 플랫폼 역할 CRUD
+	platformRoles := api.Group("/platform-roles", middleware.PlatformRoleMiddleware(middleware.Manage))
+	{
+		platformRoles.GET("", platformRoleHandler.List)
+		platformRoles.POST("", platformRoleHandler.Create)
+		platformRoles.GET("/:id", platformRoleHandler.GetByID)
+		platformRoles.PUT("/:id", platformRoleHandler.Update)
+		platformRoles.DELETE("/:id", platformRoleHandler.Delete)
+	}
+
+	// Workspace 역할 CRUD
+	workspaceRoles := api.Group("/workspace-roles", middleware.PlatformRoleMiddleware(middleware.Manage))
+	{
+		workspaceRoles.GET("", workspaceRoleHandler.List)
+		workspaceRoles.POST("", workspaceRoleHandler.Create)
+		workspaceRoles.GET("/:id", workspaceRoleHandler.GetByID)
+		workspaceRoles.PUT("/:id", workspaceRoleHandler.Update)
+		workspaceRoles.DELETE("/:id", workspaceRoleHandler.Delete)
+	}
+
+	cspRoles := api.Group("/csp-roles", middleware.PlatformRoleMiddleware(middleware.Manage))
+	{
+		cspRoles.GET("/all", cspRoleHandler.GetAllCSPRoles)
+		cspRoles.GET("", cspRoleHandler.GetCSPRoles)
+		cspRoles.POST("", cspRoleHandler.CreateCSPRole)
+		cspRoles.PUT("/:id", cspRoleHandler.UpdateCSPRole)
+		cspRoles.DELETE("/:id", cspRoleHandler.DeleteCSPRole)
+	}
+
+	// 사용자 라우트
+	users := api.Group("/users")
+	{
+		users.GET("", userHandler.GetUsers, middleware.PlatformRoleMiddleware(middleware.Read))
+		users.GET("/id/:id", userHandler.GetUserByID, middleware.PlatformRoleMiddleware(middleware.Read))
+		users.GET("/name/:username", userHandler.GetUserByUsername, middleware.PlatformRoleMiddleware(middleware.Read))
+		users.POST("", userHandler.CreateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.PUT("/id/:id", userHandler.UpdateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.DELETE("/id/:id", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.POST("/id/:id/approve", userHandler.ApproveUser, middleware.PlatformRoleMiddleware(middleware.Manage))
+
+		users.GET("/menus", menuHandler.GetUserMenuTree)
+		users.GET("/workspaces", userHandler.GetUserWorkspaceAndWorkspaceRoles)
+
+		// 사용자에게 플랫폼 역할 할당
+		users.POST("/assign/platform-roles", platformRoleHandler.AssignPlatformRoleToUser, middleware.PlatformRoleMiddleware(middleware.Manage))
+		// 사용자에게 워크스페이스 역할 할당
+		users.POST("/assign/workspace-roles", workspaceRoleHandler.AssignWorkspaceRoleToUser, middleware.PlatformRoleMiddleware(middleware.Manage))
+	}
+
+	// 메뉴 라우트
+	menusMng := api.Group("/menus")
+	{
+		menusMng.GET("/", menuHandler.GetAllMenusTree)
+		menusMng.POST("", menuHandler.Create, middleware.PlatformAdminMiddleware)
+		menusMng.PUT("/:id", menuHandler.Update, middleware.PlatformAdminMiddleware)
+		menusMng.DELETE("/:id", menuHandler.Delete, middleware.PlatformAdminMiddleware)
+
+		menusMng.GET("/platform-roles/:role", menuHandler.GetMappedMenusByRole, middleware.PlatformAdminMiddleware)
+		menusMng.POST("/platform-roles/:role/menus/:menuId", menuHandler.CreateMenuMapping, middleware.PlatformAdminMiddleware)
+		menusMng.DELETE("/platform-roles/:role/menus/:menuId", menuHandler.DeleteMenuMapping, middleware.PlatformAdminMiddleware)
+	}
+
+	// 워크스페이스 라우트
+	workspaces := api.Group("/workspaces")
+	{
+		workspaces.POST("/set", authHandler.WorkspaceTicket) // 1개 워크스페이스에 대한 티켓 설정
+
+		workspaces.GET("", workspaceHandler.ListWorkspaces)
+		workspaces.GET("/all", workspaceHandler.ListAllWorkspaces, middleware.PlatformRoleMiddleware(middleware.Manage))
+		workspaces.GET("/userrole", workspaceHandler.ListAllWorkspaceUsersAndRoles, middleware.PlatformRoleMiddleware(middleware.Manage))
+		workspaces.GET("/name/:workspaceName", workspaceHandler.GetWorkspaceByName)
+		workspaces.GET("/id/:workspaceId", workspaceHandler.GetWorkspaceByID)
+		workspaces.GET("/id/:workspaceId/projects", workspaceHandler.ListProjectsByWorkspace)
+		workspaces.GET("/id/:workspaceId/users", workspaceHandler.ListUsersAndRolesByWorkspace)
+
+		workspaces.POST("", workspaceHandler.CreateWorkspace)
+		workspaces.PUT("/id/:workspaceId", workspaceHandler.UpdateWorkspace, middleware.WorkspaceRoleMiddleware(db))
+		workspaces.DELETE("/id/:workspaceId", workspaceHandler.DeleteWorkspace, middleware.WorkspaceRoleMiddleware(db))
+		workspaces.POST("/id/:workspaceId/projects/:projectId", workspaceHandler.AddProjectToWorkspace, middleware.WorkspaceRoleMiddleware(db))
+		workspaces.DELETE("/id/:workspaceId/projects/:projectId", workspaceHandler.RemoveProjectFromWorkspace, middleware.WorkspaceRoleMiddleware(db))
+
+		workspaces.POST("/id/:workspaceId/users/:username/roles/:workspaceRoleName", workspaceRoleHandler.AssignWorkspaceRoleToUser, middleware.PlatformRoleMiddleware(middleware.Write))
+		workspaces.DELETE("/id/:workspaceId/users/:username/roles/:workspaceRoleName", workspaceRoleHandler.RemoveWorkspaceRoleFromUser, middleware.PlatformRoleMiddleware(middleware.Write))
+		workspaces.GET("/id/:workspaceId/users/:username/roles", workspaceRoleHandler.GetUserWorkspaceRoles, middleware.PlatformRoleMiddleware(middleware.Read))
+	}
+
+	// 프로젝트 라우트 : workspace ticket과 workspaceId가 있으면 됨.
+	projects := api.Group("/projects")
+	{
+		projects.GET("", projectHandler.ListProjects)
+		projects.POST("", projectHandler.CreateProject, middleware.PlatformRoleMiddleware(middleware.Manage)) // platformRole에서 관리자
+		projects.GET("/name/:name", projectHandler.GetProjectByName)
+		projects.GET("/id/:id", projectHandler.GetProjectByID)
+		projects.PUT("/id/:id", projectHandler.UpdateProject, middleware.PlatformRoleMiddleware(middleware.Manage))
+		projects.DELETE("/id/:id", projectHandler.DeleteProject, middleware.PlatformRoleMiddleware(middleware.Manage))
+		projects.POST("/id/:id/workspaces/:workspaceId", projectHandler.AddWorkspaceToProject, middleware.PlatformRoleMiddleware(middleware.Manage))
+		projects.DELETE("/id/:id/workspaces/:workspaceId", projectHandler.RemoveWorkspaceFromProject, middleware.PlatformAdminMiddleware)
+	}
+
+	// 리소스 타입 라우트 ( platformResource=menu,api , cloudResource=vm,nlb,k8s ...)
+	resourceTypes := api.Group("/resource-types")
+	{
+		cloudResource := resourceTypes.Group("/cloud-resources", middleware.PlatformAdminMiddleware)
+		cloudResource.GET("", resourceTypeHandler.ListCloudResourceTypes)
+		cloudResource.POST("", resourceTypeHandler.CreateCloudResourceType)
+		cloudResource.GET("/framework/:frameworkId/id/:id", resourceTypeHandler.GetCloudResourceTypeByID)
+		cloudResource.PUT("/framework/:frameworkId/id/:id", resourceTypeHandler.UpdateResourceType)
+		cloudResource.DELETE("/framework/:frameworkId/id/:id", resourceTypeHandler.DeleteResourceType)
+	}
+
+	// CSP 역할 매핑 라우트
+	cspRoleMappings := api.Group("/workspace-roles/:roleId/csp-role-mappings")
+	{
+		cspRoleMappings.GET("", cspMappingHandler.ListCspRoleMappingsByRole, middleware.PlatformRoleMiddleware(middleware.Manage))
+		cspRoleMappings.POST("", cspMappingHandler.CreateCspRoleMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
+		cspRoleMappings.PUT("/:cspType/:cspRoleArn", cspMappingHandler.UpdateCspRoleMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
+		cspRoleMappings.DELETE("/:cspType/:cspRoleArn", cspMappingHandler.DeleteCspRoleMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
 	}
 
 	// MC-IAM 권한 라우트
@@ -279,7 +296,7 @@ func main() {
 	// MCMP API 권한-액션 매핑 라우트
 	mcmpApiPermissionActionMappings := mcmpApis.Group("/permission-action-mappings")
 	{
-		mcmpApiPermissionActionMappings.GET("", mcmpApiPermissionActionMappingHandler.GetPlatformActionsByPermissionID, middleware.PlatformRoleMiddleware(middleware.Read))
+		mcmpApiPermissionActionMappings.GET("/:id", mcmpApiPermissionActionMappingHandler.GetPlatformActionsByPermissionID, middleware.PlatformRoleMiddleware(middleware.Read))
 		mcmpApiPermissionActionMappings.POST("", mcmpApiPermissionActionMappingHandler.CreateMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
 
 		mcmpApiPermissionActionMappings.GET("/:id", mcmpApiPermissionActionMappingHandler.GetWorkspaceActionsByPermissionID, middleware.PlatformRoleMiddleware(middleware.Read))
