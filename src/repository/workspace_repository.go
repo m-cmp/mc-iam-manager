@@ -177,3 +177,15 @@ func (r *WorkspaceRepository) FindAll() ([]*model.Workspace, error) {
 	}
 	return workspaces, nil
 }
+
+// FindByID 워크스페이스를 ID로 조회
+func (r *WorkspaceRepository) FindByID(id uint) (*model.Workspace, error) {
+	var workspace model.Workspace
+	if err := r.db.First(&workspace, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &workspace, nil
+}

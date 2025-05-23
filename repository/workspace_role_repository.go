@@ -109,8 +109,3 @@ func (r *WorkspaceRoleRepository) GetWorkspaceRoles(workspaceID uint) ([]model.R
 	}
 	return roles, nil
 }
-
-// DB returns the underlying gorm.DB instance
-func (r *WorkspaceRoleRepository) DB() *gorm.DB {
-	return r.db
-}

@@ -2,61 +2,62 @@ package model
 
 import "time"
 
-// PlatformRole 플랫폼 역할 모델 (DB 테이블: mcmp_platform_roles)
-type PlatformRole struct {
-	ID          uint      `json:"id" gorm:"primaryKey;column:id"`
-	Name        string    `json:"name" gorm:"column:name;size:255;not null;unique"`
-	Description string    `json:"description" gorm:"column:description;size:1000"`
-	CreatedAt   time.Time `json:"created_at" gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt   time.Time `json:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
+// RoleMaster 역할 마스터 모델 (DB 테이블: mcmp_role_master)
+type RoleMaster struct {
+	ID          uint         `json:"id" gorm:"primaryKey;column:id"`
+	ParentID    *uint        `json:"parent_id" gorm:"column:parent_id"`
+	Name        string       `json:"name" gorm:"column:name;size:255;not null;unique"`
+	Description string       `json:"description" gorm:"column:description;size:1000"`
+	Predefined  bool         `json:"predefined" gorm:"column:predefined;not null;default:false"`
+	CreatedAt   time.Time    `json:"created_at" gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt   time.Time    `json:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
+	Parent      *RoleMaster  `json:"parent,omitempty" gorm:"foreignKey:ParentID"`
+	Children    []RoleMaster `json:"children,omitempty" gorm:"foreignKey:ParentID"`
+	RoleSubs    []RoleSub    `json:"role_subs,omitempty" gorm:"foreignKey:RoleID"`
 }
 
-// TableName PlatformRole의 테이블 이름을 지정합니다
-func (PlatformRole) TableName() string {
-	return "mcmp_platform_roles"
+// TableName RoleMaster의 테이블 이름을 지정합니다
+func (RoleMaster) TableName() string {
+	return "mcmp_role_master"
 }
 
-// WorkspaceRole 워크스페이스 역할 모델 (DB 테이블: mcmp_workspace_roles)
-// PlatformRole처럼 독립적으로 정의되어야 함. WorkspaceID 제거.
-type WorkspaceRole struct {
-	ID          uint      `json:"id" gorm:"primaryKey;column:id"`
-	Name        string    `json:"name" gorm:"column:name;size:255;not null;unique"` // 이름은 고유해야 함
-	Description string    `json:"description" gorm:"column:description;size:1000"`
-	CreatedAt   time.Time `json:"created_at" gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt   time.Time `json:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
+// RoleSub 역할 서브 모델 (DB 테이블: mcmp_role_sub)
+type RoleSub struct {
+	ID        uint       `json:"id" gorm:"primaryKey;column:id"`
+	RoleID    uint       `json:"role_id" gorm:"column:role_id;not null"`
+	RoleType  string     `json:"role_type" gorm:"column:role_type;size:50;not null"`
+	CreatedAt time.Time  `json:"created_at" gorm:"column:created_at;autoCreateTime"`
+	Role      RoleMaster `json:"-" gorm:"foreignKey:RoleID"`
 }
 
-// TableName WorkspaceRole의 테이블 이름을 지정합니다
-func (WorkspaceRole) TableName() string {
-	// GORM doesn't directly support composite unique constraints via tags easily,
-	// ensure it's defined in the migration.
-	return "mcmp_workspace_roles"
+// TableName RoleSub의 테이블 이름을 지정합니다
+func (RoleSub) TableName() string {
+	return "mcmp_role_sub"
 }
 
-// UserPlatformRole 사용자-플랫폼 역할 매핑 모델 (DB 테이블: mcmp_user_platform_roles)
+// UserRole 사용자-역할 매핑 모델 (DB 테이블: mcmp_user_platform_roles)
 type UserPlatformRole struct {
-	UserID         uint         `json:"user_id" gorm:"primaryKey;column:user_id"`
-	PlatformRoleID uint         `json:"platform_role_id" gorm:"primaryKey;column:platform_role_id"`
-	CreatedAt      time.Time    `json:"created_at" gorm:"column:created_at;autoCreateTime"`
-	User           User         `json:"-" gorm:"foreignKey:UserID"`         // Belongs To User
-	PlatformRole   PlatformRole `json:"-" gorm:"foreignKey:PlatformRoleID"` // Belongs To PlatformRole
+	UserID    uint       `json:"user_id" gorm:"primaryKey;column:user_id"`
+	RoleID    uint       `json:"role_id" gorm:"primaryKey;column:role_id"`
+	CreatedAt time.Time  `json:"created_at" gorm:"column:created_at;autoCreateTime"`
+	User      User       `json:"-" gorm:"foreignKey:UserID"`
+	Role      RoleMaster `json:"-" gorm:"foreignKey:RoleID"`
 }
 
-// TableName UserPlatformRole의 테이블 이름을 지정합니다
+// TableName UserRole의 테이블 이름을 지정합니다
 func (UserPlatformRole) TableName() string {
 	return "mcmp_user_platform_roles"
 }
 
 // UserWorkspaceRole 사용자-워크스페이스-역할 매핑 모델 (DB 테이블: mcmp_user_workspace_roles)
-// WorkspaceID 추가 및 복합 기본 키 설정 필요
 type UserWorkspaceRole struct {
-	UserID          uint          `json:"user_id" gorm:"primaryKey;column:user_id;autoIncrement:false"`
-	WorkspaceID     uint          `json:"workspace_id" gorm:"primaryKey;column:workspace_id;autoIncrement:false"`
-	WorkspaceRoleID uint          `json:"workspace_role_id" gorm:"primaryKey;column:workspace_role_id;autoIncrement:false"`
-	CreatedAt       time.Time     `json:"created_at" gorm:"column:created_at;autoCreateTime"`
-	User            User          `json:"user" gorm:"foreignKey:UserID;references:ID"`
-	Workspace       Workspace     `json:"workspace" gorm:"foreignKey:WorkspaceID"`
-	WorkspaceRole   WorkspaceRole `json:"workspace_role" gorm:"foreignKey:WorkspaceRoleID"`
+	UserID      uint        `json:"user_id" gorm:"primaryKey;column:user_id"`
+	WorkspaceID uint        `json:"workspace_id" gorm:"primaryKey;column:workspace_id"`
+	RoleID      uint        `json:"role_id" gorm:"primaryKey;column:role_id"`
+	CreatedAt   time.Time   `json:"created_at" gorm:"column:created_at;autoCreateTime"`
+	User        *User       `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	Workspace   *Workspace  `json:"workspace,omitempty" gorm:"foreignKey:WorkspaceID"`
+	Role        *RoleMaster `json:"role,omitempty" gorm:"foreignKey:RoleID"`
 }
 
 // TableName UserWorkspaceRole의 테이블 이름을 지정합니다
@@ -66,11 +67,24 @@ func (UserWorkspaceRole) TableName() string {
 
 // UserWorkspaceRoleResponse 사용자-워크스페이스-역할 정보를 담는 응답 구조체
 type UserWorkspaceRoleResponse struct {
-	UserID            uint      `json:"user_id"`
-	Username          string    `json:"username"`
-	WorkspaceID       uint      `json:"workspace_id"`
-	WorkspaceName     string    `json:"workspace_name"`
-	WorkspaceRoleID   uint      `json:"workspace_role_id"`
-	WorkspaceRoleName string    `json:"workspace_role_name"`
-	CreatedAt         time.Time `json:"created_at"`
+	UserID        uint      `json:"user_id"`
+	Username      string    `json:"username"`
+	WorkspaceID   uint      `json:"workspace_id"`
+	WorkspaceName string    `json:"workspace_name"`
+	RoleID        uint      `json:"role_id"`
+	RoleName      string    `json:"role_name"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+// RoleType 상수 정의
+const (
+	RoleTypePlatform  = "platform"
+	RoleTypeWorkspace = "workspace"
+)
+
+// AssignRoleRequest 역할 할당 요청 구조체
+type AssignRoleRequest struct {
+	Username    string `json:"username"`
+	RoleName    string `json:"roleName"`
+	WorkspaceID uint   `json:"workspaceId"`
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 
@@ -113,14 +114,15 @@ func (s *healthCheckService) GetDetailedStatus(ctx context.Context) (*HealthStat
 	}
 
 	// 4. Platform Roles Count
-	err = s.db.Model(&model.PlatformRole{}).Count(&status.PlatformRolesCount).Error
+	err = s.db.Model(&model.RoleMaster{}).Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
+		Where("mcmp_role_sub.role_type = ?", "platform").Count(&status.PlatformRolesCount).Error
 	if err != nil {
 		log.Printf("Error counting platform roles: %v", err)
-		// Optionally set a specific error message in status
 	}
 
 	// 5. Workspace Roles Count
-	err = s.db.Model(&model.WorkspaceRole{}).Count(&status.WorkspaceRolesCount).Error
+	err = s.db.Model(&model.RoleMaster{}).Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
+		Where("mcmp_role_sub.role_type = ?", "workspace").Count(&status.WorkspaceRolesCount).Error
 	if err != nil {
 		log.Printf("Error counting workspace roles: %v", err)
 	}
@@ -145,4 +147,62 @@ func (s *healthCheckService) GetDetailedStatus(ctx context.Context) (*HealthStat
 
 	// Return status even if some checks failed
 	return status, nil
+}
+
+// CheckRoleTables 역할 관련 테이블 상태 확인
+func (s *healthCheckService) CheckRoleTables() error {
+	// RoleMaster 테이블 확인
+	var roleMaster model.RoleMaster
+	if err := s.db.First(&roleMaster).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("role master table check failed: %w", err)
+	}
+
+	// RoleSub 테이블 확인
+	var roleSub model.RoleSub
+	if err := s.db.First(&roleSub).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("role sub table check failed: %w", err)
+	}
+
+	// UserRole 테이블 확인
+	var userRole model.UserPlatformRole
+	if err := s.db.First(&userRole).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("user role table check failed: %w", err)
+	}
+
+	// UserWorkspaceRole 테이블 확인
+	var userWorkspaceRole model.UserWorkspaceRole
+	if err := s.db.First(&userWorkspaceRole).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("user workspace role table check failed: %w", err)
+	}
+
+	return nil
+}
+
+// CheckRoleData 역할 데이터 상태 확인
+func (s *healthCheckService) CheckRoleData() error {
+	// RoleMaster 데이터 확인
+	var roleMasters []model.RoleMaster
+	if err := s.db.Preload("RoleSubs").Find(&roleMasters).Error; err != nil {
+		return fmt.Errorf("role master data check failed: %w", err)
+	}
+
+	// RoleSub 데이터 확인
+	var roleSubs []model.RoleSub
+	if err := s.db.Find(&roleSubs).Error; err != nil {
+		return fmt.Errorf("role sub data check failed: %w", err)
+	}
+
+	// UserRole 데이터 확인
+	var userRoles []model.UserPlatformRole
+	if err := s.db.Find(&userRoles).Error; err != nil {
+		return fmt.Errorf("user role data check failed: %w", err)
+	}
+
+	// UserWorkspaceRole 데이터 확인
+	var userWorkspaceRoles []model.UserWorkspaceRole
+	if err := s.db.Find(&userWorkspaceRoles).Error; err != nil {
+		return fmt.Errorf("user workspace role data check failed: %w", err)
+	}
+
+	return nil
 }

@@ -19,9 +19,9 @@ import (
 
 // Helper function to get user DB ID and Platform Roles from context
 // TODO: Move this to a shared location or middleware
-func getUserDbIdAndPlatformRoles(ctx context.Context, c echo.Context, userService *service.UserService) (uint, []*model.PlatformRole, error) { // Added ctx parameter
+func getUserDbIdAndPlatformRoles(ctx context.Context, c echo.Context, userService *service.UserService) (uint, []*model.RoleMaster, error) {
 	// Assume AuthMiddleware sets kcUserId in context
-	kcUserIdVal := c.Get("kcUserId") // Or however the middleware provides it
+	kcUserIdVal := c.Get("kcUserId")
 	if kcUserIdVal == nil {
 		return 0, nil, errors.New("kcUserId not found in context")
 	}
@@ -31,12 +31,11 @@ func getUserDbIdAndPlatformRoles(ctx context.Context, c echo.Context, userServic
 	}
 
 	// Fetch user details including roles
-	user, err := userService.GetUserByKcID(ctx, kcUserId) // Use GetUserByKcID from UserService, pass context
+	user, err := userService.GetUserByKcID(ctx, kcUserId)
 	if err != nil {
-		// Handle user not found or other errors
 		return 0, nil, fmt.Errorf("failed to find user by kcId %s: %w", kcUserId, err)
 	}
-	if user == nil { // Should not happen if FindByKcID handles errors correctly
+	if user == nil {
 		return 0, nil, fmt.Errorf("user not found for kcId %s", kcUserId)
 	}
 
@@ -45,7 +44,7 @@ func getUserDbIdAndPlatformRoles(ctx context.Context, c echo.Context, userServic
 
 // Helper function to check platform role permission
 // TODO: Implement proper permission check using MciamPermissionRepository
-func checkPlatformPermission(permissionRepo *repository.MciamPermissionRepository, platformRoles []*model.PlatformRole, requiredPermissionID string) (bool, error) {
+func checkPlatformPermission(permissionRepo *repository.MciamPermissionRepository, platformRoles []*model.RoleMaster, requiredPermissionID string) (bool, error) {
 	if len(platformRoles) == 0 {
 		return false, nil
 	}
@@ -53,8 +52,6 @@ func checkPlatformPermission(permissionRepo *repository.MciamPermissionRepositor
 		hasPerm, err := permissionRepo.CheckRoleMciamPermission("platform", role.ID, requiredPermissionID)
 		if err != nil {
 			log.Printf("Error checking permission %s for platform role %d: %v", requiredPermissionID, role.ID, err)
-			// Continue checking other roles in case of error? Or return error immediately?
-			// Let's return the error for now.
 			return false, err
 		}
 		if hasPerm {
@@ -66,28 +63,26 @@ func checkPlatformPermission(permissionRepo *repository.MciamPermissionRepositor
 
 // WorkspaceHandler 워크스페이스 관리 핸들러
 type WorkspaceHandler struct {
-	workspaceService     *service.WorkspaceService
-	userService          *service.UserService                  // For getting user info
-	permissionRepo       *repository.MciamPermissionRepository // For checking permissions directly
-	workspaceRoleService *service.WorkspaceRoleService         // For assigning role on create
-	workspaceRoleRepo    *repository.WorkspaceRoleRepository   // For finding 'admin' role ID
-	// db *gorm.DB // Not needed directly in handler
+	workspaceService  *service.WorkspaceService
+	userService       *service.UserService
+	permissionRepo    *repository.MciamPermissionRepository
+	roleService       *service.RoleService
+	workspaceRoleRepo *repository.WorkspaceRoleRepository
 }
 
 // NewWorkspaceHandler 새 WorkspaceHandler 인스턴스 생성
 func NewWorkspaceHandler(db *gorm.DB) *WorkspaceHandler {
-	// Initialize services and repositories internally
 	workspaceService := service.NewWorkspaceService(db)
 	userService := service.NewUserService(db)
 	permissionRepo := repository.NewMciamPermissionRepository(db)
-	workspaceRoleService := service.NewWorkspaceRoleService(db)    // Corrected: Initialize WorkspaceRoleService
-	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db) // Initialize WorkspaceRoleRepository
+	roleService := service.NewRoleService(db)
+	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db)
 	return &WorkspaceHandler{
-		workspaceService:     workspaceService,
-		userService:          userService,
-		permissionRepo:       permissionRepo,
-		workspaceRoleService: workspaceRoleService,
-		workspaceRoleRepo:    workspaceRoleRepo,
+		workspaceService:  workspaceService,
+		userService:       userService,
+		permissionRepo:    permissionRepo,
+		roleService:       roleService,
+		workspaceRoleRepo: workspaceRoleRepo,
 	}
 }
 
@@ -497,4 +492,68 @@ func (h *WorkspaceHandler) ListAllWorkspaceUsersAndRoles(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, result)
+}
+
+// GetWorkspaceRoles 워크스페이스의 역할 목록 조회
+func (h *WorkspaceHandler) GetWorkspaceRoles(c echo.Context) error {
+	roles, err := h.roleService.List("workspace")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
+}
+
+// AssignWorkspaceRole godoc
+// @Summary 워크스페이스 역할 할당
+// @Description 워크스페이스 역할을 사용자에게 할당합니다
+// @Tags workspace
+// @Accept json
+// @Produce json
+// @Param request body model.AssignRoleRequest true "역할 할당 요청"
+// @Success 200 {object} map[string]string "message: Role assigned successfully"
+// @Failure 400 {object} map[string]string "error: Invalid request"
+// @Failure 404 {object} map[string]string "error: User not found"
+// @Failure 404 {object} map[string]string "error: Role not found"
+// @Failure 500 {object} map[string]string "error: Failed to assign role"
+// @Router /api/v1/workspace/roles/assign [post]
+func (h *WorkspaceHandler) AssignWorkspaceRole(c echo.Context) error {
+	var req model.AssignRoleRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+	}
+
+	// 사용자 조회 (username으로)
+	user, err := h.userService.GetByUsername(req.Username)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get user"})
+	}
+	if user == nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+	}
+
+	// 역할 조회
+	role, err := h.roleService.GetByName(req.RoleName)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get role"})
+	}
+	if role == nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Role not found"})
+	}
+
+	// 워크스페이스 역할 타입 검증
+	var roleSub model.RoleSub
+	if err := h.workspaceService.GetDB().Where("role_id = ? AND role_type = ?", role.ID, model.RoleTypeWorkspace).First(&roleSub).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid role type. Must be a workspace role"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to verify role type"})
+	}
+
+	// 역할 할당
+	err = h.workspaceService.AssignRole(user.ID, req.WorkspaceID, role.ID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to assign role"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Role assigned successfully"})
 }

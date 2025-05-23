@@ -1,9 +1,6 @@
 package repository
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/m-cmp/mc-iam-manager/model"
 	"gorm.io/gorm"
 )
@@ -71,34 +68,18 @@ func (r *PlatformRoleRepository) Delete(id uint) error {
 	})
 }
 
-var roleModelFactories = map[string]func(userID, roleID uint) interface{}{
-	"platform": func(userID, roleID uint) interface{} {
-		return &model.UserPlatformRole{
-			UserID: userID,
-			RoleID: roleID,
-		}
-	},
-	"workspace": func(userID, roleID uint) interface{} {
-		return &model.UserWorkspaceRole{
-			UserID: userID,
-			RoleID: roleID,
-		}
-	},
-}
-
-// AssignRole 사용자에게 역할 할당
-func (r *PlatformRoleRepository) AssignRole(userID, roleID uint, roleType string) error {
-	factory, ok := roleModelFactories[roleType]
-	if !ok {
-		return fmt.Errorf("unsupported role type: %s", roleType)
+// AssignRole 사용자에게 플랫폼 역할 할당
+func (r *PlatformRoleRepository) AssignRole(userID, roleID uint) error {
+	userRole := model.UserRole{
+		UserID: userID,
+		RoleID: roleID,
 	}
-	role := factory(userID, roleID)
-	return r.db.Create(role).Error
+	return r.db.Create(&userRole).Error
 }
 
 // RemoveRole 사용자의 플랫폼 역할 제거
 func (r *PlatformRoleRepository) RemoveRole(userID, roleID uint) error {
-	return r.db.Where("user_id = ? AND role_id = ?", userID, roleID).Delete(&model.UserPlatformRole{}).Error
+	return r.db.Where("user_id = ? AND role_id = ?", userID, roleID).Delete(&model.UserRole{}).Error
 }
 
 // GetUserRoles 사용자의 플랫폼 역할 목록 조회
@@ -112,24 +93,4 @@ func (r *PlatformRoleRepository) GetUserRoles(userID uint) ([]model.RoleMaster, 
 		return nil, err
 	}
 	return roles, nil
-}
-
-// GetByName 이름으로 플랫폼 역할 조회
-func (r *PlatformRoleRepository) GetByName(name string) (*model.RoleMaster, error) {
-	var role model.RoleMaster
-	if err := r.db.Preload("RoleSubs").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_master.name = ? AND mcmp_role_sub.role_type = ?", name, "platform").
-		First(&role).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("platform role not found")
-		}
-		return nil, err
-	}
-	return &role, nil
-}
-
-// DB returns the underlying gorm DB instance (Helper for sync function)
-func (r *PlatformRoleRepository) DB() *gorm.DB {
-	return r.db
 }
