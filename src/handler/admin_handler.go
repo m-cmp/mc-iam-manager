@@ -5,14 +5,12 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service"
 	"gorm.io/gorm"
 )
 
-type Response struct {
-	Error   bool   `json:"error"`
-	Message string `json:"message"`
-}
+// Platform 관리자로서 실행할 수 있는 기능들을 정의함.
 
 // AdminHandler 관리자 API 핸들러
 type AdminHandler struct {
@@ -28,16 +26,9 @@ func NewAdminHandler(db *gorm.DB) *AdminHandler {
 	}
 }
 
-// SetupInitialAdminRequest represents the request body for setting up the initial admin
-type SetupInitialAdminRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Email    string `json:"email"`
-}
-
 // SetupInitialAdmin godoc
 // @Summary Setup initial platform admin
-// @Description Creates the initial platform admin user with necessary permissions
+// @Description Creates the initial platform admin user with necessary permissions. platform admin 생성인데
 // @Tags admin
 // @Accept json
 // @Produce json
@@ -45,29 +36,29 @@ type SetupInitialAdminRequest struct {
 // @Success 200 {object} Response
 // @Router /api/setup/user [post]
 func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
-	var req SetupInitialAdminRequest
+	var req model.SetupInitialAdminRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, Response{
+		return c.JSON(http.StatusBadRequest, model.Response{
 			Error:   true,
 			Message: "Invalid request body",
 		})
 	}
 
 	if err := h.keycloakService.SetupInitialAdmin(c.Request().Context()); err != nil {
-		return c.JSON(http.StatusInternalServerError, Response{
+		return c.JSON(http.StatusInternalServerError, model.Response{
 			Error:   true,
 			Message: "Failed to setup initial admin",
 		})
 	}
 
-	return c.JSON(http.StatusOK, Response{
+	return c.JSON(http.StatusOK, model.Response{
 		Message: "Initial admin setup completed successfully",
 	})
 }
 
 // CheckUserRoles godoc
 // @Summary Check user roles
-// @Description Check all roles assigned to a user
+// @Description Check all roles assigned to a user. 특정 유저가 가진 role 목록을 조회합니다.
 // @Tags admin
 // @Accept json
 // @Produce json
@@ -79,7 +70,7 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 	username := c.QueryParam("username")
 	if username == "" {
-		return c.JSON(http.StatusBadRequest, Response{
+		return c.JSON(http.StatusBadRequest, model.Response{
 			Error:   true,
 			Message: "username is required",
 		})
@@ -87,13 +78,13 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 
 	err := h.keycloakService.CheckUserRoles(c.Request().Context(), username)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, Response{
+		return c.JSON(http.StatusInternalServerError, model.Response{
 			Error:   true,
 			Message: fmt.Sprintf("failed to check user roles: %v", err),
 		})
 	}
 
-	return c.JSON(http.StatusOK, Response{
+	return c.JSON(http.StatusOK, model.Response{
 		Error:   false,
 		Message: "User roles checked successfully. Check server logs for details.",
 	})

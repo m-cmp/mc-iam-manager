@@ -123,16 +123,14 @@ CREATE TABLE mcmp_mciam_role_permissions (
 
 -- mcmp_workspace_role_csp_role_mapping table (Corrected Name)
 CREATE TABLE mcmp_workspace_role_csp_role_mapping (
-    workspace_role_id INT NOT NULL, 		-- FK to mcmp_workspace_roles.id
+    workspace_role_id INT NOT NULL, 		-- FK to mcmp_role_master.id
     csp_type VARCHAR(50) NOT NULL, 			-- e.g., "aws", "gcp", "azure"
-    csp_role_arn VARCHAR(255) NOT NULL, 	-- The actual ARN or identifier of the role in the CSP
-    idp_identifier VARCHAR(255), 			-- e.g., AWS OIDC Provider ARN (Nullable)
+    csp_role_id INT NOT NULL, 	-- FK to mcmp_csp_roles.id
     description VARCHAR(1000), 				-- Description of this specific mapping (Nullable)
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    -- No updated_at needed for mapping table
-    PRIMARY KEY (workspace_role_id, csp_type, csp_role_arn), -- Composite primary key
-    FOREIGN KEY (workspace_role_id) REFERENCES mcmp_workspace_roles(id) ON DELETE CASCADE
-    -- No FK for csp_role_arn as it's external identifier
+    PRIMARY KEY (workspace_role_id, csp_type, csp_role_id), -- Composite primary key
+    FOREIGN KEY (workspace_role_id) REFERENCES mcmp_role_master(id) ON DELETE CASCADE,
+    FOREIGN KEY (csp_role_id) REFERENCES mcmp_csp_roles(id) ON DELETE CASCADE
 );
 
 
@@ -312,4 +310,31 @@ CREATE INDEX idx_workspace_tickets_expires_at ON mcmp_workspace_tickets(expires_
 -- Trigger for updated_at
 CREATE TRIGGER update_mcmp_workspace_tickets_updated_at 
     BEFORE UPDATE ON mcmp_workspace_tickets 
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- CSP 역할 테이블
+CREATE TABLE IF NOT EXISTS mcmp_csp_roles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(255),
+    csp_type VARCHAR(50) NOT NULL,
+    idp_identifier VARCHAR(255),
+    iam_identifier VARCHAR(255),
+    status VARCHAR(50),
+    create_date TIMESTAMP,
+    path VARCHAR(255),
+    iam_role_id VARCHAR(255),
+    max_session_duration INTEGER,
+    permissions_boundary VARCHAR(255),
+    role_last_used JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP,
+    FOREIGN KEY (id) REFERENCES mcmp_role_master(id) ON DELETE CASCADE
+);
+
+-- CSP 역할 테이블 인덱스
+CREATE INDEX IF NOT EXISTS idx_mcmp_csp_roles_name ON mcmp_csp_roles(name);
+CREATE INDEX IF NOT EXISTS idx_mcmp_csp_roles_csp_type ON mcmp_csp_roles(csp_type);
+CREATE INDEX IF NOT EXISTS idx_mcmp_csp_roles_status ON mcmp_csp_roles(status);
+CREATE INDEX IF NOT EXISTS idx_mcmp_csp_roles_deleted_at ON mcmp_csp_roles(deleted_at); 

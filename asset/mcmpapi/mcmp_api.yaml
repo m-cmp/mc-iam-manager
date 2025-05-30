@@ -4,7 +4,7 @@
 services:
   mc-infra-connector:
     version: 0.9.8
-    baseurl: http://34.64.223.98:1024/spider
+    baseurl: http://43.201.77.237:1024/spider
     auth:
       type: basic
       username: 
@@ -12,13 +12,13 @@ services:
 
   mc-iam-manager:
     version: 0.3.0
-    baseurl: http://localhost:5000
+    baseurl: http://localhost:3000
     auth:
       type: bearer
 
   mc-infra-manager:
     version: 0.9.22
-    baseurl: http://34.64.223.98:1323/tumblebug
+    baseurl: http://43.201.77.237:1323/tumblebug
     auth:
       type: basic
       username: default
@@ -26,7 +26,7 @@ services:
   
   mc-web-console:
     version: main
-    baseurl: http://localhost:3000
+    baseurl: http://localhost:3001
     auth:
       type: bearer
 

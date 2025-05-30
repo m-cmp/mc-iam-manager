@@ -72,7 +72,7 @@ func (s *UserService) SyncUser(ctx context.Context, kcUserID string) (*model.Use
 			if dbUser.Username != *kcUser.Username {
 				log.Printf("Warning: Username mismatch for user KcId %s (DB: %s, KC: %s). Updating DB.", kcUserID, dbUser.Username, *kcUser.Username)
 				dbUser.Username = *kcUser.Username
-				updateErr := s.userRepo.UpdateDbUser(dbUser)
+				updateErr := s.userRepo.Update(dbUser)
 				if updateErr != nil {
 					log.Printf("Warning: Failed to update username in DB for KcId %s: %v", kcUserID, updateErr)
 				}
@@ -105,7 +105,7 @@ func (s *UserService) SyncUser(ctx context.Context, kcUserID string) (*model.Use
 		Username:    *kcUser.Username,
 		Description: "", // Default description
 	}
-	createdDbUser, createErr := s.userRepo.CreateDbUser(newUser)
+	createdDbUser, createErr := s.userRepo.Create(newUser)
 	if createErr != nil {
 		return nil, fmt.Errorf("failed to create user in local db during sync (kc_id: %s): %w", kcUserID, createErr)
 	}
@@ -119,10 +119,53 @@ func (s *UserService) SyncUser(ctx context.Context, kcUserID string) (*model.Use
 	return createdDbUser, nil
 }
 
+// CreateUser creates a user in Keycloak and the local DB.
+func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
+	ks := NewKeycloakService() // Create KeycloakService instance when needed
+	kcId, err := ks.CreateUser(ctx, user)
+	if err != nil {
+		return err // Propagate error (e.g., user exists)
+	}
+	user.KcId = kcId
+	_, err = s.userRepo.Create(user)
+	if err != nil {
+		log.Printf("CRITICAL: Failed to create user in DB after Keycloak creation (kcId: %s). Manual cleanup needed. Error: %v", kcId, err)
+		// TODO: Compensation - delete user from Keycloak?
+		return fmt.Errorf("failed to create user in DB after Keycloak: %w", err)
+	}
+	return nil
+}
+
+// UpdateUser updates a user in Keycloak and the local DB.
+func (s *UserService) UpdateUser(ctx context.Context, user *model.User) error {
+	if user.ID == 0 {
+		return errors.New("user ID must be provided for update")
+	}
+	dbUser, err := s.userRepo.FindUserByID(user.ID)
+	if err != nil {
+		return err
+	}
+	if dbUser.KcId == "" {
+		return fmt.Errorf("cannot update user in keycloak: KcId missing for DB user ID %d", user.ID)
+	}
+	user.KcId = dbUser.KcId
+
+	ks := NewKeycloakService() // Create KeycloakService instance when needed
+	err = ks.UpdateUser(ctx, user)
+	if err != nil {
+		return err // Propagate error
+	}
+	err = s.userRepo.Update(user)
+	if err != nil {
+		log.Printf("Warning: Keycloak user updated, but DB update failed for ID %d: %v", user.ID, err)
+	}
+	return nil
+}
+
 // --- Public Service Methods ---
 
-// GetUsers retrieves all users, merging data from Keycloak and the local DB.
-func (s *UserService) GetUsers(ctx context.Context) ([]model.User, error) {
+// ListUsers retrieves all users, merging data from Keycloak and the local DB.
+func (s *UserService) ListUsers(ctx context.Context) ([]model.User, error) {
 	ks := NewKeycloakService() // Create KeycloakService instance when needed
 	kcUsers, err := ks.GetUsers(ctx)
 	if err != nil {
@@ -144,7 +187,7 @@ func (s *UserService) GetUsers(ctx context.Context) ([]model.User, error) {
 		return []model.User{}, nil
 	}
 
-	dbUsers, err := s.userRepo.GetDbUsersByKcIDs(kcIDs)
+	users, err := s.userRepo.GetUsersByKcIDs(kcIDs)
 	if err != nil {
 		log.Printf("Warning: Failed to get DB user details for some users: %v. Returning potentially incomplete data.", err)
 		var result []model.User
@@ -163,9 +206,9 @@ func (s *UserService) GetUsers(ctx context.Context) ([]model.User, error) {
 		return result, nil
 	}
 
-	dbUserMap := make(map[string]*model.User, len(dbUsers))
-	for i := range dbUsers {
-		dbUserMap[dbUsers[i].KcId] = &dbUsers[i]
+	userMap := make(map[string]*model.User, len(users))
+	for i := range users {
+		userMap[users[i].KcId] = &users[i]
 	}
 
 	var result []model.User
@@ -184,7 +227,7 @@ func (s *UserService) GetUsers(ctx context.Context) ([]model.User, error) {
 			Enabled:   *kcUser.Enabled,
 		}
 
-		if dbUser, dbExists := dbUserMap[kcID]; dbExists {
+		if dbUser, dbExists := userMap[kcID]; dbExists {
 			mergedUser.ID = dbUser.ID
 			mergedUser.Description = dbUser.Description
 			mergedUser.CreatedAt = dbUser.CreatedAt
@@ -202,7 +245,7 @@ func (s *UserService) GetUsers(ctx context.Context) ([]model.User, error) {
 
 // GetUserByID retrieves user details by DB ID.
 func (s *UserService) GetUserByID(ctx context.Context, id uint) (*model.User, error) {
-	dbUser, err := s.userRepo.FindByID(id)
+	dbUser, err := s.userRepo.FindUserByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -293,86 +336,24 @@ func (s *UserService) GetUserByUsername(ctx context.Context, username string) (*
 	return resultUser, nil
 }
 
-// CreateUser creates a user in Keycloak and the local DB.
-func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
-	ks := NewKeycloakService() // Create KeycloakService instance when needed
-	kcId, err := ks.CreateUser(ctx, user)
-	if err != nil {
-		return err // Propagate error (e.g., user exists)
-	}
-	user.KcId = kcId
-	_, err = s.userRepo.CreateDbUser(user)
-	if err != nil {
-		log.Printf("CRITICAL: Failed to create user in DB after Keycloak creation (kcId: %s). Manual cleanup needed. Error: %v", kcId, err)
-		// TODO: Compensation - delete user from Keycloak?
-		return fmt.Errorf("failed to create user in DB after Keycloak: %w", err)
-	}
-	return nil
-}
+// // FindWorkspacesByUserID 사용자가 속한 워크스페이스 목록 조회. workspacerepository 에서 처리
+// func (s *UserService) FindWorkspacesByUserID(userID uint) ([]*model.Workspace, error) {
+// 	return s.userRepo.FindWorkspacesByUserID(userID)
+// }
 
-// FindWorkspacesByUserID 사용자가 속한 워크스페이스 목록 조회
-func (s *UserService) FindWorkspacesByUserID(userID uint) ([]model.Workspace, error) {
-	return s.userRepo.FindWorkspacesByUserID(userID)
-}
+// // GetUserRolesInWorkspace 특정 워크스페이스에서 유저가 가진 롤만 반환. workspacerepository 에서 처리
+// func (s *UserService) GetUserRolesInWorkspace(userID, workspaceID uint) ([]*model.UserWorkspaceRole, error) {
+// 	userWorkspaceRoles, err := s.userRepo.FindUserRolesInWorkspace(userID, workspaceID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-// GetUserRolesInWorkspace 특정 워크스페이스에서 유저가 가진 롤만 반환
-func (s *UserService) GetUserRolesInWorkspace(userID, workspaceID uint) ([]model.UserWorkspaceRoleResponse, error) {
-	userWorkspaceRoles, err := s.userRepo.GetUserRolesInWorkspace(userID, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	response := make([]model.UserWorkspaceRoleResponse, len(userWorkspaceRoles))
-	for i, uwr := range userWorkspaceRoles {
-		roleName := ""
-		if uwr.Role != nil {
-			roleName = uwr.Role.Name
-		}
-		workspaceName := ""
-		if uwr.Workspace != nil {
-			workspaceName = uwr.Workspace.Name
-		}
-		response[i] = model.UserWorkspaceRoleResponse{
-			UserID:        uwr.UserID,
-			Username:      "", // 필요시 user 조회
-			WorkspaceID:   uwr.WorkspaceID,
-			WorkspaceName: workspaceName,
-			RoleID:        uwr.RoleID,
-			RoleName:      roleName,
-			CreatedAt:     uwr.CreatedAt,
-		}
-	}
-	return response, nil
-}
-
-// UpdateUser updates a user in Keycloak and the local DB.
-func (s *UserService) UpdateUser(ctx context.Context, user *model.User) error {
-	if user.ID == 0 {
-		return errors.New("user ID must be provided for update")
-	}
-	dbUser, err := s.userRepo.FindByID(user.ID)
-	if err != nil {
-		return err
-	}
-	if dbUser.KcId == "" {
-		return fmt.Errorf("cannot update user in keycloak: KcId missing for DB user ID %d", user.ID)
-	}
-	user.KcId = dbUser.KcId
-
-	ks := NewKeycloakService() // Create KeycloakService instance when needed
-	err = ks.UpdateUser(ctx, user)
-	if err != nil {
-		return err // Propagate error
-	}
-	err = s.userRepo.UpdateDbUser(user)
-	if err != nil {
-		log.Printf("Warning: Keycloak user updated, but DB update failed for ID %d: %v", user.ID, err)
-	}
-	return nil
-}
+// 	return userWorkspaceRoles, nil
+// }
 
 // DeleteUser deletes a user from Keycloak and the local DB using the DB ID.
 func (s *UserService) DeleteUser(ctx context.Context, id uint) error {
-	dbUser, err := s.userRepo.FindByID(id)
+	dbUser, err := s.userRepo.FindUserByID(id)
 	if err != nil {
 		return err
 	}
@@ -389,7 +370,7 @@ func (s *UserService) DeleteUser(ctx context.Context, id uint) error {
 		log.Printf("Warning: User with DB ID %d has no KcId. Skipping Keycloak deletion.", id)
 	}
 
-	err = s.userRepo.DeleteDbUserByID(id)
+	err = s.userRepo.Delete(id)
 	if err != nil {
 		log.Printf("CRITICAL: Failed to delete user from DB (ID: %d) after Keycloak deletion attempt. Manual cleanup needed. Error: %v", id, err)
 		return fmt.Errorf("failed to delete user from DB: %w", err)
@@ -409,49 +390,6 @@ func (s *UserService) ApproveUser(ctx context.Context, kcUserID string) error {
 		fmt.Printf("Warning: User %s enabled in Keycloak, but failed to sync/create in local DB: %v\n", kcUserID, err)
 	}
 	return nil
-}
-
-// WorkspaceRoleInfo 사용자별 워크스페이스 및 역할 정보를 담는 구조체
-type WorkspaceRoleInfo struct {
-	Workspace model.Workspace  `json:"workspace"`
-	Role      model.RoleMaster `json:"role"`
-}
-
-// GetUserWorkspaceAndWorkspaceRoles 사용자의 워크스페이스와 역할 정보를 조회합니다.
-func (s *UserService) GetUserWorkspaceAndWorkspaceRoles(ctx context.Context, userID uint) ([]WorkspaceRoleInfo, error) {
-	// 사용자 존재 여부 확인
-	_, err := s.userRepo.FindByID(userID)
-	if err != nil {
-		return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %w", err)
-	}
-
-	// 사용자의 워크스페이스 역할 조회
-	userWorkspaceRoles, err := s.userRepo.FindWorkspaceAndWorkspaceRolesByUserID(userID)
-	if err != nil {
-		return nil, fmt.Errorf("워크스페이스 역할 조회 실패: %w", err)
-	}
-
-	// 워크스페이스별로 역할 정보를 그룹화
-	workspaceMap := make(map[uint]*WorkspaceRoleInfo)
-	for _, uwr := range userWorkspaceRoles {
-		workspaceID := uwr.WorkspaceID
-		if _, exists := workspaceMap[workspaceID]; !exists {
-			workspaceMap[workspaceID] = &WorkspaceRoleInfo{
-				Workspace: *uwr.Workspace,
-			}
-		}
-		if uwr.Role != nil {
-			workspaceMap[workspaceID].Role = *uwr.Role
-		}
-	}
-
-	// 맵을 슬라이스로 변환
-	result := make([]WorkspaceRoleInfo, 0, len(workspaceMap))
-	for _, info := range workspaceMap {
-		result = append(result, *info)
-	}
-
-	return result, nil
 }
 
 // GetUserIDByKcID finds the local database ID for a given Keycloak User ID.
@@ -487,61 +425,3 @@ func (s *UserService) GetUserIDByKcID(ctx context.Context, kcUserID string) (uin
 // func (s *UserService) getValidToken(ctx context.Context) (string, error) {
 // 	// ... (Implementation) ...
 // }
-
-// GetUserWorkspaceRoles 사용자의 워크스페이스 역할 목록을 조회합니다.
-func (s *UserService) GetUserWorkspaceRoles(userID uint) ([]model.UserWorkspaceRoleResponse, error) {
-	// 사용자 존재 여부 확인
-	user, err := s.userRepo.FindByID(userID)
-	if err != nil {
-		return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %w", err)
-	}
-
-	// 사용자의 워크스페이스 역할 조회
-	userWorkspaceRoles, err := s.userRepo.FindWorkspaceAndWorkspaceRolesByUserID(userID)
-	if err != nil {
-		return nil, fmt.Errorf("워크스페이스 역할 조회 실패: %w", err)
-	}
-
-	// 응답 형식으로 변환
-	response := make([]model.UserWorkspaceRoleResponse, len(userWorkspaceRoles))
-	for i, uwr := range userWorkspaceRoles {
-		roleName := ""
-		if uwr.Role != nil {
-			roleName = uwr.Role.Name
-		}
-
-		workspaceName := ""
-		if uwr.Workspace != nil {
-			workspaceName = uwr.Workspace.Name
-		}
-
-		response[i] = model.UserWorkspaceRoleResponse{
-			UserID:        uwr.UserID,
-			Username:      user.Username,
-			WorkspaceID:   uwr.WorkspaceID,
-			WorkspaceName: workspaceName,
-			RoleID:        uwr.RoleID,
-			RoleName:      roleName,
-			CreatedAt:     uwr.CreatedAt,
-		}
-	}
-
-	return response, nil
-}
-
-// GetUserPlatformRoles 사용자의 플랫폼 역할 목록 조회
-func (s *UserService) GetUserPlatformRoles(userID uint) ([]model.RoleMaster, error) {
-	return s.platformRoleRepo.GetUserRoles(userID)
-}
-
-// GetByUsername 사용자 이름으로 사용자 조회
-func (s *UserService) GetByUsername(username string) (*model.User, error) {
-	var user model.User
-	if err := s.db.Where("username = ?", username).First(&user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("사용자 조회 실패: %w", err)
-	}
-	return &user, nil
-}

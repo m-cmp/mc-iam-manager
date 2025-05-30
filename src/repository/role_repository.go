@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -19,13 +18,17 @@ func NewRoleRepository(db *gorm.DB) *RoleRepository {
 }
 
 // List 모든 역할 목록 조회
-func (r *RoleRepository) List(roleType string) ([]model.RoleMaster, error) {
-	var roles []model.RoleMaster
+func (r *RoleRepository) FindRoles(roleID uint, roleType string) ([]*model.RoleMaster, error) {
+	var roles []*model.RoleMaster
 	query := r.db.Preload("RoleSubs")
+	query = query.Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id")
+
+	if roleID != 0 {
+		query = query.Where("id = ?", roleID)
+	}
 
 	if roleType != "" {
-		query = query.Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-			Where("mcmp_role_sub.role_type = ?", roleType)
+		query = query.Where("mcmp_role_sub.role_type = ?", roleType)
 	}
 
 	if err := query.Find(&roles).Error; err != nil {
@@ -35,9 +38,39 @@ func (r *RoleRepository) List(roleType string) ([]model.RoleMaster, error) {
 }
 
 // GetByID ID로 역할 조회
-func (r *RoleRepository) GetByID(id uint) (*model.RoleMaster, error) {
+func (r *RoleRepository) FindRoleByRoleID(roleId uint, roleType string) (*model.RoleMaster, error) {
 	var role model.RoleMaster
-	if err := r.db.Preload("RoleSubs").First(&role, id).Error; err != nil {
+
+	// 쿼리 빌더를 사용하여 기본 쿼리 생성
+	query := r.db.Preload("RoleSubs").Where("id = ?", roleId)
+
+	// roleType이 비어있지 않다면 조건 추가
+	if roleType != "" {
+		query = query.Where("role_type = ?", roleType)
+	}
+
+	if err := query.First(&role).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("역할 조회 실패: %w", err)
+	}
+	return &role, nil
+}
+
+// GetByName Name으로 역할 조회
+func (r *RoleRepository) FindRoleByRoleName(roleName string, roleType string) (*model.RoleMaster, error) {
+	var role model.RoleMaster
+
+	// 쿼리 빌더를 사용하여 기본 쿼리 생성
+	query := r.db.Preload("RoleSubs").Where("name = ?", roleName)
+
+	// roleType이 비어있지 않다면 조건 추가
+	if roleType != "" {
+		query = query.Where("role_type = ?", roleType)
+	}
+
+	if err := query.First(&role).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
@@ -47,17 +80,17 @@ func (r *RoleRepository) GetByID(id uint) (*model.RoleMaster, error) {
 }
 
 // Create 역할 생성
-func (r *RoleRepository) Create(role *model.RoleMaster) error {
+func (r *RoleRepository) CreateRole(role *model.RoleMaster) error {
 	return r.db.Create(role).Error
 }
 
 // Update 역할 수정
-func (r *RoleRepository) Update(role *model.RoleMaster) error {
+func (r *RoleRepository) UpdateRole(role *model.RoleMaster) error {
 	return r.db.Save(role).Error
 }
 
 // Delete 역할 삭제
-func (r *RoleRepository) Delete(id uint) error {
+func (r *RoleRepository) DeleteRole(id uint) error {
 	return r.db.Delete(&model.RoleMaster{}, id).Error
 }
 
@@ -67,7 +100,7 @@ func (r *RoleRepository) CreateRoleSub(roleSub *model.RoleSub) error {
 }
 
 // DeleteRoleSubs 역할 서브 타입들 삭제
-func (r *RoleRepository) DeleteRoleSubs(roleID uint) error {
+func (r *RoleRepository) DeleteRoleSub(roleID uint) error {
 	return r.db.Where("role_id = ?", roleID).Delete(&model.RoleSub{}).Error
 }
 
@@ -103,7 +136,7 @@ func (r *RoleRepository) RemoveWorkspaceRole(userID, workspaceID, roleID uint) e
 }
 
 // GetUserWorkspaceRoles 사용자의 워크스페이스 역할 목록 조회
-func (r *RoleRepository) GetUserWorkspaceRoles(userID, workspaceID uint) ([]model.RoleMaster, error) {
+func (r *RoleRepository) FindUserWorkspaceRoles(userID, workspaceID uint) ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	err := r.db.
 		Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_master.id = mcmp_user_workspace_roles.role_id").
@@ -117,7 +150,7 @@ func (r *RoleRepository) GetUserWorkspaceRoles(userID, workspaceID uint) ([]mode
 }
 
 // GetUserPlatformRoles 사용자의 플랫폼 역할 목록 조회
-func (r *RoleRepository) GetUserPlatformRoles(userID uint) ([]model.RoleMaster, error) {
+func (r *RoleRepository) FindUserPlatformRoles(userID uint) ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	err := r.db.
 		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_master.id = mcmp_user_platform_roles.role_id").
@@ -130,14 +163,110 @@ func (r *RoleRepository) GetUserPlatformRoles(userID uint) ([]model.RoleMaster, 
 	return roles, nil
 }
 
-// FindByID 역할을 ID로 조회
-func (r *RoleRepository) FindByID(id uint) (*model.RoleMaster, error) {
-	var role model.RoleMaster
-	if err := r.db.First(&role, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+// CreateWorkspaceRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 생성
+func (r *RoleRepository) CreateRoleMasterCspRoleMapping(mapping *model.RoleMasterCspRoleMapping) error {
+	return r.db.Create(mapping).Error
+}
+
+// DeleteWorkspaceRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 삭제
+func (r *RoleRepository) DeleteRoleCspRoleMapping(roleID uint, cspRoleID uint, cspType string) error {
+	return r.db.Where("role_id = ? AND csp_role_id = ? AND csp_type = ?", roleID, cspRoleID, cspType).
+		Delete(&model.RoleMasterCspRoleMapping{}).Error
+}
+
+// CreateWorkspaceRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 생성
+func (r *RoleRepository) CreateWorkspaceRoleCspRoleMapping(mapping *model.RoleMasterCspRoleMapping) error {
+	return r.db.Create(mapping).Error
+}
+
+// DeleteWorkspaceRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 삭제
+func (r *RoleRepository) DeleteWorkspaceRoleCspRoleMapping(workspaceRoleID uint, cspRoleID uint, cspType string) error {
+	return r.db.Where("workspace_role_id = ? AND csp_role_id = ? AND csp_type = ?", workspaceRoleID, cspRoleID, cspType).
+		Delete(&model.RoleMasterCspRoleMapping{}).Error
+}
+
+// RoleMaster와 CSP 역할 매핑 조회
+func (r *RoleRepository) FindRoleMasterCspRoleMappings(roleID uint, cspRoleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
+	var mappings []*model.RoleMasterCspRoleMapping
+
+	// 쿼리 빌더를 사용하여 기본 쿼리 생성
+	query := r.db.Preload("RoleMasterCspRoleMapping")
+
+	// workspaceRoleID가 비어있지 않다면 조건 추가
+	if roleID != 0 {
+		query = query.Where("role_id = ?", roleID)
+	}
+
+	// cspRoleID가 비어있지 않다면 조건 추가
+	if cspRoleID != 0 {
+		query = query.Where("csp_role_id = ?", cspRoleID)
+	}
+
+	// cspType이 비어있지 않다면 조건 추가
+	if cspType != "" {
+		query = query.Where("csp_type = ?", cspType)
+	}
+
+	if err := query.Find(&mappings).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
+		return nil, fmt.Errorf("RoleMaster -CSP 역할 매핑 조회 실패: %w", err)
+	}
+
+	return mappings, nil
+}
+
+func (r *RoleRepository) FindWorkspaceRoleCspRoleMappings(workspaceRoleID uint, cspRoleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
+	var mappings []*model.RoleMasterCspRoleMapping
+
+	// 쿼리 빌더를 사용하여 기본 쿼리 생성
+	query := r.db.Preload("WorkspaceRoleCspRoleMapping")
+
+	// workspaceRoleID가 비어있지 않다면 조건 추가
+	if workspaceRoleID != 0 {
+		query = query.Where("workspace_role_id = ?", workspaceRoleID)
+	}
+
+	// cspRoleID가 비어있지 않다면 조건 추가
+	if cspRoleID != 0 {
+		query = query.Where("csp_role_id = ?", cspRoleID)
+	}
+
+	// cspType이 비어있지 않다면 조건 추가
+	if cspType != "" {
+		query = query.Where("csp_type = ?", cspType)
+	}
+
+	if err := query.Find(&mappings).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("워크스페이스 역할-CSP 역할 매핑 조회 실패: %w", err)
+	}
+
+	return mappings, nil
+}
+
+// TODO : Role이 들어가면 role 영역임
+// FindUsersAndRolesByWorkspaceID 특정 워크스페이스에 속한 사용자 및 역할 목록 조회
+func (r *WorkspaceRepository) FindUsersAndRolesByWorkspaceID(workspaceID uint) ([]*model.UserWorkspaceRole, error) {
+	var userWorkspaceRoles []*model.UserWorkspaceRole
+
+	// Find all UserWorkspaceRole entries where the associated WorkspaceRole's WorkspaceID matches.
+	// We need to join with WorkspaceRole table to filter by workspaceID.
+	// Then preload User and WorkspaceRole.
+	err := r.db.Joins("JOIN mcmp_workspace_roles ON mcmp_workspace_roles.id = mcmp_user_workspace_roles.workspace_role_id").
+		Where("mcmp_user_workspace_roles.workspace_id = ?", workspaceID).
+		Preload("User").          // Preload the User associated with the mapping
+		Preload("WorkspaceRole"). // Preload the WorkspaceRole associated with the mapping
+		Find(&userWorkspaceRoles).Error
+
+	if err != nil {
+		// Don't return ErrWorkspaceNotFound here, as an empty result is valid.
+		// Return other DB errors.
 		return nil, err
 	}
-	return &role, nil
+
+	return userWorkspaceRoles, nil
 }

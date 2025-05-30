@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io" // Ensure io package is imported
 	"net/http"
+	"time"
 
 	// "strings" // Removed unused import
 
@@ -164,12 +165,12 @@ func (h *MenuHandler) hasPermission(userRoles []string, requiredRole string) boo
 // @Tags menus
 // @Accept json
 // @Produce json
-// @Param id path string true "Menu ID"
+// @Param menuId path string true "Menu ID"
 // @Success 200 {object} model.Menu
 // @Security BearerAuth
-// @Router /api/v1/menus/{id} [get]
-func (h *MenuHandler) GetByID(c echo.Context) error {
-	id := c.Param("id")
+// @Router /api/v1/menus/id/{menuId} [get]
+func (h *MenuHandler) GetMenuByID(c echo.Context) error {
+	id := c.Param("menuId")
 	menu, err := h.menuService.GetByID(id)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -194,7 +195,7 @@ func (h *MenuHandler) GetByID(c echo.Context) error {
 // @Success 201 {object} model.Menu
 // @Security BearerAuth
 // @Router /api/v1/menus [post]
-func (h *MenuHandler) Create(c echo.Context) error {
+func (h *MenuHandler) CreateMenu(c echo.Context) error {
 	menu := new(model.Menu)
 	if err := c.Bind(menu); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
@@ -221,9 +222,9 @@ func (h *MenuHandler) Create(c echo.Context) error {
 // @Param menu body model.Menu true "Menu Info"
 // @Success 200 {object} model.Menu
 // @Security BearerAuth
-// @Router /api/v1/menus/{id} [put]
+// @Router /api/v1/menus/id/{menuId} [put]
 func (h *MenuHandler) Update(c echo.Context) error {
-	id := c.Param("id")
+	id := c.Param("menuId")
 	updates := make(map[string]interface{}) // Bind to a map
 
 	// Bind the request body to the map
@@ -279,9 +280,9 @@ func (h *MenuHandler) Update(c echo.Context) error {
 // @Param id path string true "Menu ID"
 // @Success 204 "No Content"
 // @Security BearerAuth
-// @Router /api/v1/menus/{id} [delete]
+// @Router /api/v1/menus/id/{menuId} [delete]
 func (h *MenuHandler) Delete(c echo.Context) error {
-	id := c.Param("id")
+	id := c.Param("menuId")
 	if err := h.menuService.Delete(id); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "메뉴 삭제에 실패했습니다",
@@ -388,32 +389,34 @@ func (h *MenuHandler) GetMappedMenusByRole(c echo.Context) error {
 }
 
 // CreateMenuMapping godoc
-// @Summary 플랫폼 역할-메뉴 매핑 생성
-// @Description 플랫폼 역할과 메뉴 간의 매핑을 생성합니다.
-// @Tags menus
+// @Summary Create menu mapping
+// @Description Create a new menu mapping
+// @Tags menu
 // @Accept json
 // @Produce json
-// @Param role path string true "Platform Role"
-// @Param menuId path string true "Menu ID"
-// @Success 201 {object} map[string]string "message: Menu mapping created successfully"
-// @Failure 400 {object} map[string]string "error: platform role and menu ID are required"
-// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Param mapping body model.CreateMenuMappingRequest true "Menu Mapping"
+// @Success 201 {object} model.MenuMapping
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/menus/platform-roles/{role}/menus/{menuId} [post]
+// @Router /api/v1/admin/menu-mappings [post]
 func (h *MenuHandler) CreateMenuMapping(c echo.Context) error {
-	platformRole := c.Param("role")
-	menuID := c.Param("menuId")
-
-	if platformRole == "" || menuID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "platform role and menu ID are required"})
+	var req model.CreateMenuMappingRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
-	err := h.menuService.CreateMenuMapping(platformRole, menuID)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	mapping := &model.MenuMapping{
+		MenuID:    req.MenuID,
+		RoleID:    req.RoleID,
+		CreatedAt: time.Now(),
 	}
 
-	return c.JSON(http.StatusCreated, map[string]string{"message": "Menu mapping created successfully"})
+	if err := h.menuService.CreateMenuMapping(mapping); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("메뉴 매핑 생성 실패: %v", err)})
+	}
+
+	return c.JSON(http.StatusCreated, mapping)
 }
 
 // DeleteMenuMapping godoc

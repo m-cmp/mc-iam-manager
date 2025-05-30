@@ -46,3 +46,15 @@ type PlatformRoleMenuMapping struct {
 func (PlatformRoleMenuMapping) TableName() string {
 	return "mcmp_platform_role_menu_mappings"
 }
+
+// MenuMapping 메뉴 매핑 구조체
+type MenuMapping struct {
+	MenuID    uint      `json:"menuId" gorm:"column:menu_id"`
+	RoleID    uint      `json:"roleId" gorm:"column:role_id"`
+	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
+}
+
+// TableName MenuMapping의 테이블 이름을 지정합니다
+func (MenuMapping) TableName() string {
+	return "mcmp_menu_mappings"
+}

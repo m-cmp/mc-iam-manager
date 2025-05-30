@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
-	"github.com/m-cmp/mc-iam-manager/middleware"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service"
 	"gorm.io/gorm"
@@ -30,32 +29,29 @@ func NewCspCredentialHandler(db *gorm.DB) *CspCredentialHandler {
 }
 
 // GetTemporaryCredentials godoc
-// @Summary CSP 임시 자격 증명 발급
-// @Description 사용자의 워크스페이스 역할에 매핑된 CSP 역할을 Assume하여 임시 자격 증명을 발급받습니다.
+// @Summary Get temporary credentials
+// @Description Get temporary credentials for CSP
 // @Tags csp-credentials
 // @Accept json
 // @Produce json
-// @Param credentialRequest body model.CspCredentialRequest true "워크스페이스 ID 및 CSP 타입"
-// @Success 200 {object} model.CspCredentialResponse "발급된 임시 자격 증명 (현재 AWS만 지원)"
-// @Failure 400 {object} map[string]string "error: 잘못된 요청 형식 또는 지원하지 않는 CSP 타입"
-// @Failure 401 {object} map[string]string "error: 인증 실패 또는 유효하지 않은 토큰"
-// @Failure 403 {object} map[string]string "error: 해당 워크스페이스에 역할이 없거나 매핑된 CSP 역할이 없음"
-// @Failure 404 {object} map[string]string "error: 사용자 또는 워크스페이스를 찾을 수 없음"
-// @Failure 500 {object} map[string]string "error: 서버 내부 오류 또는 CSP 통신 실패"
+// @Param request body model.CspCredentialRequest true "Credential Request"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /admin/credentials [post]
+// @Router /api/v1/csp-credentials/temporary [post]
 func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 	// 1. Get values from context
-	ctx := c.Request().Context()
-	tokenString, ok := ctx.Value(middleware.AccessTokenKey).(string)
-	if !ok {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Access token not found in context"})
-	}
 
-	kcUserId, ok := ctx.Value(middleware.KcUserIdKey).(string)
-	if !ok {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User ID not found in context"})
-	}
+	// tokenString, ok := ctx.Value(middleware.AccessTokenKey).(string)
+	// if !ok {
+	// 	return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Access token not found in context"})
+	// }
+
+	// kcUserId, ok := ctx.Value(middleware.KcUserIdKey).(string)
+	// if !ok {
+	// 	return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User ID not found in context"})
+	// }
 
 	// 2. Bind request body
 	var req model.CspCredentialRequest
@@ -64,7 +60,7 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 	}
 
 	// 3. Call the CspCredentialService with values from context
-	credentials, err := h.credService.GetTemporaryCredentials(ctx, kcUserId, tokenString, req.WorkspaceID, req.CspType, req.Region)
+	credentials, err := h.credService.GetTemporaryCredentials(c, req.WorkspaceID, req.CspType, req.Region)
 	if err != nil {
 		// Handle specific errors from the service
 		if errors.Is(err, service.ErrUserNotFound) || errors.Is(err, service.ErrWorkspaceNotFound) {

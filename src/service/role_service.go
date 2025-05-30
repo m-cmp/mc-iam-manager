@@ -10,26 +10,31 @@ import (
 
 // RoleService 역할 관리 서비스
 type RoleService struct {
-	db         *gorm.DB
-	repository *repository.RoleRepository
+	db             *gorm.DB
+	roleRepository *repository.RoleRepository
 }
 
 // NewRoleService 새 RoleService 인스턴스 생성
 func NewRoleService(db *gorm.DB) *RoleService {
 	return &RoleService{
-		db:         db,
-		repository: repository.NewRoleRepository(db),
+		db:             db,
+		roleRepository: repository.NewRoleRepository(db),
 	}
 }
 
 // List 역할 목록 조회
-func (s *RoleService) List(roleType string) ([]model.RoleMaster, error) {
-	return s.repository.List(roleType)
+func (s *RoleService) ListRoles(roleType string) ([]*model.RoleMaster, error) {
+	return s.roleRepository.FindRoles(0, roleType)
 }
 
 // GetByID ID로 역할 조회
-func (s *RoleService) GetByID(id uint) (*model.RoleMaster, error) {
-	return s.repository.GetByID(id)
+func (s *RoleService) GetRoleByID(roleId uint, roleType string) (*model.RoleMaster, error) {
+	return s.roleRepository.FindRoleByRoleID(roleId, roleType)
+}
+
+// GetByName Name으로 역할 조회
+func (s *RoleService) GetRoleByName(roleName string, roleType string) (*model.RoleMaster, error) {
+	return s.roleRepository.FindRoleByRoleName(roleName, roleType)
 }
 
 // CreateRoleWithSubs 역할과 역할 서브 타입들을 함께 생성
@@ -127,7 +132,7 @@ func (s *RoleService) DeleteRoleWithSubs(roleID uint) error {
 // AssignPlatformRole 플랫폼 역할 할당
 func (s *RoleService) AssignPlatformRole(userID, roleID uint) error {
 	// 1. 역할이 존재하는지 확인
-	role, err := s.repository.GetByID(roleID)
+	role, err := s.roleRepository.FindRoleByRoleID(roleID, model.RoleTypePlatform)
 	if err != nil {
 		return fmt.Errorf("역할 조회 실패: %w", err)
 	}
@@ -148,18 +153,18 @@ func (s *RoleService) AssignPlatformRole(userID, roleID uint) error {
 	}
 
 	// 3. 역할 할당
-	return s.repository.AssignPlatformRole(userID, roleID)
+	return s.roleRepository.AssignPlatformRole(userID, roleID)
 }
 
 // RemovePlatformRole 플랫폼 역할 제거
 func (s *RoleService) RemovePlatformRole(userID, roleID uint) error {
-	return s.repository.RemovePlatformRole(userID, roleID)
+	return s.roleRepository.RemovePlatformRole(userID, roleID)
 }
 
 // AssignWorkspaceRole 워크스페이스 역할 할당
 func (s *RoleService) AssignWorkspaceRole(userID, workspaceID, roleID uint) error {
 	// 1. 역할이 존재하는지 확인
-	role, err := s.repository.GetByID(roleID)
+	role, err := s.roleRepository.FindRoleByRoleID(roleID, model.RoleTypeWorkspace)
 	if err != nil {
 		return fmt.Errorf("역할 조회 실패: %w", err)
 	}
@@ -180,32 +185,64 @@ func (s *RoleService) AssignWorkspaceRole(userID, workspaceID, roleID uint) erro
 	}
 
 	// 3. 역할 할당
-	return s.repository.AssignWorkspaceRole(userID, workspaceID, roleID)
+	return s.roleRepository.AssignWorkspaceRole(userID, workspaceID, roleID)
 }
 
 // RemoveWorkspaceRole 워크스페이스 역할 제거
 func (s *RoleService) RemoveWorkspaceRole(userID, workspaceID, roleID uint) error {
-	return s.repository.RemoveWorkspaceRole(userID, workspaceID, roleID)
+	return s.roleRepository.RemoveWorkspaceRole(userID, workspaceID, roleID)
 }
 
 // GetUserWorkspaceRoles 사용자의 워크스페이스 역할 목록 조회
 func (s *RoleService) GetUserWorkspaceRoles(userID, workspaceID uint) ([]model.RoleMaster, error) {
-	return s.repository.GetUserWorkspaceRoles(userID, workspaceID)
+	return s.roleRepository.FindUserWorkspaceRoles(userID, workspaceID)
 }
 
 // GetUserPlatformRoles 사용자의 플랫폼 역할 목록 조회
 func (s *RoleService) GetUserPlatformRoles(userID uint) ([]model.RoleMaster, error) {
-	return s.repository.GetUserPlatformRoles(userID)
+	return s.roleRepository.FindUserPlatformRoles(userID)
 }
 
-// GetByName 이름으로 역할 조회
-func (s *RoleService) GetByName(name string) (*model.RoleMaster, error) {
-	var role model.RoleMaster
-	if err := s.db.Preload("RoleSubs").Where("name = ?", name).First(&role).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("역할 조회 실패: %w", err)
+// CreateWorkspaceRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 생성
+func (s *RoleService) CreateWorkspaceRoleCspRoleMapping(mapping model.RoleMasterCspRoleMapping) (*model.RoleMasterCspRoleMapping, error) {
+	// 1. 워크스페이스 역할이 존재하는지 확인
+	workspaceRole, err := s.roleRepository.FindRoleByRoleID(mapping.RoleID, model.RoleTypeWorkspace)
+	if err != nil {
+		return nil, fmt.Errorf("워크스페이스 역할 조회 실패: %w", err)
 	}
-	return &role, nil
+	if workspaceRole == nil {
+		return nil, fmt.Errorf("워크스페이스 역할을 찾을 수 없습니다")
+	}
+
+	// 2. CSP 역할이 존재하는지 확인
+	cspRole, err := s.roleRepository.FindRoleByRoleID(mapping.CspRoleID, model.RoleTypeCSP)
+	if err != nil {
+		return nil, fmt.Errorf("CSP 역할 조회 실패: %w", err)
+	}
+	if cspRole == nil {
+		return nil, fmt.Errorf("CSP 역할을 찾을 수 없습니다")
+	}
+
+	// 3. 매핑 생성
+	err = s.roleRepository.CreateWorkspaceRoleCspRoleMapping(&mapping)
+	if err != nil {
+		return nil, fmt.Errorf("매핑 생성 실패: %w", err)
+	}
+
+	return &mapping, nil
+}
+
+// DeleteWorkspaceRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 삭제
+func (s *RoleService) DeleteWorkspaceRoleCspRoleMapping(workspaceRoleID uint, cspRoleID uint, cspType string) error {
+	return s.roleRepository.DeleteWorkspaceRoleCspRoleMapping(workspaceRoleID, cspRoleID, cspType)
+}
+
+// GetWorkspaceRoleCspRoleMappings 워크스페이스 역할-CSP 역할 매핑 목록 조회
+func (s *RoleService) GetWorkspaceRoleCspRoleMappings(workspaceRoleID uint, cspRoleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
+	return s.roleRepository.FindWorkspaceRoleCspRoleMappings(workspaceRoleID, cspRoleID, cspType)
+}
+
+// GetWorkspaceRoleCspRoleMappings 역할-CSP 역할 매핑 목록 조회
+func (s *RoleService) GetRoleCspRoleMappings(roleID uint, cspRoleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
+	return s.roleRepository.FindRoleMasterCspRoleMappings(roleID, cspRoleID, cspType)
 }

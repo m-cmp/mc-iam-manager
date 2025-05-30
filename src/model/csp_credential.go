@@ -4,7 +4,7 @@ import "time"
 
 // CspCredentialRequest CSP 임시 자격 증명 발급 요청 모델
 type CspCredentialRequest struct {
-	WorkspaceID string `json:"workspaceId"` // 대상 워크스페이스 ID
+	WorkspaceID uint   `json:"workspaceId"` // 대상 워크스페이스 ID
 	CspType     string `json:"cspType"`     // 대상 CSP 타입
 	Region      string `json:"region"`      // AWS 리전 (선택적)
 }

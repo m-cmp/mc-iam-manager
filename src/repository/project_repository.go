@@ -28,7 +28,7 @@ func NewProjectRepository(db *gorm.DB) *ProjectRepository { // Removed parameter
 }
 
 // Create 프로젝트 생성
-func (r *ProjectRepository) Create(project *model.Project) error {
+func (r *ProjectRepository) CreateProject(project *model.Project) error {
 	query := r.db.Create(project)
 	if err := query.Error; err != nil {
 		return err
@@ -45,8 +45,8 @@ func (r *ProjectRepository) Create(project *model.Project) error {
 }
 
 // List 모든 프로젝트 조회 (워크스페이스 정보 포함)
-func (r *ProjectRepository) List() ([]model.Project, error) {
-	var projects []model.Project
+func (r *ProjectRepository) FindProjects() ([]*model.Project, error) {
+	var projects []*model.Project
 	query := r.db.Preload("Workspaces").Find(&projects)
 	if err := query.Error; err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (r *ProjectRepository) List() ([]model.Project, error) {
 }
 
 // GetByID ID로 프로젝트 조회
-func (r *ProjectRepository) GetByID(id uint) (*model.Project, error) {
+func (r *ProjectRepository) FindProjectByProjectID(id uint) (*model.Project, error) {
 	var project model.Project
 	query := r.db.First(&project, "id = ?", id)
 	if err := query.Error; err != nil {
@@ -83,7 +83,7 @@ func (r *ProjectRepository) GetByID(id uint) (*model.Project, error) {
 }
 
 // GetByName 이름으로 프로젝트 조회 (워크스페이스 정보 포함)
-func (r *ProjectRepository) GetByName(name string) (*model.Project, error) {
+func (r *ProjectRepository) FindProjectByProjectName(name string) (*model.Project, error) {
 	var project model.Project
 	query := r.db.Preload("Workspaces").Where("name = ?", name).First(&project)
 	if err := query.Error; err != nil {
@@ -103,7 +103,7 @@ func (r *ProjectRepository) GetByName(name string) (*model.Project, error) {
 }
 
 // Update 프로젝트 정보 업데이트
-func (r *ProjectRepository) Update(id uint, updates map[string]interface{}) error {
+func (r *ProjectRepository) UpdateProject(id uint, updates map[string]interface{}) error {
 	if len(updates) == 0 {
 		return errors.New("no fields provided for update")
 	}
@@ -119,7 +119,7 @@ func (r *ProjectRepository) Update(id uint, updates map[string]interface{}) erro
 
 // GetAllProjectWorkspaceAssignments 모든 프로젝트-워크스페이스 할당 정보 조회
 // 프로젝트 ID를 키로 하고, 할당 여부(true)를 값으로 하는 맵 반환
-func (r *ProjectRepository) GetAllProjectWorkspaceAssignments() (map[uint]bool, error) {
+func (r *ProjectRepository) FindAllProjectWorkspaceAssignments() (map[uint]bool, error) {
 	var assignments []struct {
 		ProjectID uint `gorm:"column:project_id"`
 	}
@@ -136,7 +136,7 @@ func (r *ProjectRepository) GetAllProjectWorkspaceAssignments() (map[uint]bool, 
 }
 
 // Delete 프로젝트 삭제
-func (r *ProjectRepository) Delete(id uint) error {
+func (r *ProjectRepository) DeleteProject(id uint) error {
 	query := r.db.Delete(&model.Project{}, id)
 	if err := query.Error; err != nil {
 		return err
@@ -156,7 +156,7 @@ func (r *ProjectRepository) Delete(id uint) error {
 }
 
 // AddWorkspaceAssociation 프로젝트에 워크스페이스 연결 추가
-func (r *ProjectRepository) AddWorkspaceAssociation(projectID, workspaceID uint) error {
+func (r *ProjectRepository) AddProjectWorkspaceAssociation(projectID, workspaceID uint) error {
 	var project model.Project
 	project.ID = projectID
 	var workspace model.Workspace
@@ -174,7 +174,7 @@ func (r *ProjectRepository) AddWorkspaceAssociation(projectID, workspaceID uint)
 }
 
 // RemoveWorkspaceAssociation 프로젝트에서 워크스페이스 연결 제거
-func (r *ProjectRepository) RemoveWorkspaceAssociation(projectID, workspaceID uint) error {
+func (r *ProjectRepository) RemoveProjectWorkspaceAssociation(projectID, workspaceID uint) error {
 	var project model.Project
 	project.ID = projectID
 	var workspace model.Workspace
@@ -192,8 +192,8 @@ func (r *ProjectRepository) RemoveWorkspaceAssociation(projectID, workspaceID ui
 }
 
 // GetAssignedWorkspaces 프로젝트에 할당된 워크스페이스 목록을 조회합니다.
-func (r *ProjectRepository) GetAssignedWorkspaces(projectID uint) ([]model.Workspace, error) {
-	var workspaces []model.Workspace
+func (r *ProjectRepository) FindAssignedWorkspaces(projectID uint) ([]*model.Workspace, error) {
+	var workspaces []*model.Workspace
 	err := r.db.Model(&model.Project{ID: projectID}).
 		Association("Workspaces").
 		Find(&workspaces)

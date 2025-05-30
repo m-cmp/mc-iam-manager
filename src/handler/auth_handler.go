@@ -27,6 +27,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// 사용자 인증관련 기능들을 정의함.
+
 type AuthHandler struct {
 	userService     *service.UserService
 	keycloakService service.KeycloakService
@@ -195,7 +197,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 // @Success 200 {object} map[string]string "message: Workspace ticket set successfully"
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Security BearerAuth
-// @Router /api/v1/workspace/set [post]
+// @Router /api/v1/workspaces/workspace-ticket [post]
 func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 	// 1. 기존 액세스 토큰 확인
 	authHeader := c.Request().Header.Get("Authorization")
@@ -263,24 +265,4 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{"rpt": rpt})
-}
-
-// GetUserWorkspaceRoles 사용자의 특정 워크스페이스 내 역할 목록 조회
-func (h *AuthHandler) GetUserWorkspaceRoles(c echo.Context) error {
-	userID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID"})
-	}
-
-	workspaceID, err := strconv.ParseUint(c.QueryParam("workspace_id"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid workspace ID"})
-	}
-
-	roles, err := h.userService.GetUserRolesInWorkspace(uint(userID), uint(workspaceID))
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-
-	return c.JSON(http.StatusOK, roles)
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/config" // Import config for Keycloak client
+	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/model/mcmpapi"
 	"github.com/m-cmp/mc-iam-manager/service"
 	"gorm.io/gorm" // Import gorm
@@ -37,7 +38,7 @@ func NewMcmpApiHandler(db *gorm.DB) *McmpApiHandler { // Accept db, remove servi
 // @Produce json
 // @Success 200 {object} map[string]string "message: Successfully triggered MCMP API sync"
 // @Failure 500 {object} map[string]string "message: Failed to trigger MCMP API sync"
-// @Router /setup/sync-apis [post]
+// @Router /api/mcmp-apis/syncMcmpAPIs [post]
 // @Security BearerAuth
 func (h *McmpApiHandler) SyncMcmpAPIs(c echo.Context) error {
 	err := h.service.SyncMcmpAPIsFromYAML()
@@ -61,7 +62,7 @@ func (h *McmpApiHandler) SyncMcmpAPIs(c echo.Context) error {
 // @Failure 400 {object} map[string]string "error: Invalid service name or version"
 // @Failure 404 {object} map[string]string "error: Service or version not found"
 // @Failure 500 {object} map[string]string "error: Failed to set active version"
-// @Router /mcmp-apis/{serviceName}/versions/{version}/activate [put] // Example route
+// @Router /api/mcmp-apis/{serviceName}/versions/{version}/activate [put]
 // @Security BearerAuth
 func (h *McmpApiHandler) SetActiveVersion(c echo.Context) error {
 	serviceName := c.Param("serviceName")
@@ -92,16 +93,16 @@ func (h *McmpApiHandler) SetActiveVersion(c echo.Context) error {
 // @Tags McmpAPI
 // @Accept json
 // @Produce json
-// @Param callRequest body mcmpapi.McmpApiCallRequest true "API Call Request"
+// @Param callRequest body model.McmpApiCallRequest true "API Call Request"
 // @Success 200 {object} object "External API Response (structure depends on the called API)"
 // @Failure 400 {object} map[string]string "error: Invalid request body or parameters"
 // @Failure 404 {object} map[string]string "error: Service or action not found"
 // @Failure 500 {object} map[string]string "error: Internal server error or failed to call external API"
 // @Failure 503 {object} map[string]string "error: External API unavailable"
-// @Router /mcmp-apis/call [post] // Example route (Consider changing if keeping both handlers)
+// @Router /api/mcmp-apis/mcmpApiCall [post]
 // @Security BearerAuth
 func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
-	var req mcmpapi.McmpApiCallRequest
+	var req model.McmpApiCallRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body: " + err.Error()})
 	}
@@ -223,7 +224,7 @@ func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
 // @Param actionName query string false "Filter by action name (operationId)"
 // @Router /admin/mcmp-apis [get] // Example route
 // @Security BearerAuth
-func (h *McmpApiHandler) GetAllAPIDefinitions(c echo.Context) error {
+func (h *McmpApiHandler) ListServicesAndActions(c echo.Context) error {
 	// Read query parameters for filtering
 	serviceNameFilter := c.QueryParam("serviceName")
 	actionNameFilter := c.QueryParam("actionName")
@@ -252,14 +253,14 @@ func (h *McmpApiHandler) GetAllAPIDefinitions(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Service or Action Not Found"
 // @Failure 500 {object} map[string]string "error: Internal Server Error"
 // @Failure 503 {object} map[string]string "error: External API Service Unavailable"
-// @Router /mcmp-apis/test/mc-infra-manager/getallns [get] // Example test route
+// @Router /api/mcmp-apis/test/mc-infra-manager/getallns [get]
 // @Security BearerAuth
 func (h *McmpApiHandler) TestCallGetAllNs(c echo.Context) error {
 	// Prepare the request for the CallApi service
-	callReq := &mcmpapi.McmpApiCallRequest{
+	callReq := &model.McmpApiCallRequest{
 		ServiceName: "mc-infra-manager", // Target service
 		ActionName:  "GetAllNs",         // Target action (operationId)
-		RequestParams: mcmpapi.McmpApiRequestParams{ // No params needed for GetAllNs
+		RequestParams: model.McmpApiRequestParams{ // No params needed for GetAllNs
 			PathParams:  nil,
 			QueryParams: nil,
 			Body:        nil,
@@ -306,7 +307,7 @@ func (h *McmpApiHandler) TestCallGetAllNs(c echo.Context) error {
 // @Failure 400 {object} map[string]string "error: Invalid service name or request body"
 // @Failure 404 {object} map[string]string "error: Service not found"
 // @Failure 500 {object} map[string]string "error: Failed to update service"
-// @Router /mcmp-apis/{serviceName} [put] // Example route
+// @Router /api/mcmp-apis/{serviceName} [put]
 // @Security BearerAuth
 func (h *McmpApiHandler) UpdateService(c echo.Context) error {
 	serviceName := c.Param("serviceName")

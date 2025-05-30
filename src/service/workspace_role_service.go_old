@@ -11,71 +11,72 @@ import (
 )
 
 var (
-	ErrUserNotFound                = errors.New("user not found")
-	ErrWorkspaceRoleNotFound       = errors.New("workspace role not found")
+	ErrUserNotFound = errors.New("user not found")
+
 	ErrWorkspaceNotFound           = errors.New("workspace not found")
 	ErrWorkspaceRoleNotInWorkspace = errors.New("workspace role does not belong to the specified workspace")
 )
 
 // WorkspaceRoleService 워크스페이스 역할 서비스
 type WorkspaceRoleService struct {
-	repo *repository.WorkspaceRoleRepository
+	workspaceRoleRepo *repository.WorkspaceRoleRepository
+	roleRepo          *repository.RoleRepository
 }
 
 // NewWorkspaceRoleService 새 WorkspaceRoleService 인스턴스 생성
-func NewWorkspaceRoleService(repo *repository.WorkspaceRoleRepository) *WorkspaceRoleService {
-	return &WorkspaceRoleService{repo: repo}
+func NewWorkspaceRoleService(workspaceRoleRepo *repository.WorkspaceRoleRepository, roleRepo *repository.RoleRepository) *WorkspaceRoleService {
+	return &WorkspaceRoleService{workspaceRoleRepo: workspaceRoleRepo, roleRepo: roleRepo}
 }
 
 // List 모든 워크스페이스 역할 목록 조회
-func (s *WorkspaceRoleService) List() ([]model.RoleMaster, error) {
-	return s.repo.List()
+func (s *WorkspaceRoleService) ListWorkspaceRoles() ([]model.RoleMaster, error) {
+	return s.workspaceRoleRepo.FindRoles(model.RoleTypeWorkspace)
 }
 
 // GetByID ID로 워크스페이스 역할 조회
 func (s *WorkspaceRoleService) GetByID(id uint) (*model.RoleMaster, error) {
-	return s.repo.GetByID(id)
+	return s.workspaceRoleRepo.GetByID(id)
 }
 
 // Create 새 워크스페이스 역할 생성
 func (s *WorkspaceRoleService) Create(role *model.RoleMaster) error {
-	return s.repo.Create(role)
+	return s.workspaceRoleRepo.Create(role)
 }
 
 // Update 워크스페이스 역할 정보 수정
 func (s *WorkspaceRoleService) Update(role *model.RoleMaster) error {
-	return s.repo.Update(role)
+	return s.workspaceRoleRepo.Update(role)
 }
 
 // Delete 워크스페이스 역할 삭제
 func (s *WorkspaceRoleService) Delete(id uint) error {
-	return s.repo.Delete(id)
+	return s.workspaceRoleRepo.Delete(id)
 }
 
 // AssignRole 사용자에게 워크스페이스 역할 할당
 func (s *WorkspaceRoleService) AssignRole(userID, workspaceID, roleID uint) error {
-	return s.repo.AssignRole(userID, workspaceID, roleID)
+	return s.workspaceRoleRepo.AssignRole(userID, workspaceID, roleID)
 }
 
 // RemoveRole 사용자의 워크스페이스 역할 제거
 func (s *WorkspaceRoleService) RemoveRole(userID, workspaceID, roleID uint) error {
-	return s.repo.RemoveRole(userID, workspaceID, roleID)
+	return s.workspaceRoleRepo.RemoveRole(userID, workspaceID, roleID)
 }
 
 // GetUserRoles 사용자의 워크스페이스 역할 목록 조회
 func (s *WorkspaceRoleService) GetUserRoles(userID, workspaceID uint) ([]model.RoleMaster, error) {
-	return s.repo.GetUserRoles(userID, workspaceID)
+	return s.workspaceRoleRepo.GetUserRoles(userID, workspaceID)
 }
 
 // GetWorkspaceRoles 워크스페이스의 모든 역할 목록 조회
-func (s *WorkspaceRoleService) GetWorkspaceRoles(workspaceID uint) ([]model.RoleMaster, error) {
-	return s.repo.GetWorkspaceRoles(workspaceID)
+func (s *WorkspaceRoleService) GetWorkspaceRoles(workspaceID uint) ([]*model.RoleMaster, error) {
+	return s.workspaceRoleRepo.GetWorkspaceRoles(workspaceID)
 }
 
 // GetUserWorkspaceRoles 사용자의 워크스페이스 역할 목록을 조회합니다.
 func (s *WorkspaceRoleService) GetUserWorkspaceRoles(userID uint, workspaceID uint) ([]string, error) {
 	// 사용자의 워크스페이스 역할 조회
-	userWorkspaceRoles, err := s.repo.GetUserRoles(userID, workspaceID)
+	userWorkspaceRoles, err := s.workspaceRoleRepo.GetUserRoles(userID, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user workspace roles: %w", err)
 	}
@@ -93,8 +94,8 @@ func (s *WorkspaceRoleService) GetUserWorkspaceRoles(userID uint, workspaceID ui
 
 // GetUserByID 사용자 ID로 사용자 정보를 조회합니다.
 func (s *WorkspaceRoleService) GetUserByID(userID uint) (*model.User, error) {
-	userRepo := repository.NewUserRepository(s.repo.DB())
-	user, err := userRepo.FindByID(userID)
+	userRepo := repository.NewUserRepository(s.workspaceRoleRepo.DB())
+	user, err := userRepo.FindUserByID(userID)
 	if err != nil {
 		return nil, ErrUserNotFound
 	}
@@ -104,7 +105,7 @@ func (s *WorkspaceRoleService) GetUserByID(userID uint) (*model.User, error) {
 // GetWorkspaceRoleByName 워크스페이스 역할 이름으로 역할을 조회합니다.
 func (s *WorkspaceRoleService) GetWorkspaceRoleByName(name string) (*model.RoleMaster, error) {
 	var role model.RoleMaster
-	if err := s.repo.DB().Preload("RoleSubs").
+	if err := s.roleRepo.DB().Preload("RoleSubs").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
 		Where("mcmp_role_master.name = ? AND mcmp_role_sub.role_type = ?", name, "workspace").
 		First(&role).Error; err != nil {

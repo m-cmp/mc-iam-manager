@@ -1,18 +1,19 @@
 package service
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
 
+	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gorm.io/gorm"
 )
 
 var (
+	ErrUserNotFound          = errors.New("user not found")
+	ErrWorkspaceNotFound     = errors.New("workspace not found")
 	ErrNoCspRoleMappingFound = errors.New("no suitable CSP role mapping found for the user's roles in this workspace")
 	ErrUnsupportedCspType    = errors.New("unsupported CSP type requested")
 )
@@ -44,7 +45,10 @@ func NewCspCredentialService(db *gorm.DB) *CspCredentialService {
 }
 
 // GetTemporaryCredentials 사용자의 워크스페이스 역할에 기반하여 CSP 임시 자격 증명 발급
-func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, kcUserId string, rawOidcToken string, workspaceIDStr string, cspType string, region string) (*model.CspCredentialResponse, error) {
+func (s *CspCredentialService) GetTemporaryCredentials(c echo.Context, workspaceID uint, cspType string, region string) (*model.CspCredentialResponse, error) {
+	ctx := c.Request().Context()
+	kcUserId := c.Get("kcUserId").(string)
+
 	// 1. Get User's Keycloak ID from OIDC Token
 	user, err := s.userRepo.FindByKcID(kcUserId)
 	if err != nil {
@@ -53,35 +57,44 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, kcUs
 	}
 	userID := user.ID
 
-	// 2. Parse Workspace ID
-	workspaceID_uint64, err := strconv.ParseUint(workspaceIDStr, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("invalid workspace ID format: %w", err)
-	}
-	workspaceID := uint(workspaceID_uint64)
-
-	// 3. Get User's Roles for the specified Workspace
-	userWorkspaceRoles, err := s.userRepo.GetUserRolesInWorkspace(userID, workspaceID)
+	// 2. Get User's Roles for the specified Workspace
+	userWorkspaceRoles, err := s.userRepo.FindUserRolesInWorkspace(userID, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
 
 	// 4. Find the first matching CSP role mapping
-	var targetMapping *model.WorkspaceRoleCspRoleMapping
+	var targetMapping *model.RoleMasterCspRoleMapping
 	for _, role := range userWorkspaceRoles {
-		mappings, err := s.mappingRepo.FindByRoleAndCspType(role.RoleID, cspType)
+
+		cspRoleMappings, err := s.mappingRepo.FindCspRoleMappingsByWorkspaceRoleIDAndCspType(role.RoleID, cspType)
 		if err != nil {
 			log.Printf("Error finding CSP role mapping for role %d: %v", role.RoleID, err)
 			continue
 		}
-		if len(mappings) > 0 {
-			targetMapping = &mappings[0]
+		if len(cspRoleMappings) > 0 {
+			targetMapping = cspRoleMappings[0]
 			break
 		}
 	}
 
 	if targetMapping == nil {
 		return nil, ErrNoCspRoleMappingFound
+	}
+
+	// IDP ARN 가져오기
+	if targetMapping.CspRole == nil {
+		return nil, fmt.Errorf("CSP 역할 정보가 없습니다")
+	}
+	idpArn := targetMapping.CspRole.IdpIdentifier
+	if idpArn == "" {
+		return nil, fmt.Errorf("IDP ARN이 설정되지 않았습니다")
+	}
+
+	// Role ARN 가져오기
+	roleArn := targetMapping.CspRole.IamIdentifier
+	if roleArn == "" {
+		return nil, fmt.Errorf("Role ARN이 설정되지 않았습니다")
 	}
 
 	// 5. Get impersonation token for the OIDC client
@@ -97,7 +110,7 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, kcUs
 		if s.awsCredService == nil {
 			return nil, fmt.Errorf("AWS credential service is not initialized")
 		}
-		return s.awsCredService.AssumeRoleWithWebIdentity(ctx, targetMapping.CspRoleArn, kcUserId, impersonationToken.AccessToken, targetMapping.IdpIdentifier, region)
+		return s.awsCredService.AssumeRoleWithWebIdentity(ctx, roleArn, kcUserId, impersonationToken.AccessToken, idpArn, region)
 	case "gcp":
 		// TODO: Implement GCP credential logic using gcpCredService
 		return nil, ErrUnsupportedCspType
