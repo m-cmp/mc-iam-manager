@@ -18,6 +18,7 @@ import (
 
 	// "encoding/json" // Removed unused import
 
+	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/model/mcmpapi" // Updated import path
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gopkg.in/yaml.v3"
@@ -35,7 +36,7 @@ type McmpApiService interface {
 	SetActiveVersion(serviceName, version string) error
 	GetAllAPIDefinitions(serviceNameFilter, actionNameFilter string) (*mcmpapi.McmpApiDefinitions, error)
 	UpdateService(serviceName string, updates map[string]interface{}) error
-	McmpApiCall(ctx context.Context, req *mcmpapi.McmpApiCallRequest) (int, []byte, string, string, error)
+	McmpApiCall(ctx context.Context, req *model.McmpApiCallRequest) (int, []byte, string, string, error)
 	SyncMcmpAPIsFromYAML() error
 }
 
@@ -284,7 +285,7 @@ func (s *mcmpApiService) UpdateService(serviceName string, updates map[string]in
 }
 
 // McmpApiCall executes a call to an external MCMP API based on stored definitions and provided parameters. (Renamed)
-func (s *mcmpApiService) McmpApiCall(ctx context.Context, req *mcmpapi.McmpApiCallRequest) (int, []byte, string, string, error) { // Renamed method and added return values
+func (s *mcmpApiService) McmpApiCall(ctx context.Context, req *model.McmpApiCallRequest) (int, []byte, string, string, error) { // Renamed method and added return values
 	// Initialize return values for error cases
 	serviceVersion := ""
 	calledURL := ""

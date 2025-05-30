@@ -23,6 +23,22 @@ func NewMcmpApiPermissionActionMappingHandler(db *gorm.DB) *McmpApiPermissionAct
 	}
 }
 
+// ListPlatformActions 플랫폼 권한 ID에 해당하는 액션 목록 조회
+// @Summary List platform actions by permission ID
+// @Description Returns all platform actions mapped to a specific permission
+// @Tags mcmp-api-permission-action-mappings
+// @Accept json
+// @Produce json
+// @Param permissionId path string true "Permission ID"
+// @Success 200 {array} mcmpapi.McmpApiAction
+// @Router /api/mcmp-api-permission-action-mappings/platforms/{permissionId}/actions [get]
+func (h *McmpApiPermissionActionMappingHandler) ListPlatformActions(c echo.Context) error {
+
+	// filter 조건 넘기기
+	//actions, err := h.service.ListPlatformActions(c.Request().Context(), permissionID)
+	return c.JSON(http.StatusOK, map[string]string{"message": "list platform action permissions"})
+}
+
 // GetPlatformActionsByPermissionID 플랫폼 권한 ID에 해당하는 액션 목록 조회
 // @Summary Get platform actions by permission ID
 // @Description Returns all platform actions mapped to a specific permission
@@ -106,7 +122,7 @@ func (h *McmpApiPermissionActionMappingHandler) GetPermissionsByActionID(c echo.
 // @Param mapping body mcmpapi.McmpApiPermissionActionMapping true "Mapping to create"
 // @Success 204 "No Content"
 // @Router /api/mcmp-api-permission-action-mappings [post]
-func (h *McmpApiPermissionActionMappingHandler) CreateMapping(c echo.Context) error {
+func (h *McmpApiPermissionActionMappingHandler) CreateMcmpApiPermissionActionMapping(c echo.Context) error {
 	var request struct {
 		PermissionID string `json:"permission_id"`
 		ActionID     int    `json:"action_id"`

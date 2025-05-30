@@ -3,7 +3,6 @@ package handler
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	// Add json import
 	"log" // Add log import
@@ -15,6 +14,7 @@ import (
 	"github.com/m-cmp/mc-iam-manager/model" // Import mcmpapi model for request
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/service"
+	"github.com/m-cmp/mc-iam-manager/util"
 )
 
 // ProjectHandler 프로젝트 관리 핸들러
@@ -38,18 +38,17 @@ func NewProjectHandler(db *gorm.DB) *ProjectHandler {
 }
 
 // CreateProject godoc
-// @Summary 새 프로젝트 생성
-// @Description 새로운 프로젝트를 생성합니다
+// @Summary Create project
+// @Description Create a new project
 // @Tags projects
 // @Accept json
 // @Produce json
 // @Param project body model.Project true "Project Info"
 // @Success 201 {object} model.Project
-// @Failure 400 {object} map[string]string "error: Invalid request"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/projects [post]
+// @Router /api/v1/admin/createProject [post]
 func (h *ProjectHandler) CreateProject(c echo.Context) error {
 	var project model.Project
 	if err := c.Bind(&project); err != nil {
@@ -68,18 +67,17 @@ func (h *ProjectHandler) CreateProject(c echo.Context) error {
 }
 
 // ListProjects godoc
-// @Summary 프로젝트 목록 조회
-// @Description 모든 프로젝트 목록을 조회합니다
+// @Summary List all projects
+// @Description Get a list of all projects
 // @Tags projects
 // @Accept json
 // @Produce json
 // @Success 200 {array} model.Project
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/projects [get]
+// @Router /api/v1/admin/projects [get]
 func (h *ProjectHandler) ListProjects(c echo.Context) error {
-	projects, err := h.projectService.List()
+	projects, err := h.projectService.ListProjects()
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 목록 조회 실패: %v", err)})
 	}
@@ -87,25 +85,25 @@ func (h *ProjectHandler) ListProjects(c echo.Context) error {
 }
 
 // GetProjectByID godoc
-// @Summary 프로젝트 ID로 조회
-// @Description 특정 프로젝트를 ID로 조회합니다
+// @Summary Get project by ID
+// @Description Get project details by ID
 // @Tags projects
 // @Accept json
 // @Produce json
 // @Param id path string true "Project ID"
 // @Success 200 {object} model.Project
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Failure 404 {object} map[string]string "error: Project not found"
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/projects/{id} [get]
+// @Router /api/v1/admin/projects/{id} [get]
 func (h *ProjectHandler) GetProjectByID(c echo.Context) error {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	// Parse DB ID (uint) from path parameter
+	projectIDInt, err := util.StringToUint(c.Param("projectId"))
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID 형식입니다"})
 	}
 
-	project, err := h.projectService.GetByID(uint(id))
+	project, err := h.projectService.GetProjectByID(projectIDInt)
 	if err != nil {
 		if err.Error() == "project not found" {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
@@ -131,7 +129,7 @@ func (h *ProjectHandler) GetProjectByID(c echo.Context) error {
 func (h *ProjectHandler) GetProjectByName(c echo.Context) error {
 	name := c.Param("name")
 
-	project, err := h.projectService.GetByName(name)
+	project, err := h.projectService.GetProjectByName(name)
 	if err != nil {
 		if err.Error() == "project not found" {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
@@ -142,29 +140,29 @@ func (h *ProjectHandler) GetProjectByName(c echo.Context) error {
 }
 
 // UpdateProject godoc
-// @Summary 프로젝트 정보 업데이트
-// @Description 프로젝트 정보를 업데이트합니다
+// @Summary Update project
+// @Description Update project information
 // @Tags projects
 // @Accept json
 // @Produce json
 // @Param id path string true "Project ID"
 // @Param project body model.Project true "Project Info"
 // @Success 200 {object} model.Project
-// @Failure 400 {object} map[string]string "error: Invalid request"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Failure 404 {object} map[string]string "error: Project not found"
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/projects/{id} [put]
+// @Router /api/v1/admin/projects/{id} [put]
 func (h *ProjectHandler) UpdateProject(c echo.Context) error {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID입니다"})
-	}
 
 	var project model.Project
 	if err := c.Bind(&project); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
+	projectIDInt, err := util.StringToUint(c.Param("projectId"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID 형식입니다"})
 	}
 
 	updates := map[string]interface{}{
@@ -172,7 +170,7 @@ func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 		"description": project.Description,
 	}
 
-	if err := h.projectService.Update(uint(id), updates); err != nil {
+	if err := h.projectService.UpdateProject(projectIDInt, updates); err != nil {
 		if err.Error() == "project not found" {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
@@ -180,7 +178,7 @@ func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 	}
 
 	// Get updated project
-	updatedProject, err := h.projectService.GetByID(uint(id))
+	updatedProject, err := h.projectService.GetProjectByID(projectIDInt)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("수정된 프로젝트 조회 실패: %v", err)})
 	}
@@ -189,25 +187,25 @@ func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 }
 
 // DeleteProject godoc
-// @Summary 프로젝트 삭제
-// @Description 프로젝트를 삭제합니다
+// @Summary Delete project
+// @Description Delete a project
 // @Tags projects
 // @Accept json
 // @Produce json
 // @Param id path string true "Project ID"
 // @Success 204 "No Content"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Failure 404 {object} map[string]string "error: Project not found"
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/projects/{id} [delete]
+// @Router /api/v1/admin/projects/{id} [delete]
 func (h *ProjectHandler) DeleteProject(c echo.Context) error {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+
+	projectIDInt, err := util.StringToUint(c.Param("projectId"))
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID 형식입니다"})
 	}
 
-	if err := h.projectService.Delete(uint(id)); err != nil {
+	if err := h.projectService.DeleteProject(projectIDInt); err != nil {
 		if err.Error() == "project not found" {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
@@ -252,19 +250,36 @@ func (h *ProjectHandler) SyncProjects(c echo.Context) error {
 // @Security BearerAuth
 // @Router /projects/{id}/workspaces/{workspaceId} [post]
 func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
-	projectID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID입니다"})
+	var req model.WorkspaceProjectMappingRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
-	workspaceID, err := strconv.ParseUint(c.Param("workspaceId"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID입니다"})
+	if req.WorkspaceID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "워크스페이스 ID가 필요합니다"})
 	}
 
-	if err := h.projectService.AddWorkspaceAssociation(uint(projectID), uint(workspaceID)); err != nil {
-		if err.Error() == "project not found" || err.Error() == "workspace not found" {
-			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+	if req.ProjectID == nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "프로젝트 ID가 필요합니다"})
+	}
+
+	workspaceIDInt, err := util.StringToUint(req.WorkspaceID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
+	}
+
+	for _, projectID := range req.ProjectID {
+		projectIDInt, err := util.StringToUint(projectID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID 형식입니다"})
 		}
+
+		if err := h.workspaceService.AddProjectToWorkspace(workspaceIDInt, projectIDInt); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 연결 실패: %v", err)})
+		}
+		// if err := h.projectService.AddWorkspaceAssociation(projectIDInt, workspaceIDInt); err != nil { // 프로젝트 ID는 배열이므로 반복문으로 처리
+		// if err.Error() == "project not found" || err.Error() == "workspace not found" {
+		// 	return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+		// }
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 연결 실패: %v", err)})
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -272,19 +287,32 @@ func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 
 // RemoveWorkspaceFromProject 프로젝트에서 워크스페이스 연결 해제
 func (h *ProjectHandler) RemoveWorkspaceFromProject(c echo.Context) error {
-	projectID, err := strconv.ParseUint(c.Param("projectId"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID입니다"})
+	var req model.WorkspaceProjectMappingRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+	if req.WorkspaceID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "워크스페이스 ID가 필요합니다"})
 	}
 
-	workspaceID, err := strconv.ParseUint(c.Param("workspaceId"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID입니다"})
+	if req.ProjectID == nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "프로젝트 ID가 필요합니다"})
 	}
 
-	// WorkspaceService의 RemoveProjectFromWorkspace 호출
-	if err := h.workspaceService.RemoveProjectFromWorkspace(uint(workspaceID), uint(projectID)); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	workspaceIDInt, err := util.StringToUint(req.WorkspaceID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
+	}
+
+	for _, projectID := range req.ProjectID {
+		projectIDInt, err := util.StringToUint(projectID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID 형식입니다"})
+		}
+
+		if err := h.workspaceService.RemoveProjectFromWorkspace(workspaceIDInt, projectIDInt); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
 	}
 
 	return c.NoContent(http.StatusNoContent)

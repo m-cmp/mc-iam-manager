@@ -35,6 +35,12 @@ func (RoleSub) TableName() string {
 	return "mcmp_role_sub"
 }
 
+// UserWithRoles 워크스페이스 내 사용자 및 역할 정보를 담는 구조체
+type UserWithRoles struct {
+	User  User         `json:"user"`
+	Roles []RoleMaster `json:"roles"`
+}
+
 // UserRole 사용자-역할 매핑 모델 (DB 테이블: mcmp_user_platform_roles)
 type UserPlatformRole struct {
 	UserID    uint       `json:"user_id" gorm:"primaryKey;column:user_id"`
@@ -50,6 +56,7 @@ func (UserPlatformRole) TableName() string {
 }
 
 // UserWorkspaceRole 사용자-워크스페이스-역할 매핑 모델 (DB 테이블: mcmp_user_workspace_roles)
+// 사용자 기준으로 workspace와 role 을 표시 . workspace 기준으로는 WorkspaceWithProjects 를 사용
 type UserWorkspaceRole struct {
 	UserID      uint        `json:"user_id" gorm:"primaryKey;column:user_id"`
 	WorkspaceID uint        `json:"workspace_id" gorm:"primaryKey;column:workspace_id"`
@@ -65,26 +72,24 @@ func (UserWorkspaceRole) TableName() string {
 	return "mcmp_user_workspace_roles"
 }
 
-// UserWorkspaceRoleResponse 사용자-워크스페이스-역할 정보를 담는 응답 구조체
-type UserWorkspaceRoleResponse struct {
-	UserID        uint      `json:"user_id"`
-	Username      string    `json:"username"`
-	WorkspaceID   uint      `json:"workspace_id"`
-	WorkspaceName string    `json:"workspace_name"`
-	RoleID        uint      `json:"role_id"`
-	RoleName      string    `json:"role_name"`
-	CreatedAt     time.Time `json:"created_at"`
-}
-
 // RoleType 상수 정의
 const (
 	RoleTypePlatform  = "platform"
 	RoleTypeWorkspace = "workspace"
+	RoleTypeCSP       = "csp"
 )
 
-// AssignRoleRequest 역할 할당 요청 구조체
-type AssignRoleRequest struct {
-	Username    string `json:"username"`
-	RoleName    string `json:"roleName"`
-	WorkspaceID uint   `json:"workspaceId"`
+// WorkspaceRoleCspRoleMapping 워크스페이스 역할 - CSP 역할 매핑 (DB 테이블: mcmp_workspace_role_csp_role_mapping)
+type RoleMasterCspRoleMapping struct {
+	RoleID      uint      `json:"roleId" gorm:"column:role_id;primaryKey;foreignKey:id;references:mcmp_role_master"`
+	CspType     string    `json:"cspType" gorm:"column:csp_type;primaryKey"`
+	CspRoleID   uint      `json:"cspRoleId" gorm:"column:csp_role_id;primaryKey;foreignKey:id;references:mcmp_csp_roles"`
+	Description string    `json:"description" gorm:"column:description"`
+	CreatedAt   time.Time `json:"createdAt" gorm:"column:created_at"`
+	CspRole     *CspRole  `json:"cspRole" gorm:"foreignKey:CspRoleID;references:ID"`
+}
+
+// TableName WorkspaceRoleCspRoleMapping의 테이블 이름을 지정합니다
+func (RoleMasterCspRoleMapping) TableName() string {
+	return "mcmp_role_csp_role_mapping"
 }

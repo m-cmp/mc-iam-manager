@@ -40,7 +40,7 @@ login_as_user() {
 }
 
 list_workspaces_for_admin() {
-    log "워크스페이스 목록 조회 중..."
+    log "전체 워크스페이스 목록 조회 중..."
     response=$(curl -s -X GET "$MCIAMMANAGER_HOST/api/admin/workspaces" \
         --header "Authorization: Bearer $MCIAMMANAGER_ACCESSTOKEN")
     log "워크스페이스 목록: $response"
@@ -48,7 +48,7 @@ list_workspaces_for_admin() {
 
 # 워크스페이스 조회
 list_workspaces() {
-    log "워크스페이스 목록 조회 중..."
+    log "사용자 워크스페이스 목록 조회 중..."
     response=$(curl -s -X GET "$MCIAMMANAGER_HOST/api/workspaces" \
         --header "Authorization: Bearer $MCIAMMANAGER_ACCESSTOKEN")
     log "워크스페이스 목록: $response"
@@ -57,31 +57,34 @@ list_workspaces() {
 # 워크스페이스에 사용자 역할 할당
 assign_workspace_role() {
     read -p "워크스페이스 ID: " workspaceId
-    read -p "사용자 ID: " username
-    read -p "역할 이름: " workspaceRoleName
+    read -p "사용자 이름: " username
+    read -p "역할 Id: " workspaceRoleId
     
-    url="$MCIAMMANAGER_HOST/api/workspaces/id/$workspaceId/users/$username/roles/$workspaceRoleName"
+    url="$MCIAMMANAGER_HOST/api/workspaces/assignWorkspaceRole"
     log "API 호출: $url"
     response=$(curl -s -X POST \
         -H "Authorization: Bearer $MCIAMMANAGER_ACCESSTOKEN" \
         -H "Content-Type: application/json" \
-        -d '{"username": "'"$username"'", "workspaceId": "'"$workspaceId"'", "role": "'"$workspaceRoleName"'"}' \
+        -d '{"username": "'"$username"'", "workspaceId": "'"$workspaceId"'", "roleId": "'"$workspaceRoleId"'"}' \
         "$url")
     log "역할 할당 응답: $response"
 }
 
+
+
 # 워크스페이스에서 사용자 역할 해제
 remove_workspace_role() {
-    read -p "워크스페이스 ID: " workspace_id
-    read -p "사용자 ID: " username
-    read -p "역할 이름: " role_name
+    read -p "워크스페이스 ID: " workspaceId
+    read -p "사용자 이름: " username
+    read -p "역할 ID: " workspaceRoleId
     
     log "워크스페이스 역할 해제 중..."    
-    remove_url="$MCIAMMANAGER_HOST/api/workspaces/id/$workspace_id/users/$username/roles/$role_name"
+    remove_url="$MCIAMMANAGER_HOST/api/workspaces/id/$workspaceId/users/$username/roles/$workspaceRoleId"
     echo "Calling API: $remove_url"
     response=$(curl -s -X DELETE \
         --header "Authorization: Bearer $MCIAMMANAGER_ACCESSTOKEN" \
         --header 'Content-Type: application/json' \
+        -d '{"username": "'"$username"'", "workspaceId": "'"$workspaceId"'", "roleId": "'"$workspaceRoleId"'"}' \
         "$remove_url")
 
     log "역할 해제 응답: $response"
@@ -155,7 +158,7 @@ while true; do
     log "1. Platform Admin 로그인"
     log "2. 일반 사용자 로그인"
     log "3. 워크스페이스 조회(관리자)"
-    log "4. 워크스페이스 조회"
+    log "4. 사용자에 할당된 워크스페이스 조회"
     log "5. 워크스페이스에 사용자 역할 할당"
     log "6. 워크스페이스에서 사용자 역할 해제"
     log "7. 사용자의 워크스페이스와 역할 목록 조회"

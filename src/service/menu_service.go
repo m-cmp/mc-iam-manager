@@ -381,19 +381,9 @@ func (s *MenuService) GetMappedMenusByRole(platformRole string) ([]*model.Menu, 
 	return menus, nil
 }
 
-// CreateMenuMapping 플랫폼 역할-메뉴 매핑 생성
-func (s *MenuService) CreateMenuMapping(platformRole string, menuID string) error {
-	// 메뉴 존재 여부 확인
-	menu, err := s.menuRepo.GetByID(menuID)
-	if err != nil {
-		return fmt.Errorf("menu not found: %w", err)
-	}
-	if menu == nil {
-		return fmt.Errorf("menu with ID %s does not exist", menuID)
-	}
-
-	// 매핑 생성
-	return s.menuMappingRepo.CreateMapping(platformRole, menuID)
+// CreateMenuMapping 메뉴 매핑을 생성합니다
+func (s *MenuService) CreateMenuMapping(mapping *model.MenuMapping) error {
+	return s.menuRepo.CreateMenuMapping(mapping)
 }
 
 // DeleteMenuMapping 플랫폼 역할-메뉴 매핑 삭제

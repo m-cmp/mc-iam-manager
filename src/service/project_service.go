@@ -13,8 +13,7 @@ import (
 	// "net/http"      // Remove unused import
 
 	// Import godotenv for loading environment variables
-	"github.com/m-cmp/mc-iam-manager/model"
-	"github.com/m-cmp/mc-iam-manager/model/mcmpapi" // Import mcmpapi model
+	"github.com/m-cmp/mc-iam-manager/model" // Import mcmpapi model
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gorm.io/gorm" // Ensure gorm is imported
 )
@@ -40,7 +39,7 @@ func NewProjectService(db *gorm.DB, mcmpApiService McmpApiService) *ProjectServi
 // Create 프로젝트 생성 (mc-infra-manager 호출 및 DB 저장)
 func (s *ProjectService) Create(ctx context.Context, project *model.Project) error {
 	// 이름 중복 체크
-	existingProject, err := s.projectRepo.GetByName(project.Name)
+	existingProject, err := s.projectRepo.FindProjectByProjectName(project.Name)
 	if err == nil && existingProject != nil {
 		return fmt.Errorf("project with name '%s' already exists", project.Name)
 	}
@@ -61,10 +60,10 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 	// 	return fmt.Errorf("failed to marshal request body for PostNs: %w", err)
 	// }
 
-	callReq := &mcmpapi.McmpApiCallRequest{
+	callReq := &model.McmpApiCallRequest{
 		ServiceName: "mc-infra-manager",
 		ActionName:  "Postns", // Corrected action name based on previous analysis
-		RequestParams: mcmpapi.McmpApiRequestParams{
+		RequestParams: model.McmpApiRequestParams{
 			Body: nsRequestBody, // Pass the original map directly
 		},
 	}
@@ -111,7 +110,7 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 	// 2. Create project in local DB
 
 	// 2. Create project in local DB
-	if err := s.projectRepo.Create(project); err != nil {
+	if err := s.projectRepo.CreateProject(project); err != nil {
 		return err // Return DB creation error
 	}
 
@@ -122,7 +121,7 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 		log.Printf("DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
 	}
 	log.Printf("Using workspace name: %s", defaultWsName)
-	defaultWs, err := s.workspaceRepo.GetByName(defaultWsName)
+	defaultWs, err := s.workspaceRepo.FindWorkspaceByName(defaultWsName)
 	if err != nil {
 		if err.Error() == "workspace not found" {
 			// Default workspace doesn't exist, create it
@@ -131,7 +130,7 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 				Name:        defaultWsName,
 				Description: "Default workspace for automatically synced projects",
 			}
-			if err := s.workspaceRepo.Create(newWorkspace); err != nil {
+			if err := s.workspaceRepo.CreateWorkspace(newWorkspace); err != nil {
 				log.Printf("Error creating default workspace '%s': %v", defaultWsName, err)
 				return fmt.Errorf("failed to create default workspace: %w", err)
 			}
@@ -142,7 +141,7 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 			return fmt.Errorf("failed to find or create default workspace: %w", err)
 		}
 	}
-	if err := s.projectRepo.AddWorkspaceAssociation(project.ID, defaultWs.ID); err != nil {
+	if err := s.projectRepo.AddProjectWorkspaceAssociation(project.ID, defaultWs.ID); err != nil {
 		log.Printf("Error assigning project %d to default workspace %d: %v", project.ID, defaultWs.ID, err)
 		// Log a warning, but the project creation was successful.
 		return nil // Or return fmt.Errorf("failed to assign project to default workspace: %w", err)
@@ -153,51 +152,51 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 }
 
 // List 모든 프로젝트 조회
-func (s *ProjectService) List() ([]model.Project, error) {
-	return s.projectRepo.List()
+func (s *ProjectService) ListProjects() ([]*model.Project, error) {
+	return s.projectRepo.FindProjects()
 }
 
 // GetByID ID로 프로젝트 조회
-func (s *ProjectService) GetByID(id uint) (*model.Project, error) {
-	return s.projectRepo.GetByID(id)
+func (s *ProjectService) GetProjectByID(id uint) (*model.Project, error) {
+	return s.projectRepo.FindProjectByProjectID(id)
 }
 
 // GetByName 이름으로 프로젝트 조회
-func (s *ProjectService) GetByName(name string) (*model.Project, error) {
-	return s.projectRepo.GetByName(name)
+func (s *ProjectService) GetProjectByName(name string) (*model.Project, error) {
+	return s.projectRepo.FindProjectByProjectName(name)
 }
 
 // Update 프로젝트 정보 부분 업데이트
-func (s *ProjectService) Update(id uint, updates map[string]interface{}) error {
-	_, err := s.projectRepo.GetByID(id)
+func (s *ProjectService) UpdateProject(id uint, updates map[string]interface{}) error {
+	_, err := s.projectRepo.FindProjectByProjectID(id)
 	if err != nil {
 		// Propagate the error (e.g., ErrProjectNotFound)
 		return err
 	}
-	return s.projectRepo.Update(id, updates)
+	return s.projectRepo.UpdateProject(id, updates)
 }
 
 // Delete 프로젝트 삭제
-func (s *ProjectService) Delete(id uint) error {
-	_, err := s.projectRepo.GetByID(id)
+func (s *ProjectService) DeleteProject(id uint) error {
+	_, err := s.projectRepo.FindProjectByProjectID(id)
 	if err != nil {
 		return err
 	}
-	return s.projectRepo.Delete(id)
+	return s.projectRepo.DeleteProject(id)
 }
 
 // AddWorkspaceAssociation 프로젝트에 워크스페이스 연결
 func (s *ProjectService) AddWorkspaceAssociation(projectID, workspaceID uint) error {
 	// Check if both project and workspace exist
-	_, errPr := s.projectRepo.GetByID(projectID)
+	_, errPr := s.projectRepo.FindProjectByProjectID(projectID)
 	if errPr != nil {
 		return errPr
 	}
-	_, errWs := s.workspaceRepo.GetByID(workspaceID)
+	_, errWs := s.workspaceRepo.FindWorkspaceByID(workspaceID)
 	if errWs != nil {
 		return errWs
 	}
-	return s.projectRepo.AddWorkspaceAssociation(projectID, workspaceID)
+	return s.projectRepo.AddProjectWorkspaceAssociation(projectID, workspaceID)
 }
 
 // SyncProjectsWithInfraManager mc-infra-manager의 네임스페이스와 로컬 프로젝트 동기화
@@ -205,10 +204,10 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 	log.Println("Starting project synchronization with mc-infra-manager...")
 
 	// 1. Call mc-infra-manager GetAllNs API
-	callReq := &mcmpapi.McmpApiCallRequest{
+	callReq := &model.McmpApiCallRequest{
 		ServiceName: "mc-infra-manager",
 		ActionName:  "GetAllNs",
-		RequestParams: mcmpapi.McmpApiRequestParams{ // No params needed for GetAllNs
+		RequestParams: model.McmpApiRequestParams{ // No params needed for GetAllNs
 			PathParams:  nil,
 			QueryParams: nil,
 			Body:        nil,
@@ -245,7 +244,7 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 	log.Printf("Found %d namespaces in mc-infra-manager.", len(infraResponse.Ns))
 
 	// 3. Get local projects
-	localProjects, err := s.projectRepo.List()
+	localProjects, err := s.projectRepo.FindProjects()
 	if err != nil {
 		log.Printf("Error listing local projects: %v", err)
 		return fmt.Errorf("failed to list local projects: %w", err)
@@ -261,7 +260,7 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 	log.Printf("Found %d local projects with NsId.", len(localProjectMap))
 
 	// Get all project-workspace assignments
-	assignedProjectMap, err := s.projectRepo.GetAllProjectWorkspaceAssignments()
+	assignedProjectMap, err := s.projectRepo.FindAllProjectWorkspaceAssignments()
 	if err != nil {
 		log.Printf("Error getting project workspace assignments: %v", err)
 		return fmt.Errorf("failed to get project assignments: %w", err)
@@ -275,7 +274,7 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 		log.Printf("DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
 	}
 	log.Printf("Using workspace name: %s", defaultWsName)
-	defaultWs, err := s.workspaceRepo.GetByName(defaultWsName)
+	defaultWs, err := s.workspaceRepo.FindWorkspaceByName(defaultWsName)
 	if err != nil {
 		if err.Error() == "workspace not found" {
 			// Default workspace doesn't exist, create it
@@ -284,7 +283,7 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 				Name:        defaultWsName,
 				Description: "Default workspace for automatically synced projects",
 			}
-			if err := s.workspaceRepo.Create(newWorkspace); err != nil {
+			if err := s.workspaceRepo.CreateWorkspace(newWorkspace); err != nil {
 				log.Printf("Error creating default workspace '%s': %v", defaultWsName, err)
 				return fmt.Errorf("failed to create default workspace: %w", err)
 			}
@@ -307,7 +306,7 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 		var existingProject *model.Project
 		for _, p := range localProjects {
 			if p.NsId == infraNs.ID {
-				existingProject = &p
+				existingProject = p
 				break
 			}
 		}
@@ -321,7 +320,7 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 				Name:        infraNs.Name, // Use infra name as local name
 				Description: infraNs.Description,
 			}
-			if err := s.projectRepo.Create(newProject); err != nil {
+			if err := s.projectRepo.CreateProject(newProject); err != nil {
 				// Log the error but continue syncing other projects
 				log.Printf("Error creating project for namespace '%s' (ID: %s): %v", infraNs.Name, infraNs.ID, err)
 				continue // Skip assignment if creation failed
@@ -340,7 +339,7 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 		if _, isAssigned := assignedProjectMap[currentProjectID]; !isAssigned {
 			// Project is not assigned to any workspace, assign to default
 			log.Printf("Project %d (NsId: %s) is not assigned to any workspace. Assigning to default workspace %d...", currentProjectID, infraNs.ID, defaultWs.ID)
-			if assignErr := s.projectRepo.AddWorkspaceAssociation(currentProjectID, defaultWs.ID); assignErr != nil {
+			if assignErr := s.projectRepo.AddProjectWorkspaceAssociation(currentProjectID, defaultWs.ID); assignErr != nil {
 				log.Printf("Error assigning project %d to default workspace %d: %v", currentProjectID, defaultWs.ID, assignErr)
 			} else {
 				log.Printf("Successfully assigned project %d to default workspace %d", currentProjectID, defaultWs.ID)
@@ -367,21 +366,21 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 // CreateProject 새로운 프로젝트를 생성하고 기본 워크스페이스에 할당합니다.
 func (s *ProjectService) CreateProject(project *model.Project) error {
 	// 프로젝트 생성
-	if err := s.projectRepo.Create(project); err != nil {
+	if err := s.projectRepo.CreateProject(project); err != nil {
 		return err
 	}
 
 	// 기본 워크스페이스 조회
-	defaultWorkspace, err := s.workspaceRepo.GetByName(os.Getenv("DEFAULT_WORKSPACE_NAME"))
+	defaultWorkspace, err := s.workspaceRepo.FindWorkspaceByName(os.Getenv("DEFAULT_WORKSPACE_NAME"))
 	if err != nil {
 		return fmt.Errorf("기본 워크스페이스를 찾을 수 없습니다: %v", err)
 	}
 
 	// 프로젝트를 기본 워크스페이스에 할당
-	if err := s.workspaceRepo.AddProjectAssociation(defaultWorkspace.ID, project.ID); err != nil {
+	if err := s.projectRepo.AddProjectWorkspaceAssociation(defaultWorkspace.ID, project.ID); err != nil {
 		// 프로젝트 생성은 성공했지만 워크스페이스 할당에 실패한 경우
 		// 프로젝트를 삭제하고 에러 반환
-		s.projectRepo.Delete(project.ID)
+		s.projectRepo.DeleteProject(project.ID)
 		return fmt.Errorf("프로젝트를 기본 워크스페이스에 할당하는데 실패했습니다: %v", err)
 	}
 

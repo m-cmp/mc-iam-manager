@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/m-cmp/mc-iam-manager/model"
+	"github.com/m-cmp/mc-iam-manager/util"
 	"gorm.io/gorm"
 )
 
@@ -22,48 +23,12 @@ func NewWorkspaceRepository(db *gorm.DB) *WorkspaceRepository {
 }
 
 // Create 워크스페이스 생성
-func (r *WorkspaceRepository) Create(workspace *model.Workspace) error {
+func (r *WorkspaceRepository) CreateWorkspace(workspace *model.Workspace) error {
 	return r.db.Create(workspace).Error
 }
 
-// List 모든 워크스페이스 조회 (프로젝트 정보 포함)
-func (r *WorkspaceRepository) List() ([]model.Workspace, error) {
-	var workspaces []model.Workspace
-	// Preload Projects to fetch associated projects
-	if err := r.db.Preload("Projects").Find(&workspaces).Error; err != nil {
-		return nil, err
-	}
-	return workspaces, nil
-}
-
-// GetByID ID로 워크스페이스 조회 (프로젝트 정보 포함)
-func (r *WorkspaceRepository) GetByID(id uint) (*model.Workspace, error) {
-	var workspace model.Workspace
-	// Preload Projects to fetch associated projects
-	if err := r.db.Preload("Projects").First(&workspace, "id = ?", id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrWorkspaceNotFound
-		}
-		return nil, err
-	}
-	return &workspace, nil
-}
-
-// GetByName 이름으로 워크스페이스 조회 (프로젝트 정보 포함)
-func (r *WorkspaceRepository) GetByName(name string) (*model.Workspace, error) {
-	var workspace model.Workspace
-	// Preload Projects and find by name
-	if err := r.db.Preload("Projects").Where("name = ?", name).First(&workspace).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrWorkspaceNotFound
-		}
-		return nil, err
-	}
-	return &workspace, nil
-}
-
 // Update 워크스페이스 정보 부분 업데이트
-func (r *WorkspaceRepository) Update(id uint, updates map[string]interface{}) error {
+func (r *WorkspaceRepository) UpdateWorkspace(id uint, updates map[string]interface{}) error {
 	if len(updates) == 0 {
 		return errors.New("no fields provided for update")
 	}
@@ -78,7 +43,7 @@ func (r *WorkspaceRepository) Update(id uint, updates map[string]interface{}) er
 }
 
 // Delete 워크스페이스 삭제
-func (r *WorkspaceRepository) Delete(id uint) error {
+func (r *WorkspaceRepository) DeleteWorkspace(id uint) error {
 	// GORM will automatically handle deleting associations in the join table
 	// due to the ON DELETE CASCADE constraint in the DB schema.
 	result := r.db.Delete(&model.Workspace{}, "id = ?", id)
@@ -91,13 +56,84 @@ func (r *WorkspaceRepository) Delete(id uint) error {
 	return nil
 }
 
+// Find 모든 워크스페이스를 조회합니다. workspace 목록만 return
+func (r *WorkspaceRepository) FindWorkspaces(req *model.WorkspaceFilterRequest) ([]*model.Workspace, error) {
+	var workspaces []*model.Workspace
+
+	// filter 조건이 있으면 조건에 맞는 워크스페이스 조회
+	// 쿼리 빌더를 사용하여 기본 쿼리 생성
+	query := r.db.Preload("Workspace")
+
+	if req.WorkspaceID != "" {
+		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where("id = ?", workspaceIdInt)
+	}
+
+	if req.WorkspaceName != "" {
+		query = query.Where("name = ?", req.WorkspaceName)
+	}
+
+	if err := query.Find(&workspaces).Error; err != nil {
+		return nil, err
+	}
+	return workspaces, nil
+}
+
+// FindByID 워크스페이스를 ID로 조회. 단건조회
+func (r *WorkspaceRepository) FindWorkspaceByID(workspaceId uint) (*model.Workspace, error) {
+	var workspace model.Workspace
+	if err := r.db.First(&workspace, workspaceId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &workspace, nil
+}
+
+// FindWorkspaceByName 이름으로 워크스페이스 조회 (프로젝트 정보 포함)
+func (r *WorkspaceRepository) FindWorkspaceByName(workspaceName string) (*model.Workspace, error) {
+	var workspace *model.Workspace
+	// Preload Projects and find by name
+	if err := r.db.Preload("Projects").Where("name = ?", workspaceName).First(&workspace).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrWorkspaceNotFound
+		}
+		return nil, err
+	}
+	return workspace, nil
+}
+
+// FindWorkspacesProjects 모든 워크스페이스 조회 (프로젝트 정보 포함)
+func (r *WorkspaceRepository) FindWorkspacesProjects() ([]*model.WorkspaceWithProjects, error) {
+	var workspaces []*model.WorkspaceWithProjects
+	// Preload Projects to fetch associated projects
+	if err := r.db.Preload("Projects").Find(&workspaces).Error; err != nil {
+		return nil, err
+	}
+	return workspaces, nil
+}
+
+// FindWorkspaceProjectsByWorkspaceID ID로 워크스페이스 조회 (프로젝트 정보 포함)
+func (r *WorkspaceRepository) FindWorkspaceProjectsByWorkspaceID(id uint) (*model.WorkspaceWithProjects, error) {
+	var workspace *model.WorkspaceWithProjects
+	// Preload Projects to fetch associated projects
+	if err := r.db.Preload("Projects").First(&workspace, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrWorkspaceNotFound
+		}
+		return nil, err
+	}
+	return workspace, nil
+}
+
 // AddProjectAssociation 워크스페이스에 프로젝트 연결 추가
 func (r *WorkspaceRepository) AddProjectAssociation(workspaceID, projectID uint) error {
-	// GORM's Association Append handles M:N relationships
-	var workspace model.Workspace
-	workspace.ID = workspaceID // Need the ID to specify the workspace
-	var project model.Project
-	project.ID = projectID // Need the ID of the project to associate
+	workspace := &model.Workspace{ID: workspaceID}
+	project := &model.Project{ID: projectID}
 
 	// Check if workspace and project exist first (optional but recommended)
 	// ...
@@ -114,10 +150,8 @@ func (r *WorkspaceRepository) AddProjectAssociation(workspaceID, projectID uint)
 
 // RemoveProjectAssociation 워크스페이스에서 프로젝트 연결 제거
 func (r *WorkspaceRepository) RemoveProjectAssociation(workspaceID, projectID uint) error {
-	var workspace model.Workspace
-	workspace.ID = workspaceID
-	var project model.Project
-	project.ID = projectID
+	workspace := &model.Workspace{ID: workspaceID}
+	project := &model.Project{ID: projectID}
 
 	// Delete the association
 	err := r.db.Model(&workspace).Association("Projects").Delete(&project)
@@ -128,11 +162,10 @@ func (r *WorkspaceRepository) RemoveProjectAssociation(workspaceID, projectID ui
 	return nil
 }
 
-// FindProjectsByWorkspaceID 특정 워크스페이스에 연결된 프로젝트 목록 조회
-func (r *WorkspaceRepository) FindProjectsByWorkspaceID(workspaceID uint) ([]model.Project, error) {
-	var workspace model.Workspace
-	workspace.ID = workspaceID
-	var projects []model.Project
+// FindProjectsByWorkspaceID 특정 워크스페이스에 연결된 프로젝트 목록 조회 ( Project 목록만 return)
+func (r *WorkspaceRepository) FindProjectsByWorkspaceID(workspaceID uint) ([]*model.Project, error) {
+	workspace := &model.Workspace{ID: workspaceID}
+	var projects []*model.Project
 
 	// Use GORM's Association to find related projects
 	err := r.db.Model(&workspace).Association("Projects").Find(&projects)
@@ -145,47 +178,4 @@ func (r *WorkspaceRepository) FindProjectsByWorkspaceID(workspaceID uint) ([]mod
 
 	// If the workspace exists but has no projects, Find will return an empty slice and nil error.
 	return projects, nil
-}
-
-// FindUsersAndRolesByWorkspaceID 특정 워크스페이스에 속한 사용자 및 역할 목록 조회
-func (r *WorkspaceRepository) FindUsersAndRolesByWorkspaceID(workspaceID uint) ([]model.UserWorkspaceRole, error) {
-	var userWorkspaceRoles []model.UserWorkspaceRole
-
-	// Find all UserWorkspaceRole entries where the associated WorkspaceRole's WorkspaceID matches.
-	// We need to join with WorkspaceRole table to filter by workspaceID.
-	// Then preload User and WorkspaceRole.
-	err := r.db.Joins("JOIN mcmp_workspace_roles ON mcmp_workspace_roles.id = mcmp_user_workspace_roles.workspace_role_id").
-		Where("mcmp_user_workspace_roles.workspace_id = ?", workspaceID).
-		Preload("User").          // Preload the User associated with the mapping
-		Preload("WorkspaceRole"). // Preload the WorkspaceRole associated with the mapping
-		Find(&userWorkspaceRoles).Error
-
-	if err != nil {
-		// Don't return ErrWorkspaceNotFound here, as an empty result is valid.
-		// Return other DB errors.
-		return nil, err
-	}
-
-	return userWorkspaceRoles, nil
-}
-
-// FindAll 모든 워크스페이스를 조회합니다.
-func (r *WorkspaceRepository) FindAll() ([]*model.Workspace, error) {
-	var workspaces []*model.Workspace
-	if err := r.db.Find(&workspaces).Error; err != nil {
-		return nil, err
-	}
-	return workspaces, nil
-}
-
-// FindByID 워크스페이스를 ID로 조회
-func (r *WorkspaceRepository) FindByID(id uint) (*model.Workspace, error) {
-	var workspace model.Workspace
-	if err := r.db.First(&workspace, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &workspace, nil
 }

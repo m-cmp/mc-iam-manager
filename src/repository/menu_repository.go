@@ -223,3 +223,8 @@ func (r *MenuRepository) GetMappedMenus(platformRole string) ([]string, error) {
 		Pluck("menu_id", &menuIDs).Error
 	return menuIDs, err
 }
+
+// CreateMenuMapping 메뉴 매핑을 생성합니다
+func (r *MenuRepository) CreateMenuMapping(mapping *model.MenuMapping) error {
+	return r.db.Create(mapping).Error
+}

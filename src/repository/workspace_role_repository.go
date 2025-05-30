@@ -99,8 +99,8 @@ func (r *WorkspaceRoleRepository) GetUserRoles(userID, workspaceID uint) ([]mode
 }
 
 // GetWorkspaceRoles 워크스페이스의 모든 역할 목록 조회
-func (r *WorkspaceRoleRepository) GetWorkspaceRoles(workspaceID uint) ([]model.RoleMaster, error) {
-	var roles []model.RoleMaster
+func (r *WorkspaceRoleRepository) GetWorkspaceRoles(workspaceID uint) ([]*model.RoleMaster, error) {
+	var roles []*model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
 		Where("mcmp_role_sub.role_type = ?", "workspace").
@@ -113,4 +113,13 @@ func (r *WorkspaceRoleRepository) GetWorkspaceRoles(workspaceID uint) ([]model.R
 // DB returns the underlying gorm.DB instance
 func (r *WorkspaceRoleRepository) DB() *gorm.DB {
 	return r.db
+}
+
+// ExistsWorkspaceRoleByID ID로 워크스페이스 역할 존재 여부 확인
+func (r *WorkspaceRoleRepository) ExistsWorkspaceRoleByID(id uint) (bool, error) {
+	var count int64
+	if err := r.db.Model(&model.RoleMaster{}).Where("id = ?", id).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }

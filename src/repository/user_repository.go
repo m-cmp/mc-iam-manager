@@ -14,13 +14,18 @@ import (
 	"gorm.io/gorm"
 )
 
+// UserRepository handles database operations for users.
+type UserRepository struct {
+	db *gorm.DB
+}
+
 var (
 	ErrUserNotFound = errors.New("user not found")
 )
 
-// UserRepository handles database operations for users.
-type UserRepository struct {
-	db *gorm.DB
+// DB returns the underlying gorm DB instance (Helper for sync function)
+func (r *UserRepository) DB() *gorm.DB {
+	return r.db
 }
 
 // NewUserRepository creates a new UserRepository.
@@ -32,7 +37,7 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 }
 
 // FindByID finds a user by their local database primary key (id column).
-func (r *UserRepository) FindByID(id uint) (*model.User, error) {
+func (r *UserRepository) FindUserByID(id uint) (*model.User, error) {
 	var dbUser model.User
 	// Preload roles when fetching by ID
 	if err := r.db.Preload("PlatformRoles").Preload("WorkspaceRoles").First(&dbUser, id).Error; err != nil {
@@ -73,7 +78,7 @@ func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 }
 
 // GetDbUsersByKcIDs retrieves users from the local DB based on a list of Keycloak IDs, preloading roles.
-func (r *UserRepository) GetDbUsersByKcIDs(kcIDs []string) ([]model.User, error) {
+func (r *UserRepository) GetUsersByKcIDs(kcIDs []string) ([]model.User, error) {
 	if len(kcIDs) == 0 {
 		return []model.User{}, nil
 	}
@@ -87,7 +92,7 @@ func (r *UserRepository) GetDbUsersByKcIDs(kcIDs []string) ([]model.User, error)
 }
 
 // CreateDbUser creates a new user record in the local database.
-func (r *UserRepository) CreateDbUser(user *model.User) (*model.User, error) {
+func (r *UserRepository) Create(user *model.User) (*model.User, error) {
 	// Ensure ID is not set, let DB generate it
 	user.ID = 0
 	// Use map to explicitly specify columns, especially if model has fields not in DB
@@ -114,7 +119,7 @@ func (r *UserRepository) CreateDbUser(user *model.User) (*model.User, error) {
 }
 
 // UpdateDbUser updates an existing user record in the local database using the DB ID.
-func (r *UserRepository) UpdateDbUser(user *model.User) error {
+func (r *UserRepository) Update(user *model.User) error {
 	if user.ID == 0 {
 		return errors.New("cannot update user without DB ID")
 	}
@@ -136,7 +141,7 @@ func (r *UserRepository) UpdateDbUser(user *model.User) error {
 }
 
 // DeleteDbUserByID deletes a user record from the local database using the DB ID.
-func (r *UserRepository) DeleteDbUserByID(id uint) error {
+func (r *UserRepository) Delete(id uint) error {
 	result := r.db.Delete(&model.User{}, id)
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete user from local db (id: %d): %w", id, result.Error)
@@ -149,15 +154,10 @@ func (r *UserRepository) DeleteDbUserByID(id uint) error {
 	return nil
 }
 
-// DB returns the underlying gorm DB instance (Helper for sync function)
-func (r *UserRepository) DB() *gorm.DB {
-	return r.db
-}
-
 // FindWorkspaceAndWorkspaceRolesByUserID finds all workspace roles assigned to a user.
 // It expects the user's local database ID (id column).
-func (r *UserRepository) FindWorkspaceAndWorkspaceRolesByUserID(userID uint) ([]model.UserWorkspaceRole, error) {
-	var userWorkspaceRoles []model.UserWorkspaceRole
+func (r *UserRepository) FindWorkspaceAndWorkspaceRolesByUserID(userID uint) ([]*model.UserWorkspaceRole, error) {
+	var userWorkspaceRoles []*model.UserWorkspaceRole
 	err := r.db.Where("user_id = ?", userID).
 		Preload("User").
 		Preload("Workspace").
@@ -170,8 +170,8 @@ func (r *UserRepository) FindWorkspaceAndWorkspaceRolesByUserID(userID uint) ([]
 }
 
 // FindWorkspacesByUserID finds all workspaces a user is assigned to (has any role in).
-func (r *UserRepository) FindWorkspacesByUserID(userID uint) ([]model.Workspace, error) {
-	var workspaces []model.Workspace
+func (r *UserRepository) FindWorkspacesByUserID(userID uint) ([]*model.WorkspaceWithUsersAndRoles, error) {
+	var workspaces []*model.WorkspaceWithUsersAndRoles
 	// Select distinct workspaces associated with the user through the join table
 	err := r.db.Joins("JOIN mcmp_user_workspace_roles uwr ON uwr.workspace_id = mcmp_workspaces.id").
 		Where("uwr.user_id = ?", userID).
@@ -184,8 +184,8 @@ func (r *UserRepository) FindWorkspacesByUserID(userID uint) ([]model.Workspace,
 }
 
 // GetUserRolesInWorkspace finds all roles assigned to a user within a specific workspace.
-func (r *UserRepository) GetUserRolesInWorkspace(userID, workspaceID uint) ([]model.UserWorkspaceRole, error) {
-	var userWorkspaceRoles []model.UserWorkspaceRole
+func (r *UserRepository) FindUserRolesInWorkspace(userID, workspaceID uint) ([]*model.UserWorkspaceRole, error) {
+	var userWorkspaceRoles []*model.UserWorkspaceRole
 	err := r.db.Where("user_id = ? AND workspace_id = ?", userID, workspaceID).
 		Preload("Workspace").
 		Preload("Role").
