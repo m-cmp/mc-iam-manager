@@ -34,7 +34,7 @@ func NewResourceTypeHandler(db *gorm.DB) *ResourceTypeHandler {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /api/v1/resource-types [post]
+// @Router /resource-types [post]
 func (h *ResourceTypeHandler) CreateCloudResourceType(c echo.Context) error {
 	var rt model.ResourceType
 	if err := c.Bind(&rt); err != nil {
@@ -46,7 +46,7 @@ func (h *ResourceTypeHandler) CreateCloudResourceType(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "frameworkId, id, name 필드는 필수입니다"})
 	}
 
-	if err := h.service.Create(&rt); err != nil {
+	if err := h.service.CreateResourceType(&rt); err != nil {
 		if err == repository.ErrResourceTypeAlreadyExists {
 			return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
 		}
@@ -65,10 +65,10 @@ func (h *ResourceTypeHandler) CreateCloudResourceType(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /api/v1/resource-types [get]
+// @Router /resource-types/list [post]
 func (h *ResourceTypeHandler) ListCloudResourceTypes(c echo.Context) error {
 	frameworkID := c.QueryParam("frameworkId")
-	resourceTypes, err := h.service.List(frameworkID)
+	resourceTypes, err := h.service.ListResourceTypes(frameworkID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("리소스 유형 목록 조회 실패: %v", err)})
 	}
@@ -87,15 +87,15 @@ func (h *ResourceTypeHandler) ListCloudResourceTypes(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Resource Type not found"
 // @Security BearerAuth
-// @Router /api/v1/resource-types/{id} [get]
+// @Router /resource-types/framework/:frameworkId/id/:resourceTypeId [get]
 func (h *ResourceTypeHandler) GetCloudResourceTypeByID(c echo.Context) error {
 	frameworkID := c.Param("frameworkId")
-	id := c.Param("id")
-	if frameworkID == "" || id == "" {
+	resourceTypeId := c.Param("resourceTypeId")
+	if frameworkID == "" || resourceTypeId == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "프레임워크 ID와 리소스 유형 ID는 필수입니다"})
 	}
 
-	resourceType, err := h.service.GetByID(frameworkID, id)
+	resourceType, err := h.service.GetResourceTypeByID(frameworkID, resourceTypeId)
 	if err != nil {
 		if err == repository.ErrResourceTypeNotFound {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
@@ -119,7 +119,7 @@ func (h *ResourceTypeHandler) GetCloudResourceTypeByID(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Resource Type not found"
 // @Security BearerAuth
-// @Router /api/v1/resource-types/{id} [put]
+// @Router /resource-types/framework/:frameworkId/id/:resourceTypeId [put]
 func (h *ResourceTypeHandler) UpdateResourceType(c echo.Context) error {
 	frameworkID := c.Param("frameworkId")
 	resourceTypeId := c.Param("resourceTypeId")
@@ -152,7 +152,7 @@ func (h *ResourceTypeHandler) UpdateResourceType(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("리소스 유형 업데이트 실패: %v", err)})
 	}
 
-	updatedResourceType, err := h.service.GetByID(frameworkID, resourceTypeId)
+	updatedResourceType, err := h.service.GetResourceTypeByID(frameworkID, resourceTypeId)
 	if err != nil {
 		// This shouldn't happen ideally after a successful update, but handle it
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("업데이트된 리소스 유형 조회 실패: %v", err)})
@@ -172,15 +172,15 @@ func (h *ResourceTypeHandler) UpdateResourceType(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Resource Type not found"
 // @Security BearerAuth
-// @Router /api/v1/resource-types/{id} [delete]
+// @Router /resource-types/framework/:frameworkId/id/:resourceTypeId [delete]
 func (h *ResourceTypeHandler) DeleteResourceType(c echo.Context) error {
 	frameworkID := c.Param("frameworkId")
-	id := c.Param("id")
-	if frameworkID == "" || id == "" {
+	resourceTypeId := c.Param("resourceTypeId")
+	if frameworkID == "" || resourceTypeId == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "프레임워크 ID와 리소스 유형 ID는 필수입니다"})
 	}
 
-	if err := h.service.Delete(frameworkID, id); err != nil {
+	if err := h.service.DeleteResourceType(frameworkID, resourceTypeId); err != nil {
 		if err == repository.ErrResourceTypeNotFound {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}

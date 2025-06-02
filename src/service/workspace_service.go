@@ -89,9 +89,9 @@ func (s *WorkspaceService) ListWorkspaces(req *model.WorkspaceFilterRequest) ([]
 	return s.workspaceRepo.FindWorkspaces(req)
 }
 
-// ListAllWorkspaces 모든 워크스페이스와 연관된 프로젝트 목록을 조회합니다.
-func (s *WorkspaceService) ListWorkspacesProjects() ([]*model.WorkspaceWithProjects, error) {
-	workspaces, err := s.workspaceRepo.FindWorkspacesProjects()
+// ListWorkspacesProjects 모든 워크스페이스와 연관된 프로젝트 목록을 조회합니다.
+func (s *WorkspaceService) ListWorkspacesProjects(req model.WorkspaceProjectFilterRequest) ([]*model.WorkspaceWithProjects, error) {
+	workspaces, err := s.workspaceRepo.FindWorkspacesProjects(req)
 	if err != nil {
 		return nil, err
 	}
@@ -128,51 +128,14 @@ func (s *WorkspaceService) GetWorkspaceByName(workspaceName string) (*model.Work
 }
 
 // 유저에게 할당된 워크스페이스 목록
-func (s *WorkspaceService) GetWorkspacesByUserID(userID uint) ([]*model.WorkspaceWithUsersAndRoles, error) {
+func (s *WorkspaceService) ListWorkspacesByUserID(userID uint) ([]*model.WorkspaceWithUsersAndRoles, error) {
 	return s.userRepo.FindWorkspacesByUserID(userID)
 }
 
-// GetProjectsByWorkspaceID 워크스페이스에 연결된 프로젝트 목록 조회 : project 목록 포함
-func (s *WorkspaceService) GetWorkspaceProjectsByWorkspaceID(workspaceID uint) (*model.WorkspaceWithProjects, error) {
-	// First, check if the workspace exists
-	workspaceProjects, err := s.workspaceRepo.FindWorkspaceProjectsByWorkspaceID(workspaceID)
-	if err != nil {
-		return nil, err // Return error if workspace not found or DB error
-	}
-
-	if workspaceProjects == nil {
-		return nil, nil
-	}
-
-	return workspaceProjects, nil
-}
-
-// GetUsersAndRolesByWorkspaceID 워크스페이스에 속한 사용자와 역할 조회
-func (s *WorkspaceService) GetUsersAndRolesByWorkspaceID(workspaceID uint) ([]*model.UserWorkspaceRole, error) {
-
-	workspace, err := s.workspaceRepo.FindUsersAndRolesByWorkspaceID(workspaceID)
-	if err != nil {
-		return nil, err
-	}
-
-	return workspace, nil
-}
-
-// GetWorkspaceRoles 워크스페이스의 모든 역할 목록 조회
-func (s *WorkspaceService) GetWorkspaceRoles(workspaceID uint) ([]*model.RoleMaster, error) {
-	roleType := model.RoleTypeWorkspace
-	roles, err := s.roleRepo.FindRoles(workspaceID, roleType)
-	if err != nil {
-		return nil, err
-	}
-
-	return roles, nil
-}
-
 // GetUsersByWorkspaceID 워크스페이스에 속한 사용자 목록을 조회합니다.
-func (s *WorkspaceService) GetUsersByWorkspaceID(workspaceID uint) ([]*model.UserWorkspaceRole, error) {
+func (s *WorkspaceService) ListUsersByWorkspaceID(req model.WorkspaceFilterRequest) ([]*model.UserWorkspaceRole, error) {
 	// 워크스페이스 존재 여부 확인
-	workspaceUsers, err := s.workspaceRepo.FindUsersAndRolesByWorkspaceID(workspaceID)
+	workspaceUsers, err := s.roleRepo.FindUsersAndRolesWithWorkspaces(req)
 	if err != nil {
 		return nil, err
 	}

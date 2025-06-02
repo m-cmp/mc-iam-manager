@@ -39,7 +39,7 @@ func NewCspCredentialHandler(db *gorm.DB) *CspCredentialHandler {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/csp-credentials/temporary [post]
+// @Router /workspaces/temporary-credentials [post]
 func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 	// 1. Get values from context
 
@@ -96,7 +96,7 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /api/v1/csp-credentials [get]
+// @Router /csp-credentials [get]
 
 // GetCredentialByID godoc
 // @Summary CSP 인증 정보 ID로 조회
@@ -110,7 +110,7 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
-// @Router /api/v1/csp-credentials/{id} [get]
+// @Router /csp-credentials/{id} [get]
 
 // CreateCredential godoc
 // @Summary 새 CSP 인증 정보 생성
@@ -124,7 +124,7 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /api/v1/csp-credentials [post]
+// @Router /csp-credentials [post]
 
 // UpdateCredential godoc
 // @Summary CSP 인증 정보 업데이트
@@ -140,7 +140,7 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
-// @Router /api/v1/csp-credentials/{id} [put]
+// @Router /csp-credentials/{id} [put]
 
 // DeleteCredential godoc
 // @Summary CSP 인증 정보 삭제
@@ -154,4 +154,4 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
-// @Router /api/v1/csp-credentials/{id} [delete]
+// @Router /csp-credentials/{id} [delete]

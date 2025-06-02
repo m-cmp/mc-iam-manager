@@ -38,7 +38,7 @@ func (r *MenuRepository) GetMenus() ([]model.Menu, error) {
 }
 
 // GetByID 메뉴 ID로 데이터베이스에서 조회
-func (r *MenuRepository) GetByID(id string) (*model.Menu, error) {
+func (r *MenuRepository) FindMenuByID(id string) (*model.Menu, error) {
 	var menu model.Menu
 	if err := r.db.Where("id = ?", id).First(&menu).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -57,12 +57,12 @@ func (r *MenuRepository) GetByID(id string) (*model.Menu, error) {
 }
 
 // Create 새 메뉴를 데이터베이스에 생성
-func (r *MenuRepository) Create(menu *model.Menu) error {
+func (r *MenuRepository) CreateMenu(menu *model.Menu) error {
 	return r.db.Create(menu).Error
 }
 
 // Update 기존 메뉴를 데이터베이스에서 부분 업데이트
-func (r *MenuRepository) Update(id string, updates map[string]interface{}) error {
+func (r *MenuRepository) UpdateMenu(id string, updates map[string]interface{}) error {
 	if len(updates) == 0 {
 		return errors.New("no fields provided for update") // 업데이트할 필드가 없음
 	}
@@ -87,7 +87,7 @@ func (r *MenuRepository) Update(id string, updates map[string]interface{}) error
 }
 
 // Delete 메뉴를 데이터베이스에서 삭제
-func (r *MenuRepository) Delete(id string) error {
+func (r *MenuRepository) DeleteMenu(id string) error {
 	// GORM의 Delete는 삭제된 행 수를 반환
 	result := r.db.Where("id = ?", id).Delete(&model.Menu{})
 	if result.Error != nil {
@@ -214,8 +214,8 @@ func (r *MenuRepository) UpsertMenus(menus []model.Menu) error {
 	return nil
 }
 
-// GetMappedMenus returns menu IDs mapped to the given platform role
-func (r *MenuRepository) GetMappedMenus(platformRole string) ([]string, error) {
+// FindMappedMenusByRole returns menu IDs mapped to the given platform role
+func (r *MenuRepository) FindMappedMenusByRole(platformRole string) ([]string, error) {
 	var menuIDs []string
 	err := r.db.Table("platform_role_menu_mappings").
 		Select("menu_id").

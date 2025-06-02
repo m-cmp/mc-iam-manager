@@ -45,8 +45,8 @@ func (r *MenuMappingRepository) DeleteMapping(platformRole string, menuID string
 	return query.Error
 }
 
-// GetMappedMenusWithParents 플랫폼 역할에 매핑된 메뉴와 그 상위 메뉴들을 포함한 메뉴 트리 조회
-func (r *MenuMappingRepository) GetMappedMenusWithParents(platformRole string) ([]*model.Menu, error) {
+// FindMappedMenusWithParents 플랫폼 역할에 매핑된 메뉴와 그 상위 메뉴들을 포함한 메뉴 트리 조회
+func (r *MenuMappingRepository) FindMappedMenusWithParents(platformRole string) ([]*model.Menu, error) {
 	var menus []*model.Menu
 
 	// 1. 매핑된 메뉴 ID 목록 조회
@@ -96,8 +96,8 @@ func (r *MenuMappingRepository) DeleteByMenuIDAndPermissionID(menuID, permission
 	return r.db.Where("menu_id = ? AND permission_id = ?", menuID, permissionID).Delete(&model.PlatformRoleMenuMapping{}).Error
 }
 
-// GetMappedMenus returns menu IDs mapped to the given platform role
-func (r *MenuMappingRepository) GetMappedMenus(platformRole string) ([]string, error) {
+// FindMappedMenusByRole returns menu IDs mapped to the given platform role
+func (r *MenuMappingRepository) FindMappedMenusByRole(platformRole string) ([]string, error) {
 	var menuIDs []string
 	err := r.db.Model(&model.PlatformRoleMenuMapping{}).
 		Where("platform_role = ?", platformRole).

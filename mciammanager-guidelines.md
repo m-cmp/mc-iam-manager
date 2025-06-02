@@ -457,3 +457,6 @@ KEYCLOAK_CLIENT_SECRET=
 - No suitable CSP role mapping found for user in this workspace: no suitable CSP role mapping found for the user's roles in this workspace : mcmp_user_workspace_roles 테이블에 data 없음( 유저에게 workspace role 할당이 되어있지 않음)
 - Failed to get temporary credentials: failed to get impersonation token: access token not found in context"
 - Client not allowed to exchange : token exchange 설정
+
+- No suitable CSP role mapping found for user in this workspace: no suitable CSP role mapping found for the user's roles in this workspace : 해당 user가 workspace role을 가지고 있지 않거나 workspaceRole과 cspRole mapping이 없다는 것으로 user의 workspace role 확인 -> 없으면 user-workspace-role mapping, workspace role-csp role mapping 확인 없으면 csp role 추가, mapping추가
+- Failed to assume target CSP role. Check IAM policies and mappings : 대상 csp iam에 설정이 안되어 있음

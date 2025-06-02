@@ -37,7 +37,7 @@ func NewMciamPermissionHandler(db *gorm.DB) *MciamPermissionHandler {
 // @Success 200 {array} model.MciamPermission // Use renamed model
 // @Param frameworkId query string false "프레임워크 ID로 필터링"
 // @Param resourceTypeId query string false "리소스 유형 ID로 필터링"
-// @Router /mciam-permissions [get] // Updated route
+// @Router /mciam-permissions [get]
 func (h *MciamPermissionHandler) ListMciamPermissions(c echo.Context) error { // Renamed method
 	frameworkID := c.QueryParam("frameworkId")
 	resourceTypeID := c.QueryParam("resourceTypeId")
@@ -58,7 +58,7 @@ func (h *MciamPermissionHandler) ListMciamPermissions(c echo.Context) error { //
 // @Produce json
 // @Param id path string true "권한 ID"
 // @Success 200 {object} model.MciamPermission // Use renamed model
-// @Router /mciam-permissions/{id} [get] // Updated route
+// @Router /mciam-permissions/{id} [get]
 func (h *MciamPermissionHandler) GetMciamPermissionByID(c echo.Context) error { // Renamed method
 	id := c.Param("id")
 
@@ -88,7 +88,7 @@ func (h *MciamPermissionHandler) GetMciamPermissionByID(c echo.Context) error { 
 // @Produce json
 // @Param permission body model.MciamPermission true "권한 정보" // Use renamed model
 // @Success 201 {object} model.MciamPermission // Use renamed model
-// @Router /mciam-permissions [post] // Updated route
+// @Router /mciam-permissions [post]
 func (h *MciamPermissionHandler) CreateMciamPermission(c echo.Context) error { // Renamed method
 	var permission model.MciamPermission // Use renamed model
 	if err := c.Bind(&permission); err != nil {

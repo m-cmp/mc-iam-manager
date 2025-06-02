@@ -31,7 +31,7 @@ func NewMcmpApiPermissionActionMappingHandler(db *gorm.DB) *McmpApiPermissionAct
 // @Produce json
 // @Param permissionId path string true "Permission ID"
 // @Success 200 {array} mcmpapi.McmpApiAction
-// @Router /api/mcmp-api-permission-action-mappings/platforms/{permissionId}/actions [get]
+// @Router /mcmp-api-permission-action-mappings/list [post]
 func (h *McmpApiPermissionActionMappingHandler) ListPlatformActions(c echo.Context) error {
 
 	// filter 조건 넘기기
@@ -47,7 +47,7 @@ func (h *McmpApiPermissionActionMappingHandler) ListPlatformActions(c echo.Conte
 // @Produce json
 // @Param permissionId path string true "Permission ID"
 // @Success 200 {array} mcmpapi.McmpApiAction
-// @Router /api/mcmp-api-permission-action-mappings/platforms/{permissionId}/actions [get]
+// @Router /mcmp-api-permission-action-mappings/platforms/id/{permissionId}/actions [get]
 func (h *McmpApiPermissionActionMappingHandler) GetPlatformActionsByPermissionID(c echo.Context) error {
 	permissionID := c.Param("permission_id")
 	if permissionID == "" {
@@ -70,14 +70,14 @@ func (h *McmpApiPermissionActionMappingHandler) GetPlatformActionsByPermissionID
 // @Produce json
 // @Param permissionId path string true "Permission ID"
 // @Success 200 {array} mcmpapi.McmpApiAction
-// @Router /api/mcmp-api-permission-action-mappings/workspaces/{permissionId}/actions [get]
-func (h *McmpApiPermissionActionMappingHandler) GetWorkspaceActionsByPermissionID(c echo.Context) error {
+// @Router /mcmp-api-permission-action-mappings/actions/list [post]
+func (h *McmpApiPermissionActionMappingHandler) ListWorkspaceActionsByPermissionID(c echo.Context) error {
 	permissionID := c.Param("permission_id")
 	if permissionID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "permission_id is required"})
 	}
 
-	actions, err := h.service.GetWorkspaceActionsByPermissionID(c.Request().Context(), permissionID)
+	actions, err := h.service.ListWorkspaceActionsByPermissionID(c.Request().Context(), permissionID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -93,8 +93,8 @@ func (h *McmpApiPermissionActionMappingHandler) GetWorkspaceActionsByPermissionI
 // @Produce json
 // @Param actionId path int true "Action ID"
 // @Success 200 {array} string
-// @Router /api/mcmp-api-permission-action-mappings/actions/{actionId}/permissions [get]
-func (h *McmpApiPermissionActionMappingHandler) GetPermissionsByActionID(c echo.Context) error {
+// @Router /mcmp-api-permission-action-mappings/actions/{actionId}/permissions [get]
+func (h *McmpApiPermissionActionMappingHandler) ListPermissionsByActionID(c echo.Context) error {
 	actionIDStr := c.Param("action_id")
 	if actionIDStr == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "action_id is required"})
@@ -121,7 +121,7 @@ func (h *McmpApiPermissionActionMappingHandler) GetPermissionsByActionID(c echo.
 // @Produce json
 // @Param mapping body mcmpapi.McmpApiPermissionActionMapping true "Mapping to create"
 // @Success 204 "No Content"
-// @Router /api/mcmp-api-permission-action-mappings [post]
+// @Router /mcmp-api-permission-action-mappings [post]
 func (h *McmpApiPermissionActionMappingHandler) CreateMcmpApiPermissionActionMapping(c echo.Context) error {
 	var request struct {
 		PermissionID string `json:"permission_id"`
@@ -154,7 +154,7 @@ func (h *McmpApiPermissionActionMappingHandler) CreateMcmpApiPermissionActionMap
 // @Param permissionId path string true "Permission ID"
 // @Param actionId path int true "Action ID"
 // @Success 204 "No Content"
-// @Router /api/mcmp-api-permission-action-mappings/permissions/{permissionId}/actions/{actionId} [delete]
+// @Router /mcmp-api-permission-action-mappings/permissions/{permissionId}/actions/{actionId} [delete]
 func (h *McmpApiPermissionActionMappingHandler) DeleteMapping(c echo.Context) error {
 	permissionID := c.Param("permission_id")
 	actionIDStr := c.Param("action_id")
@@ -186,7 +186,7 @@ func (h *McmpApiPermissionActionMappingHandler) DeleteMapping(c echo.Context) er
 // @Param actionId path int true "Action ID"
 // @Param mapping body mcmpapi.McmpApiPermissionActionMapping true "Updated mapping"
 // @Success 200 {object} map[string]string
-// @Router /api/mcmp-api-permission-action-mappings/permissions/{permissionId}/actions/{actionId} [put]
+// @Router /mcmp-api-permission-action-mappings/permissions/{permissionId}/actions/{actionId} [put]
 func (h *McmpApiPermissionActionMappingHandler) UpdateMapping(c echo.Context) error {
 	permissionID := c.Param("permission_id")
 	actionIDStr := c.Param("action_id")
@@ -220,7 +220,7 @@ func (h *McmpApiPermissionActionMappingHandler) UpdateMapping(c echo.Context) er
 	return c.JSON(http.StatusOK, map[string]string{"message": "mapping updated successfully"})
 }
 
-// ListMappings godoc
+// ListMappings godoc ListPlatformActions
 // @Summary MCMP API 권한-액션 매핑 목록 조회
 // @Description 모든 MCMP API 권한-액션 매핑 목록을 조회합니다
 // @Tags mcmp-api-permission-action-mappings
@@ -230,7 +230,7 @@ func (h *McmpApiPermissionActionMappingHandler) UpdateMapping(c echo.Context) er
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /api/v1/mcmp-api-permission-action-mappings [get]
+// @Router /mcmp-api-permission-action-mappings [get]
 
 // GetMappingByID godoc
 // @Summary MCMP API 권한-액션 매핑 ID로 조회
@@ -244,23 +244,9 @@ func (h *McmpApiPermissionActionMappingHandler) UpdateMapping(c echo.Context) er
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Mapping not found"
 // @Security BearerAuth
-// @Router /api/v1/mcmp-api-permission-action-mappings/{id} [get]
+// @Router /mcmp-api-permission-action-mappings/{id} [get]
 
-// CreateMapping godoc
-// @Summary 새 MCMP API 권한-액션 매핑 생성
-// @Description 새로운 MCMP API 권한-액션 매핑을 생성합니다
-// @Tags mcmp-api-permission-action-mappings
-// @Accept json
-// @Produce json
-// @Param mapping body model.MCMPAPIPermissionActionMapping true "Mapping Info"
-// @Success 201 {object} model.MCMPAPIPermissionActionMapping
-// @Failure 400 {object} map[string]string "error: Invalid request"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Security BearerAuth
-// @Router /api/v1/mcmp-api-permission-action-mappings [post]
-
-// UpdateMapping godoc
+// UpdateMapping godoc UpdateMapping
 // @Summary MCMP API 권한-액션 매핑 업데이트
 // @Description MCMP API 권한-액션 매핑 정보를 업데이트합니다
 // @Tags mcmp-api-permission-action-mappings
@@ -274,7 +260,7 @@ func (h *McmpApiPermissionActionMappingHandler) UpdateMapping(c echo.Context) er
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Mapping not found"
 // @Security BearerAuth
-// @Router /api/v1/mcmp-api-permission-action-mappings/{id} [put]
+// @Router /mcmp-api-permission-action-mappings/{id} [put]
 
 // DeleteMapping godoc
 // @Summary MCMP API 권한-액션 매핑 삭제
@@ -288,4 +274,4 @@ func (h *McmpApiPermissionActionMappingHandler) UpdateMapping(c echo.Context) er
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Mapping not found"
 // @Security BearerAuth
-// @Router /api/v1/mcmp-api-permission-action-mappings/{id} [delete]
+// @Router /mcmp-api-permission-action-mappings/{id} [delete]

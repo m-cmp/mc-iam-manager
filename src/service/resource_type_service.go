@@ -25,9 +25,9 @@ func NewResourceTypeService(db *gorm.DB) *ResourceTypeService {
 }
 
 // Create 리소스 유형 생성
-func (s *ResourceTypeService) Create(resourceType *model.ResourceType) error {
+func (s *ResourceTypeService) CreateResourceType(resourceType *model.ResourceType) error {
 	// Basic validation can be added here if needed
-	err := s.repo.Create(resourceType)
+	err := s.repo.CreateResourceType(resourceType)
 	if err != nil {
 		return err
 	}
@@ -50,24 +50,24 @@ func (s *ResourceTypeService) Create(resourceType *model.ResourceType) error {
 }
 
 // List 모든 리소스 유형 조회 (프레임워크 ID로 필터링 가능)
-func (s *ResourceTypeService) List(frameworkID string) ([]model.ResourceType, error) {
-	return s.repo.List(frameworkID)
+func (s *ResourceTypeService) ListResourceTypes(frameworkID string) ([]model.ResourceType, error) {
+	return s.repo.FindResourceTypes(frameworkID)
 }
 
 // GetByID ID로 리소스 유형 조회
-func (s *ResourceTypeService) GetByID(frameworkID, id string) (*model.ResourceType, error) {
-	return s.repo.GetByID(frameworkID, id)
+func (s *ResourceTypeService) GetResourceTypeByID(frameworkID, resourceTypeId string) (*model.ResourceType, error) {
+	return s.repo.FindResourceTypeByID(frameworkID, resourceTypeId)
 }
 
 // Update 리소스 유형 정보 부분 업데이트
-func (s *ResourceTypeService) Update(frameworkID, id string, updates map[string]interface{}) error {
+func (s *ResourceTypeService) Update(frameworkID, resourceTypeId string, updates map[string]interface{}) error {
 	// Add validation or business logic if needed before updating
-	return s.repo.Update(frameworkID, id, updates)
+	return s.repo.UpdateResourceType(frameworkID, resourceTypeId, updates)
 }
 
 // Delete 리소스 유형 삭제
-func (s *ResourceTypeService) Delete(frameworkID, id string) error {
+func (s *ResourceTypeService) DeleteResourceType(frameworkID, resourceTypeId string) error {
 	// Add validation or business logic if needed before deleting
 	// Note: Associated permissions will be deleted by DB cascade constraint
-	return s.repo.Delete(frameworkID, id)
+	return s.repo.DeleteResourceType(frameworkID, resourceTypeId)
 }

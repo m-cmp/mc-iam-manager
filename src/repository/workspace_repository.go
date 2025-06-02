@@ -62,7 +62,7 @@ func (r *WorkspaceRepository) FindWorkspaces(req *model.WorkspaceFilterRequest) 
 
 	// filter 조건이 있으면 조건에 맞는 워크스페이스 조회
 	// 쿼리 빌더를 사용하여 기본 쿼리 생성
-	query := r.db.Preload("Workspace")
+	query := r.db.Model(&model.Workspace{})
 
 	if req.WorkspaceID != "" {
 		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)
@@ -74,6 +74,26 @@ func (r *WorkspaceRepository) FindWorkspaces(req *model.WorkspaceFilterRequest) 
 
 	if req.WorkspaceName != "" {
 		query = query.Where("name = ?", req.WorkspaceName)
+	}
+
+	// ProjectID로 필터링
+	if req.ProjectID != "" {
+		projectIdInt, err := util.StringToUint(req.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Joins("JOIN mcmp_workspace_projects ON mcmp_workspaces.id = mcmp_workspace_projects.workspace_id").
+			Where("mcmp_workspace_projects.project_id = ?", projectIdInt)
+	}
+
+	// UserID로 필터링
+	if req.UserID != "" {
+		userIdInt, err := util.StringToUint(req.UserID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Joins("JOIN mcmp_user_workspace_roles ON mcmp_workspaces.id = mcmp_user_workspace_roles.workspace_id").
+			Where("mcmp_user_workspace_roles.user_id = ?", userIdInt)
 	}
 
 	if err := query.Find(&workspaces).Error; err != nil {
@@ -108,13 +128,32 @@ func (r *WorkspaceRepository) FindWorkspaceByName(workspaceName string) (*model.
 }
 
 // FindWorkspacesProjects 모든 워크스페이스 조회 (프로젝트 정보 포함)
-func (r *WorkspaceRepository) FindWorkspacesProjects() ([]*model.WorkspaceWithProjects, error) {
-	var workspaces []*model.WorkspaceWithProjects
+func (r *WorkspaceRepository) FindWorkspacesProjects(req model.WorkspaceProjectFilterRequest) ([]*model.WorkspaceWithProjects, error) {
+	var workspacesProjects []*model.WorkspaceWithProjects
 	// Preload Projects to fetch associated projects
-	if err := r.db.Preload("Projects").Find(&workspaces).Error; err != nil {
+	query := r.db.Model(&model.Workspace{})
+
+	if req.WorkspaceID != "" {
+		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where("id = ?", workspaceIdInt)
+	}
+
+	if req.ProjectID != "" {
+		projectIdInt, err := util.StringToUint(req.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Joins("JOIN mcmp_workspace_projects ON mcmp_workspaces.id = mcmp_workspace_projects.workspace_id").
+			Where("mcmp_workspace_projects.project_id = ?", projectIdInt)
+	}
+
+	if err := query.Preload("Projects").Find(&workspacesProjects).Error; err != nil {
 		return nil, err
 	}
-	return workspaces, nil
+	return workspacesProjects, nil
 }
 
 // FindWorkspaceProjectsByWorkspaceID ID로 워크스페이스 조회 (프로젝트 정보 포함)

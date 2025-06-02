@@ -57,7 +57,7 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoles []str
 	// 1. 각 플랫폼 역할에 매핑된 메뉴 ID들을 조회
 	menuIDMap := make(map[string]bool)
 	for _, role := range platformRoles {
-		menuIDs, err := s.menuMappingRepo.GetMappedMenus(role)
+		menuIDs, err := s.menuMappingRepo.FindMappedMenusByRole(role)
 		if err != nil {
 			return nil, err
 		}
@@ -69,7 +69,7 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoles []str
 	// 2. 매핑된 메뉴 ID들의 상위 메뉴 ID들을 수집
 	parentIDMap := make(map[string]bool)
 	for menuID := range menuIDMap {
-		menu, err := s.menuRepo.GetByID(menuID)
+		menu, err := s.menuRepo.FindMenuByID(menuID)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +87,7 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoles []str
 	// 4. 수집된 메뉴 ID들로 메뉴 정보 조회
 	var allMenus []model.Menu
 	for menuID := range menuIDMap {
-		menu, err := s.menuRepo.GetByID(menuID)
+		menu, err := s.menuRepo.FindMenuByID(menuID)
 		if err != nil {
 			return nil, err
 		}
@@ -180,14 +180,14 @@ func (s *MenuService) GetMenus() ([]model.Menu, error) {
 }
 
 // GetByID 메뉴 ID로 조회
-func (s *MenuService) GetByID(id string) (*model.Menu, error) {
-	return s.menuRepo.GetByID(id)
+func (s *MenuService) GetMenuByID(id string) (*model.Menu, error) {
+	return s.menuRepo.FindMenuByID(id)
 }
 
 // Create 새 메뉴 생성
 func (s *MenuService) Create(menu *model.Menu) error {
 	// TODO: 필요한 비즈니스 로직 추가 (예: 유효성 검사)
-	return s.menuRepo.Create(menu)
+	return s.menuRepo.CreateMenu(menu)
 }
 
 // Update 메뉴 정보 부분 업데이트
@@ -200,13 +200,13 @@ func (s *MenuService) Update(id string, updates map[string]interface{}) error {
 	// 	 return err
 	// }
 
-	return s.menuRepo.Update(id, updates)
+	return s.menuRepo.UpdateMenu(id, updates)
 }
 
 // Delete 메뉴 삭제
 func (s *MenuService) Delete(id string) error {
 	// TODO: 필요한 비즈니스 로직 추가 (예: 하위 메뉴 처리 등)
-	return s.menuRepo.Delete(id)
+	return s.menuRepo.DeleteMenu(id)
 }
 
 // LoadAndRegisterMenusFromYAML YAML 파일에서 메뉴를 로드하여 DB에 등록(Upsert)
@@ -292,7 +292,7 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 	for _, menu := range menus {
 		if menu.ID == "home" {
 			// home 메뉴가 있으면 업데이트
-			if err := s.menuRepo.Update("home", map[string]interface{}{
+			if err := s.menuRepo.UpdateMenu("home", map[string]interface{}{
 				"display_name": menu.DisplayName,
 				"res_type":     menu.ResType,
 				"is_action":    menu.IsAction,
@@ -363,15 +363,15 @@ func (s *MenuService) RegisterMenusFromContent(yamlContent []byte) error {
 }
 
 // GetMappedMenusByRole 플랫폼 역할에 매핑된 메뉴 목록 조회
-func (s *MenuService) GetMappedMenusByRole(platformRole string) ([]*model.Menu, error) {
-	menuIDs, err := s.menuMappingRepo.GetMappedMenus(platformRole)
+func (s *MenuService) ListMappedMenusByRole(platformRole string) ([]*model.Menu, error) {
+	menuIDs, err := s.menuMappingRepo.FindMappedMenusByRole(platformRole)
 	if err != nil {
 		return nil, err
 	}
 
 	var menus []*model.Menu
 	for _, menuID := range menuIDs {
-		menu, err := s.menuRepo.GetByID(menuID)
+		menu, err := s.menuRepo.FindMenuByID(menuID)
 		if err != nil {
 			return nil, err
 		}
