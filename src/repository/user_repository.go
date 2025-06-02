@@ -63,17 +63,20 @@ func (r *UserRepository) FindByKcID(kcId string) (*model.User, error) {
 	return &dbUser, nil
 }
 
-// FindByUsername finds a user by their username (username column).
+// FindByUsername finds a user by their username (username column). : db에서 조회
 func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 	var dbUser model.User
-	// Preload roles when fetching by username
-	if err := r.db.Preload("PlatformRoles").Preload("WorkspaceRoles").Where("username = ?", username).First(&dbUser).Error; err != nil {
+
+	query := r.db.Table("mcmp_users")
+
+	// Find user by username
+	if err := query.Where("username = ?", username).First(&dbUser).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
 		return nil, fmt.Errorf("error finding user by username %s: %w", username, err)
 	}
-	log.Printf("[DEBUG] GetDbUser: ", &dbUser)
+	log.Printf("[DEBUG] GetDbUser: %+v", &dbUser)
 	return &dbUser, nil
 }
 

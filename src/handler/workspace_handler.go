@@ -54,7 +54,7 @@ func NewWorkspaceHandler(db *gorm.DB) *WorkspaceHandler {
 // @Success 200 {array} model.Workspace
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/workspaces/list [post]
+// @Router /workspaces/list [post]
 func (h *WorkspaceHandler) ListWorkspaces(c echo.Context) error {
 	// --- Permission Check ---
 	userID, platformRoles, err := getUserDbIdAndPlatformRoles(c.Request().Context(), c, h.userService) // Pass context
@@ -78,11 +78,13 @@ func (h *WorkspaceHandler) ListWorkspaces(c echo.Context) error {
 	var workspaces []*model.Workspace
 	if hasListAllPermission {
 		// User has permission to list all workspaces
-		workspaces, err = h.workspaceService.ListWorkspaces(req)
+		workspaces, err = h.workspaceService.ListWorkspaces(&req)
 	} else {
 		// User can only list assigned workspaces
-		// TODO: Check for 'list_assigned' permission if needed for more granular control
-		workspaces, err = h.workspaceService.GetWorkspacesByUserID(userID) // Use the new repo method via userService
+		if req.UserID == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID가 필요합니다"})
+		}
+		workspaces, err = h.workspaceService.ListWorkspaces(&req) // Use the new repo method via userService
 	}
 
 	if err != nil {
@@ -116,15 +118,15 @@ func (h *WorkspaceHandler) ListWorkspaces(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/workspaces/{id} [get]
+// @Router /workspaces/{id} [get]
 func (h *WorkspaceHandler) GetWorkspaceByID(c echo.Context) error {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+
+	workspaceIDInt, err := util.StringToUint(c.Param("workspaceId"))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID입니다"})
 	}
 
-	workspace, err := h.workspaceService.GetByID(uint(id))
+	workspace, err := h.workspaceService.GetWorkspaceByID(workspaceIDInt)
 	if err != nil {
 		if err.Error() == "workspace not found" {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
@@ -145,7 +147,7 @@ func (h *WorkspaceHandler) GetWorkspaceByID(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/workspaces [post]
+// @Router /workspaces [post]
 func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 	var workspace model.Workspace
 	if err := c.Bind(&workspace); err != nil {
@@ -176,7 +178,7 @@ func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/workspaces/{id} [put]
+// @Router /workspaces/{id} [put]
 func (h *WorkspaceHandler) UpdateWorkspace(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -212,7 +214,7 @@ func (h *WorkspaceHandler) UpdateWorkspace(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/workspaces/{id} [delete]
+// @Router /workspaces/{id} [delete]
 func (h *WorkspaceHandler) DeleteWorkspace(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -230,18 +232,23 @@ func (h *WorkspaceHandler) DeleteWorkspace(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// ListWorkspaces godoc
+// ListUserWorkspaces godoc
 // @Summary 워크스페이스 목록 조회
-// @Description 모든 워크스페이스 목록을 조회합니다
+// @Description 유저가 속한 모든 워크스페이스 목록을 조회합니다
 // @Tags workspaces
 // @Accept json
 // @Produce json
-// @Success 200 {array} model.Workspace
+// @Success 200 {array} model.WorkspaceWithUsersAndRoles
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /api/v1/workspaces/users [post]
+// @Router /workspaces/users [post]
 func (h *WorkspaceHandler) ListUserWorkspaces(c echo.Context) error {
+	var req model.WorkspaceFilterRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
 	// --- Permission Check ---
 	userID, platformRoles, err := getUserDbIdAndPlatformRoles(c.Request().Context(), c, h.userService) // Pass context
 	if err != nil {
@@ -256,14 +263,23 @@ func (h *WorkspaceHandler) ListUserWorkspaces(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "권한 확인 중 오류 발생"})
 	}
 
-	var workspaces []model.Workspace
+	userIDInt, err := util.StringToUint(req.UserID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 사용자 ID 형식입니다"})
+	}
+
+	var workspaces []*model.WorkspaceWithUsersAndRoles
 	if hasListAllPermission {
 		// User has permission to list all workspaces
-		workspaces, err = h.workspaceService.List()
+		workspaces, err = h.workspaceService.ListWorkspacesByUserID(userIDInt)
 	} else {
 		// User can only list assigned workspaces
 		// TODO: Check for 'list_assigned' permission if needed for more granular control
-		workspaces, err = h.userService.FindWorkspacesByUserID(userID) // Use the new repo method via userService
+		if req.UserID == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID가 필요합니다"})
+		}
+
+		workspaces, err = h.workspaceService.ListWorkspacesByUserID(userIDInt) // Use the new repo method via userService
 	}
 
 	if err != nil {
@@ -271,10 +287,6 @@ func (h *WorkspaceHandler) ListUserWorkspaces(c echo.Context) error {
 	}
 	// --- End Permission Check ---
 
-	// Return empty list if no workspaces found or accessible
-	if workspaces == nil {
-		workspaces = []model.Workspace{}
-	}
 	return c.JSON(http.StatusOK, workspaces)
 }
 
@@ -290,11 +302,11 @@ func (h *WorkspaceHandler) ListUserWorkspaces(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Workspace not found"
 // @Security BearerAuth
-// @Router /api/v1/workspaces/name/{workspaceName} [get]
+// @Router /workspaces/name/{workspaceName} [get]
 func (h *WorkspaceHandler) GetWorkspaceByName(c echo.Context) error {
 	name := c.Param("workspaceName")
 
-	workspace, err := h.workspaceService.GetByName(name)
+	workspace, err := h.workspaceService.GetWorkspaceByName(name)
 	if err != nil {
 		if err.Error() == "workspace not found" {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
@@ -315,15 +327,14 @@ func (h *WorkspaceHandler) GetWorkspaceByName(c echo.Context) error {
 // @Failure 400 {object} map[string]string "error: Invalid workspace ID"
 // @Failure 404 {object} map[string]string "error: Workspace not found"
 // @Failure 500 {object} map[string]string "error: Internal server error"
-// @Router /api/v1/workspaces/{workspaceId}/users [get]
-func (h *WorkspaceHandler) ListUsersAndRolesByWorkspace(c echo.Context) error {
-	idStr := c.Param("workspaceId")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID입니다"})
+// @Router /workspaces/{workspaceId}/users [get]
+func (h *WorkspaceHandler) ListUsersAndRolesByWorkspaces(c echo.Context) error {
+	var req model.WorkspaceFilterRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
-	usersWithRoles, err := h.workspaceService.GetUsersAndRolesByWorkspaceID(uint(id))
+	usersWithRoles, err := h.roleService.ListUsersAndRolesWithWorkspaces(req)
 	if err != nil {
 		if err.Error() == "workspace not found" {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
@@ -346,36 +357,25 @@ func (h *WorkspaceHandler) ListUsersAndRolesByWorkspace(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Workspace not found"
 // @Security BearerAuth
-// @Router /api/v1/workspaces/projects [post]
+// @Router /workspaces/projects [post]
 func (h *WorkspaceHandler) ListWorkspaceProjects(c echo.Context) error {
 	var req model.WorkspaceProjectFilterRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
-	workspaceID := uint(0)
-	if req.WorkspaceID != "" {
-		workspaceIDInt, err := util.StringToUint(req.WorkspaceID)
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
+
+	workspaceProjects, err := h.workspaceService.ListWorkspacesProjects(req)
+	if err != nil {
+		// Handle not found error from service (which checks workspace existence)
+		if err.Error() == "workspace not found" { // Assuming service returns this specific error
+			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
-		workspaceProjects, err := h.workspaceService.GetWorkspaceProjectsByWorkspaceID(workspaceIDInt)
-		if err != nil {
-			// Handle not found error from service (which checks workspace existence)
-			if err.Error() == "workspace not found" { // Assuming service returns this specific error
-				return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
-			}
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 목록 조회 실패: %v", err)})
-		}
-	} else {
-		workspaceProjects, err := h.workspaceService.GetWorkspaceProjects(req)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 목록 조회 실패: %v", err)})
-		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 목록 조회 실패: %v", err)})
 	}
 
 	// Return empty list if no projects are associated, instead of 404
 
-	return c.JSON(http.StatusOK, projects)
+	return c.JSON(http.StatusOK, workspaceProjects)
 }
 
 // AddProjectToWorkspace godoc
@@ -392,7 +392,7 @@ func (h *WorkspaceHandler) ListWorkspaceProjects(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Workspace or Project not found"
 // @Security BearerAuth
-// @Router /api/v1/workspaces/{id}/projects/{projectId} [post]
+// @Router /workspaces/{id}/projects/{projectId} [post]
 func (h *WorkspaceHandler) AddProjectToWorkspace(c echo.Context) error {
 	var req model.WorkspaceProjectMappingRequest
 	if err := c.Bind(&req); err != nil {
@@ -449,26 +449,6 @@ func (h *WorkspaceHandler) RemoveProjectFromWorkspace(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// ListAllWorkspaces godoc
-// @Summary 워크스페이스와 연관된 프로젝트 목록 조회
-// @Description 모든 워크스페이스와 각 워크스페이스에 연관된 프로젝트 목록을 조회합니다.
-// @Tags workspaces
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {array} model.WorkspaceWithProjects
-// @Router /api/workspaces/all [get]
-func (h *WorkspaceHandler) ListAllWorkspaces(c echo.Context) error {
-	workspaces, err := h.workspaceService.ListAllWorkspaces()
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "워크스페이스 목록 조회에 실패했습니다",
-		})
-	}
-
-	return c.JSON(http.StatusOK, workspaces)
-}
-
 // ListAllWorkspaceUsersAndRoles godoc
 // @Summary 모든 워크스페이스의 사용자와 역할 목록 조회
 // @Description 모든 워크스페이스에 할당된 사용자와 역할 목록을 조회합니다.
@@ -480,105 +460,34 @@ func (h *WorkspaceHandler) ListAllWorkspaces(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 500 {object} map[string]string "error: Internal server error"
 // @Security BearerAuth
-// @Router /api/workspaces/all/users [get]
-func (h *WorkspaceHandler) ListAllWorkspaceUsersAndRoles(c echo.Context) error {
-	// 모든 워크스페이스 조회
-	workspaces, err := h.workspaceService.GetAllWorkspaces()
+// @Router /workspaces/all/users [get]
+func (h *WorkspaceHandler) ListWorkspaceUsersAndRoles(c echo.Context) error {
+
+	var req model.WorkspaceFilterRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
+	workspaceUsersRoles, err := h.roleService.ListUsersAndRolesWithWorkspaces(req)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "워크스페이스 조회 실패"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "사용자 및 역할 조회 실패"})
 	}
 
-	var result []model.WorkspaceWithUsersAndRoles
-	for _, workspace := range workspaces {
-		// 각 워크스페이스의 사용자와 역할 조회
-		usersWithRoles, err := h.workspaceService.GetUsersAndRolesByWorkspaceID(workspace.ID)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "사용자 및 역할 조회 실패"})
-		}
-
-		result = append(result, model.WorkspaceWithUsersAndRoles{
-			ID:          workspace.ID,
-			Name:        workspace.Name,
-			Description: workspace.Description,
-			CreatedAt:   workspace.CreatedAt,
-			UpdatedAt:   workspace.UpdatedAt,
-			Users:       usersWithRoles,
-		})
-	}
-
-	return c.JSON(http.StatusOK, result)
+	return c.JSON(http.StatusOK, workspaceUsersRoles)
 }
 
 // GetWorkspaceRoles 워크스페이스의 역할 목록 조회
 func (h *WorkspaceHandler) GetWorkspaceRoles(c echo.Context) error {
-	roles, err := h.roleService.List("workspace")
+	workspaceIDInt, err := util.StringToUint(c.Param("workspaceId"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
+	}
+
+	roles, err := h.roleService.ListWorkspaceRoles(workspaceIDInt)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	return c.JSON(http.StatusOK, roles)
-}
-
-// AssignWorkspaceRole godoc
-// @Summary 워크스페이스 역할 할당
-// @Description 워크스페이스 역할을 사용자에게 할당합니다
-// @Tags workspace
-// @Accept json
-// @Produce json
-// @Param request body model.AssignRoleRequest true "역할 할당 요청"
-// @Success 200 {object} map[string]string "message: Role assigned successfully"
-// @Failure 400 {object} map[string]string "error: Invalid request"
-// @Failure 404 {object} map[string]string "error: User not found"
-// @Failure 404 {object} map[string]string "error: Role not found"
-// @Failure 500 {object} map[string]string "error: Failed to assign role"
-// @Router /api/v1/workspace/roles/assign [post]
-func (h *WorkspaceHandler) AssignWorkspaceRole(c echo.Context) error {
-	roleType := "workspace"
-	var req model.AssignRoleRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request"})
-	}
-
-	// 사용자 조회 (username으로)
-	user, err := h.userService.GetByUsername(req.Username)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get user"})
-	}
-	if user == nil {
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
-	}
-
-	// 역할 조회
-	role, err := h.roleService.GetRoleByName(req.RoleName, roleType)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get role"})
-	}
-	if role == nil {
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "Role not found"})
-	}
-
-	// 워크스페이스 역할 타입 검증
-	var roleSub model.RoleSub
-	if err := h.workspaceService.GetDB().Where("role_id = ? AND role_type = ?", role.ID, model.RoleTypeWorkspace).First(&roleSub).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid role type. Must be a workspace role"})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to verify role type"})
-	}
-
-	// 워크스페이스 역할 할당
-	var workspaceID uint
-	workspaceID, err = util.StringToUint(req.WorkspaceID)
-	if err != nil {
-		log.Printf("Workspace ID 변환 오류: %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 workspace ID 형식입니다"})
-	}
-
-	err = h.workspaceService.AssignRole(user.ID, workspaceID, role.ID)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to assign role"})
-	}
-
-	return c.JSON(http.StatusOK, map[string]string{"message": "Role assigned successfully"})
 }
 
 // GetWorkspaceUsers godoc
@@ -592,15 +501,14 @@ func (h *WorkspaceHandler) AssignWorkspaceRole(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/workspaces/{id}/users [get]
-func (h *WorkspaceHandler) GetWorkspaceUsers(c echo.Context) error {
-	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID입니다"})
+// @Router /workspaces/{id}/users [get]
+func (h *WorkspaceHandler) ListWorkspaceUsers(c echo.Context) error {
+	var req model.WorkspaceFilterRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
-	users, err := h.workspaceService.GetUsersByWorkspaceID(uint(id))
+	workspaceUsers, err := h.workspaceService.ListWorkspaces(&req)
 	if err != nil {
 		if err.Error() == "workspace not found" {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
@@ -608,7 +516,7 @@ func (h *WorkspaceHandler) GetWorkspaceUsers(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("사용자 목록 조회 실패: %v", err)})
 	}
 
-	return c.JSON(http.StatusOK, users)
+	return c.JSON(http.StatusOK, workspaceUsers)
 }
 
 // AddUserToWorkspace godoc
@@ -624,7 +532,7 @@ func (h *WorkspaceHandler) GetWorkspaceUsers(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/workspaces/{id}/users [post]
+// @Router /workspaces/{id}/users [post]
 func (h *WorkspaceHandler) AddUserToWorkspace(c echo.Context) error {
 	var req model.AssignRoleRequest
 	if err := c.Bind(&req); err != nil {
@@ -673,7 +581,7 @@ func (h *WorkspaceHandler) AddUserToWorkspace(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/workspaces/{id}/users/{userId} [delete]
+// @Router /workspaces/{id}/users/{userId} [delete]
 func (h *WorkspaceHandler) RemoveUserFromWorkspace(c echo.Context) error {
 	workspaceID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {

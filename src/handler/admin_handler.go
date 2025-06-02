@@ -32,9 +32,9 @@ func NewAdminHandler(db *gorm.DB) *AdminHandler {
 // @Tags admin
 // @Accept json
 // @Produce json
-// @Param request body SetupInitialAdminRequest true "Setup Initial Admin Request"
-// @Success 200 {object} Response
-// @Router /api/setup/user [post]
+// @Param request body model.SetupInitialAdminRequest true "Setup Initial Admin Request"
+// @Success 200 {object} model.Response
+// @Router /initial-admin [post]
 func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	var req model.SetupInitialAdminRequest
 	if err := c.Bind(&req); err != nil {
@@ -63,10 +63,10 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param username query string true "Username to check roles"
-// @Success 200 {object} Response
-// @Failure 400 {object} Response
-// @Failure 500 {object} Response
-// @Router /api/setup/check-roles [get]
+// @Success 200 {object} model.Response
+// @Failure 400 {object} model.Response
+// @Failure 500 {object} model.Response
+// @Router /setup/check-user-roles [get]
 func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 	username := c.QueryParam("username")
 	if username == "" {
@@ -100,7 +100,7 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /api/v1/admin/platform-roles [get]
+// @Router /admin/platform-roles [get]
 
 // GetPlatformRoleByID godoc
 // @Summary 플랫폼 역할 ID로 조회
@@ -114,7 +114,7 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Platform Role not found"
 // @Security BearerAuth
-// @Router /api/v1/admin/platform-roles/{id} [get]
+// @Router /admin/platform-roles/{id} [get]
 
 // CreatePlatformRole godoc
 // @Summary 새 플랫폼 역할 생성
@@ -128,7 +128,7 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /api/v1/admin/platform-roles [post]
+// @Router /admin/platform-roles [post]
 
 // UpdatePlatformRole godoc
 // @Summary 플랫폼 역할 업데이트
@@ -144,7 +144,7 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Platform Role not found"
 // @Security BearerAuth
-// @Router /api/v1/admin/platform-roles/{id} [put]
+// @Router /admin/platform-roles/{id} [put]
 
 // DeletePlatformRole godoc
 // @Summary 플랫폼 역할 삭제
@@ -158,4 +158,4 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Platform Role not found"
 // @Security BearerAuth
-// @Router /api/v1/admin/platform-roles/{id} [delete]
+// @Router /admin/platform-roles/{id} [delete]

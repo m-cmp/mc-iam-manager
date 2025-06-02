@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/m-cmp/mc-iam-manager/model"
+	"github.com/m-cmp/mc-iam-manager/util"
 	"gorm.io/gorm"
 )
 
@@ -248,18 +249,87 @@ func (r *RoleRepository) FindWorkspaceRoleCspRoleMappings(workspaceRoleID uint, 
 	return mappings, nil
 }
 
-// TODO : Role이 들어가면 role 영역임
-// FindUsersAndRolesByWorkspaceID 특정 워크스페이스에 속한 사용자 및 역할 목록 조회
-func (r *WorkspaceRepository) FindUsersAndRolesByWorkspaceID(workspaceID uint) ([]*model.UserWorkspaceRole, error) {
+// FindUsersAndRolesByWorkspaceID 특정 워크스페이스에 속한 사용자 및 역할 목록 조회 : user 기준
+func (r *RoleRepository) FindUsersAndRolesWithWorkspaces(req model.WorkspaceFilterRequest) ([]*model.UserWorkspaceRole, error) {
 	var userWorkspaceRoles []*model.UserWorkspaceRole
+
+	query := r.db.Joins("JOIN mcmp_workspace_roles ON mcmp_workspace_roles.id = mcmp_user_workspace_roles.workspace_role_id")
+
+	if req.WorkspaceID != "" {
+		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where("mcmp_user_workspace_roles.workspace_id = ?", workspaceIdInt)
+	}
+
+	if req.RoleID != "" {
+		roleIdInt, err := util.StringToUint(req.RoleID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where("mcmp_user_workspace_roles.role_id = ?", roleIdInt)
+	}
+
+	if req.UserID != "" {
+		userIdInt, err := util.StringToUint(req.UserID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where("mcmp_user_workspace_roles.user_id = ?", userIdInt)
+	}
 
 	// Find all UserWorkspaceRole entries where the associated WorkspaceRole's WorkspaceID matches.
 	// We need to join with WorkspaceRole table to filter by workspaceID.
 	// Then preload User and WorkspaceRole.
-	err := r.db.Joins("JOIN mcmp_workspace_roles ON mcmp_workspace_roles.id = mcmp_user_workspace_roles.workspace_role_id").
-		Where("mcmp_user_workspace_roles.workspace_id = ?", workspaceID).
-		Preload("User").          // Preload the User associated with the mapping
-		Preload("WorkspaceRole"). // Preload the WorkspaceRole associated with the mapping
+	err := query.Preload("User").
+		Preload("WorkspaceRole").
+		Find(&userWorkspaceRoles).Error
+
+	if err != nil {
+		// Don't return ErrWorkspaceNotFound here, as an empty result is valid.
+		// Return other DB errors.
+		return nil, err
+	}
+
+	return userWorkspaceRoles, nil
+}
+
+// FindWorkspaceWithUsersRoles 특정 워크스페이스에 속한 사용자 및 역할 목록 조회 : workspace 기준
+func (r *RoleRepository) FindWorkspaceWithUsersRoles(req model.WorkspaceFilterRequest) ([]*model.WorkspaceWithUsersAndRoles, error) {
+	var userWorkspaceRoles []*model.WorkspaceWithUsersAndRoles
+
+	query := r.db.Joins("JOIN mcmp_workspace_roles ON mcmp_workspace_roles.id = mcmp_user_workspace_roles.workspace_role_id")
+
+	if req.WorkspaceID != "" {
+		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where("mcmp_user_workspace_roles.workspace_id = ?", workspaceIdInt)
+	}
+
+	if req.RoleID != "" {
+		roleIdInt, err := util.StringToUint(req.RoleID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where("mcmp_user_workspace_roles.role_id = ?", roleIdInt)
+	}
+
+	if req.UserID != "" {
+		userIdInt, err := util.StringToUint(req.UserID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where("mcmp_user_workspace_roles.user_id = ?", userIdInt)
+	}
+
+	// Find all UserWorkspaceRole entries where the associated WorkspaceRole's WorkspaceID matches.
+	// We need to join with WorkspaceRole table to filter by workspaceID.
+	// Then preload User and WorkspaceRole.
+	err := query.Preload("User").
+		Preload("WorkspaceRole").
 		Find(&userWorkspaceRoles).Error
 
 	if err != nil {

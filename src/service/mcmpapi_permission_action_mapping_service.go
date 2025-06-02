@@ -31,21 +31,21 @@ func (s *McmpApiPermissionActionMappingService) GetPlatformActionsByPermissionID
 	if strings.HasPrefix(permissionID, "mc-iam-manager:") {
 		return nil, fmt.Errorf("invalid platform permission ID format")
 	}
-	return s.permissionActionMappingRepo.GetActionsByPermissionID(ctx, permissionID)
+	return s.permissionActionMappingRepo.FindActionsByPermissionID(ctx, permissionID)
 }
 
 // GetWorkspaceActionsByPermissionID returns all API actions mapped to a specific permission.
-func (s *McmpApiPermissionActionMappingService) GetWorkspaceActionsByPermissionID(ctx context.Context, permissionID string) ([]model.McmpApiPermissionActionMapping, error) {
+func (s *McmpApiPermissionActionMappingService) ListWorkspaceActionsByPermissionID(ctx context.Context, permissionID string) ([]model.McmpApiPermissionActionMapping, error) {
 	// 워크스페이스 권한은 'mc-iam-manager:' 접두사를 가진 권한
 	if !strings.HasPrefix(permissionID, "mc-iam-manager:") {
 		return nil, fmt.Errorf("invalid workspace permission ID format")
 	}
-	return s.permissionActionMappingRepo.GetActionsByPermissionID(ctx, permissionID)
+	return s.permissionActionMappingRepo.FindActionsByPermissionID(ctx, permissionID)
 }
 
 // GetPermissionsByActionID returns all permissions mapped to a specific API action.
 func (s *McmpApiPermissionActionMappingService) GetPermissionsByActionID(ctx context.Context, actionID int) ([]model.McmpApiPermissionActionMapping, error) {
-	return s.permissionActionMappingRepo.GetPermissionsByActionID(ctx, actionID)
+	return s.permissionActionMappingRepo.FindPermissionsByActionID(ctx, actionID)
 }
 
 // CreateMapping creates a new permission-action mapping.

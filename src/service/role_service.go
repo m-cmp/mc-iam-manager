@@ -143,7 +143,7 @@ func (s *RoleService) AssignPlatformRole(userID, roleID uint) error {
 	// 2. 역할이 platform 타입인지 확인
 	isPlatformRole := false
 	for _, sub := range role.RoleSubs {
-		if sub.RoleType == "platform" {
+		if sub.RoleType == model.RoleTypePlatform {
 			isPlatformRole = true
 			break
 		}
@@ -154,11 +154,6 @@ func (s *RoleService) AssignPlatformRole(userID, roleID uint) error {
 
 	// 3. 역할 할당
 	return s.roleRepository.AssignPlatformRole(userID, roleID)
-}
-
-// RemovePlatformRole 플랫폼 역할 제거
-func (s *RoleService) RemovePlatformRole(userID, roleID uint) error {
-	return s.roleRepository.RemovePlatformRole(userID, roleID)
 }
 
 // AssignWorkspaceRole 워크스페이스 역할 할당
@@ -175,7 +170,7 @@ func (s *RoleService) AssignWorkspaceRole(userID, workspaceID, roleID uint) erro
 	// 2. 역할이 workspace 타입인지 확인
 	isWorkspaceRole := false
 	for _, sub := range role.RoleSubs {
-		if sub.RoleType == "workspace" {
+		if sub.RoleType == model.RoleTypeWorkspace {
 			isWorkspaceRole = true
 			break
 		}
@@ -186,6 +181,47 @@ func (s *RoleService) AssignWorkspaceRole(userID, workspaceID, roleID uint) erro
 
 	// 3. 역할 할당
 	return s.roleRepository.AssignWorkspaceRole(userID, workspaceID, roleID)
+}
+
+// AssignRole 역할 할당 (플랫폼/워크스페이스)
+func (s *RoleService) AssignRole(userID, workspaceID, roleID uint) error {
+	// 1. 역할이 존재하는지 확인
+	role, err := s.roleRepository.FindRoleByRoleID(roleID, "")
+	if err != nil {
+		return fmt.Errorf("역할 조회 실패: %w", err)
+	}
+	if role == nil {
+		return fmt.Errorf("역할을 찾을 수 없습니다")
+	}
+
+	// 2. 역할 타입 확인
+	isWorkspaceRole := false
+	isPlatformRole := false
+	for _, sub := range role.RoleSubs {
+		if sub.RoleType == model.RoleTypeWorkspace {
+			isWorkspaceRole = true
+		}
+		if sub.RoleType == model.RoleTypePlatform {
+			isPlatformRole = true
+		}
+	}
+
+	// 3. 역할 타입에 따라 할당
+	if isWorkspaceRole {
+		if workspaceID == 0 {
+			return fmt.Errorf("워크스페이스 역할 할당을 위해 워크스페이스 ID가 필요합니다")
+		}
+		return s.roleRepository.AssignWorkspaceRole(userID, workspaceID, roleID)
+	} else if isPlatformRole {
+		return s.roleRepository.AssignPlatformRole(userID, roleID)
+	} else {
+		return fmt.Errorf("지원하지 않는 역할 타입입니다")
+	}
+}
+
+// RemovePlatformRole 플랫폼 역할 제거
+func (s *RoleService) RemovePlatformRole(userID, roleID uint) error {
+	return s.roleRepository.RemovePlatformRole(userID, roleID)
 }
 
 // RemoveWorkspaceRole 워크스페이스 역할 제거
@@ -238,11 +274,44 @@ func (s *RoleService) DeleteWorkspaceRoleCspRoleMapping(workspaceRoleID uint, cs
 }
 
 // GetWorkspaceRoleCspRoleMappings 워크스페이스 역할-CSP 역할 매핑 목록 조회
-func (s *RoleService) GetWorkspaceRoleCspRoleMappings(workspaceRoleID uint, cspRoleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
+func (s *RoleService) ListWorkspaceRoleCspRoleMappings(workspaceRoleID uint, cspRoleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
 	return s.roleRepository.FindWorkspaceRoleCspRoleMappings(workspaceRoleID, cspRoleID, cspType)
 }
 
 // GetWorkspaceRoleCspRoleMappings 역할-CSP 역할 매핑 목록 조회
 func (s *RoleService) GetRoleCspRoleMappings(roleID uint, cspRoleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
 	return s.roleRepository.FindRoleMasterCspRoleMappings(roleID, cspRoleID, cspType)
+}
+
+// GetUsersByWorkspaceID 워크스페이스에 속한 사용자 목록을 조회합니다.
+func (s *RoleService) ListWorkspaceUsersAndRoles(req model.WorkspaceFilterRequest) ([]*model.WorkspaceWithUsersAndRoles, error) {
+	// 워크스페이스 존재 여부 확인
+	workspaceUsers, err := s.roleRepository.FindWorkspaceWithUsersRoles(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return workspaceUsers, nil
+}
+
+// GetUsersAndRolesByWorkspaceID 워크스페이스에 속한 사용자와 역할 조회 : 사용자기준
+func (s *RoleService) ListUsersAndRolesWithWorkspaces(req model.WorkspaceFilterRequest) ([]*model.UserWorkspaceRole, error) {
+
+	userRoleWorkspaces, err := s.roleRepository.FindUsersAndRolesWithWorkspaces(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return userRoleWorkspaces, nil
+}
+
+// GetWorkspaceRoles 워크스페이스의 모든 역할 목록 조회 Role만
+func (s *RoleService) ListWorkspaceRoles(workspaceID uint) ([]*model.RoleMaster, error) {
+	roleType := model.RoleTypeWorkspace
+	roles, err := s.roleRepository.FindRoles(workspaceID, roleType)
+	if err != nil {
+		return nil, err
+	}
+
+	return roles, nil
 }

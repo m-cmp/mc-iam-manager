@@ -48,7 +48,7 @@ func NewProjectHandler(db *gorm.DB) *ProjectHandler {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/admin/createProject [post]
+// @Router /admin/createProject [post]
 func (h *ProjectHandler) CreateProject(c echo.Context) error {
 	var project model.Project
 	if err := c.Bind(&project); err != nil {
@@ -75,7 +75,7 @@ func (h *ProjectHandler) CreateProject(c echo.Context) error {
 // @Success 200 {array} model.Project
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/admin/projects [get]
+// @Router /admin/projects [get]
 func (h *ProjectHandler) ListProjects(c echo.Context) error {
 	projects, err := h.projectService.ListProjects()
 	if err != nil {
@@ -95,7 +95,7 @@ func (h *ProjectHandler) ListProjects(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/admin/projects/{id} [get]
+// @Router /admin/projects/{id} [get]
 func (h *ProjectHandler) GetProjectByID(c echo.Context) error {
 	// Parse DB ID (uint) from path parameter
 	projectIDInt, err := util.StringToUint(c.Param("projectId"))
@@ -125,9 +125,9 @@ func (h *ProjectHandler) GetProjectByID(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Project not found"
 // @Security BearerAuth
-// @Router /api/v1/projects/name/{name} [get]
+// @Router /projects/name/{name} [get]
 func (h *ProjectHandler) GetProjectByName(c echo.Context) error {
-	name := c.Param("name")
+	name := c.Param("projectName")
 
 	project, err := h.projectService.GetProjectByName(name)
 	if err != nil {
@@ -152,7 +152,7 @@ func (h *ProjectHandler) GetProjectByName(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/admin/projects/{id} [put]
+// @Router /admin/projects/{id} [put]
 func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 
 	var project model.Project
@@ -197,7 +197,7 @@ func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/admin/projects/{id} [delete]
+// @Router /admin/projects/{id} [delete]
 func (h *ProjectHandler) DeleteProject(c echo.Context) error {
 
 	projectIDInt, err := util.StringToUint(c.Param("projectId"))

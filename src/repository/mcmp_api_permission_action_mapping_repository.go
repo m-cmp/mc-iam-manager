@@ -20,7 +20,7 @@ func NewMcmpApiPermissionActionMappingRepository(db *gorm.DB) *McmpApiPermission
 }
 
 // GetActionsByPermissionID 권한 ID에 해당하는 액션 목록 조회
-func (r *McmpApiPermissionActionMappingRepository) GetActionsByPermissionID(ctx context.Context, permissionID string) ([]model.McmpApiPermissionActionMapping, error) {
+func (r *McmpApiPermissionActionMappingRepository) FindActionsByPermissionID(ctx context.Context, permissionID string) ([]model.McmpApiPermissionActionMapping, error) {
 	var actions []model.McmpApiPermissionActionMapping
 	query := r.db.Where("permission_id = ?", permissionID).Find(&actions)
 
@@ -39,7 +39,7 @@ func (r *McmpApiPermissionActionMappingRepository) GetActionsByPermissionID(ctx 
 }
 
 // GetPermissionsByActionID 액션 ID에 해당하는 권한 목록 조회
-func (r *McmpApiPermissionActionMappingRepository) GetPermissionsByActionID(ctx context.Context, actionID int) ([]model.McmpApiPermissionActionMapping, error) {
+func (r *McmpApiPermissionActionMappingRepository) FindPermissionsByActionID(ctx context.Context, actionID int) ([]model.McmpApiPermissionActionMapping, error) {
 	var permissions []model.McmpApiPermissionActionMapping
 	query := r.db.Where("action_id = ?", actionID).Find(&permissions)
 

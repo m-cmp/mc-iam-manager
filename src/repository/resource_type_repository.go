@@ -24,12 +24,12 @@ func NewResourceTypeRepository(db *gorm.DB) *ResourceTypeRepository {
 }
 
 // Create 리소스 유형 생성
-func (r *ResourceTypeRepository) Create(resourceType *model.ResourceType) error {
+func (r *ResourceTypeRepository) CreateResourceType(resourceType *model.ResourceType) error {
 	return r.db.Create(resourceType).Error
 }
 
 // List 모든 리소스 유형 조회 (프레임워크 ID로 필터링 가능)
-func (r *ResourceTypeRepository) List(frameworkID string) ([]model.ResourceType, error) {
+func (r *ResourceTypeRepository) FindResourceTypes(frameworkID string) ([]model.ResourceType, error) {
 	var resourceTypes []model.ResourceType
 	query := r.db
 	if frameworkID != "" {
@@ -50,7 +50,7 @@ func (r *ResourceTypeRepository) List(frameworkID string) ([]model.ResourceType,
 }
 
 // GetByID ID로 리소스 유형 조회 (FrameworkID와 ID 사용)
-func (r *ResourceTypeRepository) GetByID(frameworkID, id string) (*model.ResourceType, error) {
+func (r *ResourceTypeRepository) FindResourceTypeByID(frameworkID, id string) (*model.ResourceType, error) {
 	var resourceType model.ResourceType
 	if err := r.db.Where("framework_id = ? AND id = ?", frameworkID, id).First(&resourceType).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -69,7 +69,7 @@ func (r *ResourceTypeRepository) GetByID(frameworkID, id string) (*model.Resourc
 }
 
 // Update 리소스 유형 정보 부분 업데이트
-func (r *ResourceTypeRepository) Update(frameworkID, id string, updates map[string]interface{}) error {
+func (r *ResourceTypeRepository) UpdateResourceType(frameworkID, id string, updates map[string]interface{}) error {
 	if len(updates) == 0 {
 		return errors.New("no fields provided for update")
 	}
@@ -97,7 +97,7 @@ func (r *ResourceTypeRepository) Update(frameworkID, id string, updates map[stri
 }
 
 // Delete 리소스 유형 삭제
-func (r *ResourceTypeRepository) Delete(frameworkID, id string) error {
+func (r *ResourceTypeRepository) DeleteResourceType(frameworkID, id string) error {
 	result := r.db.Where("framework_id = ? AND id = ?", frameworkID, id).Delete(&model.ResourceType{})
 	if result.Error != nil {
 		return result.Error

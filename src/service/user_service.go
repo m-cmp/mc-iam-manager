@@ -305,6 +305,17 @@ func (s *UserService) GetUserByKcID(ctx context.Context, kcId string) (*model.Us
 
 // GetUserByUsername retrieves user details by username.
 func (s *UserService) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
+
+	dbUser, err := s.userRepo.FindByUsername(username)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) && err != nil {
+		log.Printf("Error fetching user details from local db (username: %s): %v\n", username, err)
+		return nil, err
+	}
+
+	return dbUser, nil
+}
+
+func (s *UserService) GetUserByKeycloakUsername(ctx context.Context, username string) (*model.User, error) {
 	ks := NewKeycloakService() // Create KeycloakService instance when needed
 	kcUser, err := ks.GetUserByUsername(ctx, username)
 	if err != nil {

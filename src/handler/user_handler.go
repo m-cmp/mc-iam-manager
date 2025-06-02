@@ -43,6 +43,7 @@ func checkRoleFromContext(c echo.Context, requiredRoles []string) bool {
 
 type UserHandler struct {
 	userService *service.UserService
+	roleService *service.RoleService
 	// db *gorm.DB // Not needed directly
 	// keycloakConfig *config.KeycloakConfig // Not needed directly
 	// keycloakClient *gocloak.GoCloak // Not needed directly
@@ -64,7 +65,7 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 // @Success 200 {array} model.User
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/users/list [post]
+// @Router /users/list [post]
 func (h *UserHandler) ListUsers(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"} // todo : middleware에서 체크되지 않나?
@@ -96,7 +97,7 @@ func (h *UserHandler) ListUsers(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/users/id/{userId} [get]
+// @Router /users/id/{userId} [get]
 func (h *UserHandler) GetUserByID(c echo.Context) error {
 	// Note: Add role check if needed for this endpoint as well
 	kcId := c.Param("userId")                                             // Parameter is Keycloak ID (string)
@@ -120,7 +121,7 @@ func (h *UserHandler) GetUserByID(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/users/name/{username} [get]
+// @Router /users/name/{username} [get]
 func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 	// Note: Add role check if needed for this endpoint as well
 	username := c.Param("username")
@@ -142,7 +143,7 @@ func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/users/createUser [post]
+// @Router /users [post]
 func (h *UserHandler) CreateUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -186,7 +187,7 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/users/id/{id} [put]
+// @Router /users/id/{id} [put]
 func (h *UserHandler) UpdateUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -240,7 +241,7 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/users/id/{id} [delete]
+// @Router /users/id/{id} [delete]
 func (h *UserHandler) DeleteUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -280,7 +281,7 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/users/id/{id}/status [post]
+// @Router /users/id/{id}/status [post]
 func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 
 	// --- 역할 검증 (Admin or platformAdmin) ---
@@ -344,17 +345,17 @@ func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// GetUserWorkspaceAndWorkspaceRoles godoc
-// @Summary Get user workspace and roles
-// @Description Get workspaces and roles for the current user
+// ListUserWorkspaceAndWorkspaceRoles godoc
+// @Summary List user workspace and roles
+// @Description List workspaces and roles for the current user
 // @Tags users
 // @Accept json
 // @Produce json
-// @Success 200 {array} service.WorkspaceRoleInfo
+// @Success 200 {array} model.RoleMaster
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/v1/users/workspaces [get]
-func (h *UserHandler) GetUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
+// @Router /users/workspaces [post]
+func (h *UserHandler) ListUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
 	// // 1. Get user claims from context
 	// claimsIntf := c.Get("token_claims")
 	// if claimsIntf == nil {
@@ -403,8 +404,14 @@ func (h *UserHandler) GetUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
 	if err := c.Bind(&workspaceUserRole); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
+
+	workspaceIDInt, err := util.StringToUint(workspaceUserRole.WorkspaceID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 user ID 형식입니다"})
+	}
+
 	// 4. Call the service function with the local DB User ID
-	workspaceRoles, err := h.roleService.GetUserWorkspaceRoles(localUserID, workspaceUserRole.WorkspaceID) // Correct service method name
+	workspaceRoles, err := h.roleService.GetUserWorkspaceRoles(localUserID, workspaceIDInt) // Correct service method name
 	if err != nil {
 		fmt.Printf("[ERROR] GetUserWorkspaceAndWorkspaceRoles: Error from service: %v\n", err) // Updated log prefix
 		// Handle specific errors like UserNotFound if necessary, though GetUserIDByKcID should prevent this
@@ -413,7 +420,7 @@ func (h *UserHandler) GetUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
 
 	// Return the result
 	if workspaceRoles == nil {
-		workspaceRoles = []service.WorkspaceRoleInfo{} // Return empty array instead of null
+		workspaceRoles = []model.RoleMaster{} // Return empty array instead of null
 	}
 	return c.JSON(http.StatusOK, workspaceRoles)
 }

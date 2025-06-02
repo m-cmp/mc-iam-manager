@@ -55,6 +55,9 @@ type WorkspaceProjectMappingRequest struct {
 type WorkspaceFilterRequest struct {
 	WorkspaceID   string `json:"workspaceId,omitempty"`
 	WorkspaceName string `json:"workspaceName,omitempty"`
+	ProjectID     string `json:"projectId,omitempty"`
+	UserID        string `json:"userId,omitempty"`
+	RoleID        string `json:"roleId,omitempty"`
 }
 type WorkspaceProjectFilterRequest struct {
 	WorkspaceID string `json:"workspaceId,omitempty"`
