@@ -44,12 +44,46 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 		})
 	}
 
-	if err := h.keycloakService.SetupInitialAdmin(c.Request().Context()); err != nil {
+	_, err := h.keycloakService.SetupInitialAdmin(c.Request().Context())
+	if err != nil {
+		fmt.Errorf("failed to setup initial admin : %w", err)
 		return c.JSON(http.StatusInternalServerError, model.Response{
 			Error:   true,
 			Message: "Failed to setup initial admin",
 		})
 	}
+
+	// existRealm, err := h.keycloakService.ExistRealm(c.Request().Context(), adminAccessToken.AccessToken)
+	// if err != nil {
+	// 	return c.JSON(http.StatusOK, model.Response{
+	// 		Message: "Initial admin setup completed successfully",
+	// 	})
+	// }
+	// log.Print("[DEBUG] existRealm ", existRealm)
+
+	// if !existRealm {
+	// 	h.keycloakService.CreateRealm(c.Request().Context(), adminAccessToken.AccessToken)
+	// }
+
+	// existClient, err := h.keycloakService.ExistClient(c.Request().Context(), adminAccessToken.AccessToken)
+	// if err != nil {
+	// 	return c.JSON(http.StatusOK, model.Response{
+	// 		Message: "Initial admin setup completed successfully",
+	// 	})
+	// }
+	// log.Print("[DEBUG] existClient ", existClient)
+
+	// if !existClient {
+	// 	h.keycloakService.CreateClient(c.Request().Context(), adminAccessToken.AccessToken)
+	// }
+
+	// clientExists, err := s.CheckClient(ctx)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to check client: %w", err)
+	// }
+	// if !clientExists {
+	// 	return fmt.Errorf("client does not exist")
+	// }
 
 	return c.JSON(http.StatusOK, model.Response{
 		Message: "Initial admin setup completed successfully",
