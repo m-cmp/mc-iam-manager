@@ -98,6 +98,7 @@ func main() {
 		basePath + "/auth/login",
 		basePath + "/auth/logout",
 		basePath + "/auth/refresh",
+		basePath + "/initial-admin",
 	}
 
 	// 인증 미들웨어 설정 (특정 경로 제외)
