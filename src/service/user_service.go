@@ -119,6 +119,23 @@ func (s *UserService) SyncUser(ctx context.Context, kcUserID string) (*model.Use
 	return createdDbUser, nil
 }
 
+func (s *UserService) SetupInitialAdmin(ctx context.Context, user *model.User, adminToken *gocloak.JWT) (string, error) {
+	ks := NewKeycloakService() // Create KeycloakService instance when needed
+	kcId, err := ks.SetupInitialAdmin(ctx, adminToken)
+	if err != nil {
+		return kcId, err // Propagate error (e.g., user exists)
+	}
+
+	user.KcId = kcId
+	_, err = s.userRepo.Create(user)
+	if err != nil {
+		log.Printf("CRITICAL: Failed to create user in DB after Keycloak creation (kcId: %s). Manual cleanup needed. Error: %v", kcId, err)
+		// TODO: Compensation - delete user from Keycloak?
+		return kcId, fmt.Errorf("failed to create user in DB after Keycloak: %w", err)
+	}
+	return kcId, nil
+}
+
 // CreateUser creates a user in Keycloak and the local DB.
 func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
 	ks := NewKeycloakService() // Create KeycloakService instance when needed
@@ -130,6 +147,26 @@ func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
 	_, err = s.userRepo.Create(user)
 	if err != nil {
 		log.Printf("CRITICAL: Failed to create user in DB after Keycloak creation (kcId: %s). Manual cleanup needed. Error: %v", kcId, err)
+		// TODO: Compensation - delete user from Keycloak?
+		return fmt.Errorf("failed to create user in DB after Keycloak: %w", err)
+	}
+	return nil
+}
+
+// CreateUser creates a user in Keycloak and the local DB.
+// Keycloak 에 있는 유저가 DB에 등록되어 있지 않은 경우
+func (s *UserService) SyncUserByKeycloak(ctx context.Context, user *model.User) error {
+	if user.KcId == "" {
+		return fmt.Errorf("user kcId is empty")
+	}
+	dbUser, err := s.userRepo.FindByKcID(user.KcId)
+	if dbUser != nil {
+		return fmt.Errorf("user already exists in DB")
+	}
+
+	_, err = s.userRepo.Create(user)
+	if err != nil {
+		log.Printf("CRITICAL: Failed to create user in DB after Keycloak creation (kcId: %s). Manual cleanup needed. Error: %v", user.KcId, err)
 		// TODO: Compensation - delete user from Keycloak?
 		return fmt.Errorf("failed to create user in DB after Keycloak: %w", err)
 	}

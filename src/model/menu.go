@@ -36,8 +36,8 @@ type MenuTreeNode struct {
 // PlatformRoleMenuMapping 플랫폼 역할-메뉴 매핑 (DB 테이블: mcmp_platform_role_menu_mappings)
 type PlatformRoleMenuMapping struct {
 	ID           uint      `json:"id" gorm:"primaryKey;column:id"`
-	PlatformRole string    `json:"platform_role" gorm:"column:platform_role;type:varchar(100);not null"` // 플랫폼 역할 이름
-	MenuID       string    `json:"menu_id" gorm:"column:menu_id;type:varchar(100);not null"`             // 메뉴 ID
+	PlatformRole uint      `json:"platform_role" gorm:"column:platform_role;type:uint;not null"` // 플랫폼 역할 ID
+	MenuID       string    `json:"menu_id" gorm:"column:menu_id;type:varchar(100);not null"`     // 메뉴 ID
 	CreatedAt    time.Time `json:"created_at" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt    time.Time `json:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
 }

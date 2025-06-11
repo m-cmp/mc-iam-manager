@@ -2,9 +2,13 @@ package handler
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/labstack/echo/v4"
+	"github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service"
 	"gorm.io/gorm"
@@ -14,15 +18,21 @@ import (
 
 // AdminHandler 관리자 API 핸들러
 type AdminHandler struct {
-	db              *gorm.DB
-	keycloakService service.KeycloakService
+	keycloakService  service.KeycloakService
+	userService      service.UserService
+	roleService      service.RoleService
+	workspaceService service.WorkspaceService
+	menuService      service.MenuService
 }
 
 // NewAdminHandler 새 AdminHandler 인스턴스 생성
 func NewAdminHandler(db *gorm.DB) *AdminHandler {
 	return &AdminHandler{
-		db:              db,
-		keycloakService: service.NewKeycloakService(),
+		keycloakService:  service.NewKeycloakService(),
+		userService:      *service.NewUserService(db),
+		roleService:      *service.NewRoleService(db),
+		workspaceService: *service.NewWorkspaceService(db),
+		menuService:      *service.NewMenuService(db),
 	}
 }
 
@@ -44,46 +54,125 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 		})
 	}
 
-	_, err := h.keycloakService.SetupInitialAdmin(c.Request().Context())
+	// Check if Keycloak is configured
+	if config.KC == nil {
+		log.Printf("[ERROR] Keycloak configuration is not initialized")
+		return c.JSON(http.StatusInternalServerError, model.Response{
+			Error:   true,
+			Message: "Keycloak configuration is not initialized",
+		})
+	}
+
+	adminToken, err := h.keycloakService.KeycloakAdminLogin(c.Request().Context())
 	if err != nil {
-		fmt.Errorf("failed to setup initial admin : %w", err)
+		log.Printf("[ERROR] Failed to login as admin: %v", err)
+		return c.JSON(http.StatusInternalServerError, model.Response{
+			Error:   true,
+			Message: "Failed to login as admin",
+		})
+	}
+
+	if adminToken == nil {
+		log.Printf("[ERROR] Admin token is nil")
+		return c.JSON(http.StatusInternalServerError, model.Response{
+			Error:   true,
+			Message: "Failed to get admin token",
+		})
+	}
+
+	log.Printf("[DEBUG] Setting Platform Admin") // KC에 user, realm, client 생성
+	kcUserId, err := h.keycloakService.SetupInitialAdmin(c.Request().Context(), adminToken)
+	if err != nil {
+		log.Printf("[ERROR] Failed to setup initial admin: %v", err)
 		return c.JSON(http.StatusInternalServerError, model.Response{
 			Error:   true,
 			Message: "Failed to setup initial admin",
 		})
 	}
 
-	// existRealm, err := h.keycloakService.ExistRealm(c.Request().Context(), adminAccessToken.AccessToken)
-	// if err != nil {
-	// 	return c.JSON(http.StatusOK, model.Response{
-	// 		Message: "Initial admin setup completed successfully",
-	// 	})
-	// }
-	// log.Print("[DEBUG] existRealm ", existRealm)
+	platformAdminID := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_ID")
+	platformAdminFirstName := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_FIRSTNAME")
+	platformAdminLastName := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_LASTNAME")
 
-	// if !existRealm {
-	// 	h.keycloakService.CreateRealm(c.Request().Context(), adminAccessToken.AccessToken)
-	// }
+	// 2. 유저 동기화 : keycloak에 먼저 만들었으므로 동기화 해준다.
+	err = h.userService.SyncUserByKeycloak(c.Request().Context(), &model.User{
+		Username:  platformAdminID,
+		Email:     req.Email,
+		FirstName: platformAdminFirstName,
+		LastName:  platformAdminLastName,
+		KcId:      kcUserId,
+	})
+	if err != nil {
+		log.Printf("[ERROR] Failed to create user: %v", err)
+		// return c.JSON(http.StatusInternalServerError, model.Response{
+		// 	Error:   true,
+		// 	Message: "Failed to create user",
+		// })
+	}
 
-	// existClient, err := h.keycloakService.ExistClient(c.Request().Context(), adminAccessToken.AccessToken)
-	// if err != nil {
-	// 	return c.JSON(http.StatusOK, model.Response{
-	// 		Message: "Initial admin setup completed successfully",
-	// 	})
-	// }
-	// log.Print("[DEBUG] existClient ", existClient)
+	// 3. 기본 역할 설정
+	log.Printf("[DEBUG] Setting default roles")
 
-	// if !existClient {
-	// 	h.keycloakService.CreateClient(c.Request().Context(), adminAccessToken.AccessToken)
-	// }
+	// 3-1. keycloak에 기본 역할 생성
+	err = h.keycloakService.SetupPredefinedRoles(c.Request().Context(), adminToken.AccessToken)
+	if err != nil {
+		log.Printf("[ERROR] Setup Realm roles failed: %v", err)
+		// return c.JSON(http.StatusInternalServerError, model.Response{
+		// 	Error:   true,
+		// 	Message: "Failed to Setup default roles",
+		// })
+	}
 
-	// clientExists, err := s.CheckClient(ctx)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to check client: %w", err)
-	// }
-	// if !clientExists {
-	// 	return fmt.Errorf("client does not exist")
-	// }
+	// 3-2. db에 기본 역할 생성
+	predefinedRoles := strings.Split(os.Getenv("PREDEFINED_PLATFORM_ROLE"), ",")
+	registeredRoles := []uint{}
+	for _, roleName := range predefinedRoles {
+		role, err := h.roleService.CreateRoleWithSubs(&model.RoleMaster{
+			Name: roleName,
+		}, []model.RoleSub{{RoleType: model.RoleTypePlatform}, {RoleType: model.RoleTypeWorkspace}})
+		if err != nil {
+			log.Printf("[ERROR] Create Role with Subs failed: %v", err)
+			// return c.JSON(http.StatusInternalServerError, model.Response{
+			// 	Error:   true,
+			// 	Message: "Failed to Create Role with Subs",
+			// })
+		}
+		registeredRoles = append(registeredRoles, role.ID)
+		log.Printf("[DEBUG] Create Role with Subs success: %v", role)
+	}
+
+	// 기본 workspace 생성
+	err = h.workspaceService.CreateWorkspace(&model.Workspace{
+		Name:        "ws01",
+		Description: "Default Workspace",
+	})
+	if err != nil {
+		log.Printf("[ERROR] Create Workspace failed: %v", err)
+		// return c.JSON(http.StatusInternalServerError, model.Response{
+		// 	Error:   true,
+		// 	Message: "Failed to create default workspace",
+		// })
+	}
+
+	// 메뉴 등록
+	err = h.menuService.LoadAndRegisterMenusFromYAML("")
+	if err != nil {
+		log.Printf("[ERROR] Register Menu failed: %v", err)
+		// return c.JSON(http.StatusInternalServerError, model.Response{
+		// 	Error:   true,
+		// 	Message: "Failed to register menus",
+		// })
+	}
+
+	// 메뉴와 기본 역할 매핑
+	err = h.menuService.InitializeMenuPermissionsFromCSV("")
+	if err != nil {
+		log.Printf("[ERROR] Initialize Menu Permissions failed: %v", err)
+		// return c.JSON(http.StatusInternalServerError, model.Response{
+		// 	Error:   true,
+		// 	Message: "Failed to initialize menu permissions",
+		// })
+	}
 
 	return c.JSON(http.StatusOK, model.Response{
 		Message: "Initial admin setup completed successfully",

@@ -82,12 +82,19 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		// 3.2 realm_access.roles == platform role 확인
+		// realm := os.Getenv("KEYCLOAK_REALM")
+		realm := config.KC.Realm
+		if realm == "" {
+			realm = "mcmp-demo" // 기본값 설정
+		}
+		clientDefaultRoleName := "default-roles-" + realm
+
 		if realmAccess, ok := (*claimsInterface)["realm_access"].(map[string]interface{}); ok {
 			if roles, ok := realmAccess["roles"].([]interface{}); ok {
 				excludedRoles := map[string]bool{
-					"offline_access":            true,
-					"uma_authorization":         true,
-					"default-roles-mciam-demp3": true,
+					"offline_access":      true,
+					"uma_authorization":   true,
+					clientDefaultRoleName: true, // Releam에 따른 기본 Role 제외
 				}
 				for _, role := range roles {
 					if roleStr, ok := role.(string); ok {

@@ -182,6 +182,13 @@ project 등록
  - 추가한 workspace에 testviewer를 viewer로 추가
 
 
+## vm setup
+ - 인증서 발급
+    ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+    -> 파일위치 .ssh/id_rsa
+    -> pw : megazone
+ - 
+  
 
 
 - init.sh

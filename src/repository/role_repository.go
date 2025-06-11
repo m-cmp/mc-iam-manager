@@ -43,11 +43,12 @@ func (r *RoleRepository) FindRoleByRoleID(roleId uint, roleType string) (*model.
 	var role model.RoleMaster
 
 	// 쿼리 빌더를 사용하여 기본 쿼리 생성
-	query := r.db.Preload("RoleSubs").Where("id = ?", roleId)
+	query := r.db.Preload("RoleSubs").Where("mcmp_role_master.id = ?", roleId)
 
 	// roleType이 비어있지 않다면 조건 추가
 	if roleType != "" {
-		query = query.Where("role_type = ?", roleType)
+		query = query.Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
+			Where("mcmp_role_sub.role_type = ?", roleType)
 	}
 
 	if err := query.First(&role).Error; err != nil {
@@ -64,11 +65,12 @@ func (r *RoleRepository) FindRoleByRoleName(roleName string, roleType string) (*
 	var role model.RoleMaster
 
 	// 쿼리 빌더를 사용하여 기본 쿼리 생성
-	query := r.db.Preload("RoleSubs").Where("name = ?", roleName)
+	query := r.db.Preload("RoleSubs").Where("mcmp_role_master.name = ?", roleName)
 
 	// roleType이 비어있지 않다면 조건 추가
 	if roleType != "" {
-		query = query.Where("role_type = ?", roleType)
+		query = query.Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
+			Where("mcmp_role_sub.role_type = ?", roleType)
 	}
 
 	if err := query.First(&role).Error; err != nil {
@@ -142,7 +144,7 @@ func (r *RoleRepository) FindUserWorkspaceRoles(userID, workspaceID uint) ([]mod
 	err := r.db.
 		Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_master.id = mcmp_user_workspace_roles.role_id").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ? AND mcmp_role_sub.role_type = ?", userID, workspaceID, "workspace").
+		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ? AND mcmp_role_sub.role_type = ?", userID, workspaceID, model.RoleTypeWorkspace).
 		Find(&roles).Error
 	if err != nil {
 		return nil, err
@@ -156,7 +158,7 @@ func (r *RoleRepository) FindUserPlatformRoles(userID uint) ([]model.RoleMaster,
 	err := r.db.
 		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_master.id = mcmp_user_platform_roles.role_id").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, "platform").
+		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, model.RoleTypePlatform).
 		Find(&roles).Error
 	if err != nil {
 		return nil, err

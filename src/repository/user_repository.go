@@ -30,10 +30,11 @@ func (r *UserRepository) DB() *gorm.DB {
 
 // NewUserRepository creates a new UserRepository.
 func NewUserRepository(db *gorm.DB) *UserRepository {
-	// 단순히 DB 연결만 저장하고, 실제 쿼리는 API 요청 시점에 수행
-	return &UserRepository{
-		db: db,
+	// Auto Migrate the schema
+	if err := db.AutoMigrate(&model.User{}); err != nil {
+		log.Printf("Failed to migrate user table: %v", err)
 	}
+	return &UserRepository{db: db}
 }
 
 // FindByID finds a user by their local database primary key (id column).
@@ -178,7 +179,10 @@ func (r *UserRepository) FindWorkspacesByUserID(userID uint) ([]*model.Workspace
 	// Select distinct workspaces associated with the user through the join table
 	err := r.db.Joins("JOIN mcmp_user_workspace_roles uwr ON uwr.workspace_id = mcmp_workspaces.id").
 		Where("uwr.user_id = ?", userID).
-		Distinct("mcmp_workspaces.*"). // Select distinct workspace fields
+		Distinct("mcmp_workspaces.*").           // Select distinct workspace fields
+		Preload("Users", "user_id = ?", userID). // Preload users for the specific user
+		Preload("Users.User").                   // Preload user details
+		Preload("Users.Role").                   // Preload role details
 		Find(&workspaces).Error
 	if err != nil {
 		return nil, fmt.Errorf("error finding workspaces for user %d: %w", userID, err)

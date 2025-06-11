@@ -20,7 +20,7 @@ func (r *PlatformRoleRepository) List() ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", "platform").
+		Where("mcmp_role_sub.role_type = ?", model.RoleTypePlatform).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func (r *PlatformRoleRepository) GetByID(id uint) (*model.RoleMaster, error) {
 	var role model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_master.id = ? AND mcmp_role_sub.role_type = ?", id, "platform").
+		Where("mcmp_role_master.id = ? AND mcmp_role_sub.role_type = ?", id, model.RoleTypePlatform).
 		First(&role).Error; err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (r *PlatformRoleRepository) Create(role *model.RoleMaster) error {
 		}
 		roleSub := model.RoleSub{
 			RoleID:   role.ID,
-			RoleType: "platform",
+			RoleType: model.RoleTypePlatform,
 		}
 		return tx.Create(&roleSub).Error
 	})
@@ -61,7 +61,7 @@ func (r *PlatformRoleRepository) Update(role *model.RoleMaster) error {
 // Delete 플랫폼 역할 삭제
 func (r *PlatformRoleRepository) Delete(id uint) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("role_id = ? AND role_type = ?", id, "platform").Delete(&model.RoleSub{}).Error; err != nil {
+		if err := tx.Where("role_id = ? AND role_type = ?", id, model.RoleTypePlatform).Delete(&model.RoleSub{}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&model.RoleMaster{}, id).Error
@@ -88,7 +88,7 @@ func (r *PlatformRoleRepository) GetUserRoles(userID uint) ([]model.RoleMaster, 
 	if err := r.db.Preload("RoleSubs").
 		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_master.id = mcmp_user_platform_roles.role_id").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, "platform").
+		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, model.RoleTypePlatform).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}

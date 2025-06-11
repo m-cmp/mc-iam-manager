@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io" // Ensure io package is imported
 	"net/http"
+	"strconv"
 	"time"
 
 	// "strings" // Removed unused import
@@ -20,13 +21,15 @@ import (
 
 type MenuHandler struct {
 	menuService *service.MenuService
+	roleService *service.RoleService
 	// db *gorm.DB // Not needed directly in handler
 }
 
-func NewMenuHandler(db *gorm.DB) *MenuHandler { // Accept db, remove service param
-	// Initialize service internally
-	menuService := service.NewMenuService(db)
-	return &MenuHandler{menuService: menuService}
+func NewMenuHandler(db *gorm.DB) *MenuHandler {
+	return &MenuHandler{
+		menuService: service.NewMenuService(db),
+		roleService: service.NewRoleService(db),
+	}
 }
 
 // Helper function moved to util package
@@ -53,8 +56,22 @@ func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to process platform roles"})
 	}
 	c.Logger().Debug("GetUserMenuTree: platformRoles %s", platformRoles)
-	// Call the service method with platform roles
-	menuTree, err := h.menuService.BuildUserMenuTree(c.Request().Context(), platformRoles)
+
+	// Convert platform role strings to uint IDs
+	platformRoleNames := make([]uint, 0, len(platformRoles))
+	for _, roleName := range platformRoles {
+		role, err := h.roleService.GetRoleByName(roleName, model.RoleTypePlatform)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
+		}
+		if role == nil {
+			continue // Skip if role not found
+		}
+		platformRoleNames = append(platformRoleNames, role.ID)
+	}
+
+	// Call the service method with platform role IDs
+	menuTree, err := h.menuService.BuildUserMenuTree(c.Request().Context(), platformRoleNames)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": fmt.Sprintf("메뉴 트리 조회 실패: %v", err),
@@ -375,12 +392,12 @@ func (h *MenuHandler) RegisterMenusFromBody(c echo.Context) error {
 // @Security BearerAuth
 // @Router /menus/platform-roles/{role} [post]
 func (h *MenuHandler) ListMappedMenusByRole(c echo.Context) error {
-	platformRole := c.Param("role")
-	if platformRole == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "platform role is required"})
+	platformRoleID, err := strconv.ParseUint(c.Param("role"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid platform role ID"})
 	}
 
-	menus, err := h.menuService.ListMappedMenusByRole(platformRole)
+	menus, err := h.menuService.ListMappedMenusByRole(uint(platformRoleID))
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -433,17 +450,45 @@ func (h *MenuHandler) CreateMenuMapping(c echo.Context) error {
 // @Security BearerAuth
 // @Router /menus/platform-roles/{role}/menus/{menuId} [delete]
 func (h *MenuHandler) DeleteMenuMapping(c echo.Context) error {
-	platformRole := c.Param("role")
+	platformRoleID, err := strconv.ParseUint(c.Param("role"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid platform role ID"})
+	}
 	menuID := c.Param("menuId")
 
-	if platformRole == "" || menuID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "platform role and menu ID are required"})
-	}
-
-	err := h.menuService.DeleteMenuMapping(platformRole, menuID)
+	err = h.menuService.DeleteMenuMapping(uint(platformRoleID), menuID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "Menu mapping deleted successfully"})
+}
+
+// GetUserMenuTree 사용자의 플랫폼 역할에 따른 메뉴 트리 조회
+func (h *MenuHandler) GetUserMenuTree(c echo.Context) error {
+	// Get platform roles from context (set by auth middleware)
+	platformRoles := c.Get("platform_roles").([]string)
+	if len(platformRoles) == 0 {
+		return c.JSON(http.StatusOK, []*model.MenuTreeNode{})
+	}
+
+	// Convert platform role strings to uint IDs
+	platformRoleIDs := make([]uint, 0, len(platformRoles))
+	for _, roleName := range platformRoles {
+		role, err := h.roleService.GetRoleByName(roleName, model.RoleTypePlatform)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
+		}
+		if role == nil {
+			continue // Skip if role not found
+		}
+		platformRoleIDs = append(platformRoleIDs, role.ID)
+	}
+
+	menuTree, err := h.menuService.BuildUserMenuTree(c.Request().Context(), platformRoleIDs)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, menuTree)
 }

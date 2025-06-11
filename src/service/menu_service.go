@@ -10,6 +10,8 @@ import (
 	"sort" // Added
 	"strings"
 
+	"encoding/csv"
+
 	"github.com/joho/godotenv"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -24,6 +26,7 @@ type MenuService struct {
 	userRepo        *repository.UserRepository            // Added dependency
 	permissionRepo  *repository.MciamPermissionRepository // Use renamed repository type
 	menuMappingRepo *repository.MenuMappingRepository
+	roleRepo        *repository.RoleRepository
 }
 
 // NewMenuService 새 MenuService 인스턴스 생성
@@ -34,6 +37,7 @@ func NewMenuService(db *gorm.DB) *MenuService {
 		userRepo:        repository.NewUserRepository(db),
 		permissionRepo:  repository.NewMciamPermissionRepository(db),
 		menuMappingRepo: repository.NewMenuMappingRepository(db),
+		roleRepo:        repository.NewRoleRepository(db),
 	}
 }
 
@@ -53,11 +57,11 @@ func (s *MenuService) GetAllMenusTree() ([]*model.MenuTreeNode, error) {
 }
 
 // BuildUserMenuTree 사용자의 플랫폼 역할에 따른 메뉴 트리 구성
-func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoles []string) ([]*model.MenuTreeNode, error) {
+func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoleIDs []uint) ([]*model.MenuTreeNode, error) {
 	// 1. 각 플랫폼 역할에 매핑된 메뉴 ID들을 조회
 	menuIDMap := make(map[string]bool)
-	for _, role := range platformRoles {
-		menuIDs, err := s.menuMappingRepo.FindMappedMenusByRole(role)
+	for _, roleID := range platformRoleIDs {
+		menuIDs, err := s.menuMappingRepo.FindMappedMenusByRole(roleID)
 		if err != nil {
 			return nil, err
 		}
@@ -86,10 +90,14 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoles []str
 
 	// 4. 수집된 메뉴 ID들로 메뉴 정보 조회
 	var allMenus []model.Menu
-	for menuID := range menuIDMap {
-		menu, err := s.menuRepo.FindMenuByID(menuID)
+	for platformMenuID := range menuIDMap {
+		// menuID는 platform:menu 형식이므로 : 뒷부분만 추출
+		// menuID := util.GetAfterDelimiter(platformMenuID, ":")
+		// log.Printf("menuID: %s", menuID)
+		// menu, err := s.menuRepo.FindMenuByID(menuID)
+		menu, err := s.menuRepo.FindMenuByID(platformMenuID)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		allMenus = append(allMenus, *menu)
 	}
@@ -362,9 +370,9 @@ func (s *MenuService) RegisterMenusFromContent(yamlContent []byte) error {
 	return nil
 }
 
-// GetMappedMenusByRole 플랫폼 역할에 매핑된 메뉴 목록 조회
-func (s *MenuService) ListMappedMenusByRole(platformRole string) ([]*model.Menu, error) {
-	menuIDs, err := s.menuMappingRepo.FindMappedMenusByRole(platformRole)
+// ListMappedMenusByRole 플랫폼 역할에 매핑된 메뉴 목록 조회
+func (s *MenuService) ListMappedMenusByRole(platformRoleID uint) ([]*model.Menu, error) {
+	menuIDs, err := s.menuMappingRepo.FindMappedMenusByRole(platformRoleID)
 	if err != nil {
 		return nil, err
 	}
@@ -387,6 +395,158 @@ func (s *MenuService) CreateMenuMapping(mapping *model.MenuMapping) error {
 }
 
 // DeleteMenuMapping 플랫폼 역할-메뉴 매핑 삭제
-func (s *MenuService) DeleteMenuMapping(platformRole string, menuID string) error {
-	return s.menuMappingRepo.DeleteMapping(platformRole, menuID)
+func (s *MenuService) DeleteMenuMapping(platformRoleID uint, menuID string) error {
+	return s.menuMappingRepo.DeleteMapping(platformRoleID, menuID)
+}
+
+// InitializeMenuPermissionsFromCSV CSV 파일을 읽어서 메뉴 권한을 초기화합니다.
+// filePath 쿼리 파라미터가 없으면 기본 경로인 asset/menu/permission.csv를 사용
+func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
+	effectiveFilePath := filePath
+
+	// If filePath is not provided via query param
+	if effectiveFilePath == "" {
+		// Load .env file to get the URL (assuming .env is at project root)
+		envPath := ".env"          // Path relative to project root
+		_ = godotenv.Load(envPath) // Ignore error if .env not found
+		permissionURL := os.Getenv("MCWEBCONSOLE_PERMISSIONCSV")
+
+		// Default local path relative to project root
+		defaultLocalPath := filepath.Join("asset", "menu", "permission.csv")
+
+		if permissionURL != "" && (strings.HasPrefix(permissionURL, "http://") || strings.HasPrefix(permissionURL, "https://")) {
+			// Attempt to download from URL
+			fmt.Printf("Attempting to download permission CSV from URL: %s\n", permissionURL)
+			resp, err := http.Get(permissionURL)
+			if err != nil {
+				fmt.Printf("Warning: Failed to download permission CSV from %s: %v. Falling back to local path: %s\n", permissionURL, err, defaultLocalPath)
+				effectiveFilePath = defaultLocalPath
+			} else {
+				defer resp.Body.Close()
+				if resp.StatusCode != http.StatusOK {
+					fmt.Printf("Warning: Failed to download permission CSV from %s (Status: %s). Falling back to local path: %s\n", permissionURL, resp.Status, defaultLocalPath)
+					effectiveFilePath = defaultLocalPath
+				} else {
+					bodyBytes, err := io.ReadAll(resp.Body)
+					if err != nil {
+						fmt.Printf("Warning: Failed to read response body from %s: %v. Falling back to local path: %s\n", permissionURL, err, defaultLocalPath)
+						effectiveFilePath = defaultLocalPath
+					} else {
+						// Create a temporary file
+						tempFile, err := os.CreateTemp("", "permission-*.csv")
+						if err != nil {
+							fmt.Printf("Warning: Failed to create temp file: %v. Falling back to local path: %s\n", err, defaultLocalPath)
+							effectiveFilePath = defaultLocalPath
+						} else {
+							defer os.Remove(tempFile.Name()) // Clean up temp file when done
+							if _, err := tempFile.Write(bodyBytes); err != nil {
+								fmt.Printf("Warning: Failed to write to temp file: %v. Falling back to local path: %s\n", err, defaultLocalPath)
+								effectiveFilePath = defaultLocalPath
+							} else {
+								effectiveFilePath = tempFile.Name()
+							}
+						}
+					}
+				}
+			}
+		} else {
+			effectiveFilePath = defaultLocalPath
+		}
+	}
+
+	// CSV 파일 열기
+	file, err := os.Open(effectiveFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to open CSV file: %w", err)
+	}
+	defer file.Close()
+
+	// CSV 리더 생성
+	reader := csv.NewReader(file)
+
+	// 첫 번째 행 읽기 (헤더)
+	headers, err := reader.Read()
+	if err != nil {
+		return fmt.Errorf("failed to read CSV headers: %w", err)
+	}
+
+	// 역할 이름 목록 추출 (framework, resource 이후의 컬럼들)
+	roleNames := headers[2:]
+
+	// DB에서 역할 ID 조회
+	roleIDs := make(map[string]uint)
+	for _, roleName := range roleNames {
+		role, err := s.roleRepo.FindRoleByRoleName(roleName, model.RoleTypePlatform)
+		if err != nil {
+			return fmt.Errorf("failed to find role %s: %w", roleName, err)
+		}
+		if role == nil {
+			return fmt.Errorf("role not found: %s", roleName)
+		}
+		roleIDs[roleName] = role.ID
+	}
+
+	// 기존 매핑 조회
+	existingMappings := make(map[string]map[uint]bool) // menuID -> roleID -> exists
+	for _, roleID := range roleIDs {
+		menuIDs, err := s.menuMappingRepo.FindMappedMenusByRole(roleID)
+		if err != nil {
+			return fmt.Errorf("failed to get existing mappings for role %d: %w", roleID, err)
+		}
+		for _, menuID := range menuIDs {
+			if _, exists := existingMappings[menuID]; !exists {
+				existingMappings[menuID] = make(map[uint]bool)
+			}
+			existingMappings[menuID][roleID] = true
+		}
+	}
+
+	// 나머지 행 읽기
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read CSV record: %w", err)
+		}
+
+		// framework와 resource 추출
+		// framework := record[0]
+		// resource := record[1]
+		// 메뉴 ID 생성 (framework:resource 형식)
+		//menuID := fmt.Sprintf("%s:%s", framework, resource)
+		menuID := record[1] // menuId 그대로 넣도록 한다.
+
+		// 각 역할별 권한 확인
+		for i, roleName := range roleNames {
+			hasPermission := record[i+2] == "TRUE" // +2 because first two columns are framework and resource
+
+			if hasPermission {
+				roleID := roleIDs[roleName]
+
+				// 중복 매핑 체크
+				if roleMappings, exists := existingMappings[menuID]; exists {
+					if roleMappings[roleID] {
+						// 이미 매핑이 존재하면 스킵
+						continue
+					}
+				}
+
+				// 새 매핑 생성
+				err := s.menuMappingRepo.CreateMapping(roleID, menuID)
+				if err != nil {
+					return fmt.Errorf("failed to create menu mapping for %s with role %s: %w", menuID, roleName, err)
+				}
+
+				// 매핑 정보 업데이트
+				if _, exists := existingMappings[menuID]; !exists {
+					existingMappings[menuID] = make(map[uint]bool)
+				}
+				existingMappings[menuID][roleID] = true
+			}
+		}
+	}
+
+	return nil
 }

@@ -181,25 +181,41 @@ func (kc *KeycloakConfig) GetPublicKey() (interface{}, error) {
 		return nil, fmt.Errorf("failed to get Keycloak certs: %v", err)
 	}
 
+	// 인증서 정보 로깅
+	log.Printf("[DEBUG] Number of keys in certs: %d", len(*certs.Keys))
+	for i, key := range *certs.Keys {
+		log.Printf("[DEBUG] Key %d - KID: %s, Algorithm: %s", i, *key.Kid, *key.Alg)
+	}
+
 	// 첫 번째 인증서의 공개키 추출
 	if certs.Keys == nil || len(*certs.Keys) == 0 {
 		return nil, fmt.Errorf("no public keys found in Keycloak certs")
 	}
 
-	// 첫 번째 키의 공개키 추출
-	key := (*certs.Keys)[0]
+	// RS256 알고리즘을 사용하는 키 찾기
+	var selectedKey *gocloak.CertResponseKey
+	for _, key := range *certs.Keys {
+		if *key.Alg == "RS256" {
+			selectedKey = &key
+			break
+		}
+	}
+
+	if selectedKey == nil {
+		return nil, fmt.Errorf("no RS256 key found in Keycloak certs")
+	}
 
 	// RSA 공개키 구성
-	if key.N == nil || key.E == nil {
+	if selectedKey.N == nil || selectedKey.E == nil {
 		return nil, fmt.Errorf("invalid key format: missing modulus or exponent")
 	}
 
-	n, err := base64.RawURLEncoding.DecodeString(*key.N)
+	n, err := base64.RawURLEncoding.DecodeString(*selectedKey.N)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode modulus: %v", err)
 	}
 
-	e, err := base64.RawURLEncoding.DecodeString(*key.E)
+	e, err := base64.RawURLEncoding.DecodeString(*selectedKey.E)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode exponent: %v", err)
 	}
@@ -210,6 +226,7 @@ func (kc *KeycloakConfig) GetPublicKey() (interface{}, error) {
 		E: int(new(big.Int).SetBytes(e).Int64()),
 	}
 
+	log.Printf("[DEBUG] Generated RSA public key - Size: %d bits, KID: %s", publicKey.Size()*8, *selectedKey.Kid)
 	return publicKey, nil
 }
 

@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -37,39 +38,75 @@ func (s *RoleService) GetRoleByName(roleName string, roleType string) (*model.Ro
 	return s.roleRepository.FindRoleByRoleName(roleName, roleType)
 }
 
-// CreateRoleWithSubs 역할과 역할 서브 타입들을 함께 생성
-func (s *RoleService) CreateRoleWithSubs(role model.RoleMaster, roleTypes []string) (*model.RoleMaster, error) {
-	var createdRole *model.RoleMaster
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 1. 역할 마스터 생성
-		if err := tx.Create(&role).Error; err != nil {
-			return fmt.Errorf("역할 생성 실패: %w", err)
-		}
-
-		// 2. 역할 서브 타입들 생성
-		for _, roleType := range roleTypes {
-			roleSub := model.RoleSub{
-				RoleID:   role.ID,
-				RoleType: roleType,
-			}
-			if err := tx.Create(&roleSub).Error; err != nil {
-				return fmt.Errorf("역할 서브 타입 생성 실패: %w", err)
-			}
-		}
-
-		// 3. 생성된 역할 정보 조회 (서브 타입 포함)
-		if err := tx.Preload("RoleSubs").First(&createdRole, role.ID).Error; err != nil {
-			return fmt.Errorf("생성된 역할 조회 실패: %w", err)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
+// CreateRoleWithSubs 역할과 서브 타입을 함께 생성합니다.
+func (s *RoleService) CreateRoleWithSubs(role *model.RoleMaster, roleSubs []model.RoleSub) (*model.RoleMaster, error) {
+	// 트랜잭션 시작
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return nil, fmt.Errorf("트랜잭션 시작 실패: %w", tx.Error)
 	}
 
-	return createdRole, nil
+	// 롤백을 위한 defer
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1. RoleMaster 생성
+	// 먼저 RoleMaster가 이미 존재하는지 확인
+	existingRole, err := s.roleRepository.FindRoleByRoleName(role.Name, "") // roleType은 빈 문자열로 전달
+	if err != nil && err.Error() != "role not found" {
+		tx.Rollback()
+		return nil, fmt.Errorf("역할 조회 실패: %w", err)
+	}
+
+	if existingRole != nil {
+		// 이미 존재하는 역할이면 해당 역할을 사용
+		role = existingRole
+	} else {
+		// 새로운 역할 생성
+		if err := tx.Create(role).Error; err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("역할 생성 실패: %w", err)
+		}
+	}
+
+	// 2. RoleSub 생성
+	for _, sub := range roleSubs {
+		sub.RoleID = role.ID // RoleMaster의 ID 설정
+
+		// RoleSub가 이미 존재하는지 확인
+		var existingSub model.RoleSub
+		if err := tx.Where("role_id = ? AND role_type = ?", role.ID, sub.RoleType).First(&existingSub).Error; err != nil {
+			if err != gorm.ErrRecordNotFound {
+				tx.Rollback()
+				return role, fmt.Errorf("역할 서브 타입 조회 실패: %w", err)
+			}
+			// RoleSub가 존재하지 않는 경우에만 생성
+			if err := tx.Create(&sub).Error; err != nil {
+				tx.Rollback()
+				return role, fmt.Errorf("역할 서브 타입 생성 실패: %w", err)
+			}
+		} else {
+			// RoleSub가 이미 존재하는 경우 로그만 남기고 계속 진행
+			log.Printf("역할 서브 타입 (RoleID: %d, Type: %s)가 이미 존재합니다. 건너뜁니다.", role.ID, sub.RoleType)
+		}
+	}
+
+	// 3. 생성된 RoleMaster와 RoleSubs를 함께 조회
+	var createdRole model.RoleMaster
+	if err := tx.Preload("RoleSubs").First(&createdRole, role.ID).Error; err != nil {
+		tx.Rollback()
+		return &createdRole, fmt.Errorf("생성된 역할 조회 실패: %w", err)
+	}
+
+	// 트랜잭션 커밋
+	if err := tx.Commit().Error; err != nil {
+		return &createdRole, fmt.Errorf("트랜잭션 커밋 실패: %w", err)
+	}
+
+	return &createdRole, nil
 }
 
 // UpdateRoleWithSubs 역할과 역할 서브 타입들을 함께 수정
