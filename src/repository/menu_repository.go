@@ -24,6 +24,18 @@ type MenuRepository struct {
 
 // NewMenuRepository 새 MenuRepository 인스턴스 생성
 func NewMenuRepository(db *gorm.DB) *MenuRepository {
+	// AutoMigrate the required tables
+	err := db.AutoMigrate(
+		&model.Menu{},
+		&model.PlatformRoleMenuMapping{},
+		&model.MenuMapping{},
+		&model.MciamPermission{},
+		&model.MciamRoleMciamPermission{},
+		&model.ResourceType{},
+	)
+	if err != nil {
+		log.Printf("Failed to auto migrate tables: %v", err)
+	}
 	return &MenuRepository{db: db}
 }
 
@@ -215,11 +227,10 @@ func (r *MenuRepository) UpsertMenus(menus []model.Menu) error {
 }
 
 // FindMappedMenusByRole returns menu IDs mapped to the given platform role
-func (r *MenuRepository) FindMappedMenusByRole(platformRole string) ([]string, error) {
+func (r *MenuRepository) FindMappedMenusByRole(platformRoleID uint) ([]string, error) {
 	var menuIDs []string
-	err := r.db.Table("platform_role_menu_mappings").
-		Select("menu_id").
-		Where("platform_role = ?", platformRole).
+	err := r.db.Model(&model.PlatformRoleMenuMapping{}).
+		Where("platform_role = ?", platformRoleID).
 		Pluck("menu_id", &menuIDs).Error
 	return menuIDs, err
 }

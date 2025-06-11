@@ -17,7 +17,7 @@ import (
 	"github.com/m-cmp/mc-iam-manager/util"
 )
 
-// ProjectHandler 프로젝트 관리 핸들러
+// ProjectHandler 프로젝트 관련 HTTP 요청을 처리하는 핸들러
 type ProjectHandler struct {
 	projectService   *service.ProjectService
 	workspaceService *service.WorkspaceService // WorkspaceService 추가
@@ -26,11 +26,11 @@ type ProjectHandler struct {
 	db               *gorm.DB
 }
 
-// NewProjectHandler 새 ProjectHandler 인스턴스 생성
-func NewProjectHandler(db *gorm.DB) *ProjectHandler {
+// NewProjectHandler 새로운 ProjectHandler 인스턴스 생성
+func NewProjectHandler(db *gorm.DB, mcmpApiService service.McmpApiService) *ProjectHandler {
 	return &ProjectHandler{
-		projectService:   service.NewProjectService(db, nil), // McmpApiService는 nil로 전달
-		workspaceService: service.NewWorkspaceService(db),    // WorkspaceService 초기화
+		projectService:   service.NewProjectService(db, mcmpApiService),
+		workspaceService: service.NewWorkspaceService(db), // WorkspaceService 초기화
 		userService:      service.NewUserService(db),
 		permissionRepo:   repository.NewMciamPermissionRepository(db),
 		db:               db,

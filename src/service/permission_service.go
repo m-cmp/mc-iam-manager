@@ -69,9 +69,9 @@ func (s *MciamPermissionService) AssignMciamPermissionToRole(ctx context.Context
 
 	// TODO: 역할 존재 여부 확인 (Platform or Workspace) - Requires Role Repositories
 	// Example:
-	// if roleType == "platform" {
+	// if roleType == model.RoleTypePlatform {
 	//  if _, err := s.platformRoleRepo.GetByID(roleID); err != nil { return err }
-	// } else if roleType == "workspace" {
+	// } else if roleType == model.RoleTypeWorkspace {
 	//  if _, err := s.workspaceRoleRepo.GetByID(roleID); err != nil { return err }
 	// } else {
 	//  return errors.New("invalid role type")

@@ -65,15 +65,24 @@ func (s *CspRoleService) CreateCSPRole(role *model.CspRole) (*model.CspRole, err
 		// 기존 역할이 있는 경우 해당 ID 사용
 		roleMasterID = existingRole.ID
 	} else {
-		// 새로운 역할 생성
+		// 1. RoleMaster 생성
 		roleMaster := model.RoleMaster{
 			Name:        role.Name,
 			Description: role.Description,
+			Predefined:  false, // CSP 역할은 기본적으로 predefined가 false
 		}
-		createdRole, err := s.roleService.CreateRoleWithSubs(roleMaster, []string{"csp"})
+
+		// 2. RoleSub 생성
+		roleSubs := []model.RoleSub{
+			{
+				RoleType: model.RoleTypeCSP, // CSP 역할은 항상 "csp" 타입
+			},
+		}
+
+		// 3. RoleMaster와 RoleSubs 함께 생성
+		createdRole, err := s.roleService.CreateRoleWithSubs(&roleMaster, roleSubs)
 		if err != nil {
-			log.Printf("Failed to create role in master: %v", err)
-			return nil, err
+			return nil, fmt.Errorf("역할 서브 타입 생성 실패: %w", err)
 		}
 		roleMasterID = createdRole.ID
 	}

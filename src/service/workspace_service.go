@@ -28,12 +28,14 @@ func NewWorkspaceService(db *gorm.DB) *WorkspaceService {
 	projectRepo := repository.NewProjectRepository(db)
 	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db)
 	roleRepo := repository.NewRoleRepository(db)
+	userRepo := repository.NewUserRepository(db)
 	return &WorkspaceService{
 		db:                db,
 		workspaceRepo:     workspaceRepo,
 		projectRepo:       projectRepo,
 		workspaceRoleRepo: workspaceRoleRepo,
 		roleRepo:          roleRepo,
+		userRepo:          userRepo,
 	}
 }
 
@@ -274,7 +276,7 @@ func (s *WorkspaceService) AddUserToWorkspace(workspaceID, userID uint) error {
 
 	// 기본 워크스페이스 역할 조회
 	var defaultRole model.RoleMaster
-	if err := s.db.Where("role_type = ? AND name = ?", "workspace", "workspace_user").
+	if err := s.db.Where("role_type = ? AND name = ?", model.RoleTypeWorkspace, "workspace_user").
 		First(&defaultRole).Error; err != nil {
 		return err
 	}

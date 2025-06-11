@@ -191,7 +191,7 @@ func (h *MciamPermissionHandler) DeleteMciamPermission(c echo.Context) error { /
 // @Router /roles/{roleType}/{roleId}/mciam-permissions/{permissionId} [post] // Updated route
 func (h *MciamPermissionHandler) AssignMciamPermissionToRole(c echo.Context) error { // Renamed method
 	roleType := c.Param("roleType")
-	if roleType != "platform" && roleType != "workspace" {
+	if roleType != model.RoleTypePlatform && roleType != model.RoleTypeWorkspace {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 타입입니다. 'platform' 또는 'workspace' 만 가능합니다."})
 	}
 
@@ -228,7 +228,7 @@ func (h *MciamPermissionHandler) AssignMciamPermissionToRole(c echo.Context) err
 // @Router /roles/{roleType}/{roleId}/mciam-permissions/{permissionId} [delete] // Updated route
 func (h *MciamPermissionHandler) RemoveMciamPermissionFromRole(c echo.Context) error { // Renamed method
 	roleType := c.Param("roleType")
-	if roleType != "platform" && roleType != "workspace" {
+	if roleType != model.RoleTypePlatform && roleType != model.RoleTypeWorkspace {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 타입입니다. 'platform' 또는 'workspace' 만 가능합니다."})
 	}
 
@@ -263,7 +263,7 @@ func (h *MciamPermissionHandler) RemoveMciamPermissionFromRole(c echo.Context) e
 // @Router /roles/{roleType}/{roleId}/mciam-permissions [get] // Updated route
 func (h *MciamPermissionHandler) GetRoleMciamPermissions(c echo.Context) error { // Renamed method
 	roleType := c.Param("roleType")
-	if roleType != "platform" && roleType != "workspace" {
+	if roleType != model.RoleTypePlatform && roleType != model.RoleTypeWorkspace {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 타입입니다. 'platform' 또는 'workspace' 만 가능합니다."})
 	}
 

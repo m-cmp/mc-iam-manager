@@ -56,19 +56,19 @@ func NewWorkspaceHandler(db *gorm.DB) *WorkspaceHandler {
 // @Security BearerAuth
 // @Router /workspaces/list [post]
 func (h *WorkspaceHandler) ListWorkspaces(c echo.Context) error {
-	// --- Permission Check ---
-	userID, platformRoles, err := getUserDbIdAndPlatformRoles(c.Request().Context(), c, h.userService) // Pass context
-	if err != nil {
-		log.Printf("Error getting user info for ListWorkspaces: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to identify user"})
-	}
+	// // --- Permission Check ---
+	// userID, platformRoles, err := getUserDbIdAndPlatformRoles(c.Request().Context(), c, h.userService) // Pass context
+	// if err != nil {
+	// 	log.Printf("Error getting user info for ListWorkspaces: %v", err)
+	// 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to identify user"})
+	// }
 
-	// Check for 'list_all' permission (Platform level)
-	hasListAllPermission, err := checkPlatformPermission(h.permissionRepo, platformRoles, "mc-iam-manager:workspace:list_all") // Use helper
-	if err != nil {
-		log.Printf("Error checking list_all workspace permission for user %d: %v", userID, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "권한 확인 중 오류 발생"})
-	}
+	// // Check for 'list_all' permission (Platform level)
+	// hasListAllPermission, err := checkPlatformPermission(h.permissionRepo, platformRoles, "mc-iam-manager:workspace:list_all") // Use helper
+	// if err != nil {
+	// 	log.Printf("Error checking list_all workspace permission for user %d: %v", userID, err)
+	// 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": "권한 확인 중 오류 발생"})
+	// }
 
 	var req model.WorkspaceFilterRequest
 	if err := c.Bind(&req); err != nil {
@@ -76,16 +76,16 @@ func (h *WorkspaceHandler) ListWorkspaces(c echo.Context) error {
 	}
 
 	var workspaces []*model.Workspace
-	if hasListAllPermission {
-		// User has permission to list all workspaces
-		workspaces, err = h.workspaceService.ListWorkspaces(&req)
-	} else {
-		// User can only list assigned workspaces
-		if req.UserID == "" {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID가 필요합니다"})
-		}
-		workspaces, err = h.workspaceService.ListWorkspaces(&req) // Use the new repo method via userService
-	}
+	// if hasListAllPermission {
+	// User has permission to list all workspaces
+	workspaces, err := h.workspaceService.ListWorkspaces(&req)
+	// } else {
+	// 	// User can only list assigned workspaces
+	// 	if req.UserID == "" {
+	// 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID가 필요합니다"})
+	// 	}
+	// 	workspaces, err = h.workspaceService.ListWorkspaces(&req) // Use the new repo method via userService
+	// }
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 목록 조회 실패: %v", err)})
@@ -247,6 +247,10 @@ func (h *WorkspaceHandler) ListUserWorkspaces(c echo.Context) error {
 	var req model.WorkspaceFilterRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
+	if req.UserID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID가 필요합니다"})
 	}
 
 	// --- Permission Check ---
@@ -632,7 +636,7 @@ func checkPlatformPermission(permissionRepo *repository.MciamPermissionRepositor
 		return false, nil
 	}
 	for _, role := range platformRoles {
-		hasPerm, err := permissionRepo.CheckRoleMciamPermission("platform", role.ID, requiredPermissionID)
+		hasPerm, err := permissionRepo.CheckRoleMciamPermission(model.RoleTypePlatform, role.ID, requiredPermissionID)
 		if err != nil {
 			log.Printf("Error checking permission %s for platform role %d: %v", requiredPermissionID, role.ID, err)
 			return false, err

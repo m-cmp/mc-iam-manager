@@ -22,6 +22,7 @@ import (
 
 // KeycloakService defines operations related to Keycloak interaction.
 type KeycloakService interface {
+	KeycloakAdminLogin(ctx context.Context) (*gocloak.JWT, error)
 	GetUser(ctx context.Context, kcId string) (*gocloak.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*gocloak.User, error)
 	GetUsers(ctx context.Context) ([]*gocloak.User, error)
@@ -47,7 +48,7 @@ type KeycloakService interface {
 	// Method to validate token and get claims
 	ValidateTokenAndGetClaims(ctx context.Context, token string) (*jwt.MapClaims, error)
 	// SetupInitialAdmin creates the initial platform admin user and sets up necessary permissions
-	SetupInitialAdmin(ctx context.Context) (*gocloak.JWT, error)
+	SetupInitialAdmin(ctx context.Context, adminToken *gocloak.JWT) (string, error)
 	// CheckUserRoles checks and logs all roles assigned to a user
 	CheckUserRoles(ctx context.Context, username string) error
 	// GetUserPermissions gets all permissions for the given roles
@@ -62,14 +63,29 @@ type KeycloakService interface {
 	AssignRealmRoleToUser(ctx context.Context, kcUserId, roleName string) error
 	// IssueWorkspaceTicket 워크스페이스 티켓을 발행합니다.
 	IssueWorkspaceTicket(ctx context.Context, kcUserId string, workspaceID uint) (string, map[string]interface{}, error)
+	// 기본 Role 정의
+	SetupPredefinedRoles(ctx context.Context, accessToken string) error
 }
 
 // keycloakService is now stateless, methods directly use config.KC
-type keycloakService struct{}
+type keycloakService struct {
+}
 
 // NewKeycloakService creates a new stateless KeycloakService.
 func NewKeycloakService() KeycloakService {
+
 	return &keycloakService{}
+}
+
+func (s *keycloakService) KeycloakAdminLogin(ctx context.Context) (*gocloak.JWT, error) {
+	// 1. Admin 로그인
+	log.Printf("[DEBUG] Attempting to login as admin")
+	adminToken, err := config.KC.LoginAdmin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("admin login failed: %w", err)
+	}
+
+	return adminToken, nil
 }
 
 // GetUser retrieves a user from Keycloak by their Keycloak ID.
@@ -669,24 +685,15 @@ func (s *keycloakService) RemoveUserFromGroup(ctx context.Context, kcUserId, gro
 // 1. KC 관리자 로그인 -> token 발급
 // 2. KC Realm 생성
 // 3. KC Client 생성
-// 4. KC User 생성 for platformAdmin
-// 5. Releam Role 생성 : platformAdmin
+// 4. KC User 생성 for platformAdmin at .env defined user info
+// 5. Releam Role 생성 : platformAdmin by default
 // 6. KC Role 할당 : platformAdmin to user
-func (s *keycloakService) SetupInitialAdmin(ctx context.Context) (*gocloak.JWT, error) {
+func (s *keycloakService) SetupInitialAdmin(ctx context.Context, adminToken *gocloak.JWT) (string, error) {
 	if config.KC == nil || config.KC.Client == nil {
-		return nil, fmt.Errorf("keycloak configuration not initialized")
-	}
-
-	// 1. Admin 로그인
-	log.Printf("[DEBUG] Attempting to login as admin")
-	adminToken, err := config.KC.LoginAdmin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("admin login failed: %w", err)
+		return "", fmt.Errorf("keycloak configuration not initialized")
 	}
 
 	log.Printf("[DEBUG] adminToken: %s", adminToken.AccessToken)
-
-	log.Printf("[DEBUG] Admin login successful")
 
 	existRealm, err := s.ExistRealm(ctx, adminToken.AccessToken)
 	if err != nil {
@@ -694,7 +701,7 @@ func (s *keycloakService) SetupInitialAdmin(ctx context.Context) (*gocloak.JWT, 
 		if !existRealm {
 			createRealm, err := s.CreateRealm(ctx, adminToken.AccessToken)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create realm: %w", err)
+				return "", fmt.Errorf("failed to create realm: %w", err)
 			}
 			log.Print("[DEBUG] createRealm ", createRealm)
 		}
@@ -705,7 +712,7 @@ func (s *keycloakService) SetupInitialAdmin(ctx context.Context) (*gocloak.JWT, 
 		if !existClient {
 			createClient, err := s.CreateClient(ctx, adminToken.AccessToken)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create client: %w", err)
+				return "", fmt.Errorf("failed to create client: %w", err)
 			}
 			log.Print("[DEBUG] createClient ", createClient)
 		}
@@ -719,36 +726,37 @@ func (s *keycloakService) SetupInitialAdmin(ctx context.Context) (*gocloak.JWT, 
 	platformAdminEmail := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_EMAIL")
 
 	if platformAdminID == "" {
-		return nil, fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_ID not set in environment variables")
+		return "", fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_ID not set in environment variables")
 	}
 	if platformAdminPassword == "" {
-		return nil, fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_PASSWORD not set in environment variables")
+		return "", fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_PASSWORD not set in environment variables")
 	}
 	if platformAdminFirstName == "" {
-		return nil, fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_FIRSTNAME not set in environment variables")
+		return "", fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_FIRSTNAME not set in environment variables")
 	}
 	if platformAdminLastName == "" {
-		return nil, fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_LASTNAME not set in environment variables")
+		return "", fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_LASTNAME not set in environment variables")
 	}
 	if platformAdminEmail == "" {
-		return nil, fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_EMAIL not set in environment variables")
+		return "", fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_EMAIL not set in environment variables")
 	}
 
 	log.Printf("[DEBUG] Creating platform admin user: %s", platformAdminID)
 	user := gocloak.User{
-		Username:      &platformAdminID,
-		FirstName:     &platformAdminFirstName,
-		LastName:      &platformAdminLastName,
-		Email:         &platformAdminEmail,
-		Enabled:       gocloak.BoolP(true),
-		EmailVerified: gocloak.BoolP(true),
+		Username:        &platformAdminID,
+		FirstName:       &platformAdminFirstName,
+		LastName:        &platformAdminLastName,
+		Email:           &platformAdminEmail,
+		Enabled:         gocloak.BoolP(true),
+		EmailVerified:   gocloak.BoolP(true),
+		RequiredActions: &[]string{""},
 	}
 	kcUsers, err := config.KC.Client.GetUsers(ctx, adminToken.AccessToken, config.KC.Realm, gocloak.GetUsersParams{
 		Username: gocloak.StringP(platformAdminID),
 		Exact:    gocloak.BoolP(true),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user from keycloak by username %s: %w", platformAdminID, err)
+		return "", fmt.Errorf("failed to get user from keycloak by username %s: %w", platformAdminID, err)
 	}
 
 	kcUser := gocloak.User{}
@@ -766,97 +774,24 @@ func (s *keycloakService) SetupInitialAdmin(ctx context.Context) (*gocloak.JWT, 
 		userID = *kcUser.ID
 		log.Printf("[DEBUG] User exists : %s", userID)
 	} else {
-		userID, err := config.KC.Client.CreateUser(ctx, adminToken.AccessToken, config.KC.Realm, user)
+		kcId, err := config.KC.Client.CreateUser(ctx, adminToken.AccessToken, config.KC.Realm, user)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create user: %w", err)
+			return "", fmt.Errorf("failed to create user: %w", err)
 		}
-		log.Printf("[DEBUG] User created with ID: %s", userID)
+		log.Printf("[DEBUG] User created with ID: %s, kc id: %s", userID, kcId)
+
+		// 5초 대기
+		time.Sleep(5 * time.Second)
+		userID = kcId
 
 		// 비밀번호 설정
 		err = config.KC.Client.SetPassword(ctx, adminToken.AccessToken, userID, config.KC.Realm, platformAdminPassword, false)
 		if err != nil {
-			return nil, fmt.Errorf("failed to set password: %w", err)
+			return "", fmt.Errorf("failed to set password: %w", err)
 		}
 		log.Printf("[DEBUG] Password set successfully")
+
 	}
-
-	// 3. 기본 역할 설정
-	// log.Printf("[DEBUG] Setting default roles")
-
-	// 기본 역할 가져오기
-	// defaultRoles, err := config.KC.Client.GetRealmRoles(ctx, adminToken.AccessToken, config.KC.Realm, gocloak.GetRoleParams{})
-	// if err != nil {
-	// 	log.Printf("[DEBUG] Get Realm roles failed : %v", err)
-	// 	return nil, fmt.Errorf("failed to get default roles: %w", err)
-	// }
-
-	// 기본 역할 할당
-	// var rolesToAssign []gocloak.Role
-	// existPlatformRoles := false
-	// for _, role := range defaultRoles {
-	// 	log.Printf("role %s", *role.Name)
-	// 	if role.Name != nil && (*role.Name == "basic" || *role.Name == "user") {
-	// 		rolesToAssign = append(rolesToAssign, *role)
-	// 	}
-	// }
-
-	// // PREDEFINED_PLATFORM_ROLE에 정의된 역할들이 없으면 생성
-	// predefinedRoles := strings.Split(os.Getenv("PREDEFINED_PLATFORM_ROLE"), ",")
-	// platformRoleExists := false
-	// for _, roleName := range predefinedRoles {
-	// 	roleName = strings.TrimSpace(roleName)
-	// 	if roleName == "" {
-	// 		continue
-	// 	}
-
-	// 	// 역할이 이미 존재하는지 확인
-	// 	roleExists := false
-	// 	for _, role := range defaultRoles {
-	// 		log.Printf("default role: %s, predefined role: %s", *role.Name, roleName)
-	// 		if role.Name != nil && *role.Name == roleName {
-	// 			roleExists = true
-	// 			break
-	// 		}
-	// 	}
-
-	// 	// 역할이 없으면 생성
-	// 	if !roleExists {
-	// 		log.Printf("Creating predefined role: %s", roleName)
-	// 		log.Printf("target realm %s, client %s", config.KC.Realm, config.KC.ClientID)
-	// 		newRole := gocloak.Role{
-	// 			Name:        &roleName,
-	// 			Description: gocloak.StringP("Predefined platform role"),
-	// 		}
-
-	// 		result, err := config.KC.Client.CreateRealmRole(ctx, adminToken.AccessToken, config.KC.Realm, newRole)
-	// 		if err != nil {
-	// 			log.Printf("Failed to create realm role %s, %s: %v", roleName, result, err)
-	// 			continue
-	// 		}
-	// 		// _, err := config.KC.Client.CreateClientRole(ctx, adminToken.AccessToken, config.KC.Realm, config.KC.ClientID, newRole)
-	// 		// if err != nil {
-	// 		// 	log.Printf("Failed to create role %s: %v", roleName, err)
-	// 		// 	continue
-	// 		// }
-
-	// 		// // 생성된 역할을 할당 목록에 추가
-	// 		// log.Println("result : ", result)
-
-	// 		// if *newRole.Name == "platformAdmin" {
-	// 		// 	rolesToAssign = append(rolesToAssign, newRole)
-	// 		// }
-	// 	}
-
-	// 	if roleName == "platformAdmin" {
-	// 		platformRoleExists = true
-	// 		existRole := gocloak.Role{
-	// 			Name:        &roleName,
-	// 			Description: gocloak.StringP("Predefined platform role"),
-	// 		}
-	// 		rolesToAssign = append(rolesToAssign, existRole)
-
-	// 	}
-	// }
 
 	// if !platformRoleExists {
 	// 	log.Printf("[DEBUG] PlatformAdmin role not exists")
@@ -870,7 +805,7 @@ func (s *keycloakService) SetupInitialAdmin(ctx context.Context) (*gocloak.JWT, 
 	// 	log.Printf("[DEBUG] Default roles assigned")
 	// }
 
-	// 4. platformAdmin 역할 할당
+	// 3. platformAdmin 역할 할당. patformAdmin 역할이 없으면 생성
 	log.Printf("[DEBUG] Setting platformAdmin role")
 	platformAdminRoleName := "platformAdmin"
 	platformAdminRole := gocloak.Role{}
@@ -884,18 +819,18 @@ func (s *keycloakService) SetupInitialAdmin(ctx context.Context) (*gocloak.JWT, 
 		result, err := config.KC.Client.CreateRealmRole(ctx, adminToken.AccessToken, config.KC.Realm, newRole)
 		if err != nil {
 			log.Printf("Failed to create realm role %s, %s: %v", platformAdminRoleName, result, err)
-			return nil, fmt.Errorf("failed to create platformAdmin role: %w", err)
+			return "", fmt.Errorf("failed to create platformAdmin role: %w", err)
 		}
 		log.Printf("platformAdminRole created: %v", result)
 
-		// 3초 대기
+		// 5초 대기 : 만들자마자 조회하면 안됨
 		time.Sleep(5 * time.Second)
 
 		// 다시 조회
 		realmRoleResult, err := config.KC.Client.GetRealmRole(ctx, adminToken.AccessToken, config.KC.Realm, platformAdminRoleName)
 		if err != nil {
 			log.Printf("failed to get platformAdmin role again: %v", err)
-			return nil, fmt.Errorf("failed to get platformAdmin role again: %w", err)
+			return userID, fmt.Errorf("failed to get platformAdmin role again: %w", err)
 		}
 		platformAdminRole = *realmRoleResult
 	} else {
@@ -911,11 +846,11 @@ func (s *keycloakService) SetupInitialAdmin(ctx context.Context) (*gocloak.JWT, 
 	err = config.KC.Client.AddRealmRoleToUser(ctx, adminToken.AccessToken, config.KC.Realm, userID, []gocloak.Role{platformAdminRole})
 	if err != nil {
 		log.Printf("failed to assign platformAdmin role: %v", err)
-		return nil, fmt.Errorf("failed to assign platformAdmin role: %w", err)
+		return userID, fmt.Errorf("failed to assign platformAdmin role: %w", err)
 	}
 	log.Printf("[DEBUG] PlatformAdmin role assigned")
 
-	return adminToken, nil
+	return userID, nil
 }
 
 // CheckUserRoles checks and logs all roles assigned to a user
@@ -1270,4 +1205,69 @@ func (s *keycloakService) IssueWorkspaceTicket(ctx context.Context, kcUserId str
 	}
 
 	return ticket, permissions, nil
+}
+
+// SetupPredefinedRoles retrieves all realm roles for a specific realm
+// 특정 Realm의 모든 RealmRole 목록을 조회합니다.
+func (s *keycloakService) SetupPredefinedRoles(ctx context.Context, accessToken string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak client is not initialized")
+	}
+
+	// Get all realm roles
+	realmRoles, err := config.KC.Client.GetRealmRoles(ctx, accessToken, config.KC.Realm, gocloak.GetRoleParams{})
+	if err != nil {
+		log.Printf("[DEBUG] Get Realm roles failed : %v", err)
+		return fmt.Errorf("failed to get realm roles: %w", err)
+	}
+
+	// PREDEFINED_PLATFORM_ROLE에 정의된 역할들이 없으면 생성
+	predefinedRoles := strings.Split(os.Getenv("PREDEFINED_PLATFORM_ROLE"), ",")
+	for _, roleName := range predefinedRoles {
+		roleName = strings.TrimSpace(roleName)
+		if roleName == "" {
+			continue
+		}
+
+		// 역할이 이미 존재하는지 확인
+		roleExists := false
+		for _, role := range realmRoles {
+			//log.Printf("default role: %s, predefined role: %s", *role.Name, roleName)
+			if role.Name != nil && *role.Name == roleName {
+				roleExists = true
+				log.Printf("role: %s exists", roleName)
+				break
+			}
+		}
+
+		// 역할이 없으면 생성
+		if !roleExists {
+			log.Printf("Creating predefined role: %s", roleName)
+			log.Printf("target realm %s, client %s", config.KC.Realm, config.KC.ClientID)
+			newRole := gocloak.Role{
+				Name:        &roleName,
+				Description: gocloak.StringP("Predefined platform role"),
+			}
+
+			result, err := config.KC.Client.CreateRealmRole(ctx, accessToken, config.KC.Realm, newRole)
+			if err != nil {
+				log.Printf("Failed to create realm role %s, %s: %v", roleName, result, err)
+				continue
+			}
+			// _, err := config.KC.Client.CreateClientRole(ctx, adminToken.AccessToken, config.KC.Realm, config.KC.ClientID, newRole)
+			// if err != nil {
+			// 	log.Printf("Failed to create role %s: %v", roleName, err)
+			// 	continue
+			// }
+
+			// // 생성된 역할을 할당 목록에 추가
+			// log.Println("result : ", result)
+
+			// if *newRole.Name == "platformAdmin" {
+			// 	rolesToAssign = append(rolesToAssign, newRole)
+			// }
+		}
+	}
+
+	return nil
 }

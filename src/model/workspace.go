@@ -30,12 +30,17 @@ type WorkspaceWithProjects struct {
 
 // WorkspaceWithUsersAndRoles 워크스페이스와 연관된 사용자 및 역할 정보를 포함하는 구조체
 type WorkspaceWithUsersAndRoles struct {
-	ID          uint                `json:"id"`
-	Name        string              `json:"name"`
-	Description string              `json:"description"`
-	CreatedAt   time.Time           `json:"created_at"`
-	UpdatedAt   time.Time           `json:"updated_at"`
-	Users       []UserWorkspaceRole `json:"users"`
+	ID          uint                `json:"id" gorm:"primaryKey;column:id"`
+	Name        string              `json:"name" gorm:"column:name"`
+	Description string              `json:"description" gorm:"column:description"`
+	CreatedAt   time.Time           `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt   time.Time           `json:"updated_at" gorm:"column:updated_at"`
+	Users       []UserWorkspaceRole `json:"users" gorm:"foreignKey:WorkspaceID;references:ID"`
+}
+
+// TableName WorkspaceWithUsersAndRoles의 테이블 이름을 지정합니다
+func (WorkspaceWithUsersAndRoles) TableName() string {
+	return "mcmp_workspaces"
 }
 
 // UserWorkspace 사용자의 워크스페이스 정보를 담는 구조체

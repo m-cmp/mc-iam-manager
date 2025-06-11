@@ -63,7 +63,7 @@ type UserWorkspaceRole struct {
 	RoleID      uint        `json:"role_id" gorm:"primaryKey;column:role_id"`
 	CreatedAt   time.Time   `json:"created_at" gorm:"column:created_at;autoCreateTime"`
 	User        *User       `json:"user,omitempty" gorm:"foreignKey:UserID"`
-	Workspace   *Workspace  `json:"workspace,omitempty" gorm:"foreignKey:WorkspaceID"`
+	Workspace   *Workspace  `json:"workspace,omitempty" gorm:"foreignKey:WorkspaceID;references:ID"`
 	Role        *RoleMaster `json:"role,omitempty" gorm:"foreignKey:RoleID"`
 }
 

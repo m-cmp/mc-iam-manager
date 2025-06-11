@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // JSON 커스텀 타입 정의
@@ -80,4 +81,13 @@ func (j *JSON) UnmarshalJSON(data []byte) error {
 	}
 	*j = append((*j)[0:0], data...)
 	return nil
+}
+
+// delimiter 뒤의 문자열 추출. 없으면 원본 문자열 반환
+func GetAfterDelimiter(s, delimiter string) string {
+	_, after, found := strings.Cut(s, delimiter) // strings.Cut은 Go 1.18+ 에서 사용 가능합니다.
+	if found {
+		return after
+	}
+	return s // 구분자가 없으면 원본 문자열 반환
 }
