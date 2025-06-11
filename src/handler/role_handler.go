@@ -1234,16 +1234,23 @@ func (h *RoleHandler) AssignPlatformRole(c echo.Context) error {
 	}
 
 	// 이미 할당 되어있는지 확인.
-
-	// DB에 역할 할당
-	if err := h.service.AssignPlatformRole(userID, roleID); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("플랫폼 역할 할당 실패: %v", err)})
-	}
-
-	// keycloak 역할 할당
-	err = h.keycloakService.AssignRealmRoleToUser(c.Request().Context(), user.KcId, req.RoleName)
+	isAssignedPlatformRole, err := h.service.IsAssignedPlatformRole(userID, roleID)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("키클로크 역할 할당 실패: %v", err)})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 할당 확인 실패: %v", err)})
+	}
+	if isAssignedPlatformRole {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "이미 할당된 역할입니다"})
+	} else {
+		// DB에 역할 할당
+		if err := h.service.AssignPlatformRole(userID, roleID); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("플랫폼 역할 할당 실패: %v", err)})
+		}
+
+		// keycloak 역할 할당
+		err = h.keycloakService.AssignRealmRoleToUser(c.Request().Context(), user.KcId, req.RoleName)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("키클로크 역할 할당 실패: %v", err)})
+		}
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "플랫폼 역할이 성공적으로 할당되었습니다"})
