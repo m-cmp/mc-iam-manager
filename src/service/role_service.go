@@ -352,3 +352,14 @@ func (s *RoleService) ListWorkspaceRoles(workspaceID uint) ([]*model.RoleMaster,
 
 	return roles, nil
 }
+
+// IsAssignedPlatformRole 사용자에게 특정 플랫폼 역할이 할당되어 있는지 확인
+func (s *RoleService) IsAssignedPlatformRole(userID uint, roleID uint) (bool, error) {
+	return s.roleRepository.IsAssignedRole(userID, roleID, model.RoleTypePlatform)
+}
+func (s *RoleService) IsAssignedWorkspaceRole(userID uint, roleID uint) (bool, error) {
+	return s.roleRepository.IsAssignedRole(userID, roleID, model.RoleTypeWorkspace)
+}
+func (s *RoleService) IsAssignedRole(userID uint, roleID uint, roleType string) (bool, error) {
+	return s.roleRepository.IsAssignedRole(userID, roleID, roleType)
+}

@@ -342,3 +342,25 @@ func (r *RoleRepository) FindWorkspaceWithUsersRoles(req model.WorkspaceFilterRe
 
 	return userWorkspaceRoles, nil
 }
+
+// IsAssignedPlatformRole 사용자에게 특정 플랫폼 역할이 할당되어 있는지 확인
+func (r *RoleRepository) IsAssignedRole(userID uint, roleID uint, roleType string) (bool, error) {
+	var count int64
+	query := r.db.Model(&model.RoleMaster{}).
+		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
+		Joins("JOIN mcmp_user_role ON mcmp_role_master.id = mcmp_user_role.role_id").
+		Where("mcmp_role_master.id = ? AND mcmp_user_role.user_id = ?", roleID, userID)
+
+	// roleType이 있는 경우에만 조건 추가
+	if roleType != "" {
+		query = query.Where("mcmp_role_sub.role_type = ?", roleType)
+	}
+
+	result := query.Count(&count)
+
+	if result.Error != nil {
+		return false, fmt.Errorf("역할 할당 확인 중 오류 발생: %v", result.Error)
+	}
+
+	return count > 0, nil
+}
