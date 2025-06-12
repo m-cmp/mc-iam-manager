@@ -364,3 +364,37 @@ func (r *RoleRepository) IsAssignedRole(userID uint, roleID uint, roleType strin
 
 	return count > 0, nil
 }
+
+func (r *RoleRepository) IsAssignedPlatformRole(userID uint, roleID uint) (bool, error) {
+	var count int64
+	query := r.db.Model(&model.RoleMaster{}).
+		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
+		Joins("JOIN mcmp_platform_user_roles ON mcmp_role_master.id = mcmp_platform_user_roles.role_id").
+		Where("mcmp_role_master.id = ? AND mcmp_platform_user_roles.user_id = ?", roleID, userID).
+		Where("mcmp_role_sub.role_type = ?", model.RoleTypePlatform)
+
+	result := query.Count(&count)
+
+	if result.Error != nil {
+		return false, fmt.Errorf("P 역할 할당 확인 중 오류 발생: %v", result.Error)
+	}
+
+	return count > 0, nil
+}
+
+func (r *RoleRepository) IsAssignedWorkspaceRole(userID uint, roleID uint) (bool, error) {
+	var count int64
+	query := r.db.Model(&model.RoleMaster{}).
+		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
+		Joins("JOIN mcmp_workspace_user_roles ON mcmp_role_master.id = mcmp_workspace_user_rolses.role_id").
+		Where("mcmp_role_master.id = ? AND mcmp_workspace_user_roless.user_id = ?", roleID, userID).
+		Where("mcmp_role_sub.role_type = ?", model.RoleTypeWorkspace)
+
+	result := query.Count(&count)
+
+	if result.Error != nil {
+		return false, fmt.Errorf("W 역할 할당 확인 중 오류 발생: %v", result.Error)
+	}
+
+	return count > 0, nil
+}

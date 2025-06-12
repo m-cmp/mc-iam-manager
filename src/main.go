@@ -210,8 +210,8 @@ func main() {
 		workspaces.POST("/workspace-ticket", authHandler.WorkspaceTicket) // 1개 워크스페이스에 대한 티켓 설정
 		workspaces.POST("/temporary-credentials", cspCredentialHandler.GetTemporaryCredentials)
 
-		workspaces.POST("/users", workspaceHandler.ListUserWorkspaces)                                                                     //                                                                        // workspace의 사용자 목록 조회
-		workspaces.POST("/users-roles", workspaceHandler.ListWorkspaceUsersAndRoles, middleware.PlatformRoleMiddleware(middleware.Manage)) // workspace와 사용자 및 role 조회
+		workspaces.POST("/users/list", workspaceHandler.ListUserWorkspaces)                                                                     //                                                                        // workspace의 사용자 목록 조회
+		workspaces.POST("/users-roles/list", workspaceHandler.ListWorkspaceUsersAndRoles, middleware.PlatformRoleMiddleware(middleware.Manage)) // workspace와 사용자 및 role 조회
 
 		workspaces.POST("/projects", workspaceHandler.ListWorkspaceProjects)
 		//workspaces.POST("/id/:workspaceId/users", workspaceHandler.ListWorkspace)                                                    // TODO ListAllWorkspaceUsersAndRoles으로 대체 또는 통합 가능하지 않나?
@@ -252,15 +252,15 @@ func main() {
 		//------ 기본은 roles 관리로 되나. role관련은 특정 업무에 맞게 추가 ------//
 
 		// 사용자에게 플랫폼 역할 할당
-		roles.POST("/assign/platform-role", roleHandler.AssignPlatformRole, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.POST("/assign/platform-role", roleHandler.AssignPlatformRole, middleware.PlatformRoleMiddleware(middleware.Write))
 		roles.DELETE("/unassign/platform-role", roleHandler.RemovePlatformRole, middleware.PlatformRoleMiddleware(middleware.Write))
 		// 사용자에게 워크스페이스 역할 할당
-		roles.POST("/assign/workspace-role", roleHandler.AssignWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.POST("/assign/workspace-role", roleHandler.AssignWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
 		roles.DELETE("/unassign/workspace-role", roleHandler.RemoveWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
 
-		roles.POST("/assign/csp-roles", roleHandler.CreateWorkspaceRoleCspRoleMapping)
-		roles.DELETE("/unassign/csp-roles", roleHandler.DeleteWorkspaceRoleCspRoleMapping)
-		roles.GET("/id/:workspaceRoleId/csp-roles", roleHandler.ListWorkspaceRoleCspRoleMappings)
+		roles.POST("/assign/csp-roles", roleHandler.CreateWorkspaceRoleCspRoleMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.DELETE("/unassign/csp-roles", roleHandler.DeleteWorkspaceRoleCspRoleMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.GET("/id/:workspaceRoleId/csp-roles", roleHandler.ListWorkspaceRoleCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Write))
 
 		roles.POST("/menu-roles/list", roleHandler.ListMenuRoles)
 		roles.POST("/menu-roles", roleHandler.CreateMenuRole)
@@ -332,6 +332,7 @@ func main() {
 		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Manage))
 
 		users.POST("/menus-tree/list", menuHandler.ListUserMenuTree)
+		users.POST("/menus/list", menuHandler.ListUserMenu)
 		users.POST("/workspaces/list", userHandler.ListUserWorkspaceAndWorkspaceRoles)
 
 	}
@@ -339,7 +340,7 @@ func main() {
 	// 메뉴 라우트
 	menusMng := api.Group("/menus")
 	{
-		menusMng.POST("/list", menuHandler.ListAllMenusTree)
+		menusMng.POST("/list", menuHandler.ListAllMenus)
 		menusMng.POST("", menuHandler.CreateMenu, middleware.PlatformAdminMiddleware)
 		menusMng.PUT("/id/:menuId", menuHandler.UpdateMenu, middleware.PlatformAdminMiddleware)
 		menusMng.DELETE("/id/:menuId", menuHandler.DeleteMenu, middleware.PlatformAdminMiddleware)

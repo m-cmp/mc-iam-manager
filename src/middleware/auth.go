@@ -36,12 +36,14 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		parts := strings.Split(authHeader, " ")
 		c.Logger().Debug("authHeader: ", authHeader)
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.Logger().Debug("Bearer: ", parts[0])
-			c.Logger().Debug("parts: ", parts[1])
 			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid authorization header format")
 		}
 
 		accessToken := parts[1]
+		if accessToken == "" {
+			return echo.NewHTTPError(http.StatusUnauthorized, "Access token is required")
+		}
+
 		c.Set("access_token", accessToken)
 
 		// 2. 토큰 검증
@@ -85,7 +87,6 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		// 3.2 realm_access.roles == platform role 확인
-		// realm := os.Getenv("KEYCLOAK_REALM")
 		realm := config.KC.Realm
 		if realm == "" {
 			realm = "mcmp-demo" // 기본값 설정
@@ -109,22 +110,6 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 				c.Logger().Debugf("Extracted platform roles from realm_access: %v", roleStrings)
 			}
 		}
-
-		// 3.3 resource_access.roles 확인
-		// if resourceAccess, ok := (*claimsInterface)["resource_access"].(map[string]interface{}); ok {
-		// 	for client, clientAccess := range resourceAccess {
-		// 		if caMap, ok := clientAccess.(map[string]interface{}); ok {
-		// 			if roles, ok := caMap["roles"].([]interface{}); ok {
-		// 				for _, role := range roles {
-		// 					if roleStr, ok := role.(string); ok {
-		// 						roleStrings = append(roleStrings, roleStr)
-		// 					}
-		// 				}
-		// 				c.Logger().Debugf("Extracted platform roles from resource_access.%s: %v", client, roleStrings)
-		// 			}
-		// 		}
-		// 	}
-		// }
 
 		// 중복 제거
 		uniqueRoles := make(map[string]bool)

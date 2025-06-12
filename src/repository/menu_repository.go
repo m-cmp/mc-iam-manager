@@ -40,8 +40,8 @@ func NewMenuRepository(db *gorm.DB) *MenuRepository {
 }
 
 // GetMenus 데이터베이스에서 모든 메뉴 조회
-func (r *MenuRepository) GetMenus() ([]model.Menu, error) {
-	var menus []model.Menu
+func (r *MenuRepository) GetMenus() ([]*model.Menu, error) {
+	var menus []*model.Menu
 	// GORM은 기본적으로 UpdatedAt DESC 정렬을 시도할 수 있으므로 명시적 정렬 추가
 	if err := r.db.Order("priority asc, menu_number asc").Find(&menus).Error; err != nil {
 		return nil, err
