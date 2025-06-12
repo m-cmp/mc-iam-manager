@@ -509,7 +509,7 @@ func (h *RoleHandler) RemoveRole(c echo.Context) error {
 // @Security BearerAuth
 // @Router /roles/menu-roles/list [post]
 func (h *RoleHandler) ListMenuRoles(c echo.Context) error {
-	roleType := "menu"
+	roleType := model.RoleTypePlatform
 
 	roles, err := h.service.ListRoles(roleType)
 	if err != nil {
@@ -553,8 +553,7 @@ func (h *RoleHandler) ListWorkspaceRoles(c echo.Context) error {
 // @Security BearerAuth
 // @Router /roles/csp-roles/list [post]
 func (h *RoleHandler) ListCspRoles(c echo.Context) error {
-	roleType := "csp"
-
+	roleType := model.RoleTypeCSP
 	roles, err := h.service.ListRoles(roleType)
 	if err != nil {
 		log.Printf("역할 목록 조회 실패: %v", err)

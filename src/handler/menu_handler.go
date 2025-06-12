@@ -81,6 +81,43 @@ func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 	return c.JSON(http.StatusOK, menuTree)
 }
 
+func (h *MenuHandler) ListUserMenu(c echo.Context) error {
+	platformRolesIntf := c.Get("platformRoles")
+	if platformRolesIntf == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized: Platform roles not found"})
+	}
+
+	platformRoles, ok := platformRolesIntf.([]string)
+	if !ok {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to process platform roles"})
+	}
+	c.Logger().Debug("GetUserMenuTree: platformRoles %s", platformRoles)
+
+	// Convert platform role strings to uint IDs
+	platformRoleNames := make([]uint, 0, len(platformRoles))
+	for _, roleName := range platformRoles {
+		role, err := h.roleService.GetRoleByName(roleName, model.RoleTypePlatform)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
+		}
+		if role == nil {
+			continue // Skip if role not found
+		}
+		platformRoleNames = append(platformRoleNames, role.ID)
+	}
+
+	// Call the service method with platform role IDs
+	menuList, err := h.menuService.MenuList(c.Request().Context(), platformRoleNames)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": fmt.Sprintf("사용자 메뉴 조회 실패: %v", err),
+		})
+	}
+
+	return c.JSON(http.StatusOK, menuList)
+
+}
+
 // ListAllMenusTree godoc
 // @Summary 모든 메뉴 트리 조회 (관리자용)
 // @Description 모든 메뉴 목록을 트리 구조로 조회합니다. 관리자 권한이 필요합니다.
@@ -93,6 +130,33 @@ func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
 // @Router /menus/list [post]
+func (h *MenuHandler) ListAllMenus(c echo.Context) error {
+
+	// 3. 메뉴 트리 조회
+	menus, err := h.menuService.ListAllMenus()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get menu list")
+	}
+
+	// 메뉴가 없는 경우
+	if len(menus) == 0 {
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"message": "메뉴가 없습니다. 메뉴를 등록하세요.",
+			"menus":   []interface{}{},
+		})
+	}
+
+	// // 4. platformAdmin이 아닌 경우 권한에 따라 메뉴 필터링
+	// if !isPlatformAdmin {
+	// 	// 권한에 따라 메뉴 필터링
+	// 	filteredMenus := h.filterMenusByPermission(menus, userRoles)
+	// 	return c.JSON(http.StatusOK, filteredMenus)
+	// }
+
+	// platformAdmin인 경우 모든 메뉴 반환
+	return c.JSON(http.StatusOK, menus)
+}
+
 func (h *MenuHandler) ListAllMenusTree(c echo.Context) error {
 	// 관리자 전용기능이면 middleware 에서 체크하도록 하자.
 
