@@ -266,3 +266,14 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]interface{}{"rpt": rpt})
 }
+
+// 인증서 전달. 클라이언트에서 인증서를 parsing 해서 사용할 수 있도록 함.
+func (h *AuthHandler) AuthCerts(c echo.Context) error {
+	cert, err := h.keycloakService.GetCerts(c.Request().Context())
+	if err != nil {
+		log.Println(err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, cert)
+}

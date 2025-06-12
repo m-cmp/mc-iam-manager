@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -139,24 +140,31 @@ func main() {
 
 	basePath := "/api"
 
-	// 인증이 필요하지 않은 경로 설정
+	// 인증이 필요없는 경로 목록
 	skipAuthPaths := []string{
 		"/readyz",
 		basePath + "/auth/login",
 		basePath + "/auth/logout",
 		basePath + "/auth/refresh",
+		basePath + "/auth/certs", // 인증서 조회 경로 추가
 		basePath + "/initial-admin",
 	}
 
-	// 인증 미들웨어 설정 (특정 경로 제외)
+	// 인증 미들웨어 설정
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			path := c.Request().URL.Path
+			//c.Logger().Debugf("Checking auth skip for path: %s", path)
+
 			for _, skipPath := range skipAuthPaths {
-				if path == skipPath {
+				// 정확한 경로 일치 또는 path가 skipPath로 끝나는 경우
+				if path == skipPath || strings.HasSuffix(path, skipPath) {
+					//c.Logger().Debugf("Skipping auth for path: %s (matches skipPath: %s)", path, skipPath)
 					return next(c)
 				}
 			}
+
+			//c.Logger().Debugf("Applying auth middleware for path: %s", path)
 			// 인증 미들웨어 적용
 			return middleware.AuthMiddleware(next)(c)
 		}
@@ -173,6 +181,7 @@ func main() {
 		auth.POST("/login", authHandler.Login)
 		auth.POST("/logout", authHandler.Logout)
 		auth.POST("/refresh", authHandler.RefreshToken)
+		auth.GET("/certs", authHandler.AuthCerts)
 	}
 
 	// platform admin 생성. 권한체크 필요한데...

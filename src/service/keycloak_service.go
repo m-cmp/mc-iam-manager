@@ -37,6 +37,7 @@ type KeycloakService interface {
 	ExistClient(ctx context.Context, accessToken string) (bool, error)
 	CheckClient(ctx context.Context) (bool, error)
 	CreateClient(ctx context.Context, accessToken string) (bool, error)
+	GetCerts(ctx context.Context) (*gocloak.CertResponse, error)
 	GetUserIDFromToken(ctx context.Context, token *gocloak.JWT) (string, error)
 	Login(ctx context.Context, username, password string) (*gocloak.JWT, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*gocloak.JWT, error)
@@ -1270,4 +1271,14 @@ func (s *keycloakService) SetupPredefinedRoles(ctx context.Context, accessToken 
 	}
 
 	return nil
+}
+
+func (s *keycloakService) GetCerts(ctx context.Context) (*gocloak.CertResponse, error) {
+
+	cert, err := config.KC.Client.GetCerts(ctx, config.KC.Realm)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return cert, nil
 }
