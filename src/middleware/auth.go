@@ -34,7 +34,10 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		// Bearer 토큰 형식 확인
 		parts := strings.Split(authHeader, " ")
+		c.Logger().Debug("authHeader: ", authHeader)
 		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.Logger().Debug("Bearer: ", parts[0])
+			c.Logger().Debug("parts: ", parts[1])
 			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid authorization header format")
 		}
 
