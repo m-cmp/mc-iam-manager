@@ -94,29 +94,31 @@ func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 // @Security BearerAuth
 // @Router /menus/list [post]
 func (h *MenuHandler) ListAllMenusTree(c echo.Context) error {
-	// 1. 컨텍스트에서 platformRoles 가져오기
-	platformRolesInterface := c.Get("platformRoles")
-	if platformRolesInterface == nil {
-		c.Logger().Debug("GetAllMenusTree: platformRoles not found in context")
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token claims")
-	}
+	// 관리자 전용기능이면 middleware 에서 체크하도록 하자.
 
-	userRoles, ok := platformRolesInterface.([]string)
-	if !ok {
-		c.Logger().Debugf("GetAllMenusTree: platformRoles type assertion failed: %T", platformRolesInterface)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Invalid platform roles format")
-	}
+	// // 1. 컨텍스트에서 platformRoles 가져오기
+	// platformRolesInterface := c.Get("platformRoles")
+	// if platformRolesInterface == nil {
+	// 	c.Logger().Debug("GetAllMenusTree: platformRoles not found in context")
+	// 	return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token claims")
+	// }
 
-	c.Logger().Debugf("GetAllMenusTree: Found platformRoles in context: %v", userRoles)
+	// userRoles, ok := platformRolesInterface.([]string)
+	// if !ok {
+	// 	c.Logger().Debugf("GetAllMenusTree: platformRoles type assertion failed: %T", platformRolesInterface)
+	// 	return echo.NewHTTPError(http.StatusInternalServerError, "Invalid platform roles format")
+	// }
 
-	// 2. platformAdmin 역할 확인
-	isPlatformAdmin := false
-	for _, role := range userRoles {
-		if role == "platformAdmin" {
-			isPlatformAdmin = true
-			break
-		}
-	}
+	// c.Logger().Debugf("GetAllMenusTree: Found platformRoles in context: %v", userRoles)
+
+	// // 2. platformAdmin 역할 확인
+	// isPlatformAdmin := false
+	// for _, role := range userRoles {
+	// 	if role == "platformAdmin" {
+	// 		isPlatformAdmin = true
+	// 		break
+	// 	}
+	// }
 
 	// 3. 메뉴 트리 조회
 	menus, err := h.menuService.GetAllMenusTree()
@@ -127,17 +129,17 @@ func (h *MenuHandler) ListAllMenusTree(c echo.Context) error {
 	// 메뉴가 없는 경우
 	if len(menus) == 0 {
 		return c.JSON(http.StatusOK, map[string]interface{}{
-			"message": "메뉴가 없습니다. /menus/register-from-yaml 엔드포인트를 통해 메뉴를 등록해주세요.",
+			"message": "메뉴가 없습니다. 메뉴를 등록하세요.",
 			"menus":   []interface{}{},
 		})
 	}
 
-	// 4. platformAdmin이 아닌 경우 권한에 따라 메뉴 필터링
-	if !isPlatformAdmin {
-		// 권한에 따라 메뉴 필터링
-		filteredMenus := h.filterMenusByPermission(menus, userRoles)
-		return c.JSON(http.StatusOK, filteredMenus)
-	}
+	// // 4. platformAdmin이 아닌 경우 권한에 따라 메뉴 필터링
+	// if !isPlatformAdmin {
+	// 	// 권한에 따라 메뉴 필터링
+	// 	filteredMenus := h.filterMenusByPermission(menus, userRoles)
+	// 	return c.JSON(http.StatusOK, filteredMenus)
+	// }
 
 	// platformAdmin인 경우 모든 메뉴 반환
 	return c.JSON(http.StatusOK, menus)
