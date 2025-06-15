@@ -267,7 +267,7 @@ func (s *RoleService) RemoveWorkspaceRole(userID, workspaceID, roleID uint) erro
 }
 
 // GetUserWorkspaceRoles 사용자의 워크스페이스 역할 목록 조회
-func (s *RoleService) GetUserWorkspaceRoles(userID, workspaceID uint) ([]model.RoleMaster, error) {
+func (s *RoleService) GetUserWorkspaceRoles(userID, workspaceID uint) ([]model.UserWorkspaceRole, error) {
 	return s.roleRepository.FindUserWorkspaceRoles(userID, workspaceID)
 }
 
