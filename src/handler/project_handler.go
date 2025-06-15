@@ -23,16 +23,18 @@ type ProjectHandler struct {
 	workspaceService *service.WorkspaceService // WorkspaceService 추가
 	userService      *service.UserService
 	permissionRepo   *repository.MciamPermissionRepository
+	mcmpApiService   service.McmpApiService
 	db               *gorm.DB
 }
 
 // NewProjectHandler 새로운 ProjectHandler 인스턴스 생성
-func NewProjectHandler(db *gorm.DB, mcmpApiService service.McmpApiService) *ProjectHandler {
+func NewProjectHandler(db *gorm.DB) *ProjectHandler {
 	return &ProjectHandler{
-		projectService:   service.NewProjectService(db, mcmpApiService),
+		projectService:   service.NewProjectService(db),
 		workspaceService: service.NewWorkspaceService(db), // WorkspaceService 초기화
 		userService:      service.NewUserService(db),
 		permissionRepo:   repository.NewMciamPermissionRepository(db),
+		mcmpApiService:   service.NewMcmpApiService(db),
 		db:               db,
 	}
 }
@@ -48,7 +50,7 @@ func NewProjectHandler(db *gorm.DB, mcmpApiService service.McmpApiService) *Proj
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /admin/createProject [post]
+// @Router /api/projects [post]
 func (h *ProjectHandler) CreateProject(c echo.Context) error {
 	var project model.Project
 	if err := c.Bind(&project); err != nil {
@@ -67,7 +69,7 @@ func (h *ProjectHandler) CreateProject(c echo.Context) error {
 }
 
 // ListProjects godoc
-// @Summary List all projects
+// @Summary List projects
 // @Description Get a list of all projects
 // @Tags projects
 // @Accept json
@@ -75,7 +77,7 @@ func (h *ProjectHandler) CreateProject(c echo.Context) error {
 // @Success 200 {array} model.Project
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /admin/projects [get]
+// @Router /api/projects/list [post]
 func (h *ProjectHandler) ListProjects(c echo.Context) error {
 	projects, err := h.projectService.ListProjects()
 	if err != nil {
@@ -95,7 +97,7 @@ func (h *ProjectHandler) ListProjects(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /admin/projects/{id} [get]
+// @Router /api/projects/id/{projectId} [get]
 func (h *ProjectHandler) GetProjectByID(c echo.Context) error {
 	// Parse DB ID (uint) from path parameter
 	projectIDInt, err := util.StringToUint(c.Param("projectId"))
@@ -114,18 +116,17 @@ func (h *ProjectHandler) GetProjectByID(c echo.Context) error {
 }
 
 // GetProjectByName godoc
-// @Summary 프로젝트 이름으로 조회
-// @Description 특정 프로젝트를 이름으로 조회합니다
+// @Summary Get project by name
+// @Description Get project details by name
 // @Tags projects
 // @Accept json
 // @Produce json
 // @Param name path string true "Project Name"
 // @Success 200 {object} model.Project
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Failure 404 {object} map[string]string "error: Project not found"
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /projects/name/{name} [get]
+// @Router /api/projects/name/{projectName} [get]
 func (h *ProjectHandler) GetProjectByName(c echo.Context) error {
 	name := c.Param("projectName")
 
@@ -152,7 +153,7 @@ func (h *ProjectHandler) GetProjectByName(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /admin/projects/{id} [put]
+// @Router /api/projects/id/{projectId} [put]
 func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 
 	var project model.Project
@@ -197,7 +198,7 @@ func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /admin/projects/{id} [delete]
+// @Router /api/projects/id/{projectId} [delete]
 func (h *ProjectHandler) DeleteProject(c echo.Context) error {
 
 	projectIDInt, err := util.StringToUint(c.Param("projectId"))

@@ -18,7 +18,6 @@ import (
 	"github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/handler"
 	"github.com/m-cmp/mc-iam-manager/middleware"
-	"github.com/m-cmp/mc-iam-manager/service"
 
 	// "github.com/m-cmp/mc-iam-manager/repository" // Removed unused import
 
@@ -110,9 +109,7 @@ func main() {
 	menuHandler := handler.NewMenuHandler(db)
 	workspaceHandler := handler.NewWorkspaceHandler(db)
 
-	// McmpApiService 초기화
-	mcmpApiService := service.NewMcmpApiService(db)
-	projectHandler := handler.NewProjectHandler(db, mcmpApiService)
+	projectHandler := handler.NewProjectHandler(db)
 
 	resourceTypeHandler := handler.NewResourceTypeHandler(db)
 	//cspMappingHandler := handler.NewCspMappingHandler(db)

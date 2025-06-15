@@ -24,13 +24,13 @@ func NewHealthHandler() *HealthHandler {
 }
 
 // CheckHealth godoc
-// @Summary 헬스 체크
-// @Description 서버의 상태를 확인합니다
+// @Summary Health check
+// @Description Check if the service is healthy
 // @Tags health
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]string "message: Service is healthy"
-// @Router /readyz [get]
+// @Success 200 {object} map[string]string
+// @Router /api/health [get]
 func (h *HealthHandler) CheckHealth(c echo.Context) error {
 	status := c.QueryParam("status")
 	if status == "detail" {

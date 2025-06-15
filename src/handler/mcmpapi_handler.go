@@ -411,3 +411,51 @@ func (h *McmpApiHandler) UpdateService(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: API not found"
 // @Security BearerAuth
 // @Router /mcmp-apis/{id} [delete]
+
+// @Summary List services and actions
+// @Description Get a list of all MCMP services and their actions
+// @Tags mcmp-apis
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.McmpService
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/mcmp-apis/list [post]
+
+// @Summary Set active version
+// @Description Set the active version for a service
+// @Tags mcmp-apis
+// @Accept json
+// @Produce json
+// @Param serviceName path string true "Service Name"
+// @Param version path string true "Version"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/mcmp-apis/name/{serviceName}/versions/{version}/activate [put]
+
+// @Summary Make MCMP API call
+// @Description Make a call to MCMP API
+// @Tags mcmp-apis
+// @Accept json
+// @Produce json
+// @Param request body model.McmpApiCallRequest true "API Call Request"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/mcmp-apis/call [post]
+
+// @Summary Update service
+// @Description Update MCMP service information
+// @Tags mcmp-apis
+// @Accept json
+// @Produce json
+// @Param serviceName path string true "Service Name"
+// @Param service body model.McmpService true "Service Info"
+// @Success 200 {object} model.McmpService
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/mcmp-apis/name/{serviceName} [put]

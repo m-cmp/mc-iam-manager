@@ -59,7 +59,7 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 }
 
 // ListUsers godoc
-// @Summary Get all users
+// @Summary List users
 // @Description Get a list of all users
 // @Tags users
 // @Accept json
@@ -67,7 +67,7 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 // @Success 200 {array} model.User
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /users/list [post]
+// @Router /api/users/list [post]
 func (h *UserHandler) ListUsers(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"} // todo : middleware에서 체크되지 않나?
@@ -94,12 +94,12 @@ func (h *UserHandler) ListUsers(c echo.Context) error {
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param userId path string true "User ID"
+// @Param id path string true "User ID"
 // @Success 200 {object} model.User
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /users/id/{userId} [get]
+// @Router /api/users/id/{userId} [get]
 func (h *UserHandler) GetUserByID(c echo.Context) error {
 	// Note: Add role check if needed for this endpoint as well
 	kcId := c.Param("userId")                                             // Parameter is Keycloak ID (string)
@@ -118,12 +118,12 @@ func (h *UserHandler) GetUserByID(c echo.Context) error {
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param username path string true "Username"
+// @Param name path string true "Username"
 // @Success 200 {object} model.User
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /users/name/{username} [get]
+// @Router /api/users/name/{username} [get]
 func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 	// Note: Add role check if needed for this endpoint as well
 	username := c.Param("username")
@@ -145,7 +145,7 @@ func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /users [post]
+// @Router /api/users [post]
 func (h *UserHandler) CreateUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -189,7 +189,7 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /users/id/{id} [put]
+// @Router /api/users/id/{userId} [put]
 func (h *UserHandler) UpdateUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -243,7 +243,7 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /users/id/{id} [delete]
+// @Router /api/users/id/{userId} [delete]
 func (h *UserHandler) DeleteUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -273,17 +273,18 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
 
 // UpdateUserStatus godoc
 // @Summary Update user status
-// @Description Update user status
+// @Description Update user status (active/inactive)
 // @Tags users
 // @Accept json
 // @Produce json
 // @Param id path string true "User ID"
-// @Success 200 {object} map[string]string
+// @Param status body model.UserStatusRequest true "User Status"
+// @Success 200 {object} model.User
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /users/id/{id}/status [post]
+// @Router /api/users/id/{userId}/status [post]
 func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 
 	// --- 역할 검증 (Admin or platformAdmin) ---
