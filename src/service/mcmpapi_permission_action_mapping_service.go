@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/m-cmp/mc-iam-manager/model"
+	"github.com/m-cmp/mc-iam-manager/model/mcmpapi"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gorm.io/gorm"
 )
@@ -26,7 +26,7 @@ func NewMcmpApiPermissionActionMappingService(db *gorm.DB) *McmpApiPermissionAct
 }
 
 // GetPlatformActionsByPermissionID returns all API actions mapped to a specific permission.
-func (s *McmpApiPermissionActionMappingService) GetPlatformActionsByPermissionID(ctx context.Context, permissionID string) ([]model.McmpApiPermissionActionMapping, error) {
+func (s *McmpApiPermissionActionMappingService) GetPlatformActionsByPermissionID(ctx context.Context, permissionID string) ([]mcmpapi.McmpApiPermissionActionMapping, error) {
 	// 플랫폼 권한은 'mc-iam-manager:' 접두사를 가지지 않는 권한
 	if strings.HasPrefix(permissionID, "mc-iam-manager:") {
 		return nil, fmt.Errorf("invalid platform permission ID format")
@@ -35,7 +35,7 @@ func (s *McmpApiPermissionActionMappingService) GetPlatformActionsByPermissionID
 }
 
 // GetWorkspaceActionsByPermissionID returns all API actions mapped to a specific permission.
-func (s *McmpApiPermissionActionMappingService) ListWorkspaceActionsByPermissionID(ctx context.Context, permissionID string) ([]model.McmpApiPermissionActionMapping, error) {
+func (s *McmpApiPermissionActionMappingService) ListWorkspaceActionsByPermissionID(ctx context.Context, permissionID string) ([]mcmpapi.McmpApiPermissionActionMapping, error) {
 	// 워크스페이스 권한은 'mc-iam-manager:' 접두사를 가진 권한
 	if !strings.HasPrefix(permissionID, "mc-iam-manager:") {
 		return nil, fmt.Errorf("invalid workspace permission ID format")
@@ -44,12 +44,12 @@ func (s *McmpApiPermissionActionMappingService) ListWorkspaceActionsByPermission
 }
 
 // GetPermissionsByActionID returns all permissions mapped to a specific API action.
-func (s *McmpApiPermissionActionMappingService) GetPermissionsByActionID(ctx context.Context, actionID int) ([]model.McmpApiPermissionActionMapping, error) {
+func (s *McmpApiPermissionActionMappingService) GetPermissionsByActionID(ctx context.Context, actionID uint) ([]mcmpapi.McmpApiPermissionActionMapping, error) {
 	return s.permissionActionMappingRepo.FindPermissionsByActionID(ctx, actionID)
 }
 
 // CreateMapping creates a new permission-action mapping.
-func (s *McmpApiPermissionActionMappingService) CreateMapping(ctx context.Context, permissionID string, actionID int, actionName string) error {
+func (s *McmpApiPermissionActionMappingService) CreateMapping(ctx context.Context, permissionID string, actionID uint, actionName string) error {
 	// 매핑 존재 여부 확인
 	exists, err := s.permissionActionMappingRepo.CheckMappingExists(ctx, permissionID, actionID)
 	if err != nil {
@@ -60,7 +60,7 @@ func (s *McmpApiPermissionActionMappingService) CreateMapping(ctx context.Contex
 	}
 
 	// 매핑 생성
-	mapping := &model.McmpApiPermissionActionMapping{
+	mapping := &mcmpapi.McmpApiPermissionActionMapping{
 		PermissionID: permissionID,
 		ActionID:     actionID,
 		ActionName:   actionName,
@@ -69,7 +69,7 @@ func (s *McmpApiPermissionActionMappingService) CreateMapping(ctx context.Contex
 }
 
 // DeleteMapping deletes a permission-action mapping.
-func (s *McmpApiPermissionActionMappingService) DeleteMapping(ctx context.Context, permissionID string, actionID int) error {
+func (s *McmpApiPermissionActionMappingService) DeleteMapping(ctx context.Context, permissionID string, actionID uint) error {
 	// 매핑 존재 여부 확인
 	exists, err := s.permissionActionMappingRepo.CheckMappingExists(ctx, permissionID, actionID)
 	if err != nil {
@@ -83,12 +83,12 @@ func (s *McmpApiPermissionActionMappingService) DeleteMapping(ctx context.Contex
 }
 
 // CheckPermissionForAction checks if a permission has access to a specific API action.
-func (s *McmpApiPermissionActionMappingService) CheckPermissionForAction(ctx context.Context, permissionID string, actionID int) (bool, error) {
+func (s *McmpApiPermissionActionMappingService) CheckPermissionForAction(ctx context.Context, permissionID string, actionID uint) (bool, error) {
 	return s.permissionActionMappingRepo.CheckMappingExists(ctx, permissionID, actionID)
 }
 
 // UpdateMapping updates an existing permission-action mapping.
-func (s *McmpApiPermissionActionMappingService) UpdateMapping(ctx context.Context, permissionID string, actionID int, actionName string) error {
+func (s *McmpApiPermissionActionMappingService) UpdateMapping(ctx context.Context, permissionID string, actionID uint, actionName string) error {
 	// 매핑 존재 여부 확인
 	exists, err := s.permissionActionMappingRepo.CheckMappingExists(ctx, permissionID, actionID)
 	if err != nil {
@@ -99,7 +99,7 @@ func (s *McmpApiPermissionActionMappingService) UpdateMapping(ctx context.Contex
 	}
 
 	// 매핑 업데이트
-	mapping := &model.McmpApiPermissionActionMapping{
+	mapping := &mcmpapi.McmpApiPermissionActionMapping{
 		PermissionID: permissionID,
 		ActionID:     actionID,
 		ActionName:   actionName,

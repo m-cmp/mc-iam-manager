@@ -51,8 +51,10 @@ type UserHandler struct {
 
 func NewUserHandler(db *gorm.DB) *UserHandler {
 	userService := service.NewUserService(db)
+	roleService := service.NewRoleService(db)
 	return &UserHandler{
 		userService: userService,
+		roleService: roleService,
 	}
 }
 
@@ -400,27 +402,31 @@ func (h *UserHandler) ListUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Retrieved invalid local user database ID (0)"})
 	}
 
-	workspaceUserRole := model.WorkspaceWithUsersAndRolesRequest{}
-	if err := c.Bind(&workspaceUserRole); err != nil {
+	req := model.WorkspaceWithUsersAndRolesRequest{}
+	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
-	workspaceIDInt, err := util.StringToUint(workspaceUserRole.WorkspaceID)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 user ID 형식입니다"})
+	var workspaceID uint
+	if req.WorkspaceID != "" {
+		workspaceID, err = util.StringToUint(req.WorkspaceID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 workspace ID 형식입니다"})
+		}
 	}
 
-	// 4. Call the service function with the local DB User ID
-	workspaceRoles, err := h.roleService.GetUserWorkspaceRoles(localUserID, workspaceIDInt) // Correct service method name
+	// Get user's workspace roles
+	var workspaceRoles []model.RoleMaster
+	if workspaceID > 0 {
+		// Get roles for specific workspace
+		workspaceRoles, err = h.roleService.GetUserWorkspaceRoles(localUserID, workspaceID)
+	} else {
+		// Get roles for all workspaces
+		workspaceRoles, err = h.roleService.GetUserWorkspaceRoles(localUserID, 0)
+	}
 	if err != nil {
-		fmt.Printf("[ERROR] GetUserWorkspaceAndWorkspaceRoles: Error from service: %v\n", err) // Updated log prefix
-		// Handle specific errors like UserNotFound if necessary, though GetUserIDByKcID should prevent this
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "워크스페이스 및 역할 정보를 가져오는데 실패했습니다"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
 	}
 
-	// Return the result
-	if workspaceRoles == nil {
-		workspaceRoles = []model.RoleMaster{} // Return empty array instead of null
-	}
 	return c.JSON(http.StatusOK, workspaceRoles)
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/m-cmp/mc-iam-manager/model"
+	"github.com/m-cmp/mc-iam-manager/model/mcmpapi"
 	"gorm.io/gorm"
 )
 
@@ -20,8 +20,8 @@ func NewMcmpApiPermissionActionMappingRepository(db *gorm.DB) *McmpApiPermission
 }
 
 // GetActionsByPermissionID 권한 ID에 해당하는 액션 목록 조회
-func (r *McmpApiPermissionActionMappingRepository) FindActionsByPermissionID(ctx context.Context, permissionID string) ([]model.McmpApiPermissionActionMapping, error) {
-	var actions []model.McmpApiPermissionActionMapping
+func (r *McmpApiPermissionActionMappingRepository) FindActionsByPermissionID(ctx context.Context, permissionID string) ([]mcmpapi.McmpApiPermissionActionMapping, error) {
+	var actions []mcmpapi.McmpApiPermissionActionMapping
 	query := r.db.Where("permission_id = ?", permissionID).Find(&actions)
 
 	if err := query.Error; err != nil {
@@ -39,8 +39,8 @@ func (r *McmpApiPermissionActionMappingRepository) FindActionsByPermissionID(ctx
 }
 
 // GetPermissionsByActionID 액션 ID에 해당하는 권한 목록 조회
-func (r *McmpApiPermissionActionMappingRepository) FindPermissionsByActionID(ctx context.Context, actionID int) ([]model.McmpApiPermissionActionMapping, error) {
-	var permissions []model.McmpApiPermissionActionMapping
+func (r *McmpApiPermissionActionMappingRepository) FindPermissionsByActionID(ctx context.Context, actionID uint) ([]mcmpapi.McmpApiPermissionActionMapping, error) {
+	var permissions []mcmpapi.McmpApiPermissionActionMapping
 	query := r.db.Where("action_id = ?", actionID).Find(&permissions)
 
 	if err := query.Error; err != nil {
@@ -58,9 +58,9 @@ func (r *McmpApiPermissionActionMappingRepository) FindPermissionsByActionID(ctx
 }
 
 // CheckMappingExists 매핑 존재 여부 확인
-func (r *McmpApiPermissionActionMappingRepository) CheckMappingExists(ctx context.Context, permissionID string, actionID int) (bool, error) {
+func (r *McmpApiPermissionActionMappingRepository) CheckMappingExists(ctx context.Context, permissionID string, actionID uint) (bool, error) {
 	var count int64
-	query := r.db.Model(&model.McmpApiPermissionActionMapping{}).
+	query := r.db.Model(&mcmpapi.McmpApiPermissionActionMapping{}).
 		Where("permission_id = ? AND action_id = ?", permissionID, actionID).
 		Count(&count)
 
@@ -79,7 +79,7 @@ func (r *McmpApiPermissionActionMappingRepository) CheckMappingExists(ctx contex
 }
 
 // CreateMapping 매핑 생성
-func (r *McmpApiPermissionActionMappingRepository) CreateMapping(ctx context.Context, mapping *model.McmpApiPermissionActionMapping) error {
+func (r *McmpApiPermissionActionMappingRepository) CreateMapping(ctx context.Context, mapping *mcmpapi.McmpApiPermissionActionMapping) error {
 	query := r.db.Create(mapping)
 
 	if err := query.Error; err != nil {
@@ -97,9 +97,9 @@ func (r *McmpApiPermissionActionMappingRepository) CreateMapping(ctx context.Con
 }
 
 // DeleteMapping 매핑 삭제
-func (r *McmpApiPermissionActionMappingRepository) DeleteMapping(ctx context.Context, permissionID string, actionID int) error {
+func (r *McmpApiPermissionActionMappingRepository) DeleteMapping(ctx context.Context, permissionID string, actionID uint) error {
 	query := r.db.Where("permission_id = ? AND action_id = ?", permissionID, actionID).
-		Delete(&model.McmpApiPermissionActionMapping{})
+		Delete(&mcmpapi.McmpApiPermissionActionMapping{})
 
 	if err := query.Error; err != nil {
 		return fmt.Errorf("failed to delete mapping: %w", err)
@@ -116,8 +116,8 @@ func (r *McmpApiPermissionActionMappingRepository) DeleteMapping(ctx context.Con
 }
 
 // UpdateMapping 매핑 수정
-func (r *McmpApiPermissionActionMappingRepository) UpdateMapping(ctx context.Context, mapping *model.McmpApiPermissionActionMapping) error {
-	query := r.db.Model(&model.McmpApiPermissionActionMapping{}).
+func (r *McmpApiPermissionActionMappingRepository) UpdateMapping(ctx context.Context, mapping *mcmpapi.McmpApiPermissionActionMapping) error {
+	query := r.db.Model(&mcmpapi.McmpApiPermissionActionMapping{}).
 		Where("permission_id = ? AND action_id = ?", mapping.PermissionID, mapping.ActionID).
 		Update("action_name", mapping.ActionName)
 
