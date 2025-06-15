@@ -417,14 +417,9 @@ func (h *UserHandler) ListUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
 	}
 
 	// Get user's workspace roles
-	var workspaceRoles []model.RoleMaster
-	if workspaceID > 0 {
-		// Get roles for specific workspace
-		workspaceRoles, err = h.roleService.GetUserWorkspaceRoles(localUserID, workspaceID)
-	} else {
-		// Get roles for all workspaces
-		workspaceRoles, err = h.roleService.GetUserWorkspaceRoles(localUserID, 0)
-	}
+	var workspaceRoles []model.UserWorkspaceRole
+	workspaceRoles, err = h.roleService.GetUserWorkspaceRoles(localUserID, workspaceID)
+
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
 	}
