@@ -2,10 +2,10 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/service"
+	"github.com/m-cmp/mc-iam-manager/util"
 	"gorm.io/gorm"
 )
 
@@ -100,7 +100,7 @@ func (h *McmpApiPermissionActionMappingHandler) ListPermissionsByActionID(c echo
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "action_id is required"})
 	}
 
-	actionID, err := strconv.Atoi(actionIDStr)
+	actionID, err := util.StringToUint(actionIDStr)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid action_id"})
 	}
@@ -125,7 +125,7 @@ func (h *McmpApiPermissionActionMappingHandler) ListPermissionsByActionID(c echo
 func (h *McmpApiPermissionActionMappingHandler) CreateMcmpApiPermissionActionMapping(c echo.Context) error {
 	var request struct {
 		PermissionID string `json:"permission_id"`
-		ActionID     int    `json:"action_id"`
+		ActionID     uint   `json:"action_id"`
 		ActionName   string `json:"action_name"`
 	}
 
@@ -163,7 +163,7 @@ func (h *McmpApiPermissionActionMappingHandler) DeleteMapping(c echo.Context) er
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "permission_id and action_id are required"})
 	}
 
-	actionID, err := strconv.Atoi(actionIDStr)
+	actionID, err := util.StringToUint(actionIDStr)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid action_id"})
 	}
@@ -195,7 +195,7 @@ func (h *McmpApiPermissionActionMappingHandler) UpdateMapping(c echo.Context) er
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "permission_id and action_id are required"})
 	}
 
-	actionID, err := strconv.Atoi(actionIDStr)
+	actionID, err := util.StringToUint(actionIDStr)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid action_id"})
 	}
@@ -226,7 +226,7 @@ func (h *McmpApiPermissionActionMappingHandler) UpdateMapping(c echo.Context) er
 // @Tags mcmp-api-permission-action-mappings
 // @Accept json
 // @Produce json
-// @Success 200 {array} model.MCMPAPIPermissionActionMapping
+// @Success 200 {array} mcmpapi.MCMPAPIPermissionActionMapping
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
@@ -239,7 +239,7 @@ func (h *McmpApiPermissionActionMappingHandler) UpdateMapping(c echo.Context) er
 // @Accept json
 // @Produce json
 // @Param id path string true "Mapping ID"
-// @Success 200 {object} model.MCMPAPIPermissionActionMapping
+// @Success 200 {object} mcmpapi.MCMPAPIPermissionActionMapping
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Mapping not found"
@@ -253,8 +253,8 @@ func (h *McmpApiPermissionActionMappingHandler) UpdateMapping(c echo.Context) er
 // @Accept json
 // @Produce json
 // @Param id path string true "Mapping ID"
-// @Param mapping body model.MCMPAPIPermissionActionMapping true "Mapping Info"
-// @Success 200 {object} model.MCMPAPIPermissionActionMapping
+// @Param mapping body mcmpapi.MCMPAPIPermissionActionMapping true "Mapping Info"
+// @Success 200 {object} mcmpapi.MCMPAPIPermissionActionMapping
 // @Failure 400 {object} map[string]string "error: Invalid request"
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"

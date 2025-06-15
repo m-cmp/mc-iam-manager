@@ -369,8 +369,8 @@ func (r *RoleRepository) IsAssignedPlatformRole(userID uint, roleID uint) (bool,
 	var count int64
 	query := r.db.Model(&model.RoleMaster{}).
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Joins("JOIN mcmp_platform_user_roles ON mcmp_role_master.id = mcmp_platform_user_roles.role_id").
-		Where("mcmp_role_master.id = ? AND mcmp_platform_user_roles.user_id = ?", roleID, userID).
+		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_master.id = mcmp_user_platform_roles.role_id").
+		Where("mcmp_role_master.id = ? AND mcmp_user_platform_roles.user_id = ?", roleID, userID).
 		Where("mcmp_role_sub.role_type = ?", model.RoleTypePlatform)
 
 	result := query.Count(&count)
