@@ -46,15 +46,15 @@ func NewWorkspaceHandler(db *gorm.DB) *WorkspaceHandler {
 // 워크스페이스 관리 기능들을 정의함.
 
 // ListWorkspaces godoc
-// @Summary List all workspaces
-// @Description List a list of all workspaces
+// @Summary List workspaces
+// @Description Get a list of all workspaces
 // @Tags workspaces
 // @Accept json
 // @Produce json
 // @Success 200 {array} model.Workspace
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /workspaces/list [post]
+// @Router /api/workspaces/list [post]
 func (h *WorkspaceHandler) ListWorkspaces(c echo.Context) error {
 	// // --- Permission Check ---
 	// userID, platformRoles, err := getUserDbIdAndPlatformRoles(c.Request().Context(), c, h.userService) // Pass context
@@ -118,7 +118,7 @@ func (h *WorkspaceHandler) ListWorkspaces(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /workspaces/{id} [get]
+// @Router /api/workspaces/id/{workspaceId} [get]
 func (h *WorkspaceHandler) GetWorkspaceByID(c echo.Context) error {
 
 	workspaceIDInt, err := util.StringToUint(c.Param("workspaceId"))
@@ -147,7 +147,7 @@ func (h *WorkspaceHandler) GetWorkspaceByID(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /workspaces [post]
+// @Router /api/workspaces [post]
 func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 	var workspace model.Workspace
 	if err := c.Bind(&workspace); err != nil {
@@ -178,7 +178,7 @@ func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /workspaces/{id} [put]
+// @Router /api/workspaces/id/{workspaceId} [put]
 func (h *WorkspaceHandler) UpdateWorkspace(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -214,7 +214,7 @@ func (h *WorkspaceHandler) UpdateWorkspace(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /workspaces/{id} [delete]
+// @Router /api/workspaces/id/{workspaceId} [delete]
 func (h *WorkspaceHandler) DeleteWorkspace(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)

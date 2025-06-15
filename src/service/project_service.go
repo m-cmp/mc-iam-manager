@@ -27,12 +27,11 @@ type ProjectService struct {
 }
 
 // NewProjectService 새 ProjectService 인스턴스 생성
-func NewProjectService(db *gorm.DB, mcmpApiService McmpApiService) *ProjectService {
+func NewProjectService(db *gorm.DB) *ProjectService {
 	return &ProjectService{
-		projectRepo:    repository.NewProjectRepository(db),
-		workspaceRepo:  repository.NewWorkspaceRepository(db),
-		mcmpApiService: mcmpApiService,
-		db:             db,
+		projectRepo:   repository.NewProjectRepository(db),
+		workspaceRepo: repository.NewWorkspaceRepository(db),
+		db:            db,
 	}
 }
 

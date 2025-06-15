@@ -45,21 +45,16 @@ func NewAuthHandler(db *gorm.DB) *AuthHandler {
 }
 
 // Login godoc
-// @Summary 사용자 로그인
-// @Description 사용자 인증 및 JWT 토큰 발급 (Keycloak 연동)
+// @Summary Login
+// @Description Authenticate user and get token
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param credentials body idp.UserLogin true "사용자 로그인 정보 (ID, Password)"
-// @Success 200 {object} string "JWT 토큰"
-// @Failure 400 {object} map[string]string "error: 잘못된 요청 형식입니다"
-// @Failure 400 {object} map[string]string "error: 사용자 ID와 비밀번호를 입력해주세요"
-// @Failure 401 {object} map[string]string "error: Keycloak 인증 실패"
-// @Failure 403 {object} map[string]string "error: 계정이 비활성화되었거나 승인 대기 중입니다"
-// @Failure 403 {object} map[string]string "error: Keycloak 사용자 정보를 찾을 수 없습니다 (계정 동기화 문제 가능성)"
-// @Failure 500 {object} map[string]string "error: 토큰에서 사용자 ID 추출 실패"
-// @Failure 500 {object} map[string]string "error: Keycloak 사용자 정보 조회 실패"
-// @Router /auth/login [post]
+// @Param credentials body model.LoginRequest true "Login Credentials"
+// @Success 200 {object} model.LoginResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Router /api/auth/login [post]
 func (h *AuthHandler) Login(c echo.Context) error {
 	var userLogin idp.UserLogin
 	if err := c.Bind(&userLogin); err != nil {
@@ -145,31 +140,30 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // }
 
 // Logout godoc
-// @Summary 사용자 로그아웃
-// @Description 사용자 로그아웃 처리
+// @Summary Logout
+// @Description Logout user and invalidate token
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]string "message: Successfully logged out"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Security BearerAuth
-// @Router /auth/logout [post]
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Router /api/auth/logout [post]
 func (h *AuthHandler) Logout(c echo.Context) error {
 	// Keycloak에서는 클라이언트 측에서 토큰을 삭제하면 됩니다
 	return c.JSON(http.StatusOK, map[string]string{"message": "로그아웃되었습니다"})
 }
 
 // RefreshToken godoc
-// @Summary Access 토큰 갱신
-// @Description Refresh 토큰을 사용하여 새로운 Access 토큰을 발급합니다.
+// @Summary Refresh token
+// @Description Get new access token using refresh token
 // @Tags auth
-// @Accept application/x-www-form-urlencoded
+// @Accept json
 // @Produce json
-// @Param refresh_token formData string true "갱신할 Refresh 토큰"
-// @Success 200 {object} string "새로운 Access 토큰"
-// @Failure 400 {object} map[string]string "error: 리프레시 토큰이 필요합니다"
-// @Failure 401 {object} map[string]string "error: 토큰 갱신 실패"
-// @Router /auth/refresh [post]
+// @Param refresh body model.RefreshTokenRequest true "Refresh Token"
+// @Success 200 {object} model.LoginResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Router /api/auth/refresh [post]
 func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	refreshToken := c.FormValue("refresh_token")
 	if refreshToken == "" {

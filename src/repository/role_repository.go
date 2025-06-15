@@ -141,11 +141,16 @@ func (r *RoleRepository) RemoveWorkspaceRole(userID, workspaceID, roleID uint) e
 // GetUserWorkspaceRoles 사용자의 워크스페이스 역할 목록 조회
 func (r *RoleRepository) FindUserWorkspaceRoles(userID, workspaceID uint) ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
-	err := r.db.
+	query := r.db.
 		Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_master.id = mcmp_user_workspace_roles.role_id").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ? AND mcmp_role_sub.role_type = ?", userID, workspaceID, model.RoleTypeWorkspace).
-		Find(&roles).Error
+		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, model.RoleTypeWorkspace)
+
+	if workspaceID != 0 {
+		query = query.Where("mcmp_user_workspace_roles.workspace_id = ?", workspaceID)
+	}
+
+	err := query.Find(&roles).Error
 	if err != nil {
 		return nil, err
 	}

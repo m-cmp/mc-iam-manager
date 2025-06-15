@@ -41,7 +41,7 @@ func NewRoleHandler(db *gorm.DB) *RoleHandler {
 // @Success 200 {array} model.RoleMaster
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/list [post]
+// @Router /api/roles/list [post]
 func (h *RoleHandler) ListRoles(c echo.Context) error {
 	roleType := c.QueryParam("roleType")
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
@@ -66,7 +66,7 @@ func (h *RoleHandler) ListRoles(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles [post]
+// @Router /api/roles [post]
 func (h *RoleHandler) CreateRole(c echo.Context) error {
 	var req model.RoleMasterSubRequest
 	if err := c.Bind(&req); err != nil {
@@ -114,7 +114,7 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/id/{roleId} [get]
+// @Router /api/roles/id/{roleId} [get]
 func (h *RoleHandler) GetRoleByRoleID(c echo.Context) error {
 	roleType := c.QueryParam("roleType")
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
@@ -152,7 +152,7 @@ func (h *RoleHandler) GetRoleByRoleID(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/name/{roleName} [get]
+// @Router /api/roles/name/{roleName} [get]
 func (h *RoleHandler) GetRoleByRoleName(c echo.Context) error {
 	roleType := c.QueryParam("roleType")
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
@@ -185,7 +185,7 @@ func (h *RoleHandler) GetRoleByRoleName(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/id/{roleId} [put]
+// @Router /api/roles/id/{roleId} [put]
 func (h *RoleHandler) UpdateRole(c echo.Context) error {
 	id, err := strconv.ParseUint(c.Param("roleId"), 10, 32)
 	if err != nil {
@@ -234,7 +234,7 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/id/{roleId} [delete]
+// @Router /api/roles/id/{roleId} [delete]
 func (h *RoleHandler) DeleteRole(c echo.Context) error {
 	roleIdInt, err := util.StringToUint(c.Param("roleId"))
 	if err != nil {
@@ -286,7 +286,7 @@ func (h *RoleHandler) DeleteRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/id/{roleId}/assign [post]
+// @Router /api/roles/id/{roleId}/assign [post]
 func (h *RoleHandler) AssignRole(c echo.Context) error {
 	var req model.AssignRoleRequest
 	if err := c.Bind(&req); err != nil {
@@ -412,7 +412,7 @@ func (h *RoleHandler) AssignRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/id/{roleId}/unassign [post]
+// @Router /api/roles/id/{roleId}/unassign [post]
 func (h *RoleHandler) RemoveRole(c echo.Context) error {
 	var req model.AssignRoleRequest
 	if err := c.Bind(&req); err != nil {
@@ -507,7 +507,7 @@ func (h *RoleHandler) RemoveRole(c echo.Context) error {
 // @Success 200 {array} model.RoleMaster
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/menu-roles/list [post]
+// @Router /api/roles/menu-roles/list [post]
 func (h *RoleHandler) ListMenuRoles(c echo.Context) error {
 	roleType := model.RoleTypePlatform
 
@@ -529,7 +529,7 @@ func (h *RoleHandler) ListMenuRoles(c echo.Context) error {
 // @Success 200 {array} model.RoleMaster
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/workspace-roles/list [post]
+// @Router /api/roles/workspace-roles/list [post]
 func (h *RoleHandler) ListWorkspaceRoles(c echo.Context) error {
 	roleType := model.RoleTypeWorkspace
 
@@ -551,7 +551,7 @@ func (h *RoleHandler) ListWorkspaceRoles(c echo.Context) error {
 // @Success 200 {array} model.RoleMaster
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/csp-roles/list [post]
+// @Router /api/roles/csp-roles/list [post]
 func (h *RoleHandler) ListCspRoles(c echo.Context) error {
 	roleType := model.RoleTypeCSP
 	roles, err := h.service.ListRoles(roleType)
@@ -574,7 +574,7 @@ func (h *RoleHandler) ListCspRoles(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/menu-roles [post]
+// @Router /api/roles/menu-roles [post]
 func (h *RoleHandler) CreateMenuRole(c echo.Context) error {
 	var req model.RoleMasterSubRequest
 	if err := c.Bind(&req); err != nil {
@@ -627,7 +627,7 @@ func (h *RoleHandler) CreateMenuRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/workspace-roles [post]
+// @Router /api/roles/workspace-roles [post]
 func (h *RoleHandler) CreateWorkspaceRole(c echo.Context) error {
 	var req model.RoleMasterSubRequest
 	if err := c.Bind(&req); err != nil {
@@ -681,7 +681,7 @@ func (h *RoleHandler) CreateWorkspaceRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/csp-roles [post]
+// @Router /api/roles/csp-roles [post]
 func (h *RoleHandler) CreateCspRole(c echo.Context) error {
 	var req struct {
 		Name        string   `json:"name" validate:"required"`
@@ -731,7 +731,7 @@ func (h *RoleHandler) CreateCspRole(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/menu-roles/id/{roleId} [get]
+// @Router /api/roles/menu-roles/id/{roleId} [get]
 func (h *RoleHandler) GetMenuRoleByID(c echo.Context) error {
 	roleType := "menu"
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
@@ -769,7 +769,7 @@ func (h *RoleHandler) GetMenuRoleByID(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/menu-roles/name/{roleName} [get]
+// @Router /api/roles/menu-roles/name/{roleName} [get]
 func (h *RoleHandler) GetMenuRoleByName(c echo.Context) error {
 	roleType := "menu"
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
@@ -801,7 +801,7 @@ func (h *RoleHandler) GetMenuRoleByName(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/workspace-roles/id/{roleId} [get]
+// @Router /api/roles/workspace-roles/id/{roleId} [get]
 func (h *RoleHandler) GetWorkspaceRoleByID(c echo.Context) error {
 	roleType := model.RoleTypeWorkspace
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
@@ -839,7 +839,7 @@ func (h *RoleHandler) GetWorkspaceRoleByID(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/workspace-roles/name/{roleName} [get]
+// @Router /api/roles/workspace-roles/name/{roleName} [get]
 func (h *RoleHandler) GetWorkspaceRoleByName(c echo.Context) error {
 	roleType := model.RoleTypeWorkspace
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
@@ -871,7 +871,7 @@ func (h *RoleHandler) GetWorkspaceRoleByName(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/csp-roles/id/{roleId} [get]
+// @Router /api/roles/csp-roles/id/{roleId} [get]
 func (h *RoleHandler) GetCspRoleByID(c echo.Context) error {
 	roleType := "csp"
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
@@ -909,7 +909,7 @@ func (h *RoleHandler) GetCspRoleByID(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/csp-roles/name/{roleName} [get]
+// @Router /api/roles/csp-roles/name/{roleName} [get]
 func (h *RoleHandler) GetCspRoleByName(c echo.Context) error {
 	roleType := "csp"
 	log.Printf("csp 역할 목록 조회 요청 - 타입: %s", roleType)
@@ -943,7 +943,7 @@ func (h *RoleHandler) GetCspRoleByName(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/csp-roles/{roleId} [put]
+// @Router /api/roles/csp-roles/{roleId} [put]
 func (h *RoleHandler) UpdateCspRole(c echo.Context) error {
 	roleType := "csp"
 
@@ -995,7 +995,7 @@ func (h *RoleHandler) UpdateCspRole(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/menu-roles/{roleId} [delete]
+// @Router /api/roles/menu-roles/{roleId} [delete]
 func (h *RoleHandler) DeleteMenuRole(c echo.Context) error {
 	roleType := "menu"
 
@@ -1050,7 +1050,7 @@ func (h *RoleHandler) DeleteMenuRole(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/workspace-roles/{roleId} [delete]
+// @Router /api/roles/workspace-roles/{roleId} [delete]
 func (h *RoleHandler) DeleteWorkspaceRole(c echo.Context) error {
 	roleType := model.RoleTypeWorkspace
 
@@ -1105,7 +1105,7 @@ func (h *RoleHandler) DeleteWorkspaceRole(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/csp-roles/{roleId} [delete]
+// @Router /api/roles/csp-roles/{roleId} [delete]
 func (h *RoleHandler) DeleteCspRole(c echo.Context) error {
 	roleType := "csp"
 
@@ -1161,7 +1161,7 @@ func (h *RoleHandler) DeleteCspRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/users/{userId}/workspaces/{workspaceId} [get]
+// @Router /api/roles/users/{userId}/workspaces/{workspaceId} [get]
 func (h *RoleHandler) GetUserWorkspaceRoles(c echo.Context) error {
 	log.Printf("GetUserWorkspaceRoles : %v", c.Param("userId"))
 	log.Printf("GetUserWorkspaceRoles : %v", c.Param("workspaceId"))
@@ -1193,7 +1193,7 @@ func (h *RoleHandler) GetUserWorkspaceRoles(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/assign/platform-role [post]
+// @Router /api/roles/assign/platform-role [post]
 func (h *RoleHandler) AssignPlatformRole(c echo.Context) error {
 	var req model.AssignRoleRequest
 	if err := c.Bind(&req); err != nil {
@@ -1265,7 +1265,7 @@ func (h *RoleHandler) AssignPlatformRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/unassign/platform-role [delete]
+// @Router /api/roles/unassign/platform-role [delete]
 func (h *RoleHandler) RemovePlatformRole(c echo.Context) error {
 	var req model.AssignRoleRequest
 	if err := c.Bind(&req); err != nil {
@@ -1337,7 +1337,7 @@ func (h *RoleHandler) RemovePlatformRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/assign/workspace-role [post]
+// @Router /api/roles/assign/workspace-role [post]
 func (h *RoleHandler) AssignWorkspaceRole(c echo.Context) error {
 	roleType := model.RoleTypeWorkspace
 	var req model.AssignWorkspaceRoleRequest
@@ -1426,7 +1426,7 @@ func (h *RoleHandler) AssignWorkspaceRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/unassign/workspace-role [delete]
+// @Router /api/roles/unassign/workspace-role [delete]
 func (h *RoleHandler) RemoveWorkspaceRole(c echo.Context) error {
 	roleType := model.RoleTypeWorkspace
 	var req model.RemoveWorkspaceRoleRequest
@@ -1515,7 +1515,7 @@ func (h *RoleHandler) RemoveWorkspaceRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/assign/csp-roles [post]
+// @Router /api/roles/assign/csp-roles [post]
 func (h *RoleHandler) CreateWorkspaceRoleCspRoleMapping(c echo.Context) error {
 	var req model.RoleMasterCspRoleMappingRequest
 	if err := c.Bind(&req); err != nil {
@@ -1571,7 +1571,7 @@ func (h *RoleHandler) CreateWorkspaceRoleCspRoleMapping(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/unassign/csp-roles [delete]
+// @Router /api/roles/unassign/csp-roles [delete]
 func (h *RoleHandler) DeleteWorkspaceRoleCspRoleMapping(c echo.Context) error {
 	cspType := model.RoleTypeWorkspace
 	var req model.RoleMasterCspRoleMappingRequest
@@ -1615,7 +1615,7 @@ func (h *RoleHandler) DeleteWorkspaceRoleCspRoleMapping(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /roles/id/{workspaceRoleId}/csp-roles [get]
+// @Router /api/roles/id/{workspaceRoleId}/csp-roles [get]
 func (h *RoleHandler) ListWorkspaceRoleCspRoleMappings(c echo.Context) error {
 	cspType := model.RoleTypeWorkspace
 	var req model.RoleMasterCspRoleMappingRequest
