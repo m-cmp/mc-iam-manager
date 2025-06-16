@@ -41,7 +41,14 @@ type RoleMasterSubRequest struct {
 	Name        string   `json:"name" validate:"required"`
 	Description string   `json:"description"`
 	ParentID    *uint    `json:"parentId"`
-	RoleTypes   []string `json:"roleTypes" validate:"required,dive,oneof=platform workspace"`
+	RoleTypes   []string `json:"roleTypes" validate:"required,dive,oneof=platform workspace csp"`
+}
+
+// RoleRequest 역할 조회 요청 구조체
+type RoleRequest struct {
+	RoleID    string   `json:"roleId,omitempty"`
+	RoleName  string   `json:"roleName",omitempty"`
+	RoleTypes []string `json:"roleTypes",omitempty"`
 }
 
 // 워크스페이스와 프로젝트 매핑 추가 또는 해제

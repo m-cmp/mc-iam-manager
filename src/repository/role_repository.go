@@ -19,17 +19,24 @@ func NewRoleRepository(db *gorm.DB) *RoleRepository {
 }
 
 // List 모든 역할 목록 조회
-func (r *RoleRepository) FindRoles(roleID uint, roleType string) ([]*model.RoleMaster, error) {
+func (r *RoleRepository) FindRoles(req *model.RoleRequest) ([]*model.RoleMaster, error) {
 	var roles []*model.RoleMaster
 	query := r.db.Preload("RoleSubs")
 	query = query.Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id")
 
-	if roleID != 0 {
-		query = query.Where("id = ?", roleID)
+	if req.RoleID != "" {
+		roleID, err := util.StringToUint(req.RoleID)
+		if err == nil {
+			query = query.Where("id = ?", roleID)
+		}
 	}
 
-	if roleType != "" {
-		query = query.Where("mcmp_role_sub.role_type = ?", roleType)
+	if req.RoleName != "" {
+		query = query.Where("name = ?", req.RoleName)
+	}
+
+	if req.RoleTypes != nil {
+		query = query.Where("role_type IN (?)", req.RoleTypes)
 	}
 
 	if err := query.Find(&roles).Error; err != nil {

@@ -42,8 +42,9 @@ func checkRoleFromContext(c echo.Context, requiredRoles []string) bool {
 // --- User Handler ---
 
 type UserHandler struct {
-	userService *service.UserService
-	roleService *service.RoleService
+	userService      *service.UserService
+	roleService      *service.RoleService
+	workspaceService *service.WorkspaceService
 	// db *gorm.DB // Not needed directly
 	// keycloakConfig *config.KeycloakConfig // Not needed directly
 	// keycloakClient *gocloak.GoCloak // Not needed directly
@@ -52,9 +53,11 @@ type UserHandler struct {
 func NewUserHandler(db *gorm.DB) *UserHandler {
 	userService := service.NewUserService(db)
 	roleService := service.NewRoleService(db)
+	workspaceService := service.NewWorkspaceService(db)
 	return &UserHandler{
-		userService: userService,
-		roleService: roleService,
+		userService:      userService,
+		roleService:      roleService,
+		workspaceService: workspaceService,
 	}
 }
 
@@ -357,7 +360,7 @@ func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 // @Success 200 {array} model.RoleMaster
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /users/workspaces [post]
+// @Router /users/workspaces/role/list [post]
 func (h *UserHandler) ListUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
 	// // 1. Get user claims from context
 	// claimsIntf := c.Get("token_claims")
@@ -425,4 +428,55 @@ func (h *UserHandler) ListUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, workspaceRoles)
+}
+
+// ListUserWorkspaces godoc
+// @Summary List user workspaces
+// @Description List workspaces for the current user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.Workspace
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /users/workspaces/list [post]
+func (h *UserHandler) ListUserWorkspaces(c echo.Context) error {
+
+	// 1. Get Keycloak User ID
+	kcUserIdVal := c.Get("kcUserId")
+	if kcUserIdVal == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get user at GetUserWorkspaceAndWorkspaceRoles"})
+	}
+	kcUserID, ok := kcUserIdVal.(string)
+	if !ok || kcUserID == "" {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "invalid kcUserId in context at GetUserWorkspaceAndWorkspaceRoles"})
+	}
+
+	// 2. Get local DB User ID (db_id) using the service method
+	//    This method handles syncing if the user isn't in the local DB yet.
+	localUserID, err := h.userService.GetUserIDByKcID(c.Request().Context(), kcUserID) // Correct function name
+	if err != nil {
+		fmt.Printf("[ERROR] GetUserWorkspaceAndWorkspaceRoles: Failed to get local DB ID for user (kcID: %s): %v\n", kcUserID, err) // Updated log prefix
+		// Handle potential errors like user not found in Keycloak (if GetUserIDByKcID propagates it)
+		// or DB errors during sync.
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to retrieve user database ID"})
+	}
+	if localUserID == 0 {
+		// Should not happen if GetUserIDByKcID works correctly, but safeguard.
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Retrieved invalid local user database ID (0)"})
+	}
+
+	WorkspaceFilterRequest := &model.WorkspaceFilterRequest{
+		UserID: fmt.Sprintf("%d", localUserID),
+	}
+
+	// Get user's workspace roles
+	var workspaces []*model.Workspace
+	workspaces, err = h.workspaceService.ListWorkspaces(WorkspaceFilterRequest)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
+	}
+
+	return c.JSON(http.StatusOK, workspaces)
 }

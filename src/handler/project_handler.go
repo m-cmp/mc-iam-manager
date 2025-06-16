@@ -79,7 +79,16 @@ func (h *ProjectHandler) CreateProject(c echo.Context) error {
 // @Security BearerAuth
 // @Router /api/projects/list [post]
 func (h *ProjectHandler) ListProjects(c echo.Context) error {
-	projects, err := h.projectService.ListProjects()
+	var req model.ProjectFilterRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
+	var projects []*model.Project
+	// if hasListAllPermission {
+	// User has permission to list all workspaces
+	projects, err := h.projectService.ListProjects(&req)
+
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 목록 조회 실패: %v", err)})
 	}

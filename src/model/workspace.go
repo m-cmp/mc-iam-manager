@@ -21,12 +21,12 @@ func (Workspace) TableName() string {
 
 // WorkspaceWithProjects 워크스페이스와 연관된 프로젝트 정보를 포함하는 구조체
 type WorkspaceWithProjects struct {
-	ID          uint      `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	Projects    []Project `json:"projects"`
+	ID          uint      `json:"id" gorm:"primaryKey;column:id"`
+	Name        string    `json:"name" gorm:"column:name"`
+	Description string    `json:"description" gorm:"column:description"`
+	CreatedAt   time.Time `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt   time.Time `json:"updated_at" gorm:"column:updated_at"`
+	Projects    []Project `json:"projects" gorm:"many2many:mcmp_workspace_projects;foreignKey:ID;joinForeignKey:workspace_id;References:ID;joinReferences:project_id"`
 }
 
 // WorkspaceWithUsersAndRoles 워크스페이스와 연관된 사용자 및 역할 정보를 포함하는 구조체

@@ -355,3 +355,7 @@ func (s *UserService) GetUserWorkspaceRoles(userID uint) ([]*model.UserWorkspace
 
 	return userWorkspaceRoles, nil
 }
+
+func (s *WorkspaceService) ListProjectsByWorkspaceID(workspaceID uint) ([]*model.Project, error) {
+	return s.workspaceRepo.FindProjectsByWorkspaceID(workspaceID)
+}

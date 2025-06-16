@@ -5,6 +5,8 @@ import (
 	"log"
 
 	"github.com/m-cmp/mc-iam-manager/model"
+	"github.com/m-cmp/mc-iam-manager/util"
+
 	// "github.com/m-cmp/mc-iam-manager/service" // Remove service import
 	"gorm.io/gorm"
 )
@@ -45,10 +47,26 @@ func (r *ProjectRepository) CreateProject(project *model.Project) error {
 }
 
 // List 모든 프로젝트 조회 (워크스페이스 정보 포함)
-func (r *ProjectRepository) FindProjects() ([]*model.Project, error) {
+func (r *ProjectRepository) FindProjects(req *model.ProjectFilterRequest) ([]*model.Project, error) {
 	var projects []*model.Project
-	query := r.db.Preload("Workspaces").Find(&projects)
-	if err := query.Error; err != nil {
+	query := r.db.Model(&model.Project{})
+
+	if req.ProjectID != "" {
+		projectIdInt, err := util.StringToUint(req.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		query = query.Where("id = ?", projectIdInt)
+	}
+
+	if req.ProjectName != "" {
+		query = query.Where("name = ?", req.ProjectName)
+	}
+
+	if err := query.Find(&projects).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
 		return nil, err
 	}
 

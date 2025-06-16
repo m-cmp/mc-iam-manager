@@ -151,8 +151,8 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 }
 
 // List 모든 프로젝트 조회
-func (s *ProjectService) ListProjects() ([]*model.Project, error) {
-	return s.projectRepo.FindProjects()
+func (s *ProjectService) ListProjects(req *model.ProjectFilterRequest) ([]*model.Project, error) {
+	return s.projectRepo.FindProjects(req)
 }
 
 // GetByID ID로 프로젝트 조회
@@ -243,7 +243,7 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 	log.Printf("Found %d namespaces in mc-infra-manager.", len(infraResponse.Ns))
 
 	// 3. Get local projects
-	localProjects, err := s.projectRepo.FindProjects()
+	localProjects, err := s.projectRepo.FindProjects(&model.ProjectFilterRequest{})
 	if err != nil {
 		log.Printf("Error listing local projects: %v", err)
 		return fmt.Errorf("failed to list local projects: %w", err)
