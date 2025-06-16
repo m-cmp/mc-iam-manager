@@ -24,8 +24,8 @@ func NewRoleService(db *gorm.DB) *RoleService {
 }
 
 // List 역할 목록 조회
-func (s *RoleService) ListRoles(roleType string) ([]*model.RoleMaster, error) {
-	return s.roleRepository.FindRoles(0, roleType)
+func (s *RoleService) ListRoles(req *model.RoleRequest) ([]*model.RoleMaster, error) {
+	return s.roleRepository.FindRoles(req)
 }
 
 // GetByID ID로 역할 조회
@@ -343,9 +343,8 @@ func (s *RoleService) ListUsersAndRolesWithWorkspaces(req model.WorkspaceFilterR
 }
 
 // GetWorkspaceRoles 워크스페이스의 모든 역할 목록 조회 Role만
-func (s *RoleService) ListWorkspaceRoles(workspaceID uint) ([]*model.RoleMaster, error) {
-	roleType := model.RoleTypeWorkspace
-	roles, err := s.roleRepository.FindRoles(workspaceID, roleType)
+func (s *RoleService) ListWorkspaceRoles(req *model.RoleRequest) ([]*model.RoleMaster, error) {
+	roles, err := s.roleRepository.FindRoles(req)
 	if err != nil {
 		return nil, err
 	}

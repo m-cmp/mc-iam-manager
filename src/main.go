@@ -214,7 +214,7 @@ func main() {
 		workspaces.POST("/users/list", workspaceHandler.ListUserWorkspaces)                                                                     //                                                                        // workspace의 사용자 목록 조회
 		workspaces.POST("/users-roles/list", workspaceHandler.ListWorkspaceUsersAndRoles, middleware.PlatformRoleMiddleware(middleware.Manage)) // workspace와 사용자 및 role 조회
 
-		workspaces.POST("/projects", workspaceHandler.ListWorkspaceProjects)
+		workspaces.POST("/projects/list", workspaceHandler.ListWorkspaceProjects)
 		//workspaces.POST("/id/:workspaceId/users", workspaceHandler.ListWorkspace)                                                    // TODO ListAllWorkspaceUsersAndRoles으로 대체 또는 통합 가능하지 않나?
 		workspaces.GET("/id/:workspaceId/users/id/:userId", roleHandler.GetUserWorkspaceRoles, middleware.PlatformRoleMiddleware(middleware.Write)) // 특정 사용자에게 할당된 워크스페이스 역할 조회 ( 관리자가 사용자의 workspace role 조회) --> get을 post로 바꿀까?
 
@@ -334,7 +334,8 @@ func main() {
 
 		users.POST("/menus-tree/list", menuHandler.ListUserMenuTree)
 		users.POST("/menus/list", menuHandler.ListUserMenu)
-		users.POST("/workspaces/list", userHandler.ListUserWorkspaceAndWorkspaceRoles)
+		users.POST("/workspaces/list", userHandler.ListUserWorkspaces)
+		users.POST("/workspaces/roles/list", userHandler.ListUserWorkspaceAndWorkspaceRoles)
 
 	}
 

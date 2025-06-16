@@ -43,10 +43,11 @@ func NewRoleHandler(db *gorm.DB) *RoleHandler {
 // @Security BearerAuth
 // @Router /api/roles/list [post]
 func (h *RoleHandler) ListRoles(c echo.Context) error {
-	roleType := c.QueryParam("roleType")
-	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
-
-	roles, err := h.service.ListRoles(roleType)
+	var req model.RoleRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+	roles, err := h.service.ListRoles(&req)
 	if err != nil {
 		log.Printf("역할 목록 조회 실패: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 목록 조회 실패: %v", err)})
@@ -509,9 +510,18 @@ func (h *RoleHandler) RemoveRole(c echo.Context) error {
 // @Security BearerAuth
 // @Router /api/roles/menu-roles/list [post]
 func (h *RoleHandler) ListMenuRoles(c echo.Context) error {
-	roleType := model.RoleTypePlatform
+	var req model.RoleRequest
+	if err := c.Bind(&req); err != nil {
+		log.Printf("Error ListMenuRoles : %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
 
-	roles, err := h.service.ListRoles(roleType)
+	// workspace 역할만 조회
+	if req.RoleTypes == nil {
+		req.RoleTypes = []string{model.RoleTypePlatform}
+	}
+
+	roles, err := h.service.ListRoles(&req)
 	if err != nil {
 		log.Printf("역할 목록 조회 실패: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 목록 조회 실패: %v", err)})
@@ -531,9 +541,18 @@ func (h *RoleHandler) ListMenuRoles(c echo.Context) error {
 // @Security BearerAuth
 // @Router /api/roles/workspace-roles/list [post]
 func (h *RoleHandler) ListWorkspaceRoles(c echo.Context) error {
-	roleType := model.RoleTypeWorkspace
+	var req model.RoleRequest
+	if err := c.Bind(&req); err != nil {
+		log.Printf("Error ListWorkspaceRoles : %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
 
-	roles, err := h.service.ListRoles(roleType)
+	// workspace 역할만 조회
+	if req.RoleTypes == nil {
+		req.RoleTypes = []string{model.RoleTypeWorkspace}
+	}
+
+	roles, err := h.service.ListWorkspaceRoles(&req)
 	if err != nil {
 		log.Printf("역할 목록 조회 실패: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 목록 조회 실패: %v", err)})
@@ -553,8 +572,18 @@ func (h *RoleHandler) ListWorkspaceRoles(c echo.Context) error {
 // @Security BearerAuth
 // @Router /api/roles/csp-roles/list [post]
 func (h *RoleHandler) ListCspRoles(c echo.Context) error {
-	roleType := model.RoleTypeCSP
-	roles, err := h.service.ListRoles(roleType)
+	var req model.RoleRequest
+	if err := c.Bind(&req); err != nil {
+		log.Printf("Error ListCspRoles : %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
+	// csp 역할만 조회
+	if req.RoleTypes == nil {
+		req.RoleTypes = []string{model.RoleTypeCSP}
+	}
+
+	roles, err := h.service.ListRoles(&req)
 	if err != nil {
 		log.Printf("역할 목록 조회 실패: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 목록 조회 실패: %v", err)})
