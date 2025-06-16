@@ -58,13 +58,16 @@ func (UserPlatformRole) TableName() string {
 // UserWorkspaceRole 사용자-워크스페이스-역할 매핑 모델 (DB 테이블: mcmp_user_workspace_roles)
 // 사용자 기준으로 workspace와 role 을 표시 . workspace 기준으로는 WorkspaceWithProjects 를 사용
 type UserWorkspaceRole struct {
-	UserID      uint        `json:"user_id" gorm:"primaryKey;column:user_id"`
-	WorkspaceID uint        `json:"workspace_id" gorm:"primaryKey;column:workspace_id"`
-	RoleID      uint        `json:"role_id" gorm:"primaryKey;column:role_id"`
-	CreatedAt   time.Time   `json:"created_at" gorm:"column:created_at;autoCreateTime"`
-	User        *User       `json:"user,omitempty" gorm:"foreignKey:UserID"`
-	Workspace   *Workspace  `json:"workspace,omitempty" gorm:"foreignKey:WorkspaceID;references:ID"`
-	Role        *RoleMaster `json:"role,omitempty" gorm:"foreignKey:RoleID"`
+	UserID        uint        `json:"user_id" gorm:"primaryKey;column:user_id"`
+	WorkspaceID   uint        `json:"workspace_id" gorm:"primaryKey;column:workspace_id"`
+	RoleID        uint        `json:"role_id" gorm:"primaryKey;column:role_id"`
+	Username      string      `json:"username" gorm:"column:username"`
+	WorkspaceName string      `json:"workspace_name" gorm:"column:workspace_name"`
+	RoleName      string      `json:"role_name" gorm:"column:role_name"`
+	CreatedAt     time.Time   `json:"created_at" gorm:"column:created_at;autoCreateTime"`
+	User          *User       `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	Workspace     *Workspace  `json:"workspace,omitempty" gorm:"foreignKey:WorkspaceID;references:ID"`
+	Role          *RoleMaster `json:"role,omitempty" gorm:"foreignKey:RoleID"`
 }
 
 // TableName UserWorkspaceRole의 테이블 이름을 지정합니다
