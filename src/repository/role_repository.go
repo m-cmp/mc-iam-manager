@@ -142,7 +142,7 @@ func (r *RoleRepository) RemoveWorkspaceRole(userID, workspaceID, roleID uint) e
 func (r *RoleRepository) FindUserWorkspaceRoles(userID, workspaceID uint) ([]model.UserWorkspaceRole, error) {
 	var roles []model.UserWorkspaceRole
 	query := r.db.
-		Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_master.id = mcmp_user_workspace_roles.role_id").
+		Joins("JOIN mcmp_role_master ON mcmp_role_master.id = mcmp_user_workspace_roles.role_id").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
 		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, model.RoleTypeWorkspace)
 
