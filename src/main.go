@@ -330,6 +330,7 @@ func main() {
 		users.POST("/menus-tree/list", menuHandler.ListUserMenuTree)
 		users.POST("/menus/list", menuHandler.ListUserMenu)
 		users.POST("/workspaces/list", userHandler.ListUserWorkspaces)
+		users.GET("/workspaces/id/:workspaceId/projects/list", userHandler.ListUserProjectsByWorkspace)
 		users.POST("/workspaces/roles/list", userHandler.ListUserWorkspaceAndWorkspaceRoles)
 
 	}

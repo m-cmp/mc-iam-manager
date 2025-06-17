@@ -146,9 +146,12 @@ func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 // @Router /api/menus/list [post]
 // @OperationId listMenus
 func (h *MenuHandler) ListMenus(c echo.Context) error {
-
+	req := &model.MenuFilterRequest{}
+	if err := c.Bind(req); err != nil {
+		c.Logger().Debug("ListMenus err %s", err)
+	}
 	// 3. 메뉴 트리 조회
-	menus, err := h.menuService.ListAllMenus()
+	menus, err := h.menuService.ListAllMenus(req)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get menu list")
 	}
@@ -212,7 +215,11 @@ func (h *MenuHandler) ListMenusTree(c echo.Context) error {
 	// }
 
 	// 3. 메뉴 트리 조회
-	menus, err := h.menuService.GetAllMenusTree()
+	req := &model.MenuFilterRequest{}
+	if err := c.Bind(req); err != nil {
+		c.Logger().Debug("ListMenusTree err %s", err)
+	}
+	menus, err := h.menuService.GetAllMenusTree(req)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get menu tree")
 	}

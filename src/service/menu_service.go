@@ -44,8 +44,9 @@ func NewMenuService(db *gorm.DB) *MenuService {
 }
 
 // GetAllMenusTree 모든 메뉴를 트리 구조로 조회 (관리자용)
-func (s *MenuService) ListAllMenus() ([]*model.Menu, error) {
-	allMenus, err := s.menuRepo.GetMenus() // Get all menus
+func (s *MenuService) ListAllMenus(req *model.MenuFilterRequest) ([]*model.Menu, error) {
+
+	allMenus, err := s.menuRepo.GetMenus(req) // Get all menus
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all menus: %w", err)
 	}
@@ -53,8 +54,8 @@ func (s *MenuService) ListAllMenus() ([]*model.Menu, error) {
 	return allMenus, nil
 }
 
-func (s *MenuService) GetAllMenusTree() ([]*model.MenuTreeNode, error) {
-	allMenus, err := s.menuRepo.GetMenus() // Get all menus
+func (s *MenuService) GetAllMenusTree(req *model.MenuFilterRequest) ([]*model.MenuTreeNode, error) {
+	allMenus, err := s.menuRepo.GetMenus(req) // Get all menus
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all menus: %w", err)
 	}
@@ -79,29 +80,52 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoleIDs []u
 	}
 
 	// 2. 매핑된 메뉴 ID들의 상위 메뉴 ID들을 수집
-	parentIDs := []*string{}
-	for _, menuID := range menuIDs {
-		menu, err := s.menuRepo.FindMenuByID(menuID)
-		if err != nil {
-			return nil, err
-		}
-		// 상위 메뉴 ID가 있으면 수집
-		if menu.ParentID != "" {
-			parentIDs = append(parentIDs, &menu.ParentID)
-		}
-		allMenus = append(allMenus, menu)
+	//parentIDs := []*string{}
+	menuFilterRequest := &model.MenuFilterRequest{
+		MenuID: menuIDs,
 	}
+	menus, err := s.menuRepo.GetMenus(menuFilterRequest)
+	if err != nil {
+		return nil, err
+	}
+	allMenus = append(allMenus, menus...)
+
+	parentIDs, err := s.menuRepo.FindParentIDs(menuIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// for _, menuID := range menuIDs {
+	// 	menu, err := s.menuRepo.FindMenuByID(menuID)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	// 상위 메뉴 ID가 있으면 수집
+	// 	if menu.ParentID != "" {
+	// 		parentIDs = append(parentIDs, &menu.ParentID)
+	// 	}
+	// 	allMenus = append(allMenus, menu)
+	// }
 
 	// 3. 모든 필요한 메뉴 ID를 하나의 맵으로 합침
 
 	// 4. 수집된 메뉴 ID들로 메뉴 정보 조회
-	for _, platformMenuID := range parentIDs {
-		menu, err := s.menuRepo.FindMenuByID(platformMenuID)
-		if err != nil {
-			continue
-		}
-		allMenus = append(allMenus, menu)
+	parentMenuFilterRequest := &model.MenuFilterRequest{
+		MenuID: parentIDs,
 	}
+	parentMenus, err := s.menuRepo.GetMenus(parentMenuFilterRequest)
+	if err != nil {
+		return nil, err
+	}
+	allMenus = append(allMenus, parentMenus...)
+
+	// for _, platformMenuID := range parentIDs {
+	// 	menu, err := s.menuRepo.FindMenuByID(platformMenuID)
+	// 	if err != nil {
+	// 		continue
+	// 	}
+	// 	allMenus = append(allMenus, menu)
+	// }
 
 	// 5. 메뉴 트리 구성
 	menuTree := buildMenuTree(allMenus)
@@ -126,37 +150,57 @@ func (s *MenuService) MenuList(req *model.MenuMappingFilterRequest) ([]*model.Me
 
 	// 2. 매핑된 메뉴 ID들의 상위 메뉴 ID들을 수집
 	parentIDMap := make(map[string]bool)
-	for menuID := range menuIDMap {
-		menu, err := s.menuRepo.FindMenuByID(&menuID)
-		if err != nil {
-			return nil, err
-		}
-		// 상위 메뉴 ID가 있으면 수집
-		if menu.ParentID != "" {
-			parentIDMap[menu.ParentID] = true
-		}
+	parentIDs := []*string{}
+	menuFilterRequest := &model.MenuFilterRequest{
+		MenuID: menuIDs,
+	}
+	menus, err := s.menuRepo.GetMenus(menuFilterRequest)
+	if err != nil {
+		return nil, err
 	}
 
-	// 3. 모든 필요한 메뉴 ID를 하나의 맵으로 합침
-	for parentID := range parentIDMap {
-		menuIDMap[parentID] = true
+	for _, menu := range menus {
+		parentIDMap[menu.ParentID] = true
+		parentIDs = append(parentIDs, &menu.ParentID)
 	}
+
+	parentMenuFilterRequest := &model.MenuFilterRequest{
+		MenuID: parentIDs,
+	}
+	parentMenus, err := s.menuRepo.GetMenus(parentMenuFilterRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	// for menuID := range menuIDMap {
+	// 	menu, err := s.menuRepo.FindMenuByID(&menuID)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	// 상위 메뉴 ID가 있으면 수집
+	// 	if menu.ParentID != "" {
+	// 		parentIDMap[menu.ParentID] = true
+	// 	}
+	// }
 
 	// 4. 수집된 메뉴 ID들로 메뉴 정보 조회
-	var allMenus []*model.Menu
-	for platformMenuID := range menuIDMap {
-		// menuID는 platform:menu 형식이므로 : 뒷부분만 추출
-		// menuID := util.GetAfterDelimiter(platformMenuID, ":")
-		// log.Printf("menuID: %s", menuID)
-		// menu, err := s.menuRepo.FindMenuByID(menuID)
-		menu, err := s.menuRepo.FindMenuByID(&platformMenuID)
-		if err != nil {
-			continue
-		}
-		allMenus = append(allMenus, menu)
-	}
+	// var allMenus []*model.Menu
+	// allMenus = append(allMenus, menus...)
+	// allMenus = append(allMenus, parentMenus...)
+	menus = append(menus, parentMenus...)
+	// for platformMenuID := range menuIDMap {
+	// 	// menuID는 platform:menu 형식이므로 : 뒷부분만 추출
+	// 	// menuID := util.GetAfterDelimiter(platformMenuID, ":")
+	// 	// log.Printf("menuID: %s", menuID)
+	// 	// menu, err := s.menuRepo.FindMenuByID(menuID)
+	// 	menu, err := s.menuRepo.FindMenuByID(&platformMenuID)
+	// 	if err != nil {
+	// 		continue
+	// 	}
+	// 	allMenus = append(allMenus, menu)
+	// }
 
-	return allMenus, nil
+	return menus, nil
 
 }
 
@@ -229,10 +273,10 @@ func sortNodes(nodes []*model.MenuTreeNode) {
 }
 
 // GetMenus 모든 메뉴 조회 (Deprecated or internal use only)
-func (s *MenuService) GetMenus() ([]*model.Menu, error) {
+func (s *MenuService) GetMenus(req *model.MenuFilterRequest) ([]*model.Menu, error) {
 	// return s.menuRepo.GetMenus() // Keep original GetMenus for now
 	var menus []*model.Menu
-	menus, err := s.menuRepo.GetMenus()
+	menus, err := s.menuRepo.GetMenus(req)
 	return menus, err
 }
 

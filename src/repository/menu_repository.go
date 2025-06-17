@@ -40,10 +40,19 @@ func NewMenuRepository(db *gorm.DB) *MenuRepository {
 }
 
 // GetMenus 데이터베이스에서 모든 메뉴 조회
-func (r *MenuRepository) GetMenus() ([]*model.Menu, error) {
+func (r *MenuRepository) GetMenus(req *model.MenuFilterRequest) ([]*model.Menu, error) {
 	var menus []*model.Menu
+	query := r.db.Model(&model.Menu{})
+
+	if len(req.MenuName) > 0 {
+		query = query.Where("name IN ?", req.MenuName)
+	}
+	if len(req.MenuID) > 0 {
+		query = query.Where("id IN ?", req.MenuID)
+	}
+
 	// GORM은 기본적으로 UpdatedAt DESC 정렬을 시도할 수 있으므로 명시적 정렬 추가
-	if err := r.db.Order("priority asc, menu_number asc").Find(&menus).Error; err != nil {
+	if err := query.Order("priority asc, menu_number asc").Find(&menus).Error; err != nil {
 		return nil, err
 	}
 	return menus, nil
@@ -66,6 +75,15 @@ func (r *MenuRepository) FindMenuByID(id *string) (*model.Menu, error) {
 	log.Printf("GetByID SQL Args: %v", args)
 
 	return &menu, nil
+}
+
+func (r *MenuRepository) FindParentIDs(menuIDs []*string) ([]*string, error) {
+	var parentIDs []*string
+	err := r.db.Model(&model.Menu{}).
+		Where("id IN ? AND parent_id IS NOT NULL", menuIDs).
+		Distinct().
+		Pluck("parent_id", &parentIDs).Error
+	return parentIDs, err
 }
 
 // Create 새 메뉴를 데이터베이스에 생성
@@ -238,4 +256,23 @@ func (r *MenuRepository) FindMappedMenusByRole(platformRoleID uint) ([]string, e
 // CreateMenuMapping 메뉴 매핑을 생성합니다
 func (r *MenuRepository) CreateMenuMapping(mapping *model.MenuMapping) error {
 	return r.db.Create(mapping).Error
+}
+
+// FindAll 메뉴를 필터링하여 조회
+func (r *MenuRepository) FindAll(req *model.MenuFilterRequest) ([]*model.Menu, error) {
+	var menus []*model.Menu
+	query := r.db.Model(&model.Menu{})
+
+	if len(req.MenuName) > 0 {
+		query = query.Where("name IN ?", req.MenuName)
+	}
+	if len(req.MenuID) > 0 {
+		query = query.Where("id IN ?", req.MenuID)
+	}
+
+	// GORM은 기본적으로 UpdatedAt DESC 정렬을 시도할 수 있으므로 명시적 정렬 추가
+	if err := query.Order("priority asc, menu_number asc").Find(&menus).Error; err != nil {
+		return nil, err
+	}
+	return menus, nil
 }
