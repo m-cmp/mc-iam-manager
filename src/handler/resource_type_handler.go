@@ -35,6 +35,7 @@ func NewResourceTypeHandler(db *gorm.DB) *ResourceTypeHandler {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
 // @Router /resource-types [post]
+// @OperationId createResourceType
 func (h *ResourceTypeHandler) CreateCloudResourceType(c echo.Context) error {
 	var rt model.ResourceType
 	if err := c.Bind(&rt); err != nil {
@@ -66,6 +67,7 @@ func (h *ResourceTypeHandler) CreateCloudResourceType(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
 // @Router /resource-types/list [post]
+// @OperationId listCloudResourceTypes
 func (h *ResourceTypeHandler) ListCloudResourceTypes(c echo.Context) error {
 	frameworkID := c.QueryParam("frameworkId")
 	resourceTypes, err := h.service.ListResourceTypes(frameworkID)

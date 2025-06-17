@@ -50,7 +50,7 @@ func (r *MenuRepository) GetMenus() ([]*model.Menu, error) {
 }
 
 // GetByID 메뉴 ID로 데이터베이스에서 조회
-func (r *MenuRepository) FindMenuByID(id string) (*model.Menu, error) {
+func (r *MenuRepository) FindMenuByID(id *string) (*model.Menu, error) {
 	var menu model.Menu
 	if err := r.db.Where("id = ?", id).First(&menu).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

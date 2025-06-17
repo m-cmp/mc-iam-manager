@@ -40,6 +40,7 @@ func NewCspCredentialHandler(db *gorm.DB) *CspCredentialHandler {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /workspaces/temporary-credentials [post]
+// @OperationId getTemporaryCredentials
 func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 	// 1. Get values from context
 
@@ -97,6 +98,11 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
 // @Router /csp-credentials [get]
+// @OperationId listCredentials
+func (h *CspCredentialHandler) ListCredentials(c echo.Context) error {
+	// Implementation of ListCredentials method
+	return nil // Placeholder return, actual implementation needed
+}
 
 // GetCredentialByID godoc
 // @Summary CSP 인증 정보 ID로 조회
@@ -111,6 +117,11 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
 // @Router /csp-credentials/{id} [get]
+// @OperationId getCredentialByID
+func (h *CspCredentialHandler) GetCredentialByID(c echo.Context) error {
+	// Implementation of GetCredentialByID method
+	return nil // Placeholder return, actual implementation needed
+}
 
 // CreateCredential godoc
 // @Summary 새 CSP 인증 정보 생성
@@ -125,6 +136,11 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
 // @Router /csp-credentials [post]
+// @OperationId createCredential
+func (h *CspCredentialHandler) CreateCredential(c echo.Context) error {
+	// Implementation of CreateCredential method
+	return nil // Placeholder return, actual implementation needed
+}
 
 // UpdateCredential godoc
 // @Summary CSP 인증 정보 업데이트
@@ -141,6 +157,11 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
 // @Router /csp-credentials/{id} [put]
+// @OperationId updateCredential
+func (h *CspCredentialHandler) UpdateCredential(c echo.Context) error {
+	// Implementation of UpdateCredential method
+	return nil // Placeholder return, actual implementation needed
+}
 
 // DeleteCredential godoc
 // @Summary CSP 인증 정보 삭제
@@ -155,3 +176,8 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
 // @Router /csp-credentials/{id} [delete]
+// @OperationId deleteCredential
+func (h *CspCredentialHandler) DeleteCredential(c echo.Context) error {
+	// Implementation of DeleteCredential method
+	return nil // Placeholder return, actual implementation needed
+}

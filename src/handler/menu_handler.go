@@ -14,6 +14,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service" // Corrected import path
+	"github.com/m-cmp/mc-iam-manager/util"
 
 	// Import the new util package
 	"gorm.io/gorm" // Ensure gorm is imported
@@ -45,6 +46,7 @@ func NewMenuHandler(db *gorm.DB) *MenuHandler {
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
 // @Router /users/menus-tree/list [post]
+// @OperationId listUserMenuTree
 func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 	platformRolesIntf := c.Get("platformRoles")
 	if platformRolesIntf == nil {
@@ -81,33 +83,45 @@ func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 	return c.JSON(http.StatusOK, menuTree)
 }
 
+// @Summary 현재 사용자의 메뉴 목록 조회
+// @Description 현재 로그인한 사용자의 Platform Role에 따라 접근 가능한 메뉴 목록을 조회합니다.
+// @Tags menus
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.Menu
+// @Router /api/users/menus/list [post]
+// @OperationId listUserMenu
 func (h *MenuHandler) ListUserMenu(c echo.Context) error {
-	platformRolesIntf := c.Get("platformRoles")
-	if platformRolesIntf == nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized: Platform roles not found"})
-	}
+	// platformRolesIntf := c.Get("platformRoles")
+	// if platformRolesIntf == nil {
+	// 	return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized: Platform roles not found"})
+	// }
 
-	platformRoles, ok := platformRolesIntf.([]string)
-	if !ok {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to process platform roles"})
-	}
-	c.Logger().Debug("GetUserMenuTree: platformRoles %s", platformRoles)
+	// platformRoles, ok := platformRolesIntf.([]string)
+	// if !ok {
+	// 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to process platform roles"})
+	// }
+	// c.Logger().Debug("GetUserMenuTree: platformRoles %s", platformRoles)
 
-	// Convert platform role strings to uint IDs
-	platformRoleNames := make([]uint, 0, len(platformRoles))
-	for _, roleName := range platformRoles {
-		role, err := h.roleService.GetRoleByName(roleName, model.RoleTypePlatform)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
-		}
-		if role == nil {
-			continue // Skip if role not found
-		}
-		platformRoleNames = append(platformRoleNames, role.ID)
-	}
+	// // Convert platform role strings to uint IDs
+	// platformRoleNames := make([]uint, 0, len(platformRoles))
+	// for _, roleName := range platformRoles {
+	// 	role, err := h.roleService.GetRoleByName(roleName, model.RoleTypePlatform)
+	// 	if err != nil {
+	// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
+	// 	}
+	// 	if role == nil {
+	// 		continue // Skip if role not found
+	// 	}
+	// 	platformRoleNames = append(platformRoleNames, role.ID)
+	// }
 
 	// Call the service method with platform role IDs
-	menuList, err := h.menuService.MenuList(c.Request().Context(), platformRoleNames)
+	req := &model.MenuMappingFilterRequest{}
+	if err := c.Bind(req); err != nil {
+		c.Logger().Debug("ListUserMenu err %s", err)
+	}
+	menuList, err := h.menuService.MenuList(req)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": fmt.Sprintf("사용자 메뉴 조회 실패: %v", err),
@@ -129,8 +143,9 @@ func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /menus/list [post]
-func (h *MenuHandler) ListAllMenus(c echo.Context) error {
+// @Router /api/menus/list [post]
+// @OperationId listMenus
+func (h *MenuHandler) ListMenus(c echo.Context) error {
 
 	// 3. 메뉴 트리 조회
 	menus, err := h.menuService.ListAllMenus()
@@ -157,7 +172,19 @@ func (h *MenuHandler) ListAllMenus(c echo.Context) error {
 	return c.JSON(http.StatusOK, menus)
 }
 
-func (h *MenuHandler) ListAllMenusTree(c echo.Context) error {
+// @Summary 모든 메뉴 트리 조회 (관리자용)
+// @Description 모든 메뉴 목록을 트리 구조로 조회합니다. 관리자 권한이 필요합니다.
+// @Tags menus
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.MenuTreeNode
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /api/menus/list [post]
+// @OperationId listMenusTree
+func (h *MenuHandler) ListMenusTree(c echo.Context) error {
 	// 관리자 전용기능이면 middleware 에서 체크하도록 하자.
 
 	// // 1. 컨텍스트에서 platformRoles 가져오기
@@ -252,9 +279,10 @@ func (h *MenuHandler) hasPermission(userRoles []string, requiredRole string) boo
 // @Success 200 {object} model.Menu
 // @Security BearerAuth
 // @Router /menus/id/{menuId} [post]
+// @OperationId getMenuByID
 func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 	id := c.Param("menuId")
-	menu, err := h.menuService.GetMenuByID(id)
+	menu, err := h.menuService.GetMenuByID(&id)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "메뉴를 찾는데 실패했습니다",
@@ -278,6 +306,7 @@ func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 // @Success 201 {object} model.Menu
 // @Security BearerAuth
 // @Router /menus [post]
+// @OperationId createMenu
 func (h *MenuHandler) CreateMenu(c echo.Context) error {
 	menu := new(model.Menu)
 	if err := c.Bind(menu); err != nil {
@@ -306,6 +335,7 @@ func (h *MenuHandler) CreateMenu(c echo.Context) error {
 // @Success 200 {object} model.Menu
 // @Security BearerAuth
 // @Router /menus/id/{menuId} [put]
+// @OperationId updateMenu
 func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 	id := c.Param("menuId")
 	updates := make(map[string]interface{}) // Bind to a map
@@ -340,7 +370,7 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 	}
 
 	// Optionally, fetch the updated menu and return it
-	updatedMenu, err := h.menuService.GetMenuByID(id)
+	updatedMenu, err := h.menuService.GetMenuByID(&id)
 	if err != nil {
 		// Log error but return success as update itself was successful
 		fmt.Printf("Warning: Failed to fetch updated menu (id: %s): %v\n", id, err)
@@ -364,6 +394,7 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 // @Success 204 "No Content"
 // @Security BearerAuth
 // @Router /menus/id/{menuId} [delete]
+// @OperationId deleteMenu
 func (h *MenuHandler) DeleteMenu(c echo.Context) error {
 	id := c.Param("menuId")
 	if err := h.menuService.Delete(id); err != nil {
@@ -384,7 +415,8 @@ func (h *MenuHandler) DeleteMenu(c echo.Context) error {
 // @Success 200 {object} map[string]string "message: Successfully registered menus from YAML"
 // @Failure 500 {object} map[string]string "error: 실패 메시지"
 // @Security BearerAuth
-// @Router /setup/initial-menu [post]
+// @Router /api/menus/setup/initial-menu [post]
+// @OperationId registerMenusFromYAML
 func (h *MenuHandler) RegisterMenusFromYAML(c echo.Context) error {
 	filePath := c.QueryParam("filePath") // 쿼리 파라미터로 파일 경로 받기 (선택 사항)
 
@@ -410,7 +442,8 @@ func (h *MenuHandler) RegisterMenusFromYAML(c echo.Context) error {
 // @Failure 400 {object} map[string]string "error: 잘못된 요청 본문 또는 YAML 형식 오류"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /setup/initial-menu2 [post]
+// @Router /api/menus/setup/initial-menu2 [post]
+// @OperationId registerMenusFromBody
 func (h *MenuHandler) RegisterMenusFromBody(c echo.Context) error {
 	bodyBytes, err := io.ReadAll(c.Request().Body)
 	if err != nil {
@@ -451,19 +484,21 @@ func (h *MenuHandler) RegisterMenusFromBody(c echo.Context) error {
 // @Tags menus
 // @Accept json
 // @Produce json
-// @Param role path string true "Platform Role"
+// @Param roleId query string false "Platform Role ID"
+// @Param menuId query string false "Menu ID"
 // @Success 200 {array} model.Menu
 // @Failure 400 {object} map[string]string "error: platform role is required"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /menus/platform-roles/{role} [post]
+// @Router /api/menus/platform-roles/list [post]
+// @OperationId listMappedMenusByRole
 func (h *MenuHandler) ListMappedMenusByRole(c echo.Context) error {
-	platformRoleID, err := strconv.ParseUint(c.Param("role"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid platform role ID"})
+	req := &model.MenuMappingFilterRequest{}
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
-	menus, err := h.menuService.ListMappedMenusByRole(uint(platformRoleID))
+	menus, err := h.menuService.ListMappedMenusByRole(req)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -482,24 +517,36 @@ func (h *MenuHandler) ListMappedMenusByRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /admin/menu-mappings [post]
+// @Router /api/menus/platform-roles [post]
+// @OperationId createMenuMapping
 func (h *MenuHandler) CreateMenuMapping(c echo.Context) error {
 	var req model.CreateMenuMappingRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
-	mapping := &model.MenuMapping{
-		MenuID:    req.MenuID,
-		RoleID:    req.RoleID,
-		CreatedAt: time.Now(),
+	for _, menuID := range req.MenuID {
+		roleIDInt, err := util.StringToUint(req.RoleID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid role ID"})
+		}
+		menuIDInt, err := util.StringToUint(menuID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid menu ID"})
+		}
+
+		mapping := &model.MenuMapping{
+			RoleID:    roleIDInt,
+			MenuID:    menuIDInt,
+			CreatedAt: time.Now(),
+		}
+
+		if err := h.menuService.CreateMenuMapping(mapping); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("메뉴 매핑 생성 실패: %v", err)})
+		}
 	}
 
-	if err := h.menuService.CreateMenuMapping(mapping); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("메뉴 매핑 생성 실패: %v", err)})
-	}
-
-	return c.JSON(http.StatusCreated, mapping)
+	return c.JSON(http.StatusCreated, map[string]string{"message": "Menu mapping created successfully"})
 }
 
 // DeleteMenuMapping godoc
@@ -508,13 +555,14 @@ func (h *MenuHandler) CreateMenuMapping(c echo.Context) error {
 // @Tags menus
 // @Accept json
 // @Produce json
-// @Param role path string true "Platform Role"
-// @Param menuId path string true "Menu ID"
+// @Param roleId query string false "Platform Role ID"
+// @Param menuId query string false "Menu ID"
 // @Success 200 {object} map[string]string "message: Menu mapping deleted successfully"
 // @Failure 400 {object} map[string]string "error: platform role and menu ID are required"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /menus/platform-roles/{role}/menus/{menuId} [delete]
+// @Router /api/menus/platform-roles [delete]
+// @OperationId deleteMenuMapping
 func (h *MenuHandler) DeleteMenuMapping(c echo.Context) error {
 	platformRoleID, err := strconv.ParseUint(c.Param("role"), 10, 32)
 	if err != nil {

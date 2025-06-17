@@ -40,6 +40,7 @@ func NewMcmpApiHandler(db *gorm.DB) *McmpApiHandler { // Accept db, remove servi
 // @Failure 500 {object} map[string]string "message: Failed to trigger MCMP API sync"
 // @Router /mcmp-apis/syncMcmpAPIs [post]
 // @Security BearerAuth
+// @OperationId syncMcmpAPIs
 func (h *McmpApiHandler) SyncMcmpAPIs(c echo.Context) error {
 	err := h.service.SyncMcmpAPIsFromYAML()
 	if err != nil {
@@ -64,6 +65,7 @@ func (h *McmpApiHandler) SyncMcmpAPIs(c echo.Context) error {
 // @Failure 500 {object} map[string]string "error: Failed to set active version"
 // @Router /mcmp-apis/name/{serviceName}/versions/{version}/activate [put]
 // @Security BearerAuth
+// @OperationId setActiveVersion
 func (h *McmpApiHandler) SetActiveVersion(c echo.Context) error {
 	serviceName := c.Param("serviceName")
 	version := c.Param("version")
@@ -87,7 +89,7 @@ func (h *McmpApiHandler) SetActiveVersion(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// McmpApiCall godoc (Existing handler, might be deprecated later)
+// McmpApiCall godoc
 // @Summary Call an external MCMP API action (Structured Request)
 // @Description Executes a defined MCMP API action with parameters structured in McmpApiCallRequest.
 // @Tags McmpAPI
@@ -101,6 +103,7 @@ func (h *McmpApiHandler) SetActiveVersion(c echo.Context) error {
 // @Failure 503 {object} map[string]string "error: External API unavailable"
 // @Router /mcmp-apis/mcmpApiCall [post]
 // @Security BearerAuth
+// @OperationId mcmpApiCall
 func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
 	var req model.McmpApiCallRequest
 	if err := c.Bind(&req); err != nil {
@@ -224,6 +227,7 @@ func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
 // @Param actionName query string false "Filter by action name (operationId)"
 // @Router /mcmp-apis/list [post]
 // @Security BearerAuth
+// @OperationId listServicesAndActions
 func (h *McmpApiHandler) ListServicesAndActions(c echo.Context) error {
 	// Read query parameters for filtering
 	serviceNameFilter := c.QueryParam("serviceName")
@@ -255,6 +259,7 @@ func (h *McmpApiHandler) ListServicesAndActions(c echo.Context) error {
 // @Failure 503 {object} map[string]string "error: External API Service Unavailable"
 // @Router /mcmp-apis/test/mc-infra-manager/getallns [get]
 // @Security BearerAuth
+// @OperationId testCallGetAllNs
 func (h *McmpApiHandler) TestCallGetAllNs(c echo.Context) error {
 	// Prepare the request for the CallApi service
 	callReq := &model.McmpApiCallRequest{
@@ -308,8 +313,9 @@ func (h *McmpApiHandler) TestCallGetAllNs(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Service not found"
 // @Failure 500 {object} map[string]string "error: Failed to update service"
 // @Router /mcmp-apis/name/{serviceName} [put]
+// @OperationId UpdateFrameworkService
 // @Security BearerAuth
-func (h *McmpApiHandler) UpdateService(c echo.Context) error {
+func (h *McmpApiHandler) UpdateFrameworkService(c echo.Context) error {
 	serviceName := c.Param("serviceName")
 	if serviceName == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Service name is required"})

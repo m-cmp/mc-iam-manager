@@ -51,6 +51,7 @@ func NewProjectHandler(db *gorm.DB) *ProjectHandler {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/projects [post]
+// @OperationId createProject
 func (h *ProjectHandler) CreateProject(c echo.Context) error {
 	var project model.Project
 	if err := c.Bind(&project); err != nil {
@@ -78,6 +79,7 @@ func (h *ProjectHandler) CreateProject(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/projects/list [post]
+// @OperationId listProjects
 func (h *ProjectHandler) ListProjects(c echo.Context) error {
 	var req model.ProjectFilterRequest
 	if err := c.Bind(&req); err != nil {
@@ -106,7 +108,8 @@ func (h *ProjectHandler) ListProjects(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/projects/id/{projectId} [get]
+// @Router /api/projects/{id} [get]
+// @OperationId getProjectByID
 func (h *ProjectHandler) GetProjectByID(c echo.Context) error {
 	// Parse DB ID (uint) from path parameter
 	projectIDInt, err := util.StringToUint(c.Param("projectId"))
@@ -136,6 +139,7 @@ func (h *ProjectHandler) GetProjectByID(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/projects/name/{projectName} [get]
+// @OperationId getProjectByName
 func (h *ProjectHandler) GetProjectByName(c echo.Context) error {
 	name := c.Param("projectName")
 
@@ -151,7 +155,7 @@ func (h *ProjectHandler) GetProjectByName(c echo.Context) error {
 
 // UpdateProject godoc
 // @Summary Update project
-// @Description Update project information
+// @Description Update an existing project
 // @Tags projects
 // @Accept json
 // @Produce json
@@ -162,7 +166,8 @@ func (h *ProjectHandler) GetProjectByName(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/projects/id/{projectId} [put]
+// @Router /api/projects/{id} [put]
+// @OperationId updateProject
 func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 
 	var project model.Project
@@ -198,7 +203,7 @@ func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 
 // DeleteProject godoc
 // @Summary Delete project
-// @Description Delete a project
+// @Description Delete an existing project
 // @Tags projects
 // @Accept json
 // @Produce json
@@ -207,7 +212,8 @@ func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/projects/id/{projectId} [delete]
+// @Router /api/projects/{id} [delete]
+// @OperationId deleteProject
 func (h *ProjectHandler) DeleteProject(c echo.Context) error {
 
 	projectIDInt, err := util.StringToUint(c.Param("projectId"))
@@ -235,6 +241,7 @@ func (h *ProjectHandler) DeleteProject(c echo.Context) error {
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류 또는 동기화 실패"
 // @Security BearerAuth
 // @Router /setup/sync-projects [post]
+// @OperationId syncProjects
 func (h *ProjectHandler) SyncProjects(c echo.Context) error {
 	log.Println("Received request to sync projects with mc-infra-manager")
 	if err := h.projectService.SyncProjectsWithInfraManager(c.Request().Context()); err != nil {
@@ -259,6 +266,7 @@ func (h *ProjectHandler) SyncProjects(c echo.Context) error {
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
 // @Router /projects/{id}/workspaces/{workspaceId} [post]
+// @OperationId addWorkspaceToProject
 func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 	var req model.WorkspaceProjectMappingRequest
 	if err := c.Bind(&req); err != nil {
@@ -296,6 +304,13 @@ func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 }
 
 // RemoveWorkspaceFromProject 프로젝트에서 워크스페이스 연결 해제
+// @Summary Remove workspace from project
+// @Description Remove a workspace from a project
+// @Tags projects
+// @Accept json
+// @Produce json
+// @Param id path string true "Project ID"
+// @OperationId removeWorkspaceFromProject
 func (h *ProjectHandler) RemoveWorkspaceFromProject(c echo.Context) error {
 	var req model.WorkspaceProjectMappingRequest
 	if err := c.Bind(&req); err != nil {

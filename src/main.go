@@ -112,9 +112,7 @@ func main() {
 	projectHandler := handler.NewProjectHandler(db)
 
 	resourceTypeHandler := handler.NewResourceTypeHandler(db)
-	//cspMappingHandler := handler.NewCspMappingHandler(db)
 	cspCredentialHandler := handler.NewCspCredentialHandler(db)
-	//cspRoleHandler := handler.NewCspRoleHandler(db)
 	mcmpApiHandler := handler.NewMcmpApiHandler(db)
 	mcmpApiPermissionActionMappingHandler := handler.NewMcmpApiPermissionActionMappingHandler(db)
 	healthHandler := handler.NewHealthHandler()
@@ -248,7 +246,7 @@ func main() {
 		roles.DELETE("/id/:roleId", roleHandler.DeleteRole, middleware.PlatformRoleMiddleware(middleware.Write))
 
 		roles.POST("/id/:roleId/assign", roleHandler.AssignRole, middleware.PlatformRoleMiddleware(middleware.Write))
-		roles.POST("/id/:roleId/unassign", roleHandler.RemoveRole, middleware.PlatformRoleMiddleware(middleware.Write))
+		roles.DELETE("/id/:roleId/unassign", roleHandler.RemoveRole, middleware.PlatformRoleMiddleware(middleware.Write))
 
 		//------ 기본은 roles 관리로 되나. role관련은 특정 업무에 맞게 추가 ------//
 
@@ -259,15 +257,16 @@ func main() {
 		roles.POST("/assign/workspace-role", roleHandler.AssignWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
 		roles.DELETE("/unassign/workspace-role", roleHandler.RemoveWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
 
-		roles.POST("/assign/csp-roles", roleHandler.CreateWorkspaceRoleCspRoleMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
-		roles.DELETE("/unassign/csp-roles", roleHandler.DeleteWorkspaceRoleCspRoleMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
-		roles.GET("/id/:workspaceRoleId/csp-roles", roleHandler.ListWorkspaceRoleCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Write))
+		roles.POST("/assign/csp-roles", roleHandler.AssignCspRole, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.DELETE("/unassign/csp-roles", roleHandler.RemoveCspRole, middleware.PlatformRoleMiddleware(middleware.Manage))
 
-		roles.POST("/menu-roles/list", roleHandler.ListMenuRoles)
-		roles.POST("/menu-roles", roleHandler.CreateMenuRole)
-		roles.DELETE("/menu-roles", roleHandler.DeleteMenuRole)
-		roles.GET("/menu-roles/id/:roleId", roleHandler.GetMenuRoleByID)
-		roles.GET("/menu-roles/name/:roleName", roleHandler.GetMenuRoleByName)
+		//roles.GET("/id/:workspaceRoleId/csp-roles", roleHandler.ListCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Write))
+
+		roles.POST("/platform-roles/list", roleHandler.ListPlatformRoles)
+		roles.POST("/platform-roles", roleHandler.CreatePlatformRole)
+		roles.DELETE("/platform-roles", roleHandler.DeletePlatformRole)
+		roles.GET("/platform-roles/id/:roleId", roleHandler.GetPlatformRoleByID)
+		roles.GET("/platform-roles/name/:roleName", roleHandler.GetPlatformRoleByName)
 
 		roles.POST("/workspace-roles/list", roleHandler.ListWorkspaceRoles)
 		roles.POST("/workspace-roles", roleHandler.CreateWorkspaceRole)
@@ -275,11 +274,7 @@ func main() {
 		roles.GET("/workspace-roles/id/:roleId", roleHandler.GetWorkspaceRoleByID)
 		roles.GET("/workspace-roles/name/:roleName", roleHandler.GetWorkspaceRoleByName)
 
-		// CSP Role routes
-		// cspRoleGroup := roles.Group("/csp-roles")
-		// {
-		// }
-		roles.POST("/csp-roles/list", roleHandler.ListCspRoles)
+		roles.POST("/csp-roles/list", roleHandler.ListCSPRoles)
 		roles.POST("/csp-roles", roleHandler.CreateCspRole)
 		roles.DELETE("/csp-roles", roleHandler.DeleteCspRole)
 		roles.GET("/csp-roles/id/:roleId", roleHandler.GetCspRoleByID)
@@ -325,9 +320,9 @@ func main() {
 	users := api.Group("/users")
 	{
 		users.POST("/list", userHandler.ListUsers, middleware.PlatformRoleMiddleware(middleware.Read))
+		users.POST("", userHandler.CreateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.GET("/id/:userId", userHandler.GetUserByID, middleware.PlatformRoleMiddleware(middleware.Read))
 		users.GET("/name/:username", userHandler.GetUserByUsername, middleware.PlatformRoleMiddleware(middleware.Read))
-		users.POST("", userHandler.CreateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.PUT("/id/:userId", userHandler.UpdateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Manage))
@@ -342,14 +337,14 @@ func main() {
 	// 메뉴 라우트
 	menusMng := api.Group("/menus")
 	{
-		menusMng.POST("/list", menuHandler.ListAllMenus)
+		menusMng.POST("/list", menuHandler.ListMenus)
 		menusMng.POST("", menuHandler.CreateMenu, middleware.PlatformAdminMiddleware)
 		menusMng.PUT("/id/:menuId", menuHandler.UpdateMenu, middleware.PlatformAdminMiddleware)
 		menusMng.DELETE("/id/:menuId", menuHandler.DeleteMenu, middleware.PlatformAdminMiddleware)
 
-		menusMng.POST("/platform-roles/:role", menuHandler.ListMappedMenusByRole, middleware.PlatformAdminMiddleware)
-		menusMng.POST("/platform-roles/:role/menus/:menuId", menuHandler.CreateMenuMapping, middleware.PlatformAdminMiddleware)
-		menusMng.DELETE("/platform-roles/:role/menus/:menuId", menuHandler.DeleteMenuMapping, middleware.PlatformAdminMiddleware)
+		menusMng.POST("/platform-roles/list", menuHandler.ListMappedMenusByRole, middleware.PlatformAdminMiddleware)
+		menusMng.POST("/platform-roles", menuHandler.CreateMenuMapping, middleware.PlatformAdminMiddleware)
+		menusMng.DELETE("/platform-roles", menuHandler.DeleteMenuMapping, middleware.PlatformAdminMiddleware)
 	}
 
 	// // 관리자 전용 라우트
@@ -397,7 +392,7 @@ func main() {
 		mcmpApis.PUT("/name/:serviceName/versions/:version/activate", mcmpApiHandler.SetActiveVersion, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApis.POST("/call", mcmpApiHandler.McmpApiCall, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApis.GET("/test/mc-infra-manager/getallns", mcmpApiHandler.TestCallGetAllNs, middleware.PlatformRoleMiddleware(middleware.Manage))
-		mcmpApis.PUT("/name/:serviceName", mcmpApiHandler.UpdateService, middleware.PlatformRoleMiddleware(middleware.Manage))
+		mcmpApis.PUT("/name/:serviceName", mcmpApiHandler.UpdateFrameworkService, middleware.PlatformRoleMiddleware(middleware.Manage))
 	}
 
 	// MCMP API 권한-액션 매핑 라우트

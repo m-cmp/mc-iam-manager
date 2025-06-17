@@ -45,6 +45,7 @@ func NewAdminHandler(db *gorm.DB) *AdminHandler {
 // @Param request body model.SetupInitialAdminRequest true "Setup Initial Admin Request"
 // @Success 200 {object} model.Response
 // @Router /initial-admin [post]
+// @OperationId setupInitialAdmin
 func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	var req model.SetupInitialAdminRequest
 	if err := c.Bind(&req); err != nil {
@@ -190,6 +191,7 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 // @Failure 400 {object} model.Response
 // @Failure 500 {object} model.Response
 // @Router /setup/check-user-roles [get]
+// @OperationId checkUserRoles
 func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 	username := c.QueryParam("username")
 	if username == "" {
@@ -223,7 +225,12 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /admin/platform-roles [get]
+// @Router /admin/platform-roles/list [post]
+// @OperationId listPlatformRoles
+func (h *AdminHandler) ListPlatformRoles(c echo.Context) error {
+	// Implementation of ListPlatformRoles method
+	return nil // Placeholder return, actual implementation needed
+}
 
 // GetPlatformRoleByID godoc
 // @Summary 플랫폼 역할 ID로 조회
@@ -238,6 +245,11 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Platform Role not found"
 // @Security BearerAuth
 // @Router /admin/platform-roles/{id} [get]
+// @OperationId getPlatformRoleByID
+func (h *AdminHandler) GetPlatformRoleByID(c echo.Context) error {
+	// Implementation of GetPlatformRoleByID method
+	return nil // Placeholder return, actual implementation needed
+}
 
 // CreatePlatformRole godoc
 // @Summary 새 플랫폼 역할 생성
@@ -252,6 +264,11 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
 // @Router /admin/platform-roles [post]
+// @OperationId createPlatformRole
+func (h *AdminHandler) CreatePlatformRole(c echo.Context) error {
+	// Implementation of CreatePlatformRole method
+	return nil // Placeholder return, actual implementation needed
+}
 
 // UpdatePlatformRole godoc
 // @Summary 플랫폼 역할 업데이트
@@ -268,6 +285,11 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Platform Role not found"
 // @Security BearerAuth
 // @Router /admin/platform-roles/{id} [put]
+// @OperationId updatePlatformRole
+func (h *AdminHandler) UpdatePlatformRole(c echo.Context) error {
+	// Implementation of UpdatePlatformRole method
+	return nil // Placeholder return, actual implementation needed
+}
 
 // DeletePlatformRole godoc
 // @Summary 플랫폼 역할 삭제
@@ -282,3 +304,8 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Platform Role not found"
 // @Security BearerAuth
 // @Router /admin/platform-roles/{id} [delete]
+// @OperationId deletePlatformRole
+func (h *AdminHandler) DeletePlatformRole(c echo.Context) error {
+	// Implementation of DeletePlatformRole method
+	return nil // Placeholder return, actual implementation needed
+}

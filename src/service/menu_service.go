@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort" // Added
+	"strconv"
 	"strings"
 
 	"encoding/csv"
@@ -15,6 +16,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
+	"github.com/m-cmp/mc-iam-manager/util"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm" // Import gorm
 )
@@ -67,43 +69,33 @@ func (s *MenuService) GetAllMenusTree() ([]*model.MenuTreeNode, error) {
 
 // BuildUserMenuTree 사용자의 플랫폼 역할에 따른 메뉴 트리 구성
 func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoleIDs []uint) ([]*model.MenuTreeNode, error) {
+	req := &model.MenuMappingFilterRequest{}
+	var allMenus []*model.Menu
+
 	// 1. 각 플랫폼 역할에 매핑된 메뉴 ID들을 조회
-	menuIDMap := make(map[string]bool)
-	for _, roleID := range platformRoleIDs {
-		menuIDs, err := s.menuMappingRepo.FindMappedMenusByRole(roleID)
-		if err != nil {
-			return nil, err
-		}
-		for _, id := range menuIDs {
-			menuIDMap[id] = true
-		}
+	menuIDs, err := s.menuMappingRepo.FindMappedMenuIDs(req)
+	if err != nil {
+		return nil, err
 	}
 
 	// 2. 매핑된 메뉴 ID들의 상위 메뉴 ID들을 수집
-	parentIDMap := make(map[string]bool)
-	for menuID := range menuIDMap {
+	parentIDs := []*string{}
+	for _, menuID := range menuIDs {
 		menu, err := s.menuRepo.FindMenuByID(menuID)
 		if err != nil {
 			return nil, err
 		}
 		// 상위 메뉴 ID가 있으면 수집
 		if menu.ParentID != "" {
-			parentIDMap[menu.ParentID] = true
+			parentIDs = append(parentIDs, &menu.ParentID)
 		}
+		allMenus = append(allMenus, menu)
 	}
 
 	// 3. 모든 필요한 메뉴 ID를 하나의 맵으로 합침
-	for parentID := range parentIDMap {
-		menuIDMap[parentID] = true
-	}
 
 	// 4. 수집된 메뉴 ID들로 메뉴 정보 조회
-	var allMenus []*model.Menu
-	for platformMenuID := range menuIDMap {
-		// menuID는 platform:menu 형식이므로 : 뒷부분만 추출
-		// menuID := util.GetAfterDelimiter(platformMenuID, ":")
-		// log.Printf("menuID: %s", menuID)
-		// menu, err := s.menuRepo.FindMenuByID(menuID)
+	for _, platformMenuID := range parentIDs {
 		menu, err := s.menuRepo.FindMenuByID(platformMenuID)
 		if err != nil {
 			continue
@@ -121,23 +113,21 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoleIDs []u
 }
 
 // Role에 따른 메뉴 목록록
-func (s *MenuService) MenuList(ctx context.Context, platformRoleIDs []uint) ([]*model.Menu, error) {
+func (s *MenuService) MenuList(req *model.MenuMappingFilterRequest) ([]*model.Menu, error) {
 	// 1. 각 플랫폼 역할에 매핑된 메뉴 ID들을 조회
 	menuIDMap := make(map[string]bool)
-	for _, roleID := range platformRoleIDs {
-		menuIDs, err := s.menuMappingRepo.FindMappedMenusByRole(roleID)
-		if err != nil {
-			return nil, err
-		}
-		for _, id := range menuIDs {
-			menuIDMap[id] = true
-		}
+	menuIDs, err := s.menuMappingRepo.FindMappedMenuIDs(req)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range menuIDs {
+		menuIDMap[*id] = true
 	}
 
 	// 2. 매핑된 메뉴 ID들의 상위 메뉴 ID들을 수집
 	parentIDMap := make(map[string]bool)
 	for menuID := range menuIDMap {
-		menu, err := s.menuRepo.FindMenuByID(menuID)
+		menu, err := s.menuRepo.FindMenuByID(&menuID)
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +149,7 @@ func (s *MenuService) MenuList(ctx context.Context, platformRoleIDs []uint) ([]*
 		// menuID := util.GetAfterDelimiter(platformMenuID, ":")
 		// log.Printf("menuID: %s", menuID)
 		// menu, err := s.menuRepo.FindMenuByID(menuID)
-		menu, err := s.menuRepo.FindMenuByID(platformMenuID)
+		menu, err := s.menuRepo.FindMenuByID(&platformMenuID)
 		if err != nil {
 			continue
 		}
@@ -247,7 +237,7 @@ func (s *MenuService) GetMenus() ([]*model.Menu, error) {
 }
 
 // GetByID 메뉴 ID로 조회
-func (s *MenuService) GetMenuByID(id string) (*model.Menu, error) {
+func (s *MenuService) GetMenuByID(id *string) (*model.Menu, error) {
 	return s.menuRepo.FindMenuByID(id)
 }
 
@@ -430,19 +420,18 @@ func (s *MenuService) RegisterMenusFromContent(yamlContent []byte) error {
 }
 
 // ListMappedMenusByRole 플랫폼 역할에 매핑된 메뉴 목록 조회
-func (s *MenuService) ListMappedMenusByRole(platformRoleID uint) ([]*model.Menu, error) {
-	menuIDs, err := s.menuMappingRepo.FindMappedMenusByRole(platformRoleID)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *MenuService) ListMappedMenusByRole(req *model.MenuMappingFilterRequest) ([]*model.Menu, error) {
 	var menus []*model.Menu
-	for _, menuID := range menuIDs {
-		menu, err := s.menuRepo.FindMenuByID(menuID)
+	for _, roleID := range req.RoleID {
+		roleIDInt, err := util.StringToUint(roleID)
 		if err != nil {
 			return nil, err
 		}
-		menus = append(menus, menu)
+		roleMenus, err := s.menuMappingRepo.FindMappedMenus(roleIDInt)
+		if err != nil {
+			return nil, err
+		}
+		menus = append(menus, roleMenus...)
 	}
 
 	return menus, nil
@@ -548,15 +537,18 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 	// 기존 매핑 조회
 	existingMappings := make(map[string]map[uint]bool) // menuID -> roleID -> exists
 	for _, roleID := range roleIDs {
-		menuIDs, err := s.menuMappingRepo.FindMappedMenusByRole(roleID)
+		req := &model.MenuMappingFilterRequest{
+			RoleID: []string{strconv.FormatUint(uint64(roleID), 10)},
+		}
+		menuIDs, err := s.menuMappingRepo.FindMappedMenuIDs(req)
 		if err != nil {
 			return fmt.Errorf("failed to get existing mappings for role %d: %w", roleID, err)
 		}
 		for _, menuID := range menuIDs {
-			if _, exists := existingMappings[menuID]; !exists {
-				existingMappings[menuID] = make(map[uint]bool)
+			if _, exists := existingMappings[*menuID]; !exists {
+				existingMappings[*menuID] = make(map[uint]bool)
 			}
-			existingMappings[menuID][roleID] = true
+			existingMappings[*menuID][roleID] = true
 		}
 	}
 
