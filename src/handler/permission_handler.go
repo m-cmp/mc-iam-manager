@@ -29,15 +29,16 @@ func NewMciamPermissionHandler(db *gorm.DB) *MciamPermissionHandler {
 }
 
 // ListMciamPermissions MC-IAM 권한 목록 조회 - Renamed
-// @Summary MC-IAM 권한 목록 조회
-// @Description 모든 MC-IAM 권한 목록을 조회합니다.
-// @Tags mciam-permissions
+// @Summary List MCIAM permissions
+// @Description Get a list of all MCIAM permissions
+// @Tags permissions
 // @Accept json
 // @Produce json
-// @Success 200 {array} model.MciamPermission // Use renamed model
-// @Param frameworkId query string false "프레임워크 ID로 필터링"
-// @Param resourceTypeId query string false "리소스 유형 ID로 필터링"
-// @Router /mciam-permissions [get]
+// @Success 200 {array} model.MciamPermission
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/permissions/mciam/list [post]
+// @OperationId listMciamPermissions
 func (h *MciamPermissionHandler) ListMciamPermissions(c echo.Context) error { // Renamed method
 	frameworkID := c.QueryParam("frameworkId")
 	resourceTypeID := c.QueryParam("resourceTypeId")
@@ -51,14 +52,18 @@ func (h *MciamPermissionHandler) ListMciamPermissions(c echo.Context) error { //
 }
 
 // GetByID ID로 권한 조회
-// @Summary ID로 MC-IAM 권한 조회 - Renamed
-// @Description ID로 특정 MC-IAM 권한을 조회합니다.
-// @Tags mciam-permissions
+// @Summary Get MCIAM permission by ID
+// @Description Get MCIAM permission details by ID
+// @Tags permissions
 // @Accept json
 // @Produce json
-// @Param id path string true "권한 ID"
-// @Success 200 {object} model.MciamPermission // Use renamed model
-// @Router /mciam-permissions/{id} [get]
+// @Param id path string true "Permission ID"
+// @Success 200 {object} model.MciamPermission
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/permissions/mciam/id/{id} [get]
+// @OperationId getMciamPermissionByID
 func (h *MciamPermissionHandler) GetMciamPermissionByID(c echo.Context) error { // Renamed method
 	id := c.Param("id")
 
@@ -81,14 +86,18 @@ func (h *MciamPermissionHandler) GetMciamPermissionByID(c echo.Context) error { 
 }
 
 // Create 권한 생성
-// @Summary MC-IAM 권한 생성 - Renamed
-// @Description 새로운 MC-IAM 권한을 생성합니다.
-// @Tags mciam-permissions
+// @Summary Create MCIAM permission
+// @Description Create a new MCIAM permission
+// @Tags permissions
 // @Accept json
 // @Produce json
-// @Param permission body model.MciamPermission true "권한 정보" // Use renamed model
-// @Success 201 {object} model.MciamPermission // Use renamed model
-// @Router /mciam-permissions [post]
+// @Param permission body model.MciamPermission true "Permission Info"
+// @Success 201 {object} model.MciamPermission
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/permissions/mciam [post]
+// @OperationId createMciamPermission
 func (h *MciamPermissionHandler) CreateMciamPermission(c echo.Context) error { // Renamed method
 	var permission model.MciamPermission // Use renamed model
 	if err := c.Bind(&permission); err != nil {
@@ -106,15 +115,20 @@ func (h *MciamPermissionHandler) CreateMciamPermission(c echo.Context) error { /
 }
 
 // Update 권한 수정
-// @Summary MC-IAM 권한 수정 - Renamed
-// @Description 기존 MC-IAM 권한을 수정합니다 (Name, Description만 가능).
-// @Tags mciam-permissions
+// @Summary Update MCIAM permission
+// @Description Update an existing MCIAM permission
+// @Tags permissions
 // @Accept json
 // @Produce json
-// @Param id path string true "권한 ID"
-// @Param updates body object true "수정할 필드와 값 (예: {\"name\": \"New Name\", \"description\": \"New Desc\"})"
-// @Success 200 {object} model.MciamPermission "업데이트된 권한 정보" // Use renamed model
-// @Router /mciam-permissions/{id} [put] // Updated route
+// @Param id path string true "Permission ID"
+// @Param permission body model.MciamPermission true "Permission Info"
+// @Success 200 {object} model.MciamPermission
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/permissions/mciam/{id} [put]
+// @OperationId updateMciamPermission
 func (h *MciamPermissionHandler) UpdateMciamPermission(c echo.Context) error { // Renamed method
 	id := c.Param("id")
 
@@ -156,14 +170,18 @@ func (h *MciamPermissionHandler) UpdateMciamPermission(c echo.Context) error { /
 }
 
 // Delete 권한 삭제
-// @Summary MC-IAM 권한 삭제 - Renamed
-// @Description MC-IAM 권한을 삭제합니다.
-// @Tags mciam-permissions
+// @Summary Delete MCIAM permission
+// @Description Delete an existing MCIAM permission
+// @Tags permissions
 // @Accept json
 // @Produce json
-// @Param id path string true "권한 ID"
+// @Param id path string true "Permission ID"
 // @Success 204 "No Content"
-// @Router /mciam-permissions/{id} [delete] // Updated route
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/permissions/mciam/{id} [delete]
+// @OperationId deleteMciamPermission
 func (h *MciamPermissionHandler) DeleteMciamPermission(c echo.Context) error { // Renamed method
 	id := c.Param("id")
 

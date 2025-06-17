@@ -31,6 +31,7 @@ func NewHealthHandler() *HealthHandler {
 // @Produce json
 // @Success 200 {object} map[string]string
 // @Router /api/health [get]
+// @OperationId checkHealth
 func (h *HealthHandler) CheckHealth(c echo.Context) error {
 	status := c.QueryParam("status")
 	if status == "detail" {

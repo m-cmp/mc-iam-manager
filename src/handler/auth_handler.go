@@ -55,6 +55,7 @@ func NewAuthHandler(db *gorm.DB) *AuthHandler {
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
 // @Router /api/auth/login [post]
+// @OperationId login
 func (h *AuthHandler) Login(c echo.Context) error {
 	var userLogin idp.UserLogin
 	if err := c.Bind(&userLogin); err != nil {
@@ -148,6 +149,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Router /api/auth/logout [post]
+// @OperationId logout
 func (h *AuthHandler) Logout(c echo.Context) error {
 	// Keycloak에서는 클라이언트 측에서 토큰을 삭제하면 됩니다
 	return c.JSON(http.StatusOK, map[string]string{"message": "로그아웃되었습니다"})
@@ -164,6 +166,7 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
 // @Router /api/auth/refresh [post]
+// @OperationId refreshToken
 func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	refreshToken := c.FormValue("refresh_token")
 	if refreshToken == "" {
@@ -192,6 +195,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Security BearerAuth
 // @Router /workspaces/workspace-ticket [post]
+// @OperationId workspaceTicket
 func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 	// 1. 기존 액세스 토큰 확인
 	authHeader := c.Request().Header.Get("Authorization")
@@ -261,7 +265,16 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{"rpt": rpt})
 }
 
-// 인증서 전달. 클라이언트에서 인증서를 parsing 해서 사용할 수 있도록 함.
+// AuthCerts godoc
+// @Summary Get authentication certificates
+// @Description Get authentication certificates for token validation
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Router /api/auth/certs [get]
+// @OperationId authCerts
 func (h *AuthHandler) AuthCerts(c echo.Context) error {
 	cert, err := h.keycloakService.GetCerts(c.Request().Context())
 	if err != nil {

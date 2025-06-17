@@ -73,8 +73,13 @@ type WorkspaceProjectFilterRequest struct {
 
 // CreateMenuMappingRequest 메뉴 매핑 생성을 위한 요청 구조체
 type CreateMenuMappingRequest struct {
-	MenuID uint `json:"menuId" validate:"required"`
-	RoleID uint `json:"roleId" validate:"required"`
+	RoleID string   `json:"roleId" validate:"required"`
+	MenuID []string `json:"menuId" validate:"required"`
+}
+
+type MenuMappingFilterRequest struct {
+	RoleID []string `json:"roleId",omitempty"`
+	MenuID string   `json:"menuId",omitempty"`
 }
 
 // AssignWorkspaceRoleRequest 워크스페이스 역할 할당 요청 구조체

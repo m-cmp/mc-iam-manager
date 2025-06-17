@@ -70,7 +70,8 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 // @Success 200 {array} model.User
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users/list [post]
+// @Router /api/users [post]
+// @OperationId listUsers
 func (h *UserHandler) ListUsers(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"} // todo : middleware에서 체크되지 않나?
@@ -102,7 +103,8 @@ func (h *UserHandler) ListUsers(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users/id/{userId} [get]
+// @Router /api/users/{id} [get]
+// @OperationId getUserByID
 func (h *UserHandler) GetUserByID(c echo.Context) error {
 	// Note: Add role check if needed for this endpoint as well
 	kcId := c.Param("userId")                                             // Parameter is Keycloak ID (string)
@@ -127,6 +129,7 @@ func (h *UserHandler) GetUserByID(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/name/{username} [get]
+// @OperationId getUserByUsername
 func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 	// Note: Add role check if needed for this endpoint as well
 	username := c.Param("username")
@@ -149,6 +152,7 @@ func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users [post]
+// @OperationId createUser
 func (h *UserHandler) CreateUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -181,7 +185,7 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 
 // UpdateUser godoc
 // @Summary Update user
-// @Description Update user information
+// @Description Update an existing user
 // @Tags users
 // @Accept json
 // @Produce json
@@ -192,7 +196,8 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users/id/{userId} [put]
+// @Router /api/users/{id} [put]
+// @OperationId updateUser
 func (h *UserHandler) UpdateUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -237,7 +242,7 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 
 // DeleteUser godoc
 // @Summary Delete user
-// @Description Delete a user
+// @Description Delete an existing user
 // @Tags users
 // @Accept json
 // @Produce json
@@ -246,7 +251,8 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users/id/{userId} [delete]
+// @Router /api/users/{id} [delete]
+// @OperationId deleteUser
 func (h *UserHandler) DeleteUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -288,6 +294,7 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/id/{userId}/status [post]
+// @OperationId updateUserStatus
 func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 
 	// --- 역할 검증 (Admin or platformAdmin) ---
@@ -360,7 +367,8 @@ func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 // @Success 200 {array} model.RoleMaster
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /users/workspaces/role/list [post]
+// @Router /api/users/workspaces/roles/list [post]
+// @OperationId listUserWorkspaceAndWorkspaceRoles
 func (h *UserHandler) ListUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
 	// // 1. Get user claims from context
 	// claimsIntf := c.Get("token_claims")
@@ -439,7 +447,8 @@ func (h *UserHandler) ListUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
 // @Success 200 {array} model.Workspace
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /users/workspaces/list [post]
+// @Router /api/users/workspaces/list [post]
+// @OperationId listUserWorkspaces
 func (h *UserHandler) ListUserWorkspaces(c echo.Context) error {
 
 	// 1. Get Keycloak User ID
@@ -478,5 +487,15 @@ func (h *UserHandler) ListUserWorkspaces(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
 	}
 
-	return c.JSON(http.StatusOK, workspaces)
+	var workspacesProjects []*model.WorkspaceWithProjects
+	for _, workspace := range workspaces {
+		workspacesProjects, err = h.workspaceService.ListWorkspacesProjects(model.WorkspaceProjectFilterRequest{
+			WorkspaceID: fmt.Sprintf("%d", workspace.ID),
+		})
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
+		}
+		workspacesProjects = append(workspacesProjects, workspacesProjects...)
+	}
+	return c.JSON(http.StatusOK, workspacesProjects)
 }

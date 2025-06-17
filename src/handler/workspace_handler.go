@@ -55,6 +55,7 @@ func NewWorkspaceHandler(db *gorm.DB) *WorkspaceHandler {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/workspaces/list [post]
+// @OperationId listWorkspaces
 func (h *WorkspaceHandler) ListWorkspaces(c echo.Context) error {
 	// // --- Permission Check ---
 	// userID, platformRoles, err := getUserDbIdAndPlatformRoles(c.Request().Context(), c, h.userService) // Pass context
@@ -119,6 +120,7 @@ func (h *WorkspaceHandler) ListWorkspaces(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/workspaces/id/{workspaceId} [get]
+// @OperationId getWorkspaceByID
 func (h *WorkspaceHandler) GetWorkspaceByID(c echo.Context) error {
 
 	workspaceIDInt, err := util.StringToUint(c.Param("workspaceId"))
@@ -148,6 +150,7 @@ func (h *WorkspaceHandler) GetWorkspaceByID(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/workspaces [post]
+// @OperationId createWorkspace
 func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 	var workspace model.Workspace
 	if err := c.Bind(&workspace); err != nil {
@@ -179,6 +182,7 @@ func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/workspaces/id/{workspaceId} [put]
+// @OperationId updateWorkspace
 func (h *WorkspaceHandler) UpdateWorkspace(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -215,6 +219,7 @@ func (h *WorkspaceHandler) UpdateWorkspace(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/workspaces/id/{workspaceId} [delete]
+// @OperationId deleteWorkspace
 func (h *WorkspaceHandler) DeleteWorkspace(c echo.Context) error {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -243,6 +248,7 @@ func (h *WorkspaceHandler) DeleteWorkspace(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
 // @Router /workspaces/users [post]
+// @OperationId listUserWorkspaces
 func (h *WorkspaceHandler) ListUserWorkspaces(c echo.Context) error {
 	var req model.WorkspaceFilterRequest
 	if err := c.Bind(&req); err != nil {
@@ -307,6 +313,7 @@ func (h *WorkspaceHandler) ListUserWorkspaces(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Workspace not found"
 // @Security BearerAuth
 // @Router /workspaces/name/{workspaceName} [get]
+// @OperationId getWorkspaceByName
 func (h *WorkspaceHandler) GetWorkspaceByName(c echo.Context) error {
 	name := c.Param("workspaceName")
 
@@ -331,7 +338,8 @@ func (h *WorkspaceHandler) GetWorkspaceByName(c echo.Context) error {
 // @Failure 400 {object} map[string]string "error: Invalid workspace ID"
 // @Failure 404 {object} map[string]string "error: Workspace not found"
 // @Failure 500 {object} map[string]string "error: Internal server error"
-// @Router /workspaces/{workspaceId}/users [get]
+// @Router /workspaces/{workspaceId}/users/list [post]
+// @OperationId listUsersAndRolesByWorkspace
 func (h *WorkspaceHandler) ListUsersAndRolesByWorkspaces(c echo.Context) error {
 	var req model.WorkspaceFilterRequest
 	if err := c.Bind(&req); err != nil {
@@ -361,7 +369,8 @@ func (h *WorkspaceHandler) ListUsersAndRolesByWorkspaces(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Workspace not found"
 // @Security BearerAuth
-// @Router /workspaces/projects [post]
+// @Router /workspaces/projects/list [post]
+// @OperationId listWorkspaceProjects
 func (h *WorkspaceHandler) ListWorkspaceProjects(c echo.Context) error {
 	var req model.WorkspaceProjectFilterRequest
 	if err := c.Bind(&req); err != nil {
@@ -396,7 +405,8 @@ func (h *WorkspaceHandler) ListWorkspaceProjects(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Workspace or Project not found"
 // @Security BearerAuth
-// @Router /workspaces/{id}/projects/{projectId} [post]
+// @Router /workspaces/assign/projects [post]
+// @OperationId addProjectToWorkspace
 func (h *WorkspaceHandler) AddProjectToWorkspace(c echo.Context) error {
 	var req model.WorkspaceProjectMappingRequest
 	if err := c.Bind(&req); err != nil {
@@ -426,6 +436,14 @@ func (h *WorkspaceHandler) AddProjectToWorkspace(c echo.Context) error {
 }
 
 // RemoveProjectFromWorkspace 워크스페이스에서 프로젝트 제거
+// @Summary Remove project from workspace
+// @Description Remove a project from a workspace
+// @Tags workspaces
+// @Accept json
+// @Produce json
+// @Param id path string true "Workspace ID"
+// @Router /workspaces/unassign/projects [delete]
+// @OperationId removeProjectFromWorkspace
 func (h *WorkspaceHandler) RemoveProjectFromWorkspace(c echo.Context) error {
 	var req model.WorkspaceProjectMappingRequest
 	if err := c.Bind(&req); err != nil {
@@ -464,7 +482,8 @@ func (h *WorkspaceHandler) RemoveProjectFromWorkspace(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 500 {object} map[string]string "error: Internal server error"
 // @Security BearerAuth
-// @Router /workspaces/all/users [get]
+// @Router /workspaces/all/users/list [post]
+// @OperationId listAllWorkspaceUsersAndRoles
 func (h *WorkspaceHandler) ListWorkspaceUsersAndRoles(c echo.Context) error {
 
 	var req model.WorkspaceFilterRequest
@@ -499,7 +518,7 @@ func (h *WorkspaceHandler) ListWorkspaceRoles(c echo.Context) error {
 	return c.JSON(http.StatusOK, roles)
 }
 
-// GetWorkspaceUsers godoc
+// ListWorkspaceUsers godoc
 // @Summary Get workspace users
 // @Description Get users in a workspace
 // @Tags workspaces
@@ -511,6 +530,7 @@ func (h *WorkspaceHandler) ListWorkspaceRoles(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /workspaces/{id}/users [get]
+// @OperationId ListWorkspaceUsers
 func (h *WorkspaceHandler) ListWorkspaceUsers(c echo.Context) error {
 	var req model.WorkspaceFilterRequest
 	if err := c.Bind(&req); err != nil {
@@ -542,6 +562,7 @@ func (h *WorkspaceHandler) ListWorkspaceUsers(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /workspaces/{id}/users [post]
+// @OperationId addUserToWorkspace
 func (h *WorkspaceHandler) AddUserToWorkspace(c echo.Context) error {
 	var req model.AssignRoleRequest
 	if err := c.Bind(&req); err != nil {
@@ -591,6 +612,7 @@ func (h *WorkspaceHandler) AddUserToWorkspace(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /workspaces/{id}/users/{userId} [delete]
+// @OperationId removeUserFromWorkspace
 func (h *WorkspaceHandler) RemoveUserFromWorkspace(c echo.Context) error {
 	workspaceID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
