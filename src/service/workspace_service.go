@@ -92,7 +92,7 @@ func (s *WorkspaceService) ListWorkspaces(req *model.WorkspaceFilterRequest) ([]
 }
 
 // ListWorkspacesProjects 모든 워크스페이스와 연관된 프로젝트 목록을 조회합니다.
-func (s *WorkspaceService) ListWorkspacesProjects(req model.WorkspaceProjectFilterRequest) ([]*model.WorkspaceWithProjects, error) {
+func (s *WorkspaceService) ListWorkspacesProjects(req *model.WorkspaceFilterRequest) ([]*model.WorkspaceWithProjects, error) {
 	workspaces, err := s.workspaceRepo.FindWorkspacesProjects(req)
 	if err != nil {
 		return nil, err

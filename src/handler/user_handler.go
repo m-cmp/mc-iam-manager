@@ -479,7 +479,7 @@ func (h *UserHandler) ListUserWorkspaces(c echo.Context) error {
 		UserID: fmt.Sprintf("%d", localUserID),
 	}
 
-	// Get user's workspace roles
+	// Get user's workspace
 	var workspaces []*model.Workspace
 	workspaces, err = h.workspaceService.ListWorkspaces(WorkspaceFilterRequest)
 
@@ -487,15 +487,75 @@ func (h *UserHandler) ListUserWorkspaces(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
 	}
 
+	// Get projects in each workspace
 	var workspacesProjects []*model.WorkspaceWithProjects
 	for _, workspace := range workspaces {
-		workspacesProjects, err = h.workspaceService.ListWorkspacesProjects(model.WorkspaceProjectFilterRequest{
+		aWorkspacesProject, err := h.workspaceService.ListWorkspacesProjects(&model.WorkspaceFilterRequest{
 			WorkspaceID: fmt.Sprintf("%d", workspace.ID),
 		})
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
 		}
-		workspacesProjects = append(workspacesProjects, workspacesProjects...)
+		workspacesProjects = append(workspacesProjects, aWorkspacesProject...)
 	}
 	return c.JSON(http.StatusOK, workspacesProjects)
+}
+
+// ListUserProjectsByWorkspace godoc
+// @Summary List user projects by workspace
+// @Description List projects for the current user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param workspaceId path string true "Workspace ID"
+// @Success 200 {array} model.Project
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/workspaces/id/{workspaceId}/projects/list [get]
+// @OperationId listUserProjectsByWorkspace
+func (h *UserHandler) ListUserProjectsByWorkspace(c echo.Context) error {
+	workspaceIdInt, err := util.StringToUint(c.Param("workspaceId"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 workspace ID 형식입니다"})
+	}
+
+	// 1. Get Keycloak User ID
+	kcUserIdVal := c.Get("kcUserId")
+	if kcUserIdVal == nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get user at GetUserWorkspaceAndWorkspaceRoles"})
+	}
+	kcUserID, ok := kcUserIdVal.(string)
+	if !ok || kcUserID == "" {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "invalid kcUserId in context at GetUserWorkspaceAndWorkspaceRoles"})
+	}
+
+	// 2. Get local DB User ID (db_id) using the service method
+	//    This method handles syncing if the user isn't in the local DB yet.
+	localUserID, err := h.userService.GetUserIDByKcID(c.Request().Context(), kcUserID) // Correct function name
+	if err != nil {
+		fmt.Printf("[ERROR] GetUserWorkspaceAndWorkspaceRoles: Failed to get local DB ID for user (kcID: %s): %v\n", kcUserID, err) // Updated log prefix
+		// Handle potential errors like user not found in Keycloak (if GetUserIDByKcID propagates it)
+		// or DB errors during sync.
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to retrieve user database ID"})
+	}
+	if localUserID == 0 {
+		// Should not happen if GetUserIDByKcID works correctly, but safeguard.
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Retrieved invalid local user database ID (0)"})
+	}
+
+	// Get user's workspace
+	//ListWorkspacesProjects
+	//workspaces, err := h.workspaceService.ListWorkspaces(&model.WorkspaceFilterRequest{
+	workspaces, err := h.workspaceService.ListWorkspacesProjects(&model.WorkspaceFilterRequest{
+		WorkspaceID: fmt.Sprintf("%d", workspaceIdInt),
+	})
+	//workspace, err := h.workspaceService.GetWorkspaceByID(workspaceIdInt)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
+	}
+
+	if len(workspaces) > 0 {
+		return c.JSON(http.StatusOK, workspaces[0])
+	}
+	return c.JSON(http.StatusOK, model.Workspace{})
 }

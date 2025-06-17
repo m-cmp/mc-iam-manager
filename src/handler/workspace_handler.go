@@ -372,12 +372,12 @@ func (h *WorkspaceHandler) ListUsersAndRolesByWorkspaces(c echo.Context) error {
 // @Router /workspaces/projects/list [post]
 // @OperationId listWorkspaceProjects
 func (h *WorkspaceHandler) ListWorkspaceProjects(c echo.Context) error {
-	var req model.WorkspaceProjectFilterRequest
+	var req model.WorkspaceFilterRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
-	workspaceProjects, err := h.workspaceService.ListWorkspacesProjects(req)
+	workspaceProjects, err := h.workspaceService.ListWorkspacesProjects(&req)
 	if err != nil {
 		// Handle not found error from service (which checks workspace existence)
 		if err.Error() == "workspace not found" { // Assuming service returns this specific error

@@ -66,9 +66,15 @@ type WorkspaceFilterRequest struct {
 	UserID        string `json:"userId,omitempty"`
 	RoleID        string `json:"roleId,omitempty"`
 }
-type WorkspaceProjectFilterRequest struct {
-	WorkspaceID string `json:"workspaceId,omitempty"`
-	ProjectID   string `json:"projectId,omitempty"`
+
+// type WorkspaceProjectFilterRequest struct {
+// 	WorkspaceID string `json:"workspaceId,omitempty"`
+// 	ProjectID   string `json:"projectId,omitempty"`
+// }
+
+type MenuFilterRequest struct {
+	MenuID   []*string `json:"menuId",omitempty"`
+	MenuName []*string `json:"menuName",omitempty"`
 }
 
 // CreateMenuMappingRequest 메뉴 매핑 생성을 위한 요청 구조체

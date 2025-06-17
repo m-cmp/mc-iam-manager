@@ -56,7 +56,7 @@ func (r *WorkspaceRepository) DeleteWorkspace(id uint) error {
 	return nil
 }
 
-// Find 모든 워크스페이스를 조회합니다. workspace 목록만 return
+// Find 모든 워크스페이스를 조회합니다.
 func (r *WorkspaceRepository) FindWorkspaces(req *model.WorkspaceFilterRequest) ([]*model.Workspace, error) {
 	var workspaces []*model.Workspace
 
@@ -128,17 +128,17 @@ func (r *WorkspaceRepository) FindWorkspaceByName(workspaceName string) (*model.
 }
 
 // FindWorkspacesProjects 모든 워크스페이스 조회 (프로젝트 정보 포함)
-func (r *WorkspaceRepository) FindWorkspacesProjects(req model.WorkspaceProjectFilterRequest) ([]*model.WorkspaceWithProjects, error) {
+func (r *WorkspaceRepository) FindWorkspacesProjects(req *model.WorkspaceFilterRequest) ([]*model.WorkspaceWithProjects, error) {
 	var workspacesProjects []*model.WorkspaceWithProjects
-	// Preload Projects to fetch associated projects
-	query := r.db.Model(&model.Workspace{})
+	query := r.db.Model(&model.Workspace{}).
+		Preload("Projects")
 
 	if req.WorkspaceID != "" {
 		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)
 		if err != nil {
 			return nil, err
 		}
-		query = query.Where("id = ?", workspaceIdInt)
+		query = query.Where("mcmp_workspaces.id = ?", workspaceIdInt)
 	}
 
 	if req.ProjectID != "" {
@@ -150,7 +150,7 @@ func (r *WorkspaceRepository) FindWorkspacesProjects(req model.WorkspaceProjectF
 			Where("mcmp_workspace_projects.project_id = ?", projectIdInt)
 	}
 
-	if err := query.Preload("Projects").Find(&workspacesProjects).Error; err != nil {
+	if err := query.Find(&workspacesProjects).Error; err != nil {
 		return nil, err
 	}
 	return workspacesProjects, nil
