@@ -1,5 +1,8 @@
 package model
 
+// 각종 요청에 대한 구조체 정의
+// naming convention : XxxRequest
+
 type Response struct {
 	Error   bool   `json:"error"`
 	Message string `json:"message"`
@@ -132,5 +135,14 @@ type RoleMasterCspRoleMappingRequest struct {
 }
 
 type WorkspaceWithUsersAndRolesRequest struct {
+	WorkspaceID string `json:"workspaceId"`
+}
+
+// RoleMapping을 조회하기 위한 요청 구조체
+type RoleMappingRequest struct {
+	RoleID      string `json:"roleId"`
+	RoleType    string `json:"roleType"`
+	CspType     string `json:"cspType"`
+	CspRoleID   string `json:"cspRoleId"`
 	WorkspaceID string `json:"workspaceId"`
 }

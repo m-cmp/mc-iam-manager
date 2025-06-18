@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gorm.io/gorm" // Import gorm
@@ -14,10 +15,10 @@ import (
 // WorkspaceService 워크스페이스 관리 서비스
 type WorkspaceService struct {
 	workspaceRepo     *repository.WorkspaceRepository
-	workspaceRoleRepo *repository.WorkspaceRoleRepository
-	projectRepo       *repository.ProjectRepository
 	roleRepo          *repository.RoleRepository
 	userRepo          *repository.UserRepository
+	workspaceRoleRepo *repository.WorkspaceRoleRepository
+	projectRepo       *repository.ProjectRepository
 	db                *gorm.DB
 }
 
@@ -26,16 +27,16 @@ func NewWorkspaceService(db *gorm.DB) *WorkspaceService {
 	// Initialize repositories internally
 	workspaceRepo := repository.NewWorkspaceRepository(db)
 	projectRepo := repository.NewProjectRepository(db)
-	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db)
 	roleRepo := repository.NewRoleRepository(db)
 	userRepo := repository.NewUserRepository(db)
+	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db)
 	return &WorkspaceService{
 		db:                db,
 		workspaceRepo:     workspaceRepo,
 		projectRepo:       projectRepo,
-		workspaceRoleRepo: workspaceRoleRepo,
 		roleRepo:          roleRepo,
 		userRepo:          userRepo,
+		workspaceRoleRepo: workspaceRoleRepo,
 	}
 }
 
@@ -225,7 +226,7 @@ func (s *WorkspaceService) AssignWorkspaceRole(userID, workspaceID, roleID uint)
 	}
 
 	// 역할 존재 여부 확인
-	role, err := s.roleRepo.FindRoleByRoleID(roleID, model.RoleTypeWorkspace)
+	role, err := s.roleRepo.FindRoleByRoleID(roleID, constants.RoleTypeWorkspace)
 	if err != nil {
 		return fmt.Errorf("역할을 찾을 수 없습니다: %w", err)
 	}
@@ -235,7 +236,7 @@ func (s *WorkspaceService) AssignWorkspaceRole(userID, workspaceID, roleID uint)
 
 	// 워크스페이스 역할 타입 검증
 	var roleSub model.RoleSub
-	if err := s.db.Where("role_id = ? AND role_type = ?", roleID, model.RoleTypeWorkspace).First(&roleSub).Error; err != nil {
+	if err := s.db.Where("role_id = ? AND role_type = ?", roleID, constants.RoleTypeWorkspace).First(&roleSub).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("워크스페이스 역할이 아닙니다")
 		}
@@ -276,7 +277,7 @@ func (s *WorkspaceService) AddUserToWorkspace(workspaceID, userID uint) error {
 
 	// 기본 워크스페이스 역할 조회
 	var defaultRole model.RoleMaster
-	if err := s.db.Where("role_type = ? AND name = ?", model.RoleTypeWorkspace, "workspace_user").
+	if err := s.db.Where("role_type = ? AND name = ?", constants.RoleTypeWorkspace, "workspace_user").
 		First(&defaultRole).Error; err != nil {
 		return err
 	}

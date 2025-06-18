@@ -22,7 +22,7 @@ import (
 
 type UserService struct {
 	userRepo          *repository.UserRepository
-	platformRoleRepo  *repository.PlatformRoleRepository
+	roleRepo          *repository.RoleRepository
 	workspaceRoleRepo *repository.WorkspaceRoleRepository
 	workspaceRepo     *repository.WorkspaceRepository
 	tokenRepo         *repository.TokenRepository
@@ -37,7 +37,7 @@ func NewUserService(
 ) *UserService {
 	// Initialize repositories internally
 	userRepo := repository.NewUserRepository(db)
-	platformRoleRepo := repository.NewPlatformRoleRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
 	workspaceRepo := repository.NewWorkspaceRepository(db)
 	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db) // Initialize needed repo
 	tokenRepo := repository.NewTokenRepository(db)                 // Initialize needed repo
@@ -45,7 +45,7 @@ func NewUserService(
 	return &UserService{
 		db:                db, // Store db
 		userRepo:          userRepo,
-		platformRoleRepo:  platformRoleRepo,
+		roleRepo:          roleRepo,
 		workspaceRepo:     workspaceRepo,
 		workspaceRoleRepo: workspaceRoleRepo, // Store initialized repo
 		tokenRepo:         tokenRepo,         // Store initialized repo

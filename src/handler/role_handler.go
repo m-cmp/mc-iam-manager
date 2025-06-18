@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service"
 	"github.com/m-cmp/mc-iam-manager/util"
@@ -389,12 +390,12 @@ func (h *RoleHandler) AssignRole(c echo.Context) error {
 	}
 
 	// 역할 할당
-	if req.RoleType == model.RoleTypePlatform {
+	if req.RoleType == constants.RoleTypePlatform {
 		if err := h.service.AssignPlatformRole(userID, roleID); err != nil {
 			log.Printf("플랫폼 역할 할당 실패 - 사용자ID: %d, 역할ID: %d, 에러: %v", userID, req.RoleID, err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("플랫폼 역할 할당 실패: %v", err)})
 		}
-	} else if req.RoleType == model.RoleTypeWorkspace {
+	} else if req.RoleType == constants.RoleTypeWorkspace {
 		if workspaceID == 0 {
 			log.Printf("워크스페이스 ID 누락 - 사용자ID: %d, 역할ID: %d", userID, req.RoleID)
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "워크스페이스 ID가 필요합니다"})
@@ -482,11 +483,11 @@ func (h *RoleHandler) RemoveRole(c echo.Context) error {
 	}
 
 	// 역할 제거
-	if req.RoleType == model.RoleTypePlatform {
+	if req.RoleType == constants.RoleTypePlatform {
 		if err := h.service.RemovePlatformRole(userID, roleID); err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("플랫폼 역할 제거 실패: %v", err)})
 		}
-	} else if req.RoleType == model.RoleTypeWorkspace {
+	} else if req.RoleType == constants.RoleTypeWorkspace {
 		var workspaceID uint
 		if req.WorkspaceID == "" {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "워크스페이스 ID가 필요합니다"})
@@ -527,7 +528,7 @@ func (h *RoleHandler) ListPlatformRoles(c echo.Context) error {
 
 	// workspace 역할만 조회
 	if req.RoleTypes == nil {
-		req.RoleTypes = []string{model.RoleTypePlatform}
+		req.RoleTypes = []string{constants.RoleTypePlatform}
 	}
 
 	roles, err := h.service.ListRoles(&req)
@@ -559,7 +560,7 @@ func (h *RoleHandler) ListWorkspaceRoles(c echo.Context) error {
 
 	// workspace 역할만 조회
 	if req.RoleTypes == nil {
-		req.RoleTypes = []string{model.RoleTypeWorkspace}
+		req.RoleTypes = []string{constants.RoleTypeWorkspace}
 	}
 
 	roles, err := h.service.ListWorkspaceRoles(&req)
@@ -591,7 +592,7 @@ func (h *RoleHandler) ListCSPRoles(c echo.Context) error {
 
 	// csp 역할만 조회
 	if req.RoleTypes == nil {
-		req.RoleTypes = []string{model.RoleTypeCSP}
+		req.RoleTypes = []string{constants.RoleTypeCSP}
 	}
 
 	roles, err := h.service.ListRoles(&req)
@@ -645,7 +646,7 @@ func (h *RoleHandler) CreatePlatformRole(c echo.Context) error {
 		log.Printf("roleType: %s", roleType)
 		roleSubs = append(roleSubs, model.RoleSub{
 			RoleID:   role.ID,
-			RoleType: model.RoleTypePlatform,
+			RoleType: constants.RoleTypePlatform,
 		})
 	}
 
@@ -699,7 +700,7 @@ func (h *RoleHandler) CreateWorkspaceRole(c echo.Context) error {
 		log.Printf("roleType: %s", roleType)
 		roleSubs[i] = model.RoleSub{
 			RoleID:   role.ID,
-			RoleType: model.RoleTypeWorkspace,
+			RoleType: constants.RoleTypeWorkspace,
 		}
 	}
 
@@ -777,7 +778,7 @@ func (h *RoleHandler) CreateCspRole(c echo.Context) error {
 // @Router /api/roles/platform-roles/id/{roleId} [get]
 // @OperationId getPlatformRoleByID
 func (h *RoleHandler) GetPlatformRoleByID(c echo.Context) error {
-	roleType := model.RoleTypePlatform
+	roleType := constants.RoleTypePlatform
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
 
 	roleIDInt, err := util.StringToUint(c.Param("roleId"))
@@ -816,7 +817,7 @@ func (h *RoleHandler) GetPlatformRoleByID(c echo.Context) error {
 // @Router /api/roles/platform-roles/name/{roleName} [get]
 // @OperationId getPlatformRoleByName
 func (h *RoleHandler) GetPlatformRoleByName(c echo.Context) error {
-	roleType := model.RoleTypePlatform
+	roleType := constants.RoleTypePlatform
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
 
 	roleName := c.Param("roleName")
@@ -849,7 +850,7 @@ func (h *RoleHandler) GetPlatformRoleByName(c echo.Context) error {
 // @Router /api/roles/workspace-roles/id/{roleId} [get]
 // @OperationId getWorkspaceRoleByID
 func (h *RoleHandler) GetWorkspaceRoleByID(c echo.Context) error {
-	roleType := model.RoleTypeWorkspace
+	roleType := constants.RoleTypeWorkspace
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
 
 	roleIDInt, err := util.StringToUint(c.Param("roleId"))
@@ -888,7 +889,7 @@ func (h *RoleHandler) GetWorkspaceRoleByID(c echo.Context) error {
 // @Router /api/roles/workspace-roles/name/{roleName} [get]
 // @OperationId getWorkspaceRoleByName
 func (h *RoleHandler) GetWorkspaceRoleByName(c echo.Context) error {
-	roleType := model.RoleTypeWorkspace
+	roleType := constants.RoleTypeWorkspace
 	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
 
 	roleName := c.Param("roleName")
@@ -1103,7 +1104,7 @@ func (h *RoleHandler) DeletePlatformRole(c echo.Context) error {
 // @Router /api/roles/workspace-roles/id/{roleId} [delete]
 // @OperationId deleteWorkspaceRole
 func (h *RoleHandler) DeleteWorkspaceRole(c echo.Context) error {
-	roleType := model.RoleTypeWorkspace
+	roleType := constants.RoleTypeWorkspace
 
 	var req model.RoleMasterSubRequest
 	if err := c.Bind(&req); err != nil {
@@ -1159,7 +1160,7 @@ func (h *RoleHandler) DeleteWorkspaceRole(c echo.Context) error {
 // @Router /api/roles/csp-roles/{roleId} [delete]
 // @OperationId deleteCspRole
 func (h *RoleHandler) DeleteCspRole(c echo.Context) error {
-	roleType := model.RoleTypeCSP
+	roleType := constants.RoleTypeCSP
 
 	var req model.RoleMasterSubRequest
 	if err := c.Bind(&req); err != nil {
@@ -1395,7 +1396,7 @@ func (h *RoleHandler) RemovePlatformRole(c echo.Context) error {
 // @Router /api/roles/assign/workspace-role [post]
 // @OperationId assignWorkspaceRole
 func (h *RoleHandler) AssignWorkspaceRole(c echo.Context) error {
-	roleType := model.RoleTypeWorkspace
+	roleType := constants.RoleTypeWorkspace
 	var req model.AssignWorkspaceRoleRequest
 	if err := c.Bind(&req); err != nil {
 		log.Printf("Error AssignWorkspaceRole : %v", err)
@@ -1485,7 +1486,7 @@ func (h *RoleHandler) AssignWorkspaceRole(c echo.Context) error {
 // @Router /api/roles/unassign/workspace-role [delete]
 // @OperationId removeWorkspaceRole
 func (h *RoleHandler) RemoveWorkspaceRole(c echo.Context) error {
-	roleType := model.RoleTypeWorkspace
+	roleType := constants.RoleTypeWorkspace
 	var req model.RemoveWorkspaceRoleRequest
 	if err := c.Bind(&req); err != nil {
 		log.Printf("Error RemoveWorkspaceRole : %v", err)
@@ -1632,7 +1633,7 @@ func (h *RoleHandler) AssignCspRole(c echo.Context) error {
 // @Router /api/roles/unassign/csp-roles [delete]
 // @OperationId removeCspRole
 func (h *RoleHandler) RemoveCspRole(c echo.Context) error {
-	cspType := model.RoleTypeWorkspace
+	cspType := constants.RoleTypeWorkspace
 	var req model.RoleMasterCspRoleMappingRequest
 	if err := c.Bind(&req); err != nil {
 		log.Printf("Master 역할-CSP 역할 매핑 삭제 요청 바인딩 실패: %v", err)
@@ -1677,7 +1678,7 @@ func (h *RoleHandler) RemoveCspRole(c echo.Context) error {
 // @Router /api/roles/id/{workspaceRoleId}/csp-roles [get]
 // @OperationId listCspRoleMappings
 func (h *RoleHandler) ListCspRoleMappings(c echo.Context) error {
-	cspType := model.RoleTypeWorkspace
+	cspType := constants.RoleTypeWorkspace
 	var req model.RoleMasterCspRoleMappingRequest
 	if err := c.Bind(&req); err != nil {
 		log.Printf("워크스페이스 역할-CSP 역할 매핑 조회 요청 바인딩 실패: %v", err)

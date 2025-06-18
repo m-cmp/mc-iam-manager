@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"gorm.io/gorm"
 )
@@ -20,7 +21,7 @@ func (r *WorkspaceRoleRepository) List() ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", model.RoleTypeWorkspace).
+		Where("mcmp_role_sub.role_type = ?", constants.RoleTypeWorkspace).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}
@@ -32,7 +33,7 @@ func (r *WorkspaceRoleRepository) GetByID(id uint) (*model.RoleMaster, error) {
 	var role model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_master.id = ? AND mcmp_role_sub.role_type = ?", id, model.RoleTypeWorkspace).
+		Where("mcmp_role_master.id = ? AND mcmp_role_sub.role_type = ?", id, constants.RoleTypeWorkspace).
 		First(&role).Error; err != nil {
 		return nil, err
 	}
@@ -47,7 +48,7 @@ func (r *WorkspaceRoleRepository) Create(role *model.RoleMaster) error {
 		}
 		roleSub := model.RoleSub{
 			RoleID:   role.ID,
-			RoleType: model.RoleTypeWorkspace,
+			RoleType: constants.RoleTypeWorkspace,
 		}
 		return tx.Create(&roleSub).Error
 	})
@@ -61,7 +62,7 @@ func (r *WorkspaceRoleRepository) Update(role *model.RoleMaster) error {
 // Delete 워크스페이스 역할 삭제
 func (r *WorkspaceRoleRepository) Delete(id uint) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("role_id = ? AND role_type = ?", id, model.RoleTypeWorkspace).Delete(&model.RoleSub{}).Error; err != nil {
+		if err := tx.Where("role_id = ? AND role_type = ?", id, constants.RoleTypeWorkspace).Delete(&model.RoleSub{}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&model.RoleMaster{}, id).Error
@@ -91,7 +92,7 @@ func (r *WorkspaceRoleRepository) GetUserRoles(userID, workspaceID uint) ([]mode
 		Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_master.id = mcmp_user_workspace_roles.role_id").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
 		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ? AND mcmp_role_sub.role_type = ?",
-			userID, workspaceID, model.RoleTypeWorkspace).
+			userID, workspaceID, constants.RoleTypeWorkspace).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}
@@ -103,7 +104,7 @@ func (r *WorkspaceRoleRepository) GetWorkspaceRoles(workspaceID uint) ([]*model.
 	var roles []*model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", model.RoleTypeWorkspace).
+		Where("mcmp_role_sub.role_type = ?", constants.RoleTypeWorkspace).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}

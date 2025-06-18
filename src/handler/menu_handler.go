@@ -12,6 +12,7 @@ import (
 	// "github.com/Nerzal/gocloak/v13" // Keep gocloak removed
 	// "github.com/golang-jwt/jwt/v5" // jwt import moved to util package
 	"github.com/labstack/echo/v4"
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service" // Corrected import path
 	"github.com/m-cmp/mc-iam-manager/util"
@@ -62,7 +63,7 @@ func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 	// Convert platform role strings to uint IDs
 	platformRoleNames := make([]uint, 0, len(platformRoles))
 	for _, roleName := range platformRoles {
-		role, err := h.roleService.GetRoleByName(roleName, model.RoleTypePlatform)
+		role, err := h.roleService.GetRoleByName(roleName, constants.RoleTypePlatform)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
 		}
@@ -499,7 +500,7 @@ func (h *MenuHandler) RegisterMenusFromBody(c echo.Context) error {
 // @Security BearerAuth
 // @Router /api/menus/platform-roles/list [post]
 // @OperationId listMappedMenusByRole
-func (h *MenuHandler) ListMappedMenusByRole(c echo.Context) error {
+func (h *MenuHandler) ListMenusRolesMapping(c echo.Context) error {
 	req := &model.MenuMappingFilterRequest{}
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
@@ -525,8 +526,8 @@ func (h *MenuHandler) ListMappedMenusByRole(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/menus/platform-roles [post]
-// @OperationId createMenuMapping
-func (h *MenuHandler) CreateMenuMapping(c echo.Context) error {
+// @OperationId createMenusRolesMapping
+func (h *MenuHandler) CreateMenusRolesMapping(c echo.Context) error {
 	var req model.CreateMenuMappingRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
@@ -569,8 +570,8 @@ func (h *MenuHandler) CreateMenuMapping(c echo.Context) error {
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
 // @Router /api/menus/platform-roles [delete]
-// @OperationId deleteMenuMapping
-func (h *MenuHandler) DeleteMenuMapping(c echo.Context) error {
+// @OperationId deleteMenusRolesMapping
+func (h *MenuHandler) DeleteMenusRolesMapping(c echo.Context) error {
 	platformRoleID, err := strconv.ParseUint(c.Param("role"), 10, 32)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid platform role ID"})
@@ -596,7 +597,7 @@ func (h *MenuHandler) GetUserMenuTree(c echo.Context) error {
 	// Convert platform role strings to uint IDs
 	platformRoleIDs := make([]uint, 0, len(platformRoles))
 	for _, roleName := range platformRoles {
-		role, err := h.roleService.GetRoleByName(roleName, model.RoleTypePlatform)
+		role, err := h.roleService.GetRoleByName(roleName, constants.RoleTypePlatform)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
 		}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gorm.io/gorm"
@@ -169,7 +170,7 @@ func (s *RoleService) DeleteRoleWithSubs(roleID uint) error {
 // AssignPlatformRole 플랫폼 역할 할당
 func (s *RoleService) AssignPlatformRole(userID, roleID uint) error {
 	// 1. 역할이 존재하는지 확인
-	role, err := s.roleRepository.FindRoleByRoleID(roleID, model.RoleTypePlatform)
+	role, err := s.roleRepository.FindRoleByRoleID(roleID, constants.RoleTypePlatform)
 	if err != nil {
 		return fmt.Errorf("역할 조회 실패: %w", err)
 	}
@@ -180,7 +181,7 @@ func (s *RoleService) AssignPlatformRole(userID, roleID uint) error {
 	// 2. 역할이 platform 타입인지 확인
 	isPlatformRole := false
 	for _, sub := range role.RoleSubs {
-		if sub.RoleType == model.RoleTypePlatform {
+		if sub.RoleType == constants.RoleTypePlatform {
 			isPlatformRole = true
 			break
 		}
@@ -196,7 +197,7 @@ func (s *RoleService) AssignPlatformRole(userID, roleID uint) error {
 // AssignWorkspaceRole 워크스페이스 역할 할당
 func (s *RoleService) AssignWorkspaceRole(userID, workspaceID, roleID uint) error {
 	// 1. 역할이 존재하는지 확인
-	role, err := s.roleRepository.FindRoleByRoleID(roleID, model.RoleTypeWorkspace)
+	role, err := s.roleRepository.FindRoleByRoleID(roleID, constants.RoleTypeWorkspace)
 	if err != nil {
 		return fmt.Errorf("역할 조회 실패: %w", err)
 	}
@@ -207,7 +208,7 @@ func (s *RoleService) AssignWorkspaceRole(userID, workspaceID, roleID uint) erro
 	// 2. 역할이 workspace 타입인지 확인
 	isWorkspaceRole := false
 	for _, sub := range role.RoleSubs {
-		if sub.RoleType == model.RoleTypeWorkspace {
+		if sub.RoleType == constants.RoleTypeWorkspace {
 			isWorkspaceRole = true
 			break
 		}
@@ -235,10 +236,10 @@ func (s *RoleService) AssignRole(userID, workspaceID, roleID uint) error {
 	isWorkspaceRole := false
 	isPlatformRole := false
 	for _, sub := range role.RoleSubs {
-		if sub.RoleType == model.RoleTypeWorkspace {
+		if sub.RoleType == constants.RoleTypeWorkspace {
 			isWorkspaceRole = true
 		}
-		if sub.RoleType == model.RoleTypePlatform {
+		if sub.RoleType == constants.RoleTypePlatform {
 			isPlatformRole = true
 		}
 	}
@@ -279,7 +280,7 @@ func (s *RoleService) GetUserPlatformRoles(userID uint) ([]model.RoleMaster, err
 // CreateWorkspaceRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 생성
 func (s *RoleService) CreateWorkspaceRoleCspRoleMapping(mapping model.RoleMasterCspRoleMapping) (*model.RoleMasterCspRoleMapping, error) {
 	// 1. 워크스페이스 역할이 존재하는지 확인
-	workspaceRole, err := s.roleRepository.FindRoleByRoleID(mapping.RoleID, model.RoleTypeWorkspace)
+	workspaceRole, err := s.roleRepository.FindRoleByRoleID(mapping.RoleID, constants.RoleTypeWorkspace)
 	if err != nil {
 		return nil, fmt.Errorf("워크스페이스 역할 조회 실패: %w", err)
 	}
@@ -288,7 +289,7 @@ func (s *RoleService) CreateWorkspaceRoleCspRoleMapping(mapping model.RoleMaster
 	}
 
 	// 2. CSP 역할이 존재하는지 확인
-	cspRole, err := s.roleRepository.FindRoleByRoleID(mapping.CspRoleID, model.RoleTypeCSP)
+	cspRole, err := s.roleRepository.FindRoleByRoleID(mapping.CspRoleID, constants.RoleTypeCSP)
 	if err != nil {
 		return nil, fmt.Errorf("CSP 역할 조회 실패: %w", err)
 	}
@@ -310,7 +311,7 @@ func (s *RoleService) DeleteWorkspaceRoleCspRoleMapping(workspaceRoleID uint, cs
 	return s.roleRepository.DeleteWorkspaceRoleCspRoleMapping(workspaceRoleID, cspRoleID, cspType)
 }
 
-// GetWorkspaceRoleCspRoleMappings 워크스페이스 역할-CSP 역할 매핑 목록 조회
+// ListWorkspaceRoleCspRoleMappings 워크스페이스 역할-CSP 역할 매핑 목록 조회
 func (s *RoleService) ListWorkspaceRoleCspRoleMappings(workspaceRoleID uint, cspRoleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
 	return s.roleRepository.FindWorkspaceRoleCspRoleMappings(workspaceRoleID, cspRoleID, cspType)
 }

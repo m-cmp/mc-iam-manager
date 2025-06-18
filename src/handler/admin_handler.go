@@ -9,6 +9,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/config"
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service"
 	"gorm.io/gorm"
@@ -130,7 +131,7 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	for _, roleName := range predefinedRoles {
 		role, err := h.roleService.CreateRoleWithSubs(&model.RoleMaster{
 			Name: roleName,
-		}, []model.RoleSub{{RoleType: model.RoleTypePlatform}, {RoleType: model.RoleTypeWorkspace}})
+		}, []model.RoleSub{{RoleType: constants.RoleTypePlatform}, {RoleType: constants.RoleTypeWorkspace}})
 		if err != nil {
 			log.Printf("[ERROR] Create Role with Subs failed: %v", err)
 			// return c.JSON(http.StatusInternalServerError, model.Response{
@@ -175,6 +176,11 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 		// })
 	}
 
+	// TODO : 해당 Realm에 scope 추가
+	// TODO : OIDC Client 생성
+	// TODO : 해당 Client에 해당 역할 매핑
+	// (직접) CSP에 idp 연동 by oidc
+	// TODO : CSP 역할 매핑에 provider와 arn 정보 설정
 	return c.JSON(http.StatusOK, model.Response{
 		Message: "Initial admin setup completed successfully",
 	})
@@ -221,7 +227,7 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Tags admin
 // @Accept json
 // @Produce json
-// @Success 200 {array} model.PlatformRole
+// @Success 200 {array} model.RoleMaster
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
@@ -239,7 +245,7 @@ func (h *AdminHandler) ListPlatformRoles(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param id path string true "Platform Role ID"
-// @Success 200 {object} model.PlatformRole
+// @Success 200 {object} model.RoleMaster
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Platform Role not found"
@@ -257,8 +263,8 @@ func (h *AdminHandler) GetPlatformRoleByID(c echo.Context) error {
 // @Tags admin
 // @Accept json
 // @Produce json
-// @Param role body model.PlatformRole true "Platform Role Info"
-// @Success 201 {object} model.PlatformRole
+// @Param role body model.RoleMaster true "Platform Role Info"
+// @Success 201 {object} model.RoleMaster
 // @Failure 400 {object} map[string]string "error: Invalid request"
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
@@ -277,8 +283,8 @@ func (h *AdminHandler) CreatePlatformRole(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param id path string true "Platform Role ID"
-// @Param role body model.PlatformRole true "Platform Role Info"
-// @Success 200 {object} model.PlatformRole
+// @Param role body model.RoleMaster true "Platform Role Info"
+// @Success 200 {object} model.RoleMaster
 // @Failure 400 {object} map[string]string "error: Invalid request"
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"

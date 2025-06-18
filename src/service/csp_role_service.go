@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/csp"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -18,7 +19,7 @@ type CspRoleService struct {
 }
 
 func NewCspRoleService(db *gorm.DB) *CspRoleService {
-	cspRoleRepo, _ := repository.NewCspRoleRepository(db)
+	cspRoleRepo := repository.NewCspRoleRepository(db)
 	roleService := NewRoleService(db)
 
 	return &CspRoleService{
@@ -75,7 +76,7 @@ func (s *CspRoleService) CreateCSPRole(role *model.CspRole) (*model.CspRole, err
 		// 2. RoleSub 생성
 		roleSubs := []model.RoleSub{
 			{
-				RoleType: model.RoleTypeCSP, // CSP 역할은 항상 "csp" 타입
+				RoleType: constants.RoleTypeCSP, // CSP 역할은 항상 "csp" 타입
 			},
 		}
 

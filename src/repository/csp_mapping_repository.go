@@ -23,17 +23,17 @@ func NewCspMappingRepository(db *gorm.DB) *CspMappingRepository {
 	return &CspMappingRepository{db: db}
 }
 
-// FindCspRoleMappingsByWorkspaceRoleID 워크스페이스 역할 ID로 CSP 역할 매핑 목록 조회
-func (r *CspMappingRepository) FindCspRoleMappingsByWorkspaceRoleID(ctx context.Context, roleID uint) ([]*model.RoleMasterCspRoleMapping, error) {
+// FindCspRoleMappingsByWorkspaceRoleIDAndCspType 워크스페이스 역할 ID와 CSP 타입으로 CSP 역할 매핑 조회
+func (r *CspMappingRepository) FindCspRoleMappingsByWorkspaceRoleIDAndCspType(roleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
 	var mappings []*model.RoleMasterCspRoleMapping
-	result := r.db.WithContext(ctx).
+	err := r.db.
 		Preload("CspRole").
-		Where("role_id = ?", roleID).
-		Find(&mappings)
-	if result.Error != nil {
-		return nil, result.Error
+		Where("role_id = ? AND csp_type = ?", roleID, cspType).
+		Find(&mappings).Error
+	if err != nil {
+		return nil, err
 	}
-	return mappings, nil
+	return mappings, err
 }
 
 // CreateWorkspaceRoleCspRoleMapping 워크스페이스 역할과 CSP 역할 매핑 생성
@@ -69,19 +69,6 @@ func (r *CspMappingRepository) DeleteWorkspaceRoleCspRoleMapping(ctx context.Con
 		return ErrCspMappingNotFound
 	}
 	return nil
-}
-
-// FindCspRoleMappingsByWorkspaceRoleIDAndCspType 워크스페이스 역할 ID와 CSP 타입으로 CSP 역할 매핑 조회
-func (r *CspMappingRepository) FindCspRoleMappingsByWorkspaceRoleIDAndCspType(roleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
-	var mappings []*model.RoleMasterCspRoleMapping
-	err := r.db.
-		Preload("CspRole").
-		Where("role_id = ? AND csp_type = ?", roleID, cspType).
-		Find(&mappings).Error
-	if err != nil {
-		return nil, err
-	}
-	return mappings, err
 }
 
 // UpdateWorkspaceRoleCspRoleMapping 워크스페이스 역할 - CSP 역할 매핑 수정

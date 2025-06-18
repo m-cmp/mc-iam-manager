@@ -8,6 +8,7 @@ import (
 	"log"
 
 	// "github.com/m-cmp/mc-iam-manager/config" // Removed unused import
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/model/mcmpapi"
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -36,32 +37,29 @@ type HealthCheckService interface {
 
 // healthCheckService 구현체
 type healthCheckService struct {
-	db              *gorm.DB
-	keycloakService KeycloakService // Add KeycloakService dependency
-	// Change repository fields to use pointer types to match constructor parameters
-	platformRoleRepo  *repository.PlatformRoleRepository  // Change to pointer type
-	workspaceRoleRepo *repository.WorkspaceRoleRepository // Change to pointer type
-	menuRepo          *repository.MenuRepository          // Change to pointer type
-	mcmpApiRepo       repository.McmpApiRepository        // Keep interface type for McmpApiRepository
+	db                *gorm.DB
+	keycloakService   KeycloakService
+	roleRepo          *repository.RoleRepository
+	workspaceRoleRepo *repository.WorkspaceRoleRepository
+	menuRepo          *repository.MenuRepository
+	mcmpApiRepo       repository.McmpApiRepository
 }
 
 // NewHealthCheckService 생성자
 func NewHealthCheckService(
 	db *gorm.DB,
-	// keycloakService KeycloakService, // Remove KeycloakService parameter
 ) HealthCheckService {
 	// Initialize repositories internally
-	prRepo := repository.NewPlatformRoleRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
 	wrRepo := repository.NewWorkspaceRoleRepository(db)
 	mRepo := repository.NewMenuRepository(db)
 	mcmpRepo := repository.NewMcmpApiRepository(db)
 
 	return &healthCheckService{
-		db: db,
-		// keycloakService:   keycloakService, // Remove field assignment
-		platformRoleRepo:  prRepo, // Assign pointer
-		workspaceRoleRepo: wrRepo, // Assign pointer
-		menuRepo:          mRepo,  // Assign pointer
+		db:                db,
+		roleRepo:          roleRepo,
+		workspaceRoleRepo: wrRepo,
+		menuRepo:          mRepo,
 		mcmpApiRepo:       mcmpRepo,
 	}
 }
@@ -115,14 +113,14 @@ func (s *healthCheckService) GetDetailedStatus(ctx context.Context) (*HealthStat
 
 	// 4. Platform Roles Count
 	err = s.db.Model(&model.RoleMaster{}).Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", model.RoleTypePlatform).Count(&status.PlatformRolesCount).Error
+		Where("mcmp_role_sub.role_type = ?", constants.RoleTypePlatform).Count(&status.PlatformRolesCount).Error
 	if err != nil {
 		log.Printf("Error counting platform roles: %v", err)
 	}
 
 	// 5. Workspace Roles Count
 	err = s.db.Model(&model.RoleMaster{}).Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", model.RoleTypeWorkspace).Count(&status.WorkspaceRolesCount).Error
+		Where("mcmp_role_sub.role_type = ?", constants.RoleTypeWorkspace).Count(&status.WorkspaceRolesCount).Error
 	if err != nil {
 		log.Printf("Error counting workspace roles: %v", err)
 	}

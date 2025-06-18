@@ -14,6 +14,7 @@ import (
 	"encoding/csv"
 
 	"github.com/joho/godotenv"
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/util"
@@ -568,7 +569,7 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 	// DB에서 역할 ID 조회
 	roleIDs := make(map[string]uint)
 	for _, roleName := range roleNames {
-		role, err := s.roleRepo.FindRoleByRoleName(roleName, model.RoleTypePlatform)
+		role, err := s.roleRepo.FindRoleByRoleName(roleName, constants.RoleTypePlatform)
 		if err != nil {
 			return fmt.Errorf("failed to find role %s: %w", roleName, err)
 		}

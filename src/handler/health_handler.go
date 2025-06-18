@@ -30,8 +30,8 @@ func NewHealthHandler() *HealthHandler {
 // @Accept json
 // @Produce json
 // @Success 200 {object} map[string]string
-// @Router /api/health [get]
-// @OperationId checkHealth
+// @Router /api/readyz [get]
+// @OperationId mciamCheckHealth
 func (h *HealthHandler) CheckHealth(c echo.Context) error {
 	status := c.QueryParam("status")
 	if status == "detail" {
