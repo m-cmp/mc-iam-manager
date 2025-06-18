@@ -11,6 +11,7 @@ import (
 	"context" // Added for context passing
 
 	"github.com/labstack/echo/v4"
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/service"
@@ -25,6 +26,7 @@ type WorkspaceHandler struct {
 	permissionRepo    *repository.MciamPermissionRepository
 	roleService       *service.RoleService
 	workspaceRoleRepo *repository.WorkspaceRoleRepository
+	roleRepo          *repository.RoleRepository
 }
 
 // NewWorkspaceHandler 새 WorkspaceHandler 인스턴스 생성
@@ -34,12 +36,14 @@ func NewWorkspaceHandler(db *gorm.DB) *WorkspaceHandler {
 	permissionRepo := repository.NewMciamPermissionRepository(db)
 	roleService := service.NewRoleService(db)
 	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db)
+	roleRepo := repository.NewRoleRepository(db)
 	return &WorkspaceHandler{
 		workspaceService:  workspaceService,
 		userService:       userService,
 		permissionRepo:    permissionRepo,
 		roleService:       roleService,
 		workspaceRoleRepo: workspaceRoleRepo,
+		roleRepo:          roleRepo,
 	}
 }
 
@@ -508,7 +512,7 @@ func (h *WorkspaceHandler) ListWorkspaceRoles(c echo.Context) error {
 
 	// workspace 역할만 조회
 	if req.RoleTypes == nil {
-		req.RoleTypes = []string{model.RoleTypeWorkspace}
+		req.RoleTypes = []string{constants.RoleTypeWorkspace}
 	}
 
 	roles, err := h.roleService.ListWorkspaceRoles(&req)
@@ -663,7 +667,7 @@ func checkPlatformPermission(permissionRepo *repository.MciamPermissionRepositor
 		return false, nil
 	}
 	for _, role := range platformRoles {
-		hasPerm, err := permissionRepo.CheckRoleMciamPermission(model.RoleTypePlatform, role.ID, requiredPermissionID)
+		hasPerm, err := permissionRepo.CheckRoleMciamPermission(constants.RoleTypePlatform, role.ID, requiredPermissionID)
 		if err != nil {
 			log.Printf("Error checking permission %s for platform role %d: %v", requiredPermissionID, role.ID, err)
 			return false, err

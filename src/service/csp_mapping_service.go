@@ -17,9 +17,10 @@ var (
 
 // CspMappingService CSP 매핑 서비스
 type CspMappingService struct {
-	cspMappingRepo    *repository.CspMappingRepository
+	roleRepo          *repository.RoleRepository
 	workspaceRoleRepo *repository.WorkspaceRoleRepository
 	cspRoleRepo       *repository.CspRoleRepository
+	cspMappingRepo    *repository.CspMappingRepository
 	// awsService    AwsService // Interface for AWS interactions (e.g., validation) - Define later
 	// gcpService    GcpService // Interface for GCP interactions - Define later
 	db *gorm.DB
@@ -27,22 +28,19 @@ type CspMappingService struct {
 
 // NewCspMappingService 새 CspMappingService 인스턴스 생성
 func NewCspMappingService(
-	cspMappingRepo *repository.CspMappingRepository,
-	workspaceRoleRepo *repository.WorkspaceRoleRepository,
-	cspRoleRepo *repository.CspRoleRepository,
 	db *gorm.DB,
 ) *CspMappingService {
+	roleRepo := repository.NewRoleRepository(db)
+	workspaceRoleRepo := repository.NewWorkspaceRoleRepository(db)
+	cspRoleRepo := repository.NewCspRoleRepository(db)
+	cspMappingRepo := repository.NewCspMappingRepository(db)
 	return &CspMappingService{
-		cspMappingRepo:    cspMappingRepo,
+		roleRepo:          roleRepo,
 		workspaceRoleRepo: workspaceRoleRepo,
 		cspRoleRepo:       cspRoleRepo,
+		cspMappingRepo:    cspMappingRepo,
 		db:                db,
 	}
-}
-
-// GetWorkspaceRoleCspRoleMappings 워크스페이스 역할의 CSP 역할 매핑 목록 조회
-func (s *CspMappingService) GetWorkspaceRoleCspRoleMappings(ctx context.Context, workspaceRoleID uint) ([]*model.RoleMasterCspRoleMapping, error) {
-	return s.cspMappingRepo.FindCspRoleMappingsByWorkspaceRoleID(ctx, workspaceRoleID)
 }
 
 // CreateWorkspaceRoleCspRoleMapping 워크스페이스 역할과 CSP 역할 매핑 생성
@@ -89,17 +87,12 @@ func (s *CspMappingService) CreateWorkspaceRoleCspRoleMapping(ctx context.Contex
 	roleMapping.CspType = mapping.CspType
 	roleMapping.CspRoleID = cspRoleID
 
-	return s.cspMappingRepo.CreateWorkspaceRoleCspRoleMapping(ctx, &roleMapping)
+	return s.roleRepo.CreateWorkspaceRoleCspRoleMapping(&roleMapping)
 }
 
 // DeleteWorkspaceRoleCspRoleMapping 워크스페이스 역할과 CSP 역할 매핑 삭제
-func (s *CspMappingService) DeleteWorkspaceRoleCspRoleMapping(ctx context.Context, workspaceRoleID uint, cspType string, cspRoleID string) error {
-	return s.cspMappingRepo.DeleteWorkspaceRoleCspRoleMapping(ctx, workspaceRoleID, cspType, cspRoleID)
-}
-
-// GetWorkspaceRoleCspRoleMappingsByCspType 워크스페이스 역할 ID와 CSP 타입으로 CSP 역할 매핑 목록 조회
-func (s *CspMappingService) GetWorkspaceRoleCspRoleMappingsByCspType(workspaceRoleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
-	return s.cspMappingRepo.FindCspRoleMappingsByWorkspaceRoleIDAndCspType(workspaceRoleID, cspType)
+func (s *CspMappingService) DeleteWorkspaceRoleCspRoleMapping(ctx context.Context, workspaceRoleID uint, cspRoleID uint, cspType string) error {
+	return s.roleRepo.DeleteWorkspaceRoleCspRoleMapping(workspaceRoleID, cspRoleID, cspType)
 }
 
 // UpdateWorkspaceRoleCspRoleMapping 워크스페이스 역할 - CSP 역할 매핑 수정

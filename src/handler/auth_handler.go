@@ -50,12 +50,9 @@ func NewAuthHandler(db *gorm.DB) *AuthHandler {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param credentials body model.LoginRequest true "Login Credentials"
-// @Success 200 {object} model.LoginResponse
-// @Failure 400 {object} map[string]string
-// @Failure 401 {object} map[string]string
+// @Param credentials body idp.UserLogin true "Login Credentials"
 // @Router /api/auth/login [post]
-// @OperationId login
+// @OperationId mciamLogin
 func (h *AuthHandler) Login(c echo.Context) error {
 	var userLogin idp.UserLogin
 	if err := c.Bind(&userLogin); err != nil {
@@ -113,9 +110,6 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // Callback godoc
 // @Summary OIDC 콜백
 // @Description OIDC 인증 후 콜백을 처리합니다
-// @Tags auth
-// @Accept json
-// @Produce json
 // @Param code query string true "인증 코드"
 // @Param state query string true "상태"
 // @Success 200 {object} map[string]interface{}
@@ -149,7 +143,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Router /api/auth/logout [post]
-// @OperationId logout
+// @OperationId mciamLogout
 func (h *AuthHandler) Logout(c echo.Context) error {
 	// Keycloak에서는 클라이언트 측에서 토큰을 삭제하면 됩니다
 	return c.JSON(http.StatusOK, map[string]string{"message": "로그아웃되었습니다"})
@@ -161,12 +155,8 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param refresh body model.RefreshTokenRequest true "Refresh Token"
-// @Success 200 {object} model.LoginResponse
-// @Failure 400 {object} map[string]string
-// @Failure 401 {object} map[string]string
 // @Router /api/auth/refresh [post]
-// @OperationId refreshToken
+// @OperationId mciamRefreshToken
 func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	refreshToken := c.FormValue("refresh_token")
 	if refreshToken == "" {
@@ -195,7 +185,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Security BearerAuth
 // @Router /workspaces/workspace-ticket [post]
-// @OperationId workspaceTicket
+// @OperationId mciamWorkspaceTicket
 func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 	// 1. 기존 액세스 토큰 확인
 	authHeader := c.Request().Header.Get("Authorization")
@@ -274,7 +264,7 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Router /api/auth/certs [get]
-// @OperationId authCerts
+// @OperationId mciamAuthCerts
 func (h *AuthHandler) AuthCerts(c echo.Context) error {
 	cert, err := h.keycloakService.GetCerts(c.Request().Context())
 	if err != nil {

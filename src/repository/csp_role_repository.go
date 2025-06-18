@@ -27,11 +27,11 @@ type CspRoleRepository struct {
 }
 
 // NewCspRoleRepository 새 CspRoleRepository 인스턴스 생성
-func NewCspRoleRepository(db *gorm.DB) (*CspRoleRepository, error) {
+func NewCspRoleRepository(db *gorm.DB) *CspRoleRepository {
 	// AWS SDK 설정
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		return nil, fmt.Errorf("unable to load SDK config: %v", err)
+		return nil
 	}
 
 	// IAM 클라이언트 생성
@@ -40,7 +40,7 @@ func NewCspRoleRepository(db *gorm.DB) (*CspRoleRepository, error) {
 	return &CspRoleRepository{
 		iamClient: client,
 		db:        db,
-	}, nil
+	}
 }
 
 // FindAll AWS IAM Role 목록을 조회합니다.

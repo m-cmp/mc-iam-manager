@@ -34,13 +34,9 @@ func NewCspCredentialHandler(db *gorm.DB) *CspCredentialHandler {
 // @Tags csp-credentials
 // @Accept json
 // @Produce json
-// @Param request body model.CspCredentialRequest true "Credential Request"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /workspaces/temporary-credentials [post]
-// @OperationId getTemporaryCredentials
+// @OperationId mciamGetTemporaryCredentials
 func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 	// 1. Get values from context
 
@@ -93,12 +89,9 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Tags csp-credentials
 // @Accept json
 // @Produce json
-// @Success 200 {array} model.CSPCredential
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
 // @Router /csp-credentials [get]
-// @OperationId listCredentials
+// @OperationId mciamListCredentials
 func (h *CspCredentialHandler) ListCredentials(c echo.Context) error {
 	// Implementation of ListCredentials method
 	return nil // Placeholder return, actual implementation needed
@@ -111,13 +104,10 @@ func (h *CspCredentialHandler) ListCredentials(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param id path string true "Credential ID"
-// @Success 200 {object} model.CSPCredential
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
 // @Router /csp-credentials/{id} [get]
-// @OperationId getCredentialByID
+// @OperationId mciamGetCredentialByID
 func (h *CspCredentialHandler) GetCredentialByID(c echo.Context) error {
 	// Implementation of GetCredentialByID method
 	return nil // Placeholder return, actual implementation needed
@@ -129,14 +119,9 @@ func (h *CspCredentialHandler) GetCredentialByID(c echo.Context) error {
 // @Tags csp-credentials
 // @Accept json
 // @Produce json
-// @Param credential body model.CSPCredential true "Credential Info"
-// @Success 201 {object} model.CSPCredential
-// @Failure 400 {object} map[string]string "error: Invalid request"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
 // @Router /csp-credentials [post]
-// @OperationId createCredential
+// @OperationId mciamCreateCredential
 func (h *CspCredentialHandler) CreateCredential(c echo.Context) error {
 	// Implementation of CreateCredential method
 	return nil // Placeholder return, actual implementation needed
@@ -149,15 +134,10 @@ func (h *CspCredentialHandler) CreateCredential(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param id path string true "Credential ID"
-// @Param credential body model.CSPCredential true "Credential Info"
-// @Success 200 {object} model.CSPCredential
-// @Failure 400 {object} map[string]string "error: Invalid request"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
 // @Router /csp-credentials/{id} [put]
-// @OperationId updateCredential
+// @OperationId mciamUpdateCredential
 func (h *CspCredentialHandler) UpdateCredential(c echo.Context) error {
 	// Implementation of UpdateCredential method
 	return nil // Placeholder return, actual implementation needed
@@ -176,7 +156,7 @@ func (h *CspCredentialHandler) UpdateCredential(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
 // @Router /csp-credentials/{id} [delete]
-// @OperationId deleteCredential
+// @OperationId mciamDeleteCredential
 func (h *CspCredentialHandler) DeleteCredential(c echo.Context) error {
 	// Implementation of DeleteCredential method
 	return nil // Placeholder return, actual implementation needed

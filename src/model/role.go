@@ -1,6 +1,8 @@
 package model
 
-import "time"
+import (
+	"time"
+)
 
 // RoleMaster 역할 마스터 모델 (DB 테이블: mcmp_role_master)
 type RoleMaster struct {
@@ -16,32 +18,26 @@ type RoleMaster struct {
 	RoleSubs    []RoleSub    `json:"role_subs,omitempty" gorm:"foreignKey:RoleID"`
 }
 
-// TableName RoleMaster의 테이블 이름을 지정합니다
+// TableName RoleMaster의 테이블 이름을 반환
 func (RoleMaster) TableName() string {
-	return "mcmp_role_master"
+	return "mcmp_role_masters"
 }
 
 // RoleSub 역할 서브 모델 (DB 테이블: mcmp_role_sub)
 type RoleSub struct {
-	ID        uint       `json:"id" gorm:"primaryKey;column:id"`
-	RoleID    uint       `json:"role_id" gorm:"column:role_id;not null"`
-	RoleType  string     `json:"role_type" gorm:"column:role_type;size:50;not null"`
-	CreatedAt time.Time  `json:"created_at" gorm:"column:created_at;autoCreateTime"`
-	Role      RoleMaster `json:"-" gorm:"foreignKey:RoleID"`
+	ID        uint      `json:"id" gorm:"primaryKey;column:id"`
+	RoleID    uint      `json:"role_id" gorm:"column:role_id;not null"`
+	RoleType  string    `json:"role_type" gorm:"column:role_type;size:50;not null"`
+	CreatedAt time.Time `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"column:updated_at"`
 }
 
-// TableName RoleSub의 테이블 이름을 지정합니다
+// TableName RoleSub의 테이블 이름을 반환
 func (RoleSub) TableName() string {
-	return "mcmp_role_sub"
+	return "mcmp_role_subs"
 }
 
-// UserWithRoles 워크스페이스 내 사용자 및 역할 정보를 담는 구조체
-type UserWithRoles struct {
-	User  User         `json:"user"`
-	Roles []RoleMaster `json:"roles"`
-}
-
-// UserRole 사용자-역할 매핑 모델 (DB 테이블: mcmp_user_platform_roles)
+// UserPlatformRole 사용자-역할 매핑 모델 (DB 테이블: mcmp_user_platform_roles)
 type UserPlatformRole struct {
 	UserID    uint       `json:"user_id" gorm:"primaryKey;column:user_id"`
 	RoleID    uint       `json:"role_id" gorm:"primaryKey;column:role_id"`
@@ -50,7 +46,7 @@ type UserPlatformRole struct {
 	Role      RoleMaster `json:"-" gorm:"foreignKey:RoleID"`
 }
 
-// TableName UserRole의 테이블 이름을 지정합니다
+// TableName UserPlatformRole의 테이블 이름을 반환
 func (UserPlatformRole) TableName() string {
 	return "mcmp_user_platform_roles"
 }
@@ -70,19 +66,12 @@ type UserWorkspaceRole struct {
 	Role          *RoleMaster `json:"role,omitempty" gorm:"foreignKey:RoleID"`
 }
 
-// TableName UserWorkspaceRole의 테이블 이름을 지정합니다
+// TableName UserWorkspaceRole의 테이블 이름을 반환
 func (UserWorkspaceRole) TableName() string {
 	return "mcmp_user_workspace_roles"
 }
 
-// RoleType 상수 정의
-const (
-	RoleTypePlatform  = "platform"
-	RoleTypeWorkspace = "workspace"
-	RoleTypeCSP       = "csp"
-)
-
-// WorkspaceRoleCspRoleMapping 워크스페이스 역할 - CSP 역할 매핑 (DB 테이블: mcmp_workspace_role_csp_role_mapping)
+// RoleMasterCspRoleMapping 역할 마스터-CSP 역할 매핑 모델 (DB 테이블: mcmp_role_csp_role_mapping)
 type RoleMasterCspRoleMapping struct {
 	RoleID      uint      `json:"roleId" gorm:"column:role_id;primaryKey;foreignKey:id;references:mcmp_role_master"`
 	CspType     string    `json:"cspType" gorm:"column:csp_type;primaryKey"`
@@ -92,7 +81,7 @@ type RoleMasterCspRoleMapping struct {
 	CspRole     *CspRole  `json:"cspRole" gorm:"foreignKey:CspRoleID;references:ID"`
 }
 
-// TableName WorkspaceRoleCspRoleMapping의 테이블 이름을 지정합니다
+// TableName RoleMasterCspRoleMapping의 테이블 이름을 반환
 func (RoleMasterCspRoleMapping) TableName() string {
-	return "mcmp_role_csp_role_mapping"
+	return "mcmp_role_csp_role_mappings"
 }

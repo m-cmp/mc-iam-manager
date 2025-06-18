@@ -343,9 +343,9 @@ func main() {
 		menusMng.PUT("/id/:menuId", menuHandler.UpdateMenu, middleware.PlatformAdminMiddleware)
 		menusMng.DELETE("/id/:menuId", menuHandler.DeleteMenu, middleware.PlatformAdminMiddleware)
 
-		menusMng.POST("/platform-roles/list", menuHandler.ListMappedMenusByRole, middleware.PlatformAdminMiddleware)
-		menusMng.POST("/platform-roles", menuHandler.CreateMenuMapping, middleware.PlatformAdminMiddleware)
-		menusMng.DELETE("/platform-roles", menuHandler.DeleteMenuMapping, middleware.PlatformAdminMiddleware)
+		menusMng.POST("/platform-roles/list", menuHandler.ListMenusRolesMapping, middleware.PlatformAdminMiddleware)
+		menusMng.POST("/platform-roles", menuHandler.CreateMenusRolesMapping, middleware.PlatformAdminMiddleware)
+		menusMng.DELETE("/platform-roles", menuHandler.DeleteMenusRolesMapping, middleware.PlatformAdminMiddleware)
 	}
 
 	// // 관리자 전용 라우트

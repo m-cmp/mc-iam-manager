@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/util"
 	"gorm.io/gorm"
@@ -151,7 +152,7 @@ func (r *RoleRepository) FindUserWorkspaceRoles(userID, workspaceID uint) ([]mod
 	query := r.db.
 		Joins("JOIN mcmp_role_master ON mcmp_role_master.id = mcmp_user_workspace_roles.role_id").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, model.RoleTypeWorkspace)
+		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, constants.RoleTypeWorkspace)
 
 	if workspaceID != 0 {
 		query = query.Where("mcmp_user_workspace_roles.workspace_id = ?", workspaceID)
@@ -170,7 +171,7 @@ func (r *RoleRepository) FindUserPlatformRoles(userID uint) ([]model.RoleMaster,
 	err := r.db.
 		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_master.id = mcmp_user_platform_roles.role_id").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, model.RoleTypePlatform).
+		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, constants.RoleTypePlatform).
 		Find(&roles).Error
 	if err != nil {
 		return nil, err
@@ -383,7 +384,7 @@ func (r *RoleRepository) IsAssignedPlatformRole(userID uint, roleID uint) (bool,
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
 		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_master.id = mcmp_user_platform_roles.role_id").
 		Where("mcmp_role_master.id = ? AND mcmp_user_platform_roles.user_id = ?", roleID, userID).
-		Where("mcmp_role_sub.role_type = ?", model.RoleTypePlatform)
+		Where("mcmp_role_sub.role_type = ?", constants.RoleTypePlatform)
 
 	result := query.Count(&count)
 
@@ -400,7 +401,7 @@ func (r *RoleRepository) IsAssignedWorkspaceRole(userID uint, roleID uint) (bool
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
 		Joins("JOIN mcmp_workspace_user_roles ON mcmp_role_master.id = mcmp_workspace_user_rolses.role_id").
 		Where("mcmp_role_master.id = ? AND mcmp_workspace_user_roless.user_id = ?", roleID, userID).
-		Where("mcmp_role_sub.role_type = ?", model.RoleTypeWorkspace)
+		Where("mcmp_role_sub.role_type = ?", constants.RoleTypeWorkspace)
 
 	result := query.Count(&count)
 
@@ -409,4 +410,43 @@ func (r *RoleRepository) IsAssignedWorkspaceRole(userID uint, roleID uint) (bool
 	}
 
 	return count > 0, nil
+}
+
+// GetWorkspaceRoles 워크스페이스의 모든 역할 목록 조회
+func (r *RoleRepository) GetWorkspaceRoles(workspaceID uint) ([]model.RoleMaster, error) {
+	var roles []model.RoleMaster
+	if err := r.db.Preload("RoleSubs").
+		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
+		Where("mcmp_role_sub.role_type = ?", constants.RoleTypeWorkspace).
+		Find(&roles).Error; err != nil {
+		return nil, err
+	}
+	return roles, nil
+}
+
+// GetUserWorkspaceRoles 사용자의 워크스페이스 역할 목록 조회 (기존 FindUserWorkspaceRoles와 유사하지만 RoleMaster 반환)
+func (r *RoleRepository) GetUserWorkspaceRoles(userID, workspaceID uint) ([]model.RoleMaster, error) {
+	var roles []model.RoleMaster
+	if err := r.db.Preload("RoleSubs").
+		Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_master.id = mcmp_user_workspace_roles.role_id").
+		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
+		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ? AND mcmp_role_sub.role_type = ?",
+			userID, workspaceID, constants.RoleTypeWorkspace).
+		Find(&roles).Error; err != nil {
+		return nil, err
+	}
+	return roles, nil
+}
+
+// FindCspRoleMappingsByWorkspaceRoleIDAndCspType 역할 ID와 CSP 타입으로 CSP 역할 매핑 조회
+func (r *CspMappingRepository) FindCspRoleMappings(req *model.RoleMappingRequest) ([]*model.RoleMasterCspRoleMapping, error) {
+	var mappings []*model.RoleMasterCspRoleMapping
+	err := r.db.
+		Preload("CspRole").
+		Where("role_id = ? AND csp_type = ?", req.RoleID, req.CspType).
+		Find(&mappings).Error
+	if err != nil {
+		return nil, err
+	}
+	return mappings, err
 }

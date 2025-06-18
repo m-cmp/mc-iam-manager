@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"gorm.io/gorm"
 )
@@ -23,7 +24,7 @@ func (r *PlatformRoleRepository) List() ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", model.RoleTypePlatform).
+		Where("mcmp_role_sub.role_type = ?", constants.RoleTypePlatform).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}
@@ -35,7 +36,7 @@ func (r *PlatformRoleRepository) GetByID(id uint) (*model.RoleMaster, error) {
 	var role model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_master.id = ? AND mcmp_role_sub.role_type = ?", id, model.RoleTypePlatform).
+		Where("mcmp_role_master.id = ? AND mcmp_role_sub.role_type = ?", id, constants.RoleTypePlatform).
 		First(&role).Error; err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func (r *PlatformRoleRepository) Create(role *model.RoleMaster) error {
 		}
 		roleSub := model.RoleSub{
 			RoleID:   role.ID,
-			RoleType: model.RoleTypePlatform,
+			RoleType: constants.RoleTypePlatform,
 		}
 		return tx.Create(&roleSub).Error
 	})
@@ -64,21 +65,27 @@ func (r *PlatformRoleRepository) Update(role *model.RoleMaster) error {
 // Delete 플랫폼 역할 삭제
 func (r *PlatformRoleRepository) Delete(id uint) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("role_id = ? AND role_type = ?", id, model.RoleTypePlatform).Delete(&model.RoleSub{}).Error; err != nil {
+		if err := tx.Where("role_id = ? AND role_type = ?", id, constants.RoleTypePlatform).Delete(&model.RoleSub{}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&model.RoleMaster{}, id).Error
 	})
 }
 
+// roleModelFactories 역할 타입별 사용자-역할 매핑 모델 생성 팩토리 맵
+// 각 역할 타입(platform, workspace)에 대해 해당하는 매핑 모델을 생성하는 함수를 제공
 var roleModelFactories = map[string]func(userID, roleID uint) interface{}{
-	model.RoleTypePlatform: func(userID, roleID uint) interface{} {
+	// 플랫폼 역할 타입에 대한 팩토리 함수
+	// UserPlatformRole 모델을 생성하여 반환
+	constants.RoleTypePlatform: func(userID, roleID uint) interface{} {
 		return &model.UserPlatformRole{
 			UserID: userID,
 			RoleID: roleID,
 		}
 	},
-	model.RoleTypeWorkspace: func(userID, roleID uint) interface{} {
+	// 워크스페이스 역할 타입에 대한 팩토리 함수
+	// UserWorkspaceRole 모델을 생성하여 반환
+	constants.RoleTypeWorkspace: func(userID, roleID uint) interface{} {
 		return &model.UserWorkspaceRole{
 			UserID: userID,
 			RoleID: roleID,
@@ -107,7 +114,7 @@ func (r *PlatformRoleRepository) GetUserRoles(userID uint) ([]model.RoleMaster, 
 	if err := r.db.Preload("RoleSubs").
 		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_master.id = mcmp_user_platform_roles.role_id").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, model.RoleTypePlatform).
+		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, constants.RoleTypePlatform).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}
@@ -119,7 +126,7 @@ func (r *PlatformRoleRepository) GetByName(name string) (*model.RoleMaster, erro
 	var role model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
 		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_master.name = ? AND mcmp_role_sub.role_type = ?", name, model.RoleTypePlatform).
+		Where("mcmp_role_master.name = ? AND mcmp_role_sub.role_type = ?", name, constants.RoleTypePlatform).
 		First(&role).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("platform role not found")
