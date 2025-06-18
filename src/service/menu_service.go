@@ -173,36 +173,26 @@ func (s *MenuService) MenuList(req *model.MenuMappingFilterRequest) ([]*model.Me
 		return nil, err
 	}
 
-	// for menuID := range menuIDMap {
-	// 	menu, err := s.menuRepo.FindMenuByID(&menuID)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	// 상위 메뉴 ID가 있으면 수집
-	// 	if menu.ParentID != "" {
-	// 		parentIDMap[menu.ParentID] = true
-	// 	}
-	// }
+	// 중복 제거를 위한 map 사용
+	uniqueMenus := make(map[string]*model.Menu)
 
-	// 4. 수집된 메뉴 ID들로 메뉴 정보 조회
-	// var allMenus []*model.Menu
-	// allMenus = append(allMenus, menus...)
-	// allMenus = append(allMenus, parentMenus...)
-	menus = append(menus, parentMenus...)
-	// for platformMenuID := range menuIDMap {
-	// 	// menuID는 platform:menu 형식이므로 : 뒷부분만 추출
-	// 	// menuID := util.GetAfterDelimiter(platformMenuID, ":")
-	// 	// log.Printf("menuID: %s", menuID)
-	// 	// menu, err := s.menuRepo.FindMenuByID(menuID)
-	// 	menu, err := s.menuRepo.FindMenuByID(&platformMenuID)
-	// 	if err != nil {
-	// 		continue
-	// 	}
-	// 	allMenus = append(allMenus, menu)
-	// }
+	// 기존 메뉴 추가
+	for _, menu := range menus {
+		uniqueMenus[menu.ID] = menu
+	}
 
-	return menus, nil
+	// 부모 메뉴 추가 (중복되는 경우 덮어쓰기)
+	for _, menu := range parentMenus {
+		uniqueMenus[menu.ID] = menu
+	}
 
+	// map에서 슬라이스로 변환
+	result := make([]*model.Menu, 0, len(uniqueMenus))
+	for _, menu := range uniqueMenus {
+		result = append(result, menu)
+	}
+
+	return result, nil
 }
 
 // sortMenuTree 메뉴 트리를 정렬하는 헬퍼 함수
