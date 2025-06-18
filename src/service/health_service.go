@@ -112,15 +112,15 @@ func (s *healthCheckService) GetDetailedStatus(ctx context.Context) (*HealthStat
 	}
 
 	// 4. Platform Roles Count
-	err = s.db.Model(&model.RoleMaster{}).Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", constants.RoleTypePlatform).Count(&status.PlatformRolesCount).Error
+	err = s.db.Model(&model.RoleMaster{}).Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_role_subs.role_type = ?", constants.RoleTypePlatform).Count(&status.PlatformRolesCount).Error
 	if err != nil {
 		log.Printf("Error counting platform roles: %v", err)
 	}
 
 	// 5. Workspace Roles Count
-	err = s.db.Model(&model.RoleMaster{}).Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", constants.RoleTypeWorkspace).Count(&status.WorkspaceRolesCount).Error
+	err = s.db.Model(&model.RoleMaster{}).Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_role_subs.role_type = ?", constants.RoleTypeWorkspace).Count(&status.WorkspaceRolesCount).Error
 	if err != nil {
 		log.Printf("Error counting workspace roles: %v", err)
 	}

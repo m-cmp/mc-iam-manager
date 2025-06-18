@@ -23,7 +23,7 @@ func NewRoleRepository(db *gorm.DB) *RoleRepository {
 func (r *RoleRepository) FindRoles(req *model.RoleRequest) ([]*model.RoleMaster, error) {
 	var roles []*model.RoleMaster
 	query := r.db.Preload("RoleSubs")
-	query = query.Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id")
+	query = query.Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id")
 
 	if req.RoleID != "" {
 		roleID, err := util.StringToUint(req.RoleID)
@@ -51,12 +51,12 @@ func (r *RoleRepository) FindRoleByRoleID(roleId uint, roleType string) (*model.
 	var role model.RoleMaster
 
 	// 쿼리 빌더를 사용하여 기본 쿼리 생성
-	query := r.db.Preload("RoleSubs").Where("mcmp_role_master.id = ?", roleId)
+	query := r.db.Preload("RoleSubs").Where("mcmp_role_masters.id = ?", roleId)
 
 	// roleType이 비어있지 않다면 조건 추가
 	if roleType != "" {
-		query = query.Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-			Where("mcmp_role_sub.role_type = ?", roleType)
+		query = query.Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+			Where("mcmp_role_subs.role_type = ?", roleType)
 	}
 
 	if err := query.First(&role).Error; err != nil {
@@ -73,12 +73,12 @@ func (r *RoleRepository) FindRoleByRoleName(roleName string, roleType string) (*
 	var role model.RoleMaster
 
 	// 쿼리 빌더를 사용하여 기본 쿼리 생성
-	query := r.db.Preload("RoleSubs").Where("mcmp_role_master.name = ?", roleName)
+	query := r.db.Preload("RoleSubs").Where("mcmp_role_masters.name = ?", roleName)
 
 	// roleType이 비어있지 않다면 조건 추가
 	if roleType != "" {
-		query = query.Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-			Where("mcmp_role_sub.role_type = ?", roleType)
+		query = query.Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+			Where("mcmp_role_subs.role_type = ?", roleType)
 	}
 
 	if err := query.First(&role).Error; err != nil {
@@ -150,9 +150,9 @@ func (r *RoleRepository) RemoveWorkspaceRole(userID, workspaceID, roleID uint) e
 func (r *RoleRepository) FindUserWorkspaceRoles(userID, workspaceID uint) ([]model.UserWorkspaceRole, error) {
 	var roles []model.UserWorkspaceRole
 	query := r.db.
-		Joins("JOIN mcmp_role_master ON mcmp_role_master.id = mcmp_user_workspace_roles.role_id").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, constants.RoleTypeWorkspace)
+		Joins("JOIN mcmp_role_masters ON mcmp_role_masters.id = mcmp_user_workspace_roles.role_id").
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_role_subs.role_type = ?", userID, constants.RoleTypeWorkspace)
 
 	if workspaceID != 0 {
 		query = query.Where("mcmp_user_workspace_roles.workspace_id = ?", workspaceID)
@@ -169,9 +169,9 @@ func (r *RoleRepository) FindUserWorkspaceRoles(userID, workspaceID uint) ([]mod
 func (r *RoleRepository) FindUserPlatformRoles(userID uint) ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	err := r.db.
-		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_master.id = mcmp_user_platform_roles.role_id").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, constants.RoleTypePlatform).
+		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_masters.id = mcmp_user_platform_roles.role_id").
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_subs.role_type = ?", userID, constants.RoleTypePlatform).
 		Find(&roles).Error
 	if err != nil {
 		return nil, err
@@ -360,13 +360,13 @@ func (r *RoleRepository) FindWorkspaceWithUsersRoles(req model.WorkspaceFilterRe
 func (r *RoleRepository) IsAssignedRole(userID uint, roleID uint, roleType string) (bool, error) {
 	var count int64
 	query := r.db.Model(&model.RoleMaster{}).
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Joins("JOIN mcmp_user_role ON mcmp_role_master.id = mcmp_user_role.role_id").
-		Where("mcmp_role_master.id = ? AND mcmp_user_role.user_id = ?", roleID, userID)
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Joins("JOIN mcmp_user_role ON mcmp_role_masters.id = mcmp_user_role.role_id").
+		Where("mcmp_role_masters.id = ? AND mcmp_user_role.user_id = ?", roleID, userID)
 
 	// roleType이 있는 경우에만 조건 추가
 	if roleType != "" {
-		query = query.Where("mcmp_role_sub.role_type = ?", roleType)
+		query = query.Where("mcmp_role_subs.role_type = ?", roleType)
 	}
 
 	result := query.Count(&count)
@@ -381,10 +381,10 @@ func (r *RoleRepository) IsAssignedRole(userID uint, roleID uint, roleType strin
 func (r *RoleRepository) IsAssignedPlatformRole(userID uint, roleID uint) (bool, error) {
 	var count int64
 	query := r.db.Model(&model.RoleMaster{}).
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_master.id = mcmp_user_platform_roles.role_id").
-		Where("mcmp_role_master.id = ? AND mcmp_user_platform_roles.user_id = ?", roleID, userID).
-		Where("mcmp_role_sub.role_type = ?", constants.RoleTypePlatform)
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_masters.id = mcmp_user_platform_roles.role_id").
+		Where("mcmp_role_masters.id = ? AND mcmp_user_platform_roles.user_id = ?", roleID, userID).
+		Where("mcmp_role_subs.role_type = ?", constants.RoleTypePlatform)
 
 	result := query.Count(&count)
 
@@ -398,10 +398,10 @@ func (r *RoleRepository) IsAssignedPlatformRole(userID uint, roleID uint) (bool,
 func (r *RoleRepository) IsAssignedWorkspaceRole(userID uint, roleID uint) (bool, error) {
 	var count int64
 	query := r.db.Model(&model.RoleMaster{}).
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Joins("JOIN mcmp_workspace_user_roles ON mcmp_role_master.id = mcmp_workspace_user_rolses.role_id").
-		Where("mcmp_role_master.id = ? AND mcmp_workspace_user_roless.user_id = ?", roleID, userID).
-		Where("mcmp_role_sub.role_type = ?", constants.RoleTypeWorkspace)
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Joins("JOIN mcmp_workspace_user_roles ON mcmp_role_masters.id = mcmp_workspace_user_rolses.role_id").
+		Where("mcmp_role_masters.id = ? AND mcmp_workspace_user_roless.user_id = ?", roleID, userID).
+		Where("mcmp_role_subs.role_type = ?", constants.RoleTypeWorkspace)
 
 	result := query.Count(&count)
 
@@ -416,8 +416,8 @@ func (r *RoleRepository) IsAssignedWorkspaceRole(userID uint, roleID uint) (bool
 func (r *RoleRepository) GetWorkspaceRoles(workspaceID uint) ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", constants.RoleTypeWorkspace).
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_role_subs.role_type = ?", constants.RoleTypeWorkspace).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}
@@ -428,9 +428,9 @@ func (r *RoleRepository) GetWorkspaceRoles(workspaceID uint) ([]model.RoleMaster
 func (r *RoleRepository) GetUserWorkspaceRoles(userID, workspaceID uint) ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
-		Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_master.id = mcmp_user_workspace_roles.role_id").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ? AND mcmp_role_sub.role_type = ?",
+		Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_masters.id = mcmp_user_workspace_roles.role_id").
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ? AND mcmp_role_subs.role_type = ?",
 			userID, workspaceID, constants.RoleTypeWorkspace).
 		Find(&roles).Error; err != nil {
 		return nil, err

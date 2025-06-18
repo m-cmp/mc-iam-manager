@@ -23,8 +23,8 @@ func NewPlatformRoleRepository(db *gorm.DB) *PlatformRoleRepository {
 func (r *PlatformRoleRepository) List() ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", constants.RoleTypePlatform).
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_role_subs.role_type = ?", constants.RoleTypePlatform).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}
@@ -35,8 +35,8 @@ func (r *PlatformRoleRepository) List() ([]model.RoleMaster, error) {
 func (r *PlatformRoleRepository) GetByID(id uint) (*model.RoleMaster, error) {
 	var role model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_master.id = ? AND mcmp_role_sub.role_type = ?", id, constants.RoleTypePlatform).
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_role_masters.id = ? AND mcmp_role_subs.role_type = ?", id, constants.RoleTypePlatform).
 		First(&role).Error; err != nil {
 		return nil, err
 	}
@@ -112,9 +112,9 @@ func (r *PlatformRoleRepository) RemoveRole(userID, roleID uint) error {
 func (r *PlatformRoleRepository) GetUserRoles(userID uint) ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
-		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_master.id = mcmp_user_platform_roles.role_id").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_sub.role_type = ?", userID, constants.RoleTypePlatform).
+		Joins("JOIN mcmp_user_platform_roles ON mcmp_role_masters.id = mcmp_user_platform_roles.role_id").
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_user_platform_roles.user_id = ? AND mcmp_role_subs.role_type = ?", userID, constants.RoleTypePlatform).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}
@@ -125,8 +125,8 @@ func (r *PlatformRoleRepository) GetUserRoles(userID uint) ([]model.RoleMaster, 
 func (r *PlatformRoleRepository) GetByName(name string) (*model.RoleMaster, error) {
 	var role model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_master.name = ? AND mcmp_role_sub.role_type = ?", name, constants.RoleTypePlatform).
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_role_masters.name = ? AND mcmp_role_subs.role_type = ?", name, constants.RoleTypePlatform).
 		First(&role).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("platform role not found")

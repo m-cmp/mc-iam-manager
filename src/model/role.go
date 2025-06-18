@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// RoleMaster 역할 마스터 모델 (DB 테이블: mcmp_role_master)
+// RoleMaster 역할 마스터 모델 (DB 테이블: mcmp_role_masters)
 type RoleMaster struct {
 	ID          uint         `json:"id" gorm:"primaryKey;column:id"`
 	ParentID    *uint        `json:"parent_id" gorm:"column:parent_id"`

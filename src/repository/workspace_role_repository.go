@@ -20,8 +20,8 @@ func NewWorkspaceRoleRepository(db *gorm.DB) *WorkspaceRoleRepository {
 func (r *WorkspaceRoleRepository) List() ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", constants.RoleTypeWorkspace).
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_role_subs.role_type = ?", constants.RoleTypeWorkspace).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}
@@ -32,8 +32,8 @@ func (r *WorkspaceRoleRepository) List() ([]model.RoleMaster, error) {
 func (r *WorkspaceRoleRepository) GetByID(id uint) (*model.RoleMaster, error) {
 	var role model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_master.id = ? AND mcmp_role_sub.role_type = ?", id, constants.RoleTypeWorkspace).
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_role_masters.id = ? AND mcmp_role_subs.role_type = ?", id, constants.RoleTypeWorkspace).
 		First(&role).Error; err != nil {
 		return nil, err
 	}
@@ -89,9 +89,9 @@ func (r *WorkspaceRoleRepository) RemoveRole(userID, workspaceID, roleID uint) e
 func (r *WorkspaceRoleRepository) GetUserRoles(userID, workspaceID uint) ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
-		Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_master.id = mcmp_user_workspace_roles.role_id").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ? AND mcmp_role_sub.role_type = ?",
+		Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_masters.id = mcmp_user_workspace_roles.role_id").
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ? AND mcmp_role_subs.role_type = ?",
 			userID, workspaceID, constants.RoleTypeWorkspace).
 		Find(&roles).Error; err != nil {
 		return nil, err
@@ -103,8 +103,8 @@ func (r *WorkspaceRoleRepository) GetUserRoles(userID, workspaceID uint) ([]mode
 func (r *WorkspaceRoleRepository) GetWorkspaceRoles(workspaceID uint) ([]*model.RoleMaster, error) {
 	var roles []*model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_sub.role_type = ?", constants.RoleTypeWorkspace).
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_role_subs.role_type = ?", constants.RoleTypeWorkspace).
 		Find(&roles).Error; err != nil {
 		return nil, err
 	}
