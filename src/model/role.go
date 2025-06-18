@@ -73,7 +73,7 @@ func (UserWorkspaceRole) TableName() string {
 
 // RoleMasterCspRoleMapping 역할 마스터-CSP 역할 매핑 모델 (DB 테이블: mcmp_role_csp_role_mapping)
 type RoleMasterCspRoleMapping struct {
-	RoleID      uint      `json:"roleId" gorm:"column:role_id;primaryKey;foreignKey:id;references:mcmp_role_master"`
+	RoleID      uint      `json:"roleId" gorm:"column:role_id;primaryKey;foreignKey:id;references:mcmp_role_masters"`
 	CspType     string    `json:"cspType" gorm:"column:csp_type;primaryKey"`
 	CspRoleID   uint      `json:"cspRoleId" gorm:"column:csp_role_id;primaryKey;foreignKey:id;references:mcmp_csp_roles"`
 	Description string    `json:"description" gorm:"column:description"`
