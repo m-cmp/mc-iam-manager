@@ -139,9 +139,9 @@ func (r *MciamPermissionRepository) GetPlatformRolePermissions(platformRole stri
 	// 먼저 platform role의 ID를 조회
 	var platformRoleID uint
 	err := r.db.Model(&model.RoleMaster{}).
-		Joins("JOIN mcmp_role_sub ON mcmp_role_master.id = mcmp_role_sub.role_id").
-		Where("mcmp_role_master.name = ? AND mcmp_role_sub.role_type = ?", platformRole, constants.RoleTypePlatform).
-		Pluck("mcmp_role_master.id", &platformRoleID).Error
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Where("mcmp_role_masters.name = ? AND mcmp_role_subs.role_type = ?", platformRole, constants.RoleTypePlatform).
+		Pluck("mcmp_role_masters.id", &platformRoleID).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to get platform role ID: %w", err)
 	}

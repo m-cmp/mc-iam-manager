@@ -544,7 +544,7 @@ func (r *CspRoleRepository) UpdateCSPRole(role *model.CspRole) error {
 func (r *CspRoleRepository) DeleteCSPRole(id string) error {
 	// 1. DB에서 역할 조회 (role_master 테이블 조인)
 	var role model.CspRole
-	if err := r.db.Joins("JOIN mcmp_role_master ON mcmp_csp_roles.id = mcmp_role_master.id").
+	if err := r.db.Joins("JOIN mcmp_role_masters ON mcmp_csp_roles.id = mcmp_role_masters.id").
 		Where("mcmp_csp_roles.id = ?", id).
 		First(&role).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
