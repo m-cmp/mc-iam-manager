@@ -5,15 +5,6 @@ import (
 	"time"
 )
 
-// CSPType 클라우드 서비스 제공자 타입
-type CSPType string
-
-const (
-	CSPTypeAWS   CSPType = "aws"
-	CSPTypeGCP   CSPType = "gcp"
-	CSPTypeAzure CSPType = "azure"
-)
-
 // RolePolicy IAM 역할 정책
 type RolePolicy struct {
 	Version   string                `json:"Version"`

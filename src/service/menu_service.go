@@ -473,8 +473,8 @@ func (s *MenuService) ListMappedMenusByRole(req *model.MenuMappingFilterRequest)
 }
 
 // CreateMenuMapping 메뉴 매핑을 생성합니다
-func (s *MenuService) CreateMenuMapping(mapping *model.MenuMapping) error {
-	return s.menuRepo.CreateMenuMapping(mapping)
+func (s *MenuService) CreateMenuMappings(mappings []*model.MenuMapping) error {
+	return s.menuRepo.CreateMenuMappings(mappings)
 }
 
 // DeleteMenuMapping 플랫폼 역할-메뉴 매핑 삭제

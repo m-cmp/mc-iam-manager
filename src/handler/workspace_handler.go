@@ -505,14 +505,14 @@ func (h *WorkspaceHandler) ListWorkspaceUsersAndRoles(c echo.Context) error {
 
 // GetWorkspaceRoles 워크스페이스의 역할 목록 조회
 func (h *WorkspaceHandler) ListWorkspaceRoles(c echo.Context) error {
-	var req model.RoleRequest
+	var req model.RoleFilterRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
 	// workspace 역할만 조회
 	if req.RoleTypes == nil {
-		req.RoleTypes = []string{constants.RoleTypeWorkspace}
+		req.RoleTypes = []constants.IAMRoleType{constants.RoleTypeWorkspace}
 	}
 
 	roles, err := h.roleService.ListWorkspaceRoles(&req)

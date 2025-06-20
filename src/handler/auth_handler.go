@@ -32,15 +32,18 @@ import (
 type AuthHandler struct {
 	userService     *service.UserService
 	keycloakService service.KeycloakService
+	roleService     *service.RoleService
 }
 
 // NewAuthHandler creates a new AuthHandler instance
 func NewAuthHandler(db *gorm.DB) *AuthHandler {
 	userService := service.NewUserService(db)
 	keycloakService := service.NewKeycloakService()
+	roleService := service.NewRoleService(db)
 	return &AuthHandler{
 		userService:     userService,
 		keycloakService: keycloakService,
+		roleService:     roleService,
 	}
 }
 
@@ -213,7 +216,7 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 	}
 
 	// 5. 워크스페이스 권한 조회
-	workspaceRoles, err := h.userService.GetUserWorkspaceRoles(userID)
+	workspaceRoles, err := h.roleService.GetUserWorkspaceRoles(userID, 0)
 	if err != nil {
 		log.Printf("워크스페이스 권한 조회 실패: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get workspace permissions"})
@@ -256,7 +259,7 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 }
 
 // AuthCerts godoc
-// @Summary Get authentication certificates
+// @Summary Get authentication certificates : MC-IAM-Manager를 사용하기 위해 인증서 정보를 조회하여 대상 프레임워크에서 사용할 수 있도록 함.
 // @Description Get authentication certificates for token validation
 // @Tags auth
 // @Accept json

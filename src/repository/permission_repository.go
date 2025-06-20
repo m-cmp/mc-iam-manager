@@ -104,7 +104,7 @@ func (r *MciamPermissionRepository) Delete(id string) error {
 // --- Role MC-IAM Permission Mappings ---
 
 // AssignMciamPermissionToRole 역할에 MC-IAM 권한 할당 - Renamed
-func (r *MciamPermissionRepository) AssignMciamPermissionToRole(roleType string, roleID uint, permissionID string) error {
+func (r *MciamPermissionRepository) AssignMciamPermissionToRole(roleType constants.IAMRoleType, roleID uint, permissionID string) error {
 	// Check if permission exists
 	if _, err := r.GetByID(permissionID); err != nil {
 		return err // Return ErrPermissionNotFound or other DB error
@@ -120,7 +120,7 @@ func (r *MciamPermissionRepository) AssignMciamPermissionToRole(roleType string,
 }
 
 // RemoveMciamPermissionFromRole 역할에서 MC-IAM 권한 제거 - Renamed
-func (r *MciamPermissionRepository) RemoveMciamPermissionFromRole(roleType string, roleID uint, permissionID string) error {
+func (r *MciamPermissionRepository) RemoveMciamPermissionFromRole(roleType constants.IAMRoleType, roleID uint, permissionID string) error {
 	result := r.db.Where("role_type = ? AND role_id = ? AND permission_id = ?", roleType, roleID, permissionID).Delete(&model.MciamRoleMciamPermission{}) // Use new model name and column name
 	if result.Error != nil {
 		return result.Error
@@ -157,7 +157,7 @@ func (r *MciamPermissionRepository) GetPlatformRolePermissions(platformRole stri
 }
 
 // GetRoleMciamPermissions 워크스페이스 역할이 가진 모든 MC-IAM 권한 ID 조회
-func (r *MciamPermissionRepository) GetRoleMciamPermissions(roleType string, workspaceRoleID uint) ([]string, error) {
+func (r *MciamPermissionRepository) GetRoleMciamPermissions(roleType constants.IAMRoleType, workspaceRoleID uint) ([]string, error) {
 	log.Printf("GetRoleMciamPermissions roleType: %s RoleID: %d", roleType, workspaceRoleID)
 
 	var permissionIDs []string
@@ -171,7 +171,7 @@ func (r *MciamPermissionRepository) GetRoleMciamPermissions(roleType string, wor
 }
 
 // CheckRoleMciamPermission 역할이 특정 MC-IAM 권한을 가지고 있는지 확인 - Renamed
-func (r *MciamPermissionRepository) CheckRoleMciamPermission(roleType string, roleID uint, permissionID string) (bool, error) {
+func (r *MciamPermissionRepository) CheckRoleMciamPermission(roleType constants.IAMRoleType, roleID uint, permissionID string) (bool, error) {
 	var count int64
 	err := r.db.Model(&model.MciamRoleMciamPermission{}). // Use new model name
 								Where("role_type = ? AND role_id = ? AND permission_id = ?", roleType, roleID, permissionID). // Use new column name

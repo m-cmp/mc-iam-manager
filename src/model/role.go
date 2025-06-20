@@ -2,6 +2,8 @@ package model
 
 import (
 	"time"
+
+	"github.com/m-cmp/mc-iam-manager/constants"
 )
 
 // RoleMaster 역할 마스터 모델 (DB 테이블: mcmp_role_masters)
@@ -25,11 +27,11 @@ func (RoleMaster) TableName() string {
 
 // RoleSub 역할 서브 모델 (DB 테이블: mcmp_role_sub)
 type RoleSub struct {
-	ID        uint      `json:"id" gorm:"primaryKey;column:id"`
-	RoleID    uint      `json:"role_id" gorm:"column:role_id;not null"`
-	RoleType  string    `json:"role_type" gorm:"column:role_type;size:50;not null"`
-	CreatedAt time.Time `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"column:updated_at"`
+	ID        uint                  `json:"id" gorm:"primaryKey;column:id"`
+	RoleID    uint                  `json:"role_id" gorm:"column:role_id;not null"`
+	RoleType  constants.IAMRoleType `json:"role_type" gorm:"column:role_type;size:50;not null"`
+	CreatedAt time.Time             `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt time.Time             `json:"updated_at" gorm:"column:updated_at"`
 }
 
 // TableName RoleSub의 테이블 이름을 반환
@@ -72,13 +74,15 @@ func (UserWorkspaceRole) TableName() string {
 }
 
 // RoleMasterCspRoleMapping 역할 마스터-CSP 역할 매핑 모델 (DB 테이블: mcmp_role_csp_role_mapping)
+// AUTH Method(OIDC, SAML, ...)
+// CspRoleID는 mcmp_role_csps 테이블의 ID 참조
 type RoleMasterCspRoleMapping struct {
-	RoleID      uint      `json:"roleId" gorm:"column:role_id;primaryKey;foreignKey:id;references:mcmp_role_masters"`
-	CspType     string    `json:"cspType" gorm:"column:csp_type;primaryKey"`
-	CspRoleID   uint      `json:"cspRoleId" gorm:"column:csp_role_id;primaryKey;foreignKey:id;references:mcmp_csp_roles"`
-	Description string    `json:"description" gorm:"column:description"`
-	CreatedAt   time.Time `json:"createdAt" gorm:"column:created_at"`
-	CspRole     *CspRole  `json:"cspRole" gorm:"foreignKey:CspRoleID;references:ID"`
+	RoleID      uint                 `json:"roleId" gorm:"column:role_id;primaryKey;foreignKey:id;references:mcmp_role_masters"`
+	AuthMethod  constants.AuthMethod `json:"auth_method" gorm:"column:auth_method;primaryKey"`
+	CspRoleID   uint                 `json:"cspRoleId" gorm:"column:csp_role_id;primaryKey;foreignKey:id;references:mcmp_roles_csp"`
+	Description string               `json:"description" gorm:"column:description"`
+	CreatedAt   time.Time            `json:"createdAt" gorm:"column:created_at"`
+	CspRole     *CspRole             `json:"cspRole" gorm:"foreignKey:CspRoleID;references:ID"`
 }
 
 // TableName RoleMasterCspRoleMapping의 테이블 이름을 반환

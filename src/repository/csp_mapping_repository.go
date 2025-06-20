@@ -41,9 +41,9 @@ func (r *CspMappingRepository) CreateWorkspaceRoleCspRoleMapping(ctx context.Con
 	result := r.db.WithContext(ctx).Create(mapping)
 	if result.Error != nil {
 		if r.db.WithContext(ctx).Where(
-			"workspace_role_id = ? AND csp_type = ? AND csp_role_id = ?",
+			"workspace_role_id = ? AND auth_method = ? AND csp_role_id = ?",
 			mapping.RoleID,
-			mapping.CspType,
+			mapping.AuthMethod,
 			mapping.CspRoleID,
 		).First(&model.RoleMasterCspRoleMapping{}).Error == nil {
 			return ErrCspMappingAlreadyExists

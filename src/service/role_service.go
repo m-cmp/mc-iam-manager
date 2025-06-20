@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -25,93 +24,27 @@ func NewRoleService(db *gorm.DB) *RoleService {
 }
 
 // List 역할 목록 조회
-func (s *RoleService) ListRoles(req *model.RoleRequest) ([]*model.RoleMaster, error) {
+func (s *RoleService) ListRoles(req *model.RoleFilterRequest) ([]*model.RoleMaster, error) {
 	return s.roleRepository.FindRoles(req)
 }
 
 // GetByID ID로 역할 조회
-func (s *RoleService) GetRoleByID(roleId uint, roleType string) (*model.RoleMaster, error) {
+func (s *RoleService) GetRoleByID(roleId uint, roleType constants.IAMRoleType) (*model.RoleMaster, error) {
 	return s.roleRepository.FindRoleByRoleID(roleId, roleType)
 }
 
 // GetByName Name으로 역할 조회
-func (s *RoleService) GetRoleByName(roleName string, roleType string) (*model.RoleMaster, error) {
+func (s *RoleService) GetRoleByName(roleName string, roleType constants.IAMRoleType) (*model.RoleMaster, error) {
 	return s.roleRepository.FindRoleByRoleName(roleName, roleType)
 }
 
 // CreateRoleWithSubs 역할과 서브 타입을 함께 생성합니다.
 func (s *RoleService) CreateRoleWithSubs(role *model.RoleMaster, roleSubs []model.RoleSub) (*model.RoleMaster, error) {
-	// 트랜잭션 시작
-	tx := s.db.Begin()
-	if tx.Error != nil {
-		return nil, fmt.Errorf("트랜잭션 시작 실패: %w", tx.Error)
-	}
-
-	// 롤백을 위한 defer
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// 1. RoleMaster 생성
-	// 먼저 RoleMaster가 이미 존재하는지 확인
-	existingRole, err := s.roleRepository.FindRoleByRoleName(role.Name, "") // roleType은 빈 문자열로 전달
-	if err != nil && err.Error() != "role not found" {
-		tx.Rollback()
-		return nil, fmt.Errorf("역할 조회 실패: %w", err)
-	}
-
-	if existingRole != nil {
-		// 이미 존재하는 역할이면 해당 역할을 사용
-		role = existingRole
-	} else {
-		// 새로운 역할 생성
-		if err := tx.Create(role).Error; err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("역할 생성 실패: %w", err)
-		}
-	}
-
-	// 2. RoleSub 생성
-	for _, sub := range roleSubs {
-		sub.RoleID = role.ID // RoleMaster의 ID 설정
-
-		// RoleSub가 이미 존재하는지 확인
-		var existingSub model.RoleSub
-		if err := tx.Where("role_id = ? AND role_type = ?", role.ID, sub.RoleType).First(&existingSub).Error; err != nil {
-			if err != gorm.ErrRecordNotFound {
-				tx.Rollback()
-				return role, fmt.Errorf("역할 서브 타입 조회 실패: %w", err)
-			}
-			// RoleSub가 존재하지 않는 경우에만 생성
-			if err := tx.Create(&sub).Error; err != nil {
-				tx.Rollback()
-				return role, fmt.Errorf("역할 서브 타입 생성 실패: %w", err)
-			}
-		} else {
-			// RoleSub가 이미 존재하는 경우 로그만 남기고 계속 진행
-			log.Printf("역할 서브 타입 (RoleID: %d, Type: %s)가 이미 존재합니다. 건너뜁니다.", role.ID, sub.RoleType)
-		}
-	}
-
-	// 3. 생성된 RoleMaster와 RoleSubs를 함께 조회
-	var createdRole model.RoleMaster
-	if err := tx.Preload("RoleSubs").First(&createdRole, role.ID).Error; err != nil {
-		tx.Rollback()
-		return &createdRole, fmt.Errorf("생성된 역할 조회 실패: %w", err)
-	}
-
-	// 트랜잭션 커밋
-	if err := tx.Commit().Error; err != nil {
-		return &createdRole, fmt.Errorf("트랜잭션 커밋 실패: %w", err)
-	}
-
-	return &createdRole, nil
+	return s.roleRepository.CreateRoleWithSubs(role, roleSubs)
 }
 
 // UpdateRoleWithSubs 역할과 역할 서브 타입들을 함께 수정
-func (s *RoleService) UpdateRoleWithSubs(role model.RoleMaster, roleTypes []string) (*model.RoleMaster, error) {
+func (s *RoleService) UpdateRoleWithSubs(role model.RoleMaster, roleTypes []constants.IAMRoleType) (*model.RoleMaster, error) {
 	var updatedRole *model.RoleMaster
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		// 1. 역할 마스터 수정
@@ -119,7 +52,7 @@ func (s *RoleService) UpdateRoleWithSubs(role model.RoleMaster, roleTypes []stri
 			return fmt.Errorf("역할 수정 실패: %w", err)
 		}
 
-		// 2. 기존 역할 서브 타입들 삭제
+		// 2. 기존 역할 서브 타입들 삭제 : 기존 역할 서브 타입들을 삭제하고 새로운 역할 서브 타입들을 생성하는 방식임. roleTypes에 없으면 삭제됨.
 		if err := tx.Where("role_id = ?", role.ID).Delete(&model.RoleSub{}).Error; err != nil {
 			return fmt.Errorf("기존 역할 서브 타입 삭제 실패: %w", err)
 		}
@@ -128,7 +61,7 @@ func (s *RoleService) UpdateRoleWithSubs(role model.RoleMaster, roleTypes []stri
 		for _, roleType := range roleTypes {
 			roleSub := model.RoleSub{
 				RoleID:   role.ID,
-				RoleType: roleType,
+				RoleType: constants.IAMRoleType(roleType),
 			}
 			if err := tx.Create(&roleSub).Error; err != nil {
 				return fmt.Errorf("역할 서브 타입 생성 실패: %w", err)
@@ -277,6 +210,18 @@ func (s *RoleService) GetUserPlatformRoles(userID uint) ([]model.RoleMaster, err
 	return s.roleRepository.FindUserPlatformRoles(userID)
 }
 
+// 있으면 update, 없으면 insert
+func (s *RoleService) CreateRoleCspRoleMapping(req *model.RoleMasterCspRoleMappingRequest) error {
+
+	// 매핑 생성
+	err := s.roleRepository.CreateRoleCspRoleMapping(req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // CreateWorkspaceRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 생성
 func (s *RoleService) CreateWorkspaceRoleCspRoleMapping(mapping model.RoleMasterCspRoleMapping) (*model.RoleMasterCspRoleMapping, error) {
 	// 1. 워크스페이스 역할이 존재하는지 확인
@@ -307,18 +252,27 @@ func (s *RoleService) CreateWorkspaceRoleCspRoleMapping(mapping model.RoleMaster
 }
 
 // DeleteWorkspaceRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 삭제
-func (s *RoleService) DeleteWorkspaceRoleCspRoleMapping(workspaceRoleID uint, cspRoleID uint, cspType string) error {
-	return s.roleRepository.DeleteWorkspaceRoleCspRoleMapping(workspaceRoleID, cspRoleID, cspType)
+func (s *RoleService) DeleteRoleCspRoleMapping(roleID uint, cspRoleID uint, cspType constants.AuthMethod) error {
+	return s.roleRepository.DeleteRoleCspRoleMapping(roleID, cspRoleID, cspType)
 }
 
 // ListWorkspaceRoleCspRoleMappings 워크스페이스 역할-CSP 역할 매핑 목록 조회
-func (s *RoleService) ListWorkspaceRoleCspRoleMappings(workspaceRoleID uint, cspRoleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
-	return s.roleRepository.FindWorkspaceRoleCspRoleMappings(workspaceRoleID, cspRoleID, cspType)
+func (s *RoleService) ListWorkspaceRoleCspRoleMappings(req *model.RoleMasterCspRoleMappingRequest) ([]*model.RoleMasterCspRoleMapping, error) {
+	return s.roleRepository.FindWorkspaceRoleCspRoleMappings(req)
 }
 
-// GetWorkspaceRoleCspRoleMappings 역할-CSP 역할 매핑 목록 조회
-func (s *RoleService) GetRoleCspRoleMappings(roleID uint, cspRoleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
-	return s.roleRepository.FindRoleMasterCspRoleMappings(roleID, cspRoleID, cspType)
+// ListWorkspaceRoleCspRoleMappings 워크스페이스 역할-CSP 역할 매핑 목록 조회
+func (s *RoleService) ListRoleCspRoleMappings(req *model.RoleMasterCspRoleMappingRequest) ([]*model.RoleMasterCspRoleMapping, error) {
+	return s.roleRepository.FindRoleMasterCspRoleMappings(req)
+}
+
+func (s *RoleService) GetCspRoleByID(cspRoleId uint) (*model.CspRole, error) {
+	return s.roleRepository.FindCspRoleById(cspRoleId)
+}
+
+// GetWorkspaceRoleCspRoleMappings 역할-CSP 역할 매핑 목록 조회. 1개 master Role에 여러개의 csp Role이 나온다.
+func (s *RoleService) GetRoleCspRoleMappings(req *model.RoleMasterCspRoleMappingRequest) ([]*model.RoleMasterCspRoleMapping, error) {
+	return s.roleRepository.FindRoleMasterCspRoleMappings(req)
 }
 
 // GetUsersByWorkspaceID 워크스페이스에 속한 사용자 목록을 조회합니다.
@@ -344,7 +298,7 @@ func (s *RoleService) ListUsersAndRolesWithWorkspaces(req model.WorkspaceFilterR
 }
 
 // GetWorkspaceRoles 워크스페이스의 모든 역할 목록 조회 Role만
-func (s *RoleService) ListWorkspaceRoles(req *model.RoleRequest) ([]*model.RoleMaster, error) {
+func (s *RoleService) ListWorkspaceRoles(req *model.RoleFilterRequest) ([]*model.RoleMaster, error) {
 	roles, err := s.roleRepository.FindRoles(req)
 	if err != nil {
 		return nil, err
@@ -360,6 +314,11 @@ func (s *RoleService) IsAssignedPlatformRole(userID uint, roleID uint) (bool, er
 func (s *RoleService) IsAssignedWorkspaceRole(userID uint, roleID uint) (bool, error) {
 	return s.roleRepository.IsAssignedWorkspaceRole(userID, roleID)
 }
-func (s *RoleService) IsAssignedRole(userID uint, roleID uint, roleType string) (bool, error) {
+func (s *RoleService) IsAssignedRole(userID uint, roleID uint, roleType constants.IAMRoleType) (bool, error) {
 	return s.roleRepository.IsAssignedRole(userID, roleID, roleType)
+}
+
+// AddRoleSub RoleSub만 추가 (중복 체크 포함)
+func (s *RoleService) AddRoleSub(roleID uint, roleSub *model.RoleSub) error {
+	return s.roleRepository.CreateRoleSub(roleID, roleSub)
 }

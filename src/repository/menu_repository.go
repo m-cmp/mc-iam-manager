@@ -253,9 +253,9 @@ func (r *MenuRepository) FindMappedMenusByRole(platformRoleID uint) ([]string, e
 	return menuIDs, err
 }
 
-// CreateMenuMapping 메뉴 매핑을 생성합니다
-func (r *MenuRepository) CreateMenuMapping(mapping *model.MenuMapping) error {
-	return r.db.Create(mapping).Error
+// CreateMenuMapping 메뉴 매핑을 생성합니다 (여러 건 동시 저장 가능)
+func (r *MenuRepository) CreateMenuMappings(mappings []*model.MenuMapping) error {
+	return r.db.Create(mappings).Error
 }
 
 // FindAll 메뉴를 필터링하여 조회

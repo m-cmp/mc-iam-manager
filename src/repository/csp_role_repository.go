@@ -225,49 +225,56 @@ func getUserAssumeRolePolicyDocument() string {
 }
 
 // CreateCSPRole AWS IAM Role을 생성하고 생성 완료를 기다린 후 상세 정보를 반환합니다.
-func (r *CspRoleRepository) CreateCSPRole(role *model.CspRole) (*model.CspRole, error) {
+// 저장 전에 채워지는 Data가 있고 저장 후 채워지는 Data가 있음.
+func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*model.CspRole, error) {
+	idpIdentifier := ""
 	// 1. DB에서 역할 존재 여부 확인
 	var existingRole model.CspRole
-	idpIdentifier := ""
-	if err := r.db.Where("name = ?", role.Name).First(&existingRole).Error; err != nil {
+
+	// masterRoleId와 cspType을 이용하여 역할 존재 여부 확인
+	newRole := &model.CspRole{
+		Name:    req.RoleName,
+		CspType: req.CspType,
+	}
+	if err := r.db.Where("name = ? AND csp_type = ?", req.RoleName, req.CspType).First(&existingRole).Error; err != nil {
 		if err != gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("failed to check existing role in database: %v", err)
+			return nil, fmt.Errorf("이미 존재합니다. 중복 생성 불가: %v", err)
 		}
 		log.Printf("db existing role: %v", existingRole)
 
 		// DB에 역할이 없는 경우
 		// 2. CSP에서 역할 존재 여부 확인
 		getRoleInput := &iam.GetRoleInput{
-			RoleName: aws.String(role.Name),
+			RoleName: aws.String(newRole.Name),
 		}
 		if _, err := r.iamClient.GetRole(context.TODO(), getRoleInput); err == nil {
 			// CSP에 역할이 있으면 status를 created로 설정하여 저장
-			role.Status = "created"
+			newRole.Status = "created"
 		} else {
 			// CSP에 역할이 없으면 status를 creating으로 설정하여 저장
-			role.Status = "creating"
+			newRole.Status = "creating"
 		}
 
 		// 3. DB에 저장
-		if err := r.db.Create(role).Error; err != nil {
+		if err := r.db.Create(newRole).Error; err != nil {
 			return nil, fmt.Errorf("failed to create CSP role in database: %v", err)
 		}
 
 		// 4. CSP에 역할이 없는 경우에만 생성
-		if role.Status == "creating" {
+		if newRole.Status == "creating" {
 			// AWS IAM Role 생성 요청
-			assumeRolePolicyDocument, err := getRoleManagerAssumeRolePolicyDocument(role)
+			assumeRolePolicyDocument, err := getRoleManagerAssumeRolePolicyDocument(newRole)
 			if err != nil {
-				role.Status = "failed"
-				r.db.Save(role)
+				newRole.Status = "failed"
+				r.db.Save(newRole)
 				return nil, fmt.Errorf("failed to generate assume role policy document: %v", err)
 			}
 
 			// assumeRolePolicyDocument에서 Principal.Federated 값 추출
 			var policyDoc map[string]interface{}
 			if err := json.Unmarshal([]byte(assumeRolePolicyDocument), &policyDoc); err != nil {
-				role.Status = "failed"
-				r.db.Save(role)
+				newRole.Status = "failed"
+				r.db.Save(newRole)
 				return nil, fmt.Errorf("failed to parse assume role policy document: %v", err)
 			}
 
@@ -283,15 +290,15 @@ func (r *CspRoleRepository) CreateCSPRole(role *model.CspRole) (*model.CspRole, 
 			}
 
 			input := &iam.CreateRoleInput{
-				RoleName:                 aws.String(role.Name),
+				RoleName:                 aws.String(newRole.Name),
 				AssumeRolePolicyDocument: aws.String(assumeRolePolicyDocument),
-				Description:              aws.String(role.Description),
+				Description:              aws.String(newRole.Description),
 			}
 
 			_, err = r.iamClient.CreateRole(context.TODO(), input)
 			if err != nil {
-				role.Status = "failed"
-				r.db.Save(role)
+				newRole.Status = "failed"
+				r.db.Save(newRole)
 				return nil, fmt.Errorf("failed to create IAM role: %v", err)
 			}
 
@@ -303,10 +310,10 @@ func (r *CspRoleRepository) CreateCSPRole(role *model.CspRole) (*model.CspRole, 
 				if err == nil && getRoleResult != nil && getRoleResult.Role != nil {
 					// 역할이 생성되었으면 상세 정보 추출
 					createdRole := &model.CspRole{
-						ID:            role.ID,
+						ID:            newRole.ID,
 						Name:          *getRoleResult.Role.RoleName,
 						Description:   *getRoleResult.Role.Description,
-						CspType:       role.CspType,
+						CspType:       newRole.CspType,
 						IdpIdentifier: idpIdentifier,
 						Status:        "created",
 						CreateDate:    *getRoleResult.Role.CreateDate,
@@ -361,21 +368,21 @@ func (r *CspRoleRepository) CreateCSPRole(role *model.CspRole) (*model.CspRole, 
 			}
 
 			// 최대 시도 횟수를 초과하면 실패로 표시하고 DB 업데이트
-			role.Status = "failed"
-			if err := r.db.Save(role).Error; err != nil {
+			newRole.Status = "failed"
+			if err := r.db.Save(newRole).Error; err != nil {
 				return nil, fmt.Errorf("failed to update CSP role status to failed: %v", err)
 			}
 			return nil, fmt.Errorf("failed to verify IAM role creation after 5 attempts")
 		}
 
-		return role, nil
+		return newRole, nil
 	}
 
 	// DB에 역할이 있는 경우
 	// 1. status가 created인 경우 CSP에서 역할 존재 여부 확인
 	if existingRole.Status == "created" {
 		getRoleInput := &iam.GetRoleInput{
-			RoleName: aws.String(role.Name),
+			RoleName: aws.String(newRole.Name),
 		}
 		if _, err := r.iamClient.GetRole(context.TODO(), getRoleInput); err == nil {
 			return nil, fmt.Errorf("role already exists with status 'created'")
@@ -385,7 +392,7 @@ func (r *CspRoleRepository) CreateCSPRole(role *model.CspRole) (*model.CspRole, 
 	// 2. status가 created가 아닌 경우
 	// CSP에서 역할 존재 여부 확인
 	getRoleInput := &iam.GetRoleInput{
-		RoleName: aws.String(role.Name),
+		RoleName: aws.String(newRole.Name),
 	}
 	if getRoleResult, err := r.iamClient.GetRole(context.TODO(), getRoleInput); err == nil && getRoleResult != nil && getRoleResult.Role != nil {
 		log.Printf("csp existing role: %v", getRoleResult)
@@ -407,7 +414,7 @@ func (r *CspRoleRepository) CreateCSPRole(role *model.CspRole) (*model.CspRole, 
 	}
 
 	// CSP에 역할이 없으면 생성
-	assumeRolePolicyDocument, err := getRoleManagerAssumeRolePolicyDocument(role)
+	assumeRolePolicyDocument, err := getRoleManagerAssumeRolePolicyDocument(newRole)
 	if err != nil {
 		existingRole.Status = "failed"
 		r.db.Save(&existingRole)
@@ -438,9 +445,9 @@ func (r *CspRoleRepository) CreateCSPRole(role *model.CspRole) (*model.CspRole, 
 	}
 
 	input := &iam.CreateRoleInput{
-		RoleName:                 aws.String(role.Name),
+		RoleName:                 aws.String(newRole.Name),
 		AssumeRolePolicyDocument: aws.String(assumeRolePolicyDocument),
-		Description:              aws.String(role.Description),
+		Description:              aws.String(newRole.Description),
 	}
 
 	_, err = r.iamClient.CreateRole(context.TODO(), input)
@@ -544,8 +551,8 @@ func (r *CspRoleRepository) UpdateCSPRole(role *model.CspRole) error {
 func (r *CspRoleRepository) DeleteCSPRole(id string) error {
 	// 1. DB에서 역할 조회 (role_master 테이블 조인)
 	var role model.CspRole
-	if err := r.db.Joins("JOIN mcmp_role_masters ON mcmp_csp_roles.id = mcmp_role_masters.id").
-		Where("mcmp_csp_roles.id = ?", id).
+	if err := r.db.Joins("JOIN mcmp_role_csp_role_mappings ON mcmp_role_csp_role_mappings.csp_role_id = mcmp_role_csps.id").
+		Where("mcmp_role_csp_role_mappings.csp_role_id = ?", id).
 		First(&role).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return fmt.Errorf("CSP 역할을 찾을 수 없습니다: %v", err)

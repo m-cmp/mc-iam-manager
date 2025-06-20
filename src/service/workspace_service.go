@@ -339,9 +339,8 @@ func (s *WorkspaceService) GetUserWorkspaceAndWorkspaceRoles(ctx context.Context
 	return userWorkspaceRoles, nil
 }
 
-// TODO : move to workspace service
 // GetUserWorkspaceRoles 사용자의 워크스페이스 역할 목록을 조회합니다.
-func (s *UserService) GetUserWorkspaceRoles(userID uint) ([]*model.UserWorkspaceRole, error) {
+func (s *UserService) ListUserWorkspaceRoles(userID uint) ([]*model.UserWorkspaceRole, error) {
 	// 사용자 존재 여부 확인
 	_, err := s.userRepo.FindUserByID(userID)
 	if err != nil {
@@ -355,6 +354,23 @@ func (s *UserService) GetUserWorkspaceRoles(userID uint) ([]*model.UserWorkspace
 	}
 
 	return userWorkspaceRoles, nil
+}
+
+// 한 유저는 1개의 워크스페이스에서 1개의 역할만 가질 수 있음.
+func (s *UserService) GetUserWorkspaceRoleByWorkspaceID(ctx context.Context, userID uint, workspaceID uint) (*model.UserWorkspaceRole, error) {
+	// 사용자 존재 여부 확인
+	_, err := s.userRepo.FindUserByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("사용자를 찾을 수 없습니다: %w", err)
+	}
+
+	// 사용자의 워크스페이스 역할 조회
+	userWorkspaceRole, err := s.userRepo.FindUserRoleInWorkspace(userID, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("워크스페이스 역할 조회 실패: %w", err)
+	}
+
+	return userWorkspaceRole, nil
 }
 
 func (s *WorkspaceService) ListProjectsByWorkspaceID(workspaceID uint) ([]*model.Project, error) {

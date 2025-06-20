@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -16,15 +17,18 @@ import (
 type CspCredentialHandler struct {
 	credService     *service.CspCredentialService
 	keycloakService service.KeycloakService // To get user ID from token
+	userService     *service.UserService
 }
 
 // NewCspCredentialHandler 새 CspCredentialHandler 인스턴스 생성
 func NewCspCredentialHandler(db *gorm.DB) *CspCredentialHandler {
 	credService := service.NewCspCredentialService(db)
 	keycloakService := service.NewKeycloakService() // Stateless
+	userService := service.NewUserService(db)
 	return &CspCredentialHandler{
 		credService:     credService,
 		keycloakService: keycloakService,
+		userService:     userService,
 	}
 }
 
@@ -51,13 +55,23 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 	// }
 
 	// 2. Bind request body
-	var req model.CspCredentialRequest
+	var req *model.CspCredentialRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body: " + err.Error()})
 	}
 
-	// 3. Call the CspCredentialService with values from context
-	credentials, err := h.credService.GetTemporaryCredentials(c, req.WorkspaceID, req.CspType, req.Region)
+	kcUserId := c.Get("kcUserId").(string)
+
+	// 1. Get User's Keycloak ID from OIDC Token
+	user, err := h.userService.GetUserByKcID(c.Request().Context(), kcUserId)
+	if err != nil {
+		log.Printf("Error finding user by KcID %s: %v", kcUserId, err)
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+	}
+	userID := user.ID
+
+	// 2. Call the CspCredentialService with values from context
+	credentials, err := h.credService.GetTemporaryCredentials(c.Request().Context(), userID, kcUserId, req)
 	if err != nil {
 		// Handle specific errors from the service
 		if errors.Is(err, service.ErrUserNotFound) || errors.Is(err, service.ErrWorkspaceNotFound) {
