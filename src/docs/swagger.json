@@ -6288,6 +6288,66 @@
                     }
                 }
             }
+        },
+        "/api/roles/csp-roles/batch": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create multiple new csp roles",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Create multiple csp roles",
+                "parameters": [
+                    {
+                        "description": "Multiple CSP Role Creation Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateCspRolesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.CspRole"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -6992,6 +7052,142 @@
                     "items": {
                         "$ref": "#/definitions/model.UserWorkspaceRole"
                     }
+                }
+            }
+        },
+        "model.CreateCspRoleRequest": {
+            "type": "object",
+            "properties": {
+                "roleName": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "cspType": {
+                    "type": "string"
+                },
+                "idpIdentifier": {
+                    "type": "string"
+                },
+                "iamIdentifier": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "iamRoleId": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Tag"
+                    }
+                }
+            }
+        },
+        "model.CreateCspRolesRequest": {
+            "type": "object",
+            "required": [
+                "cspRoles"
+            ],
+            "properties": {
+                "cspRoles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CreateCspRoleRequest"
+                    }
+                }
+            }
+        },
+        "model.CspRole": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "csp_type": {
+                    "type": "string"
+                },
+                "idp_identifier": {
+                    "type": "string"
+                },
+                "iam_identifier": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "create_date": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "iam_role_id": {
+                    "type": "string"
+                },
+                "max_session_duration": {
+                    "type": "integer"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "permissions_boundary": {
+                    "type": "string"
+                },
+                "role_last_used": {
+                    "$ref": "#/definitions/model.RoleLastUsed"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Tag"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Tag": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RoleLastUsed": {
+            "type": "object",
+            "properties": {
+                "last_used_date": {
+                    "type": "string"
+                },
+                "region": {
+                    "type": "string"
                 }
             }
         }

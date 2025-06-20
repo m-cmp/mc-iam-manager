@@ -276,6 +276,7 @@ func main() {
 
 		roles.POST("/csp-roles/list", roleHandler.ListCSPRoles)
 		roles.POST("/csp-roles", roleHandler.CreateCspRole)
+		roles.POST("/csp-roles/batch", roleHandler.CreateCspRoles)
 		roles.DELETE("/csp-roles", roleHandler.DeleteCspRole)
 		roles.GET("/csp-roles/id/:roleId", roleHandler.GetCspRoleByID)
 		roles.GET("/csp-roles/name/:roleName", roleHandler.GetCspRoleByName)
@@ -343,7 +344,10 @@ func main() {
 		menusMng.PUT("/id/:menuId", menuHandler.UpdateMenu, middleware.PlatformAdminMiddleware)
 		menusMng.DELETE("/id/:menuId", menuHandler.DeleteMenu, middleware.PlatformAdminMiddleware)
 
-		menusMng.POST("/platform-roles/list", menuHandler.ListMenusRolesMapping, middleware.PlatformAdminMiddleware)
+		//menusMng.POST("/platform-roles/list", menuHandler.ListMenusRolesMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
+		//menusMng.POST("/platform-roles/list", menuHandler.ListMenusRolesMapping)
+		menusMng.POST("/platform-roles/list", menuHandler.ListMenusRolesMapping, middleware.PlatformRoleMiddleware(middleware.Write))
+		// menusMng.POST("/platform-roles/list", menuHandler.ListMenusRolesMapping, middleware.PlatformAdminMiddleware)
 		menusMng.POST("/platform-roles", menuHandler.CreateMenusRolesMapping, middleware.PlatformAdminMiddleware)
 		menusMng.DELETE("/platform-roles", menuHandler.DeleteMenusRolesMapping, middleware.PlatformAdminMiddleware)
 	}

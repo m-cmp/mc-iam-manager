@@ -38,6 +38,11 @@ func (s *RoleService) GetRoleByName(roleName string, roleType constants.IAMRoleT
 	return s.roleRepository.FindRoleByRoleName(roleName, roleType)
 }
 
+// ExistRoleByName 이름으로 역할 존재 여부 확인 (RoleMaster와 RoleSub를 통해)
+func (s *RoleService) ExistRoleByName(roleName string, roleType constants.IAMRoleType) (bool, error) {
+	return s.roleRepository.ExistRoleByName(roleName, roleType)
+}
+
 // CreateRoleWithSubs 역할과 서브 타입을 함께 생성합니다.
 func (s *RoleService) CreateRoleWithSubs(role *model.RoleMaster, roleSubs []model.RoleSub) (*model.RoleMaster, error) {
 	return s.roleRepository.CreateRoleWithSubs(role, roleSubs)

@@ -111,6 +111,26 @@ func (r *RoleRepository) FindRoleByRoleName(roleName string, roleType constants.
 	return &role, nil
 }
 
+// ExistRoleByName 이름으로 역할 존재 여부 확인 (RoleMaster와 RoleSub를 통해)
+func (r *RoleRepository) ExistRoleByName(roleName string, roleType constants.IAMRoleType) (bool, error) {
+	var count int64
+
+	// 쿼리 빌더를 사용하여 기본 쿼리 생성
+	query := r.db.Model(&model.RoleMaster{}).Where("mcmp_role_masters.name = ?", roleName)
+
+	// roleType이 비어있지 않다면 조건 추가
+	if roleType != "" {
+		query = query.Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+			Where("mcmp_role_subs.role_type = ?", roleType)
+	}
+
+	if err := query.Count(&count).Error; err != nil {
+		return false, fmt.Errorf("역할 존재 여부 확인 실패: %w", err)
+	}
+
+	return count > 0, nil
+}
+
 // Create 역할 생성
 func (r *RoleRepository) CreateRole(role *model.RoleMaster) error {
 	return r.db.Create(role).Error
@@ -224,7 +244,7 @@ func (r *RoleRepository) FindUserPlatformRoles(userID uint) ([]model.RoleMaster,
 	return roles, nil
 }
 
-// CreateRoleCspRoleMapping 역할-CSP 역할 매핑 생성
+// CreateRoleCspRoleMapping 역할-CSP 역할 매핑 생성 (중복 체크 포함)
 func (r *RoleRepository) CreateRoleCspRoleMapping(req *model.RoleMasterCspRoleMappingRequest) error {
 	// 문자열 ID를 uint로 변환
 	roleIDInt, err := util.StringToUint(req.RoleID)
@@ -237,14 +257,28 @@ func (r *RoleRepository) CreateRoleCspRoleMapping(req *model.RoleMasterCspRoleMa
 		return fmt.Errorf("잘못된 CSP 역할 ID 형식: %w", err)
 	}
 
-	mapping := &model.RoleMasterCspRoleMapping{
-		RoleID:      roleIDInt,
-		CspRoleID:   cspRoleIDInt,
-		AuthMethod:  req.AuthMethod,
-		Description: req.Description,
+	// 중복 체크
+	var existingMapping model.RoleMasterCspRoleMapping
+	if err := r.db.Where("role_id = ? AND auth_method = ? AND csp_role_id = ?",
+		roleIDInt, req.AuthMethod, cspRoleIDInt).
+		First(&existingMapping).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// 매핑이 존재하지 않으면 생성
+			mapping := &model.RoleMasterCspRoleMapping{
+				RoleID:      roleIDInt,
+				CspRoleID:   cspRoleIDInt,
+				AuthMethod:  req.AuthMethod,
+				Description: req.Description,
+			}
+			return r.db.Create(mapping).Error
+		} else {
+			return fmt.Errorf("failed to check existing role mapping: %w", err)
+		}
+	} else {
+		// 매핑이 이미 존재하면 중복 에러 반환
+		return fmt.Errorf("role mapping already exists for role_id=%d, auth_method=%s, csp_role_id=%d",
+			roleIDInt, req.AuthMethod, cspRoleIDInt)
 	}
-
-	return r.db.Create(mapping).Error
 }
 
 // DeleteRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 삭제

@@ -247,9 +247,11 @@ func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*mod
 		getRoleInput := &iam.GetRoleInput{
 			RoleName: aws.String(newRole.Name),
 		}
-		if _, err := r.iamClient.GetRole(context.TODO(), getRoleInput); err == nil {
+		var targetCspRole *iam.GetRoleOutput
+		if cspRoleResponse, err := r.iamClient.GetRole(context.TODO(), getRoleInput); err == nil {
 			// CSP에 역할이 있으면 status를 created로 설정하여 저장
 			newRole.Status = "created"
+			targetCspRole = cspRoleResponse
 		} else {
 			// CSP에 역할이 없으면 status를 creating으로 설정하여 저장
 			newRole.Status = "creating"
@@ -373,6 +375,17 @@ func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*mod
 				return nil, fmt.Errorf("failed to update CSP role status to failed: %v", err)
 			}
 			return nil, fmt.Errorf("failed to verify IAM role creation after 5 attempts")
+		} else {
+			// 대상 csp에 role 정보를 db에 갱신
+			newRole.Status = "created"
+			newRole.IamIdentifier = *targetCspRole.Role.Arn
+			newRole.CreateDate = *targetCspRole.Role.CreateDate
+			newRole.Path = *targetCspRole.Role.Path
+			newRole.IamRoleId = *targetCspRole.Role.RoleId
+
+			if err := r.db.Save(newRole).Error; err != nil {
+				return nil, fmt.Errorf("failed to update CSP role status to created: %v", err)
+			}
 		}
 
 		return newRole, nil
@@ -647,12 +660,30 @@ func (r *CspRoleRepository) GetCSPRolePermissions(roleID string) ([]string, erro
 }
 
 // GetRole 역할 정보 조회
-func (r *CspRoleRepository) GetRole(roleName string) (*model.CspRole, error) {
+func (r *CspRoleRepository) GetRoleByID(cspRoleId uint) (*model.CspRole, error) {
+	var role model.CspRole
+	if err := r.db.Where("id = ?", cspRoleId).First(&role).Error; err != nil {
+		return nil, fmt.Errorf("failed to get role: %w", err)
+	}
+	return &role, nil
+}
+
+// GetRole 역할 정보 조회
+func (r *CspRoleRepository) GetRoleByName(roleName string) (*model.CspRole, error) {
 	var role model.CspRole
 	if err := r.db.Where("name = ?", roleName).First(&role).Error; err != nil {
 		return nil, fmt.Errorf("failed to get role: %w", err)
 	}
 	return &role, nil
+}
+
+// ExistCspRoleByName 이름으로 CSP 역할 존재 여부 확인 (CspRole 테이블에서)
+func (r *CspRoleRepository) ExistCspRoleByName(roleName string) (bool, error) {
+	var count int64
+	if err := r.db.Model(&model.CspRole{}).Where("name = ?", roleName).Count(&count).Error; err != nil {
+		return false, fmt.Errorf("failed to check CSP role existence: %w", err)
+	}
+	return count > 0, nil
 }
 
 // ListAttachedRolePolicies 역할에 연결된 관리형 정책 목록 조회
@@ -751,4 +782,82 @@ func (r *CspRoleRepository) ExistsCspRoleByID(id uint) (bool, error) {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+// SyncCspRoleFromCloud 실제 CSP에서 역할 정보를 조회하여 DB를 업데이트합니다.
+func (r *CspRoleRepository) SyncCspRoleFromCloud(roleName string) (*model.CspRole, error) {
+	// AWS IAM에서 역할 정보 조회
+	getRoleInput := &iam.GetRoleInput{
+		RoleName: aws.String(roleName),
+	}
+
+	getRoleResult, err := r.iamClient.GetRole(context.TODO(), getRoleInput)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get role from AWS IAM: %w", err)
+	}
+
+	if getRoleResult == nil || getRoleResult.Role == nil {
+		return nil, fmt.Errorf("role not found in AWS IAM: %s", roleName)
+	}
+
+	// DB에서 기존 역할 조회
+	var existingRole model.CspRole
+	if err := r.db.Where("name = ?", roleName).First(&existingRole).Error; err != nil {
+		return nil, fmt.Errorf("failed to get existing role from database: %w", err)
+	}
+
+	// AWS IAM에서 가져온 정보로 업데이트
+	existingRole.Status = "created"
+	existingRole.IamIdentifier = *getRoleResult.Role.Arn
+	existingRole.CreateDate = *getRoleResult.Role.CreateDate
+	existingRole.Path = *getRoleResult.Role.Path
+	existingRole.IamRoleId = *getRoleResult.Role.RoleId
+
+	// Description 업데이트
+	if getRoleResult.Role.Description != nil {
+		existingRole.Description = *getRoleResult.Role.Description
+	}
+
+	// MaxSessionDuration 설정
+	if getRoleResult.Role.MaxSessionDuration != nil {
+		existingRole.MaxSessionDuration = getRoleResult.Role.MaxSessionDuration
+	}
+
+	// PermissionsBoundary 설정
+	if getRoleResult.Role.PermissionsBoundary != nil && getRoleResult.Role.PermissionsBoundary.PermissionsBoundaryArn != nil {
+		existingRole.PermissionsBoundary = *getRoleResult.Role.PermissionsBoundary.PermissionsBoundaryArn
+	}
+
+	// RoleLastUsed 설정
+	if getRoleResult.Role.RoleLastUsed != nil {
+		roleLastUsed := &model.RoleLastUsed{}
+		if getRoleResult.Role.RoleLastUsed.LastUsedDate != nil {
+			roleLastUsed.LastUsedDate = *getRoleResult.Role.RoleLastUsed.LastUsedDate
+		}
+		if getRoleResult.Role.RoleLastUsed.Region != nil {
+			roleLastUsed.Region = *getRoleResult.Role.RoleLastUsed.Region
+		}
+		existingRole.RoleLastUsed = roleLastUsed
+	}
+
+	// Tags 설정
+	if len(getRoleResult.Role.Tags) > 0 {
+		tags := make([]model.Tag, len(getRoleResult.Role.Tags))
+		for i, tag := range getRoleResult.Role.Tags {
+			if tag.Key != nil && tag.Value != nil {
+				tags[i] = model.Tag{
+					Key:   *tag.Key,
+					Value: *tag.Value,
+				}
+			}
+		}
+		existingRole.Tags = tags
+	}
+
+	// DB 업데이트
+	if err := r.db.Save(&existingRole).Error; err != nil {
+		return nil, fmt.Errorf("failed to update CSP role in database: %w", err)
+	}
+
+	return &existingRole, nil
 }
