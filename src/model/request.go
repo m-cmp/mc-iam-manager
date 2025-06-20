@@ -98,6 +98,16 @@ type CreateCspRolesRequest struct {
 // 	ProjectID   string `json:"projectId,omitempty"`
 // }
 
+type CreateMenuRequest struct {
+	ID          string `json:"id" validate:"required"`
+	ParentID    string `json:"parentId,omitempty"`
+	DisplayName string `json:"displayName"`
+	ResType     string `json:"resType"`
+	IsAction    bool   `json:"isAction"`
+	Priority    string `json:"priority"`
+	MenuNumber  string `json:"menuNumber"`
+}
+
 type MenuFilterRequest struct {
 	MenuID   []*string `json:"menuId",omitempty"`
 	MenuName []*string `json:"menuName",omitempty"`

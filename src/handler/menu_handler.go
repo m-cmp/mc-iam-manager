@@ -316,20 +316,22 @@ func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 // @Router /menus [post]
 // @OperationId createMenu
 func (h *MenuHandler) CreateMenu(c echo.Context) error {
-	menu := new(model.Menu)
-	if err := c.Bind(menu); err != nil {
+	req := new(model.CreateMenuRequest)
+	if err := c.Bind(req); err != nil {
+		c.Logger().Debugf("CreateMenu err %s", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "잘못된 요청 형식입니다",
 		})
 	}
 
-	if err := h.menuService.Create(menu); err != nil {
+	if err := h.menuService.Create(req); err != nil {
+		c.Logger().Debugf("CreateMenu err %s", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "메뉴 생성에 실패했습니다",
 		})
 	}
 
-	return c.JSON(http.StatusCreated, menu)
+	return c.JSON(http.StatusCreated, map[string]string{"message": "메뉴 생성에 성공했습니다"})
 }
 
 // Update godoc

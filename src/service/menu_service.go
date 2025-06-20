@@ -277,9 +277,9 @@ func (s *MenuService) GetMenuByID(id *string) (*model.Menu, error) {
 }
 
 // Create 새 메뉴 생성
-func (s *MenuService) Create(menu *model.Menu) error {
+func (s *MenuService) Create(req *model.CreateMenuRequest) error {
 	// TODO: 필요한 비즈니스 로직 추가 (예: 유효성 검사)
-	return s.menuRepo.CreateMenu(menu)
+	return s.menuRepo.CreateMenu(req)
 }
 
 // Update 메뉴 정보 부분 업데이트
