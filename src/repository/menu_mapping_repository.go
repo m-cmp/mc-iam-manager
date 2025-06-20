@@ -81,7 +81,7 @@ func (r *MenuMappingRepository) FindMappedMenus(platformRoleID uint) ([]*model.M
 		return nil, err
 	}
 
-	query = r.db.Where("id IN ? )", mappedMenuIDs, mappedMenuIDs).
+	query = r.db.Where("id IN ?", mappedMenuIDs).
 		Find(&menus)
 	if err := query.Error; err != nil {
 		return nil, err

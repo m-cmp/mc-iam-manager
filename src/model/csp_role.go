@@ -40,5 +40,5 @@ type CspRole struct {
 }
 
 func (CspRole) TableName() string { // Renamed receiver
-	return "mcmp_roles_csp"
+	return "mcmp_role_csp_roles"
 }

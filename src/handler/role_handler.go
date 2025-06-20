@@ -1752,3 +1752,36 @@ func (h *RoleHandler) ListCspRoleMappings(c echo.Context) error {
 	log.Printf("워크스페이스 역할-CSP 역할 매핑 조회 성공 - 조회된 매핑 수: %d", len(mappings))
 	return c.JSON(http.StatusOK, mappings)
 }
+
+// @Summary Create multiple csp roles
+// @Description Create multiple new csp roles
+// @Tags roles
+// @Accept json
+// @Produce json
+// @Param request body model.CreateCspRolesRequest true "Multiple CSP Role Creation Info"
+// @Success 201 {array} model.CspRole
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/roles/csp-roles/batch [post]
+// @OperationId createCspRoles
+func (h *RoleHandler) CreateCspRoles(c echo.Context) error {
+	var req model.CreateCspRolesRequest
+
+	if err := c.Bind(&req); err != nil {
+		c.Logger().Debugf("Bind error: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
+	if err := c.Validate(&req); err != nil {
+		c.Logger().Debugf("Validate error: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	createdRoles, err := h.cspRoleService.CreateCspRoles(&req)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusCreated, createdRoles)
+}

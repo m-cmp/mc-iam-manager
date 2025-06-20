@@ -473,6 +473,22 @@ definitions:
           $ref: '#/definitions/model.UserWorkspaceRole'
         type: array
     type: object
+  model.CreateCspRolesRequest:
+    properties:
+      cspRoles:
+        items:
+          $ref: '#/definitions/model.CspRole'
+        type: array
+    type: object
+  model.CspRole:
+    properties:
+      cspType:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+    type: object
 host: localhost:3000
 info:
   contact: {}
@@ -4512,6 +4528,44 @@ paths:
       summary: 워크스페이스 티켓 설정
       tags:
       - auth
+  /api/roles/csp-roles/batch:
+    post:
+      consumes:
+      - application/json
+      description: Create multiple new csp roles
+      parameters:
+      - description: Multiple CSP Role Creation Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateCspRolesRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/model.CspRole'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create multiple csp roles
+      tags:
+      - roles
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.

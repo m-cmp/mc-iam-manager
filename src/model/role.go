@@ -79,7 +79,7 @@ func (UserWorkspaceRole) TableName() string {
 type RoleMasterCspRoleMapping struct {
 	RoleID      uint                 `json:"roleId" gorm:"column:role_id;primaryKey;foreignKey:id;references:mcmp_role_masters"`
 	AuthMethod  constants.AuthMethod `json:"auth_method" gorm:"column:auth_method;primaryKey"`
-	CspRoleID   uint                 `json:"cspRoleId" gorm:"column:csp_role_id;primaryKey;foreignKey:id;references:mcmp_roles_csp"`
+	CspRoleID   uint                 `json:"cspRoleId" gorm:"column:csp_role_id;primaryKey;foreignKey:id;references:mcmp_role_csp_roles"`
 	Description string               `json:"description" gorm:"column:description"`
 	CreatedAt   time.Time            `json:"createdAt" gorm:"column:created_at"`
 	CspRole     *CspRole             `json:"cspRole" gorm:"foreignKey:CspRoleID;references:ID"`

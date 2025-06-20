@@ -88,6 +88,11 @@ type CreateCspRoleRequest struct {
 	Tags          []Tag  `json:"tags,omitempty"`
 }
 
+// CreateCspRolesRequest 복수 CSP 역할 생성 요청 구조체
+type CreateCspRolesRequest struct {
+	CspRoles []CreateCspRoleRequest `json:"cspRoles" validate:"required,dive"`
+}
+
 // type WorkspaceProjectFilterRequest struct {
 // 	WorkspaceID string `json:"workspaceId,omitempty"`
 // 	ProjectID   string `json:"projectId,omitempty"`
