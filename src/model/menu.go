@@ -11,8 +11,8 @@ type Menu struct {
 	DisplayName string    `json:"display_name" yaml:"displayname" gorm:"column:display_name;not null"`
 	ResType     string    `json:"res_type" yaml:"restype" gorm:"column:res_type;not null"`
 	IsAction    bool      `json:"is_action" yaml:"isaction" gorm:"column:is_action;default:false"`
-	Priority    int       `json:"priority" yaml:"priority" gorm:"column:priority;not null"`
-	MenuNumber  int       `json:"menu_number" yaml:"menunumber" gorm:"column:menu_number;not null"`
+	Priority    uint      `json:"priority" yaml:"priority" gorm:"column:priority;not null"`
+	MenuNumber  uint      `json:"menu_number" yaml:"menunumber" gorm:"column:menu_number;not null"`
 	CreatedAt   time.Time `json:"-" yaml:"-" gorm:"column:created_at;autoCreateTime"` // GORM이 자동 처리
 	UpdatedAt   time.Time `json:"-" yaml:"-" gorm:"column:updated_at;autoUpdateTime"` // GORM이 자동 처리
 }
