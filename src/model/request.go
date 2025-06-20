@@ -1,5 +1,7 @@
 package model
 
+import "github.com/m-cmp/mc-iam-manager/constants"
+
 // 각종 요청에 대한 구조체 정의
 // naming convention : XxxRequest
 
@@ -40,18 +42,22 @@ type AssignRoleRequest struct {
 }
 
 // RoleMasterSubRequest 역할 생성 요청 구조체
-type RoleMasterSubRequest struct {
-	Name        string   `json:"name" validate:"required"`
-	Description string   `json:"description"`
-	ParentID    *uint    `json:"parentId"`
-	RoleTypes   []string `json:"roleTypes" validate:"required,dive,oneof=platform workspace csp"`
+type CreateRoleRequest struct {
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description"`
+	ParentID    *uint  `json:"parentId"`
+	//RoleTypes   []constants.IAMRoleType `json:"roleTypes" validate:"required,dive,oneof=platform workspace csp"`
+	RoleTypes []constants.IAMRoleType `json:"roleTypes,omitempty"`
+
+	MenuIDs  []string  `json:"menuIds,omitempty"`
+	CspRoles []CspRole `json:"cspRoles,omitempty"`
 }
 
 // RoleRequest 역할 조회 요청 구조체
-type RoleRequest struct {
-	RoleID    string   `json:"roleId,omitempty"`
-	RoleName  string   `json:"roleName",omitempty"`
-	RoleTypes []string `json:"roleTypes",omitempty"`
+type RoleFilterRequest struct {
+	RoleID    string                  `json:"roleId,omitempty"`
+	RoleName  string                  `json:"roleName",omitempty"`
+	RoleTypes []constants.IAMRoleType `json:"roleTypes",omitempty"`
 }
 
 // 워크스페이스와 프로젝트 매핑 추가 또는 해제
@@ -68,6 +74,18 @@ type WorkspaceFilterRequest struct {
 	ProjectID     string `json:"projectId,omitempty"`
 	UserID        string `json:"userId,omitempty"`
 	RoleID        string `json:"roleId,omitempty"`
+}
+
+type CreateCspRoleRequest struct {
+	RoleName      string `json:"roleName",omitempty"`
+	Description   string `json:"description,omitempty"`
+	CspType       string `json:"cspType,omitempty"`
+	IdpIdentifier string `json:"idpIdentifier,omitempty"`
+	IamIdentifier string `json:"iamIdentifier,omitempty"`
+	Status        string `json:"status,omitempty"`
+	Path          string `json:"path,omitempty"`
+	IamRoleId     string `json:"iamRoleId,omitempty"`
+	Tags          []Tag  `json:"tags,omitempty"`
 }
 
 // type WorkspaceProjectFilterRequest struct {
@@ -112,9 +130,9 @@ type RemoveWorkspaceRoleRequest struct {
 // WorkspaceRoleCspRoleMappingRequest 워크스페이스 역할-CSP 역할 매핑 요청 구조체
 type WorkspaceRoleCspRoleMappingRequest struct {
 	//WorkspaceID     string `json:"workspaceId" validate:"required"`     // 워크스페이스 ID
-	WorkspaceRoleID string `json:"workspaceRoleId" validate:"required"` // 역할 ID
-	CspRoleID       string `json:"cspRoleId" validate:"required"`       // CSP 역할 ID
-	CspType         string `json:"cspType" validate:"required"`         // CSP 타입
+	WorkspaceRoleID string               `json:"workspaceRoleId" validate:"required"` // 역할 ID
+	CspRoleID       string               `json:"cspRoleId" validate:"required"`       // CSP 역할 ID
+	AuthMethod      constants.AuthMethod `json:"authMethod" validate:"required"`      // CSP 타입
 }
 
 // UserStatusRequest 사용자 상태 변경 요청 구조체( request, confirm, reject, active, inactive)
@@ -128,10 +146,11 @@ type UserStatusRequest struct {
 
 // WorkspaceRoleCspRoleMapping 워크스페이스 역할 - CSP 역할 매핑 (DB 테이블: mcmp_workspace_role_csp_role_mapping)
 type RoleMasterCspRoleMappingRequest struct {
-	RoleID      string `json:"roleId"`
-	CspType     string `json:"cspType"`
-	CspRoleID   string `json:"cspRoleId"`
-	Description string `json:"description"`
+	RoleID      string               `json:"roleId,omitempty"`
+	CspType     constants.CSPType    `json:"cspType,omitempty"`
+	CspRoleID   string               `json:"cspRoleId,omitempty"`
+	Description string               `json:"description,omitempty"`
+	AuthMethod  constants.AuthMethod `json:"authMethod,omitempty"`
 }
 
 type WorkspaceWithUsersAndRolesRequest struct {
@@ -140,9 +159,9 @@ type WorkspaceWithUsersAndRolesRequest struct {
 
 // RoleMapping을 조회하기 위한 요청 구조체
 type RoleMappingRequest struct {
-	RoleID      string `json:"roleId"`
-	RoleType    string `json:"roleType"`
-	CspType     string `json:"cspType"`
-	CspRoleID   string `json:"cspRoleId"`
-	WorkspaceID string `json:"workspaceId"`
+	RoleID      string                `json:"roleId"`
+	RoleType    constants.IAMRoleType `json:"roleType"`
+	CspType     string                `json:"cspType"`
+	CspRoleID   string                `json:"cspRoleId"`
+	WorkspaceID string                `json:"workspaceId"`
 }

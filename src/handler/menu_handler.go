@@ -533,27 +533,23 @@ func (h *MenuHandler) CreateMenusRolesMapping(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
+	var mappings []*model.MenuMapping
 	for _, menuID := range req.MenuID {
 		roleIDInt, err := util.StringToUint(req.RoleID)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid role ID"})
 		}
-		menuIDInt, err := util.StringToUint(menuID)
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid menu ID"})
-		}
 
 		mapping := &model.MenuMapping{
 			RoleID:    roleIDInt,
-			MenuID:    menuIDInt,
+			MenuID:    menuID,
 			CreatedAt: time.Now(),
 		}
-
-		if err := h.menuService.CreateMenuMapping(mapping); err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("메뉴 매핑 생성 실패: %v", err)})
-		}
+		mappings = append(mappings, mapping)
 	}
-
+	if err := h.menuService.CreateMenuMappings(mappings); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("메뉴 매핑 생성 실패: %v", err)})
+	}
 	return c.JSON(http.StatusCreated, map[string]string{"message": "Menu mapping created successfully"})
 }
 

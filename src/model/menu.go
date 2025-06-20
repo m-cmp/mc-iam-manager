@@ -49,7 +49,7 @@ func (PlatformRoleMenuMapping) TableName() string {
 
 // MenuMapping 메뉴 매핑 구조체
 type MenuMapping struct {
-	MenuID    uint      `json:"menuId" gorm:"column:menu_id"`
+	MenuID    string    `json:"menuId" gorm:"column:menu_id"`
 	RoleID    uint      `json:"roleId" gorm:"column:role_id"`
 	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
 }

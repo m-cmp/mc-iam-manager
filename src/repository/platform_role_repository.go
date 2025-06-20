@@ -74,7 +74,7 @@ func (r *PlatformRoleRepository) Delete(id uint) error {
 
 // roleModelFactories 역할 타입별 사용자-역할 매핑 모델 생성 팩토리 맵
 // 각 역할 타입(platform, workspace)에 대해 해당하는 매핑 모델을 생성하는 함수를 제공
-var roleModelFactories = map[string]func(userID, roleID uint) interface{}{
+var roleModelFactories = map[constants.IAMRoleType]func(userID, roleID uint) interface{}{
 	// 플랫폼 역할 타입에 대한 팩토리 함수
 	// UserPlatformRole 모델을 생성하여 반환
 	constants.RoleTypePlatform: func(userID, roleID uint) interface{} {
@@ -94,7 +94,7 @@ var roleModelFactories = map[string]func(userID, roleID uint) interface{}{
 }
 
 // AssignRole 사용자에게 역할 할당
-func (r *PlatformRoleRepository) AssignRole(userID, roleID uint, roleType string) error {
+func (r *PlatformRoleRepository) AssignRole(userID, roleID uint, roleType constants.IAMRoleType) error {
 	factory, ok := roleModelFactories[roleType]
 	if !ok {
 		return fmt.Errorf("unsupported role type: %s", roleType)

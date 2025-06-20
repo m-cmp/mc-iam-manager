@@ -2,6 +2,8 @@ package model
 
 import (
 	"time"
+
+	"github.com/m-cmp/mc-iam-manager/constants"
 )
 
 // PermissionType 권한 유형
@@ -34,10 +36,10 @@ func (MciamPermission) TableName() string { // Renamed receiver
 
 // MciamRoleMciamPermission 역할-MC-IAM 권한 매핑 (DB 테이블: mcmp_mciam_role_permissions) - Renamed
 type MciamRoleMciamPermission struct {
-	RoleType     string    `json:"role_type" gorm:"primaryKey;column:role_type;type:varchar(50);not null"`          // 'platform' or 'workspace'
-	RoleID       uint      `json:"role_id" gorm:"primaryKey;column:role_id;not null"`                               // Refers to mcmp_platform_roles.id or mcmp_workspace_roles.id
-	PermissionID string    `json:"permission_id" gorm:"primaryKey;column:permission_id;type:varchar(255);not null"` // Refers to mcmp_mciam_permissions.id
-	CreatedAt    time.Time `json:"created_at" gorm:"column:created_at;autoCreateTime"`
+	RoleType     constants.IAMRoleType `json:"role_type" gorm:"primaryKey;column:role_type;type:varchar(50);not null"`          // 'platform' or 'workspace'
+	RoleID       uint                  `json:"role_id" gorm:"primaryKey;column:role_id;not null"`                               // Refers to mcmp_platform_roles.id or mcmp_workspace_roles.id
+	PermissionID string                `json:"permission_id" gorm:"primaryKey;column:permission_id;type:varchar(255);not null"` // Refers to mcmp_mciam_permissions.id
+	CreatedAt    time.Time             `json:"created_at" gorm:"column:created_at;autoCreateTime"`
 	// Relationships can be added if needed, e.g., PlatformRole, WorkspaceRole, MciamPermission
 }
 

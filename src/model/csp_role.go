@@ -17,6 +17,7 @@ type Tag struct {
 }
 
 // CspRole CSP 역할 모델
+// 대상 CSP와 연결하기 위한 연결정보(AWS에 OIDC로 연결되는 경우 제대로 동작. TODO: SAML을 추가했을 때 Table형태나 다른Table을 추가하게 될 수 있음)
 type CspRole struct {
 	ID                  uint          `gorm:"primaryKey" json:"id"`
 	Name                string        `gorm:"size:255;not null" json:"name"`
@@ -39,5 +40,5 @@ type CspRole struct {
 }
 
 func (CspRole) TableName() string { // Renamed receiver
-	return "mcmp_csp_roles"
+	return "mcmp_roles_csp"
 }

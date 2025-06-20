@@ -52,10 +52,9 @@ func (s *CspRoleService) GetMciamCSPRoles(ctx context.Context, cspType string) (
 }
 
 // CreateCSPRole 새로운 CSP 역할을 생성합니다.
-func (s *CspRoleService) CreateCSPRole(role *model.CspRole) (*model.CspRole, error) {
-	roleType := "csp"
+func (s *CspRoleService) CreateCSPRole(req *model.CreateCspRoleRequest) (*model.CspRole, error) {
 	// 1. Role Master에서 역할 존재 여부 확인
-	existingRole, err := s.roleService.GetRoleByName(role.Name, roleType)
+	existingRole, err := s.roleService.GetRoleByName(req.RoleName, constants.RoleTypeCSP)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		log.Printf("Failed to check existing role: %v", err)
 		return nil, err
@@ -68,8 +67,8 @@ func (s *CspRoleService) CreateCSPRole(role *model.CspRole) (*model.CspRole, err
 	} else {
 		// 1. RoleMaster 생성
 		roleMaster := model.RoleMaster{
-			Name:        role.Name,
-			Description: role.Description,
+			Name:        req.RoleName,
+			Description: req.Description,
 			Predefined:  false, // CSP 역할은 기본적으로 predefined가 false
 		}
 
@@ -89,11 +88,37 @@ func (s *CspRoleService) CreateCSPRole(role *model.CspRole) (*model.CspRole, err
 	}
 
 	// 2. CSP Role 생성 (AWS IAM에서 역할 존재 여부 확인 및 상태 업데이트)
-	role.ID = roleMasterID
-	cspRole, err := s.cspRoleRepo.CreateCSPRole(role)
+	cspRole, err := s.cspRoleRepo.CreateCSPRole(req)
 	if err != nil {
 		log.Printf("Failed to create CSP role: %v", err)
 		return cspRole, err
+	}
+
+	// 3. RoleMaster와 CSP Role 매핑
+	roleMapping := model.RoleMasterCspRoleMapping{
+		RoleID:      roleMasterID,
+		AuthMethod:  constants.AuthMethodOIDC,
+		CspRoleID:   cspRole.ID,
+		Description: req.Description,
+	}
+
+	// 중복 체크 후 생성
+	var existingMapping model.RoleMasterCspRoleMapping
+	if err := s.db.Where("role_id = ? AND auth_method = ? AND csp_role_id = ?",
+		roleMapping.RoleID, roleMapping.AuthMethod, roleMapping.CspRoleID).
+		First(&existingMapping).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// 매핑이 존재하지 않으면 생성
+			if err := s.db.Create(&roleMapping).Error; err != nil {
+				return nil, fmt.Errorf("failed to create role mapping: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("failed to check existing role mapping: %w", err)
+		}
+	} else {
+		// 매핑이 이미 존재하면 로그만 남기고 계속 진행
+		log.Printf("Role mapping already exists for role_id=%d, auth_method=%s, csp_role_id=%d",
+			roleMapping.RoleID, roleMapping.AuthMethod, roleMapping.CspRoleID)
 	}
 
 	return cspRole, nil
@@ -190,4 +215,30 @@ func (s *CspRoleService) PutRolePolicy(ctx context.Context, roleName string, pol
 // DeleteRolePolicy 역할에서 인라인 정책 삭제
 func (s *CspRoleService) DeleteRolePolicy(ctx context.Context, roleName string, policyName string) error {
 	return s.cspRoleRepo.DeleteRolePolicy(ctx, roleName, policyName)
+}
+
+// CreateOrUpdateCspRole CSP 역할을 생성하거나 업데이트합니다.
+// ID가 비어있으면 새로 생성하고, ID가 있으면 기존 것을 업데이트합니다.
+func (s *CspRoleService) CreateOrUpdateCspRole(cspRole *model.CspRole) (*model.CspRole, error) {
+	if cspRole.ID == 0 {
+		// ID가 비어있으면 새로 생성
+		req := &model.CreateCspRoleRequest{
+			RoleName:      cspRole.Name,
+			Description:   cspRole.Description,
+			CspType:       cspRole.CspType,
+			IdpIdentifier: cspRole.IdpIdentifier,
+			IamIdentifier: cspRole.IamIdentifier,
+			Status:        cspRole.Status,
+			Path:          cspRole.Path,
+			IamRoleId:     cspRole.IamRoleId,
+		}
+		return s.CreateCSPRole(req)
+	} else {
+		// ID가 있으면 업데이트
+		err := s.UpdateCSPRole(cspRole)
+		if err != nil {
+			return nil, err
+		}
+		return cspRole, nil
+	}
 }

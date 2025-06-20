@@ -7,6 +7,7 @@ import (
 
 	// "errors" // Removed unused import
 
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gorm.io/gorm" // Import gorm
@@ -59,7 +60,7 @@ func (s *MciamPermissionService) Delete(ctx context.Context, id string) error {
 }
 
 // AssignMciamPermissionToRole 역할에 MC-IAM 권한 할당 - Renamed
-func (s *MciamPermissionService) AssignMciamPermissionToRole(ctx context.Context, roleType string, roleID uint, permissionID string) error {
+func (s *MciamPermissionService) AssignMciamPermissionToRole(ctx context.Context, roleType constants.IAMRoleType, roleID uint, permissionID string) error {
 	// 권한 존재 여부 확인
 	_, err := s.permissionRepo.GetByID(permissionID)
 	if err != nil {
@@ -81,13 +82,13 @@ func (s *MciamPermissionService) AssignMciamPermissionToRole(ctx context.Context
 }
 
 // RemoveMciamPermissionFromRole 역할에서 MC-IAM 권한 제거 - Renamed
-func (s *MciamPermissionService) RemoveMciamPermissionFromRole(ctx context.Context, roleType string, roleID uint, permissionID string) error {
+func (s *MciamPermissionService) RemoveMciamPermissionFromRole(ctx context.Context, roleType constants.IAMRoleType, roleID uint, permissionID string) error {
 	// No need to check existence first, repo handles it gracefully
 	return s.permissionRepo.RemoveMciamPermissionFromRole(roleType, roleID, permissionID) // Use renamed repo method
 }
 
 // GetRoleMciamPermissions 역할의 MC-IAM 권한 ID 목록 조회 - Renamed
-func (s *MciamPermissionService) GetRoleMciamPermissions(ctx context.Context, roleType string, roleID uint) ([]string, error) { // Return []string
+func (s *MciamPermissionService) GetRoleMciamPermissions(ctx context.Context, roleType constants.IAMRoleType, roleID uint) ([]string, error) { // Return []string
 	// TODO: 역할 존재 여부 확인 (Platform or Workspace)
 	return s.permissionRepo.GetRoleMciamPermissions(roleType, roleID) // Use renamed repo method
 }

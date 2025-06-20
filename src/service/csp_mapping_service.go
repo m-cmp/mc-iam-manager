@@ -84,7 +84,7 @@ func (s *CspMappingService) CreateWorkspaceRoleCspRoleMapping(ctx context.Contex
 
 	roleMapping := model.RoleMasterCspRoleMapping{}
 	roleMapping.RoleID = workspaceRoleID
-	roleMapping.CspType = mapping.CspType
+	roleMapping.AuthMethod = mapping.AuthMethod
 	roleMapping.CspRoleID = cspRoleID
 
 	return s.roleRepo.CreateWorkspaceRoleCspRoleMapping(&roleMapping)

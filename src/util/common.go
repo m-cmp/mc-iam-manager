@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/m-cmp/mc-iam-manager/constants"
 )
 
 // JSON 커스텀 타입 정의
@@ -22,8 +24,34 @@ func StringToUint(s string) (uint, error) {
 	return uint(parsedInt), nil
 }
 
+func UintToString(u uint) string {
+	return strconv.FormatUint(uint64(u), 10)
+}
+
 // check value in array 함수
 func CheckValueInArray(list []string, value string) bool {
+	// roleType이 reqRoleType에 포함되어 있는지 확인
+	found := false
+	for _, v1 := range list {
+		if v1 == value {
+			found = true
+			break
+		}
+	}
+
+	// roleType이 없으면 return
+	if !found {
+		fmt.Println("값이 array에 없습니다.")
+		return false
+	}
+
+	// roleType이 있을 경우의 처리
+	fmt.Println("값이 array에에 있습니다:")
+	return true
+}
+
+// CheckValueInArrayIAMRoleType IAMRoleType 타입을 위한 배열 검사 함수
+func CheckValueInArrayIAMRoleType(list []constants.IAMRoleType, value constants.IAMRoleType) bool {
 	// roleType이 reqRoleType에 포함되어 있는지 확인
 	found := false
 	for _, v1 := range list {

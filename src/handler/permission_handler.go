@@ -209,8 +209,9 @@ func (h *MciamPermissionHandler) DeleteMciamPermission(c echo.Context) error { /
 // @Success 204 "No Content"
 // @Router /roles/{roleType}/{roleId}/mciam-permissions/{permissionId} [post] // Updated route
 func (h *MciamPermissionHandler) AssignMciamPermissionToRole(c echo.Context) error { // Renamed method
-	roleType := c.Param("roleType")
-	if roleType != constants.RoleTypePlatform && roleType != constants.RoleTypeWorkspace {
+	roleTypeStr := c.Param("roleType")
+	roleType := constants.IAMRoleType(roleTypeStr)
+	if roleType != constants.RoleTypePlatform && roleType != constants.RoleTypeWorkspace && roleType != constants.RoleTypeCSP {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 타입입니다. 'platform' 또는 'workspace' 만 가능합니다."})
 	}
 
@@ -246,8 +247,9 @@ func (h *MciamPermissionHandler) AssignMciamPermissionToRole(c echo.Context) err
 // @Success 204 "No Content"
 // @Router /roles/{roleType}/{roleId}/mciam-permissions/{permissionId} [delete] // Updated route
 func (h *MciamPermissionHandler) RemoveMciamPermissionFromRole(c echo.Context) error { // Renamed method
-	roleType := c.Param("roleType")
-	if roleType != constants.RoleTypePlatform && roleType != constants.RoleTypeWorkspace {
+	roleTypeStr := c.Param("roleType")
+	roleType := constants.IAMRoleType(roleTypeStr)
+	if roleType != constants.RoleTypePlatform && roleType != constants.RoleTypeWorkspace && roleType != constants.RoleTypeCSP {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 타입입니다. 'platform' 또는 'workspace' 만 가능합니다."})
 	}
 
@@ -281,8 +283,9 @@ func (h *MciamPermissionHandler) RemoveMciamPermissionFromRole(c echo.Context) e
 // @Success 200 {array} string "권한 ID 목록"
 // @Router /roles/{roleType}/{roleId}/mciam-permissions [get] // Updated route
 func (h *MciamPermissionHandler) GetRoleMciamPermissions(c echo.Context) error { // Renamed method
-	roleType := c.Param("roleType")
-	if roleType != constants.RoleTypePlatform && roleType != constants.RoleTypeWorkspace {
+	roleTypeStr := c.Param("roleType")
+	roleType := constants.IAMRoleType(roleTypeStr)
+	if roleType != constants.RoleTypePlatform && roleType != constants.RoleTypeWorkspace && roleType != constants.RoleTypeCSP {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 타입입니다. 'platform' 또는 'workspace' 만 가능합니다."})
 	}
 
