@@ -89,27 +89,14 @@ func (r *MenuRepository) FindParentIDs(menuIDs []*string) ([]*string, error) {
 
 // Create 새 메뉴를 데이터베이스에 생성
 func (r *MenuRepository) CreateMenu(req *model.CreateMenuRequest) error {
-	// 기본값 설정 또는 검증
-	priority := req.Priority
-	if priority == "" {
-		priority = "0" // 기본값 설정
-	}
-
-	menuNumber := req.MenuNumber
-	if menuNumber == "" {
-		menuNumber = "0" // 기본값 설정
-	}
-
-	priorityInt, err := util.StringToUint(priority)
+	priorityInt, err := util.StringToUint(req.Priority)
 	if err != nil {
-		return fmt.Errorf("invalid priority value: %w", err)
+		return err
 	}
-
-	menuNumberInt, err := util.StringToUint(menuNumber)
+	menuNumberInt, err := util.StringToUint(req.MenuNumber)
 	if err != nil {
-		return fmt.Errorf("invalid menu number value: %w", err)
+		return err
 	}
-
 	menu := model.Menu{
 		ID:          req.ID,
 		ParentID:    req.ParentID,
@@ -119,7 +106,7 @@ func (r *MenuRepository) CreateMenu(req *model.CreateMenuRequest) error {
 		Priority:    priorityInt,
 		MenuNumber:  menuNumberInt,
 	}
-	return r.db.Create(&menu).Error
+	return r.db.Create(menu).Error
 }
 
 // Update 기존 메뉴를 데이터베이스에서 부분 업데이트
