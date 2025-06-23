@@ -43,7 +43,7 @@ func NewMciamPermissionHandler(db *gorm.DB) *MciamPermissionHandler {
 func (h *MciamPermissionHandler) ListMciamPermissions(c echo.Context) error { // Renamed method
 	frameworkID := c.QueryParam("frameworkId")
 	resourceTypeID := c.QueryParam("resourceTypeId")
-	permissions, err := h.permissionService.List(c.Request().Context(), frameworkID, resourceTypeID)
+	permissions, err := h.permissionService.ListMcIamPermissions(c.Request().Context(), frameworkID, resourceTypeID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "권한 목록을 가져오는데 실패했습니다",
@@ -68,7 +68,7 @@ func (h *MciamPermissionHandler) ListMciamPermissions(c echo.Context) error { //
 func (h *MciamPermissionHandler) GetMciamPermissionByID(c echo.Context) error { // Renamed method
 	id := c.Param("id")
 
-	permission, err := h.permissionService.GetByID(c.Request().Context(), id)
+	permission, err := h.permissionService.GetMcIamPermissionByID(c.Request().Context(), id)
 	if err != nil {
 		// Handle not found error from service/repo
 		if errors.Is(err, repository.ErrPermissionNotFound) {
@@ -107,7 +107,7 @@ func (h *MciamPermissionHandler) CreateMciamPermission(c echo.Context) error { /
 		})
 	}
 
-	if err := h.permissionService.Create(c.Request().Context(), &permission); err != nil {
+	if err := h.permissionService.CreateMcIamPermission(c.Request().Context(), &permission); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "권한 생성에 실패했습니다",
 		})
@@ -152,7 +152,7 @@ func (h *MciamPermissionHandler) UpdateMciamPermission(c echo.Context) error { /
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "업데이트할 필드(name, description)가 없습니다"})
 	}
 
-	if err := h.permissionService.Update(c.Request().Context(), id, allowedUpdates); err != nil {
+	if err := h.permissionService.UpdateMcIamPermission(c.Request().Context(), id, allowedUpdates); err != nil {
 		// Check for specific errors like not found
 		if err == repository.ErrPermissionNotFound { // Assuming repo returns this error
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
@@ -161,7 +161,7 @@ func (h *MciamPermissionHandler) UpdateMciamPermission(c echo.Context) error { /
 	}
 
 	// Fetch and return the updated permission
-	updatedPermission, err := h.permissionService.GetByID(c.Request().Context(), id)
+	updatedPermission, err := h.permissionService.GetMcIamPermissionByID(c.Request().Context(), id)
 	if err != nil {
 		// Log error, but return the updates map as a fallback? Or return 200 OK with no body?
 		// Let's return the updates map for now.
@@ -186,7 +186,7 @@ func (h *MciamPermissionHandler) UpdateMciamPermission(c echo.Context) error { /
 func (h *MciamPermissionHandler) DeleteMciamPermission(c echo.Context) error { // Renamed method
 	id := c.Param("id")
 
-	if err := h.permissionService.Delete(c.Request().Context(), id); err != nil {
+	if err := h.permissionService.DeleteMcIamPermission(c.Request().Context(), id); err != nil {
 		if errors.Is(err, repository.ErrPermissionNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}

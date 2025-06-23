@@ -324,14 +324,67 @@ func (h *MenuHandler) CreateMenu(c echo.Context) error {
 		})
 	}
 
-	if err := h.menuService.Create(req); err != nil {
-		c.Logger().Debugf("CreateMenu err %s", err)
+	// menuId로 기존 메뉴 조회
+	existingMenu, err := h.menuService.GetMenuByID(&req.ID)
+	if err != nil {
+		c.Logger().Debugf("Failed to check existing menu: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "메뉴 생성에 실패했습니다",
+			"error": "메뉴 조회 중 오류가 발생했습니다",
 		})
 	}
 
-	return c.JSON(http.StatusCreated, map[string]string{"message": "메뉴 생성에 성공했습니다"})
+	if existingMenu != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "이미 있는 메뉴입니다",
+		})
+		// // 기존 메뉴가 있으면 업데이트
+		// updates := map[string]interface{}{
+		// 	"parent_id":    req.ParentID,
+		// 	"display_name": req.DisplayName,
+		// 	"res_type":     req.ResType,
+		// 	"is_action":    req.IsAction,
+		// }
+
+		// // Priority와 MenuNumber는 문자열에서 변환 필요
+		// if req.Priority != "" {
+		// 	priorityInt, err := util.StringToUint(req.Priority)
+		// 	if err != nil {
+		// 		return c.JSON(http.StatusBadRequest, map[string]string{
+		// 			"error": "잘못된 priority 값입니다",
+		// 		})
+		// 	}
+		// 	updates["priority"] = priorityInt
+		// }
+
+		// if req.MenuNumber != "" {
+		// 	menuNumberInt, err := util.StringToUint(req.MenuNumber)
+		// 	if err != nil {
+		// 		return c.JSON(http.StatusBadRequest, map[string]string{
+		// 			"error": "잘못된 menu number 값입니다",
+		// 		})
+		// 	}
+		// 	updates["menu_number"] = menuNumberInt
+		// }
+
+		// if err := h.menuService.Update(req.ID, updates); err != nil {
+		// 	c.Logger().Debugf("Menu update err %s", err)
+		// 	return c.JSON(http.StatusInternalServerError, map[string]string{
+		// 		"error": "메뉴 업데이트에 실패했습니다",
+		// 	})
+		// }
+
+		// return c.JSON(http.StatusOK, map[string]string{"message": "메뉴 업데이트에 성공했습니다"})
+	} else {
+		// 기존 메뉴가 없으면 생성
+		if err := h.menuService.Create(req); err != nil {
+			c.Logger().Debugf("CreateMenu err %s", err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "메뉴 생성에 실패했습니다",
+			})
+		}
+
+		return c.JSON(http.StatusCreated, map[string]string{"message": "메뉴 생성에 성공했습니다"})
+	}
 }
 
 // Update godoc

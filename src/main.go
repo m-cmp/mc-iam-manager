@@ -209,8 +209,8 @@ func main() {
 		workspaces.POST("/workspace-ticket", authHandler.WorkspaceTicket) // 1개 워크스페이스에 대한 티켓 설정
 		workspaces.POST("/temporary-credentials", cspCredentialHandler.GetTemporaryCredentials)
 
-		workspaces.POST("/users/list", workspaceHandler.ListUserWorkspaces)                                                                     //                                                                        // workspace의 사용자 목록 조회
-		workspaces.POST("/users-roles/list", workspaceHandler.ListWorkspaceUsersAndRoles, middleware.PlatformRoleMiddleware(middleware.Manage)) // workspace와 사용자 및 role 조회
+		workspaces.POST("/users/list", workspaceHandler.ListUserWorkspaces)                                                                    //                                                                        // workspace의 사용자 목록 조회
+		workspaces.POST("/users-roles/list", workspaceHandler.ListWorkspaceUsersAndRoles, middleware.PlatformRoleMiddleware(middleware.Write)) // workspace와 사용자 및 role 조회
 
 		workspaces.POST("/projects/list", workspaceHandler.ListWorkspaceProjects)
 		//workspaces.POST("/id/:workspaceId/users", workspaceHandler.ListWorkspace)                                                    // TODO ListAllWorkspaceUsersAndRoles으로 대체 또는 통합 가능하지 않나?
@@ -381,13 +381,13 @@ func main() {
 	}
 
 	// MC-IAM 권한 라우트
-	mciamPermissions := api.Group("/mciam-permissions", middleware.PlatformRoleMiddleware(middleware.Manage))
+	mciamPermissions := api.Group("/permissions/mciam", middleware.PlatformRoleMiddleware(middleware.Read))
 	{
 		mciamPermissions.POST("/list", permissionHandler.ListMciamPermissions)
-		mciamPermissions.POST("/createMciamPermission", permissionHandler.CreateMciamPermission)
+		mciamPermissions.POST("/createMciamPermission", permissionHandler.CreateMciamPermission, middleware.PlatformRoleMiddleware(middleware.Write))
 		mciamPermissions.GET("/:id", permissionHandler.GetMciamPermissionByID)
-		mciamPermissions.PUT("/:id", permissionHandler.UpdateMciamPermission)
-		mciamPermissions.DELETE("/:id", permissionHandler.DeleteMciamPermission)
+		mciamPermissions.PUT("/:id", permissionHandler.UpdateMciamPermission, middleware.PlatformRoleMiddleware(middleware.Write))
+		mciamPermissions.DELETE("/:id", permissionHandler.DeleteMciamPermission, middleware.PlatformRoleMiddleware(middleware.Write))
 	}
 
 	// MCMP API 라우트
