@@ -398,7 +398,11 @@ func (r *RoleRepository) FindWorkspaceRoleCspRoleMappings(req *model.RoleMasterC
 func (r *RoleRepository) FindUsersAndRolesWithWorkspaces(req model.WorkspaceFilterRequest) ([]*model.UserWorkspaceRole, error) {
 	var userWorkspaceRoles []*model.UserWorkspaceRole
 
-	query := r.db.Joins("JOIN mcmp_workspace_roles ON mcmp_workspace_roles.id = mcmp_user_workspace_roles.workspace_role_id")
+	query := r.db.Table("mcmp_user_workspace_roles").
+		Select("mcmp_user_workspace_roles.*, mcmp_users.username, mcmp_workspaces.name as workspace_name, mcmp_role_masters.name as role_name").
+		Joins("JOIN mcmp_users ON mcmp_users.id = mcmp_user_workspace_roles.user_id").
+		Joins("JOIN mcmp_workspaces ON mcmp_workspaces.id = mcmp_user_workspace_roles.workspace_id").
+		Joins("JOIN mcmp_role_masters ON mcmp_role_masters.id = mcmp_user_workspace_roles.role_id")
 
 	if req.WorkspaceID != "" {
 		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)
@@ -424,12 +428,8 @@ func (r *RoleRepository) FindUsersAndRolesWithWorkspaces(req model.WorkspaceFilt
 		query = query.Where("mcmp_user_workspace_roles.user_id = ?", userIdInt)
 	}
 
-	// Find all UserWorkspaceRole entries where the associated WorkspaceRole's WorkspaceID matches.
-	// We need to join with WorkspaceRole table to filter by workspaceID.
-	// Then preload User and WorkspaceRole.
-	err := query.Preload("User").
-		Preload("WorkspaceRole").
-		Find(&userWorkspaceRoles).Error
+	// Find all UserWorkspaceRole entries with joined data
+	err := query.Find(&userWorkspaceRoles).Error
 
 	if err != nil {
 		// Don't return ErrWorkspaceNotFound here, as an empty result is valid.
@@ -444,7 +444,11 @@ func (r *RoleRepository) FindUsersAndRolesWithWorkspaces(req model.WorkspaceFilt
 func (r *RoleRepository) FindWorkspaceWithUsersRoles(req model.WorkspaceFilterRequest) ([]*model.WorkspaceWithUsersAndRoles, error) {
 	var userWorkspaceRoles []*model.WorkspaceWithUsersAndRoles
 
-	query := r.db.Joins("JOIN mcmp_workspace_roles ON mcmp_workspace_roles.id = mcmp_user_workspace_roles.workspace_role_id")
+	query := r.db.Table("mcmp_workspaces").
+		Select("mcmp_workspaces.*, mcmp_user_workspace_roles.user_id, mcmp_user_workspace_roles.workspace_id, mcmp_user_workspace_roles.role_id, mcmp_users.username, mcmp_workspaces.name as workspace_name, mcmp_role_masters.name as role_name").
+		Joins("JOIN mcmp_user_workspace_roles ON mcmp_user_workspace_roles.workspace_id = mcmp_workspaces.id").
+		Joins("JOIN mcmp_users ON mcmp_users.id = mcmp_user_workspace_roles.user_id").
+		Joins("JOIN mcmp_role_masters ON mcmp_role_masters.id = mcmp_user_workspace_roles.role_id")
 
 	if req.WorkspaceID != "" {
 		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)
@@ -470,12 +474,8 @@ func (r *RoleRepository) FindWorkspaceWithUsersRoles(req model.WorkspaceFilterRe
 		query = query.Where("mcmp_user_workspace_roles.user_id = ?", userIdInt)
 	}
 
-	// Find all UserWorkspaceRole entries where the associated WorkspaceRole's WorkspaceID matches.
-	// We need to join with WorkspaceRole table to filter by workspaceID.
-	// Then preload User and WorkspaceRole.
-	err := query.Preload("User").
-		Preload("WorkspaceRole").
-		Find(&userWorkspaceRoles).Error
+	// Find all workspace entries with joined user and role data
+	err := query.Find(&userWorkspaceRoles).Error
 
 	if err != nil {
 		// Don't return ErrWorkspaceNotFound here, as an empty result is valid.

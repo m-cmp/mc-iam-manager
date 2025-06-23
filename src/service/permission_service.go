@@ -30,31 +30,31 @@ func NewMciamPermissionService(db *gorm.DB) *MciamPermissionService {
 }
 
 // Create MC-IAM 권한 생성 - Renamed
-func (s *MciamPermissionService) Create(ctx context.Context, permission *model.MciamPermission) error { // Use renamed model
+func (s *MciamPermissionService) CreateMcIamPermission(ctx context.Context, permission *model.MciamPermission) error { // Use renamed model
 	// Add validation for permission ID format if needed
 	// e.g., parts := strings.Split(permission.ID, ":"); if len(parts) != 3 { ... }
 	return s.permissionRepo.Create(permission)
 }
 
 // GetByID ID로 MC-IAM 권한 조회 - Renamed
-func (s *MciamPermissionService) GetByID(ctx context.Context, id string) (*model.MciamPermission, error) { // Use renamed model
+func (s *MciamPermissionService) GetMcIamPermissionByID(ctx context.Context, id string) (*model.MciamPermission, error) { // Use renamed model
 	return s.permissionRepo.GetByID(id)
 }
 
 // List MC-IAM 권한 목록 조회 (필터 추가) - Renamed
-func (s *MciamPermissionService) List(ctx context.Context, frameworkID, resourceTypeID string) ([]model.MciamPermission, error) { // Use renamed model
+func (s *MciamPermissionService) ListMcIamPermissions(ctx context.Context, frameworkID, resourceTypeID string) ([]model.MciamPermission, error) { // Use renamed model
 	return s.permissionRepo.List(frameworkID, resourceTypeID)
 }
 
 // Update MC-IAM 권한 정보 부분 업데이트 - Renamed
-func (s *MciamPermissionService) Update(ctx context.Context, id string, updates map[string]interface{}) error {
+func (s *MciamPermissionService) UpdateMcIamPermission(ctx context.Context, id string, updates map[string]interface{}) error {
 	// Add validation for updates map if needed (e.g., allowed fields)
 	// The repository already prevents updating PKs and createdAt
 	return s.permissionRepo.Update(id, updates)
 }
 
 // Delete MC-IAM 권한 삭제 - Renamed
-func (s *MciamPermissionService) Delete(ctx context.Context, id string) error {
+func (s *MciamPermissionService) DeleteMcIamPermission(ctx context.Context, id string) error {
 	// Add business logic if needed before deleting
 	return s.permissionRepo.Delete(id)
 }
