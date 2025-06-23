@@ -8,6 +8,7 @@ import (
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
+	"github.com/m-cmp/mc-iam-manager/util"
 	"gorm.io/gorm"
 )
 
@@ -46,61 +47,105 @@ func NewCspCredentialService(db *gorm.DB) *CspCredentialService {
 
 // GetTemporaryCredentials 사용자의 워크스페이스 역할에 기반하여 CSP 임시 자격 증명 발급
 func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, userID uint, kcUserId string, req *model.CspCredentialRequest) (*model.CspCredentialResponse, error) {
+	log.Printf("[CSP_CREDENTIAL] Starting GetTemporaryCredentials - UserID: %d, WorkspaceID: %s, CspType: %s", userID, req.WorkspaceID, req.CspType)
+
+	workspaceIDInt, err := util.StringToUint(req.WorkspaceID)
+	if err != nil {
+		log.Printf("[CSP_CREDENTIAL] Error converting workspace ID: %v", err)
+		return nil, fmt.Errorf("invalid workspace ID: %w", err)
+	}
+	if workspaceIDInt == 0 {
+		log.Printf("[CSP_CREDENTIAL] Error: workspace ID is 0")
+		return nil, fmt.Errorf("workspace ID is required")
+	}
+
+	cspType := req.CspType
+	region := req.Region
+	log.Printf("[CSP_CREDENTIAL] Parameters - WorkspaceID: %d, CspType: %s, Region: %s", workspaceIDInt, cspType, region)
 
 	// 1. Get User's Roles for the specified Workspace
-	userWorkspaceRole, err := s.userRepo.FindUserRoleInWorkspace(userID, req.WorkspaceID)
+	log.Printf("[CSP_CREDENTIAL] Getting user roles for workspace...")
+	userWorkspaceRole, err := s.userRepo.FindUserRoleInWorkspace(userID, workspaceIDInt)
 	if err != nil {
+		log.Printf("[CSP_CREDENTIAL] Error finding user role in workspace: %v", err)
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
 
+	// Check if userWorkspaceRole is nil (user has no role in this workspace)
+	if userWorkspaceRole == nil {
+		log.Printf("[CSP_CREDENTIAL] Error: user has no role assigned in workspace %d", workspaceIDInt)
+		return nil, fmt.Errorf("user has no role assigned in the specified workspace")
+	}
+	log.Printf("[CSP_CREDENTIAL] Found user workspace role - RoleID: %d", userWorkspaceRole.RoleID)
+
 	// 2. Find the first matching CSP role mapping
+	log.Printf("[CSP_CREDENTIAL] Finding CSP role mappings for role %d and csp type %s", userWorkspaceRole.RoleID, cspType)
 	var targetMapping *model.RoleMasterCspRoleMapping
-	cspRoleMappings, err := s.mappingRepo.FindCspRoleMappingsByWorkspaceRoleIDAndCspType(userWorkspaceRole.RoleID, req.CspType)
+	cspRoleMappings, err := s.mappingRepo.FindCspRoleMappingsByWorkspaceRoleIDAndCspType(userWorkspaceRole.RoleID, cspType)
 	if err != nil {
-		log.Printf("Error finding CSP role mapping for role %d: %v", userWorkspaceRole.RoleID, err)
+		log.Printf("[CSP_CREDENTIAL] Error finding CSP role mapping for role %d: %v", userWorkspaceRole.RoleID, err)
 	}
 
 	if len(cspRoleMappings) == 0 {
+		log.Printf("[CSP_CREDENTIAL] Error: No CSP role mappings found for role %d and csp type %s", userWorkspaceRole.RoleID, cspType)
 		return nil, ErrNoCspRoleMappingFound
 	}
 	targetMapping = cspRoleMappings[0]
+	log.Printf("[CSP_CREDENTIAL] Found CSP role mapping - RoleID: %d, CspRoleID: %d", targetMapping.RoleID, targetMapping.CspRoleID)
 
 	// 3. IDP ARN 가져오기
 	if targetMapping.CspRole == nil {
+		log.Printf("[CSP_CREDENTIAL] Error: CSP role information is nil")
 		return nil, fmt.Errorf("CSP 역할 정보가 없습니다")
 	}
 	idpArn := targetMapping.CspRole.IdpIdentifier
 	if idpArn == "" {
+		log.Printf("[CSP_CREDENTIAL] Error: IDP ARN is empty")
 		return nil, fmt.Errorf("IDP ARN이 설정되지 않았습니다")
 	}
+	log.Printf("[CSP_CREDENTIAL] IDP ARN: %s", idpArn)
 
 	// 4. Role ARN 가져오기
 	roleArn := targetMapping.CspRole.IamIdentifier
 	if roleArn == "" {
+		log.Printf("[CSP_CREDENTIAL] Error: Role ARN is empty")
 		return nil, fmt.Errorf("Role ARN이 설정되지 않았습니다")
 	}
+	log.Printf("[CSP_CREDENTIAL] Role ARN: %s", roleArn)
 
 	// 5. Get impersonation token for the OIDC client
+	log.Printf("[CSP_CREDENTIAL] Getting impersonation token...")
 	impersonationToken, err := s.keycloakService.GetImpersonationTokenByServiceAccount(ctx)
 	if err != nil {
+		log.Printf("[CSP_CREDENTIAL] Error getting impersonation token: %v", err)
 		return nil, fmt.Errorf("failed to get impersonation token: %w", err)
 	}
-	log.Printf("GetImpersonationToken : %v", impersonationToken)
+	log.Printf("[CSP_CREDENTIAL] Successfully got impersonation token: %v", impersonationToken)
 
 	// 6. Use the impersonation token to get AWS credentials
-	switch req.CspType {
+	log.Printf("[CSP_CREDENTIAL] Processing credentials for CSP type: %s", cspType)
+	switch cspType {
 	case "aws":
 		if s.awsCredService == nil {
+			log.Printf("[CSP_CREDENTIAL] Error: AWS credential service is nil")
 			return nil, fmt.Errorf("AWS credential service is not initialized")
 		}
-		return s.awsCredService.AssumeRoleWithWebIdentity(ctx, roleArn, kcUserId, impersonationToken.AccessToken, idpArn, req.Region)
+		log.Printf("[CSP_CREDENTIAL] Calling AWS AssumeRoleWithWebIdentity...")
+		log.Printf("[CSP_CREDENTIAL] Role ARN: %s", roleArn)
+		log.Printf("[CSP_CREDENTIAL] IDP ARN: %s", idpArn)
+		log.Printf("[CSP_CREDENTIAL] Region: %s", region)
+		log.Printf("[CSP_CREDENTIAL] KcUserId: %s", kcUserId)
+		log.Printf("[CSP_CREDENTIAL] Impersonation Token: %s", impersonationToken.AccessToken)
+		return s.awsCredService.AssumeRoleWithWebIdentity(ctx, roleArn, kcUserId, impersonationToken.AccessToken, idpArn, region)
 	case "gcp":
-		// TODO: Implement GCP credential logic using gcpCredService
+		log.Printf("[CSP_CREDENTIAL] Error: GCP not supported yet")
 		return nil, ErrUnsupportedCspType
 	case "azure":
+		log.Printf("[CSP_CREDENTIAL] Error: Azure not supported yet")
 		// TODO: Implement Azure credential logic using azureCredService
 		return nil, ErrUnsupportedCspType
 	default:
+		log.Printf("[CSP_CREDENTIAL] Error: Unsupported CSP type: %s", cspType)
 		return nil, ErrUnsupportedCspType
 	}
 }

@@ -192,13 +192,16 @@ func (r *UserRepository) FindWorkspacesByUserID(userID uint) ([]*model.Workspace
 
 // GetUserRolesInWorkspace finds all roles assigned to a user within a specific workspace.
 func (r *UserRepository) FindUserRoleInWorkspace(userID, workspaceID uint) (*model.UserWorkspaceRole, error) {
-	var userWorkspaceRoles *model.UserWorkspaceRole
+	var userWorkspaceRole model.UserWorkspaceRole
 	err := r.db.Where("user_id = ? AND workspace_id = ?", userID, workspaceID).
 		Preload("Workspace").
 		Preload("Role").
-		First(&userWorkspaceRoles).Error
+		First(&userWorkspaceRole).Error
 	if err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("user %d has no role assigned in workspace %d", userID, workspaceID)
+		}
+		return nil, fmt.Errorf("error finding user role in workspace: %w", err)
 	}
-	return userWorkspaceRoles, nil
+	return &userWorkspaceRole, nil
 }
