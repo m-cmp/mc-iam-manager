@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -50,9 +51,13 @@ func main() {
 	}
 	defer logFile.Close()
 
-	// 로그 출력을 파일로 설정
-	log.SetOutput(logFile)
+	// 로그 출력을 파일과 터미널 모두에 설정
+	multiWriter := io.MultiWriter(os.Stdout, logFile)
+	log.SetOutput(multiWriter)
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+
+	// 시작 로그 추가
+	log.Printf("=== Application Starting ===")
 
 	// .env 파일 로드 (프로젝트 루트에서 찾도록 수정)
 	envPath := filepath.Join("..", ".env")

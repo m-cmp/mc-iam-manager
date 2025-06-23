@@ -27,8 +27,9 @@ func NewCspMappingRepository(db *gorm.DB) *CspMappingRepository {
 func (r *CspMappingRepository) FindCspRoleMappingsByWorkspaceRoleIDAndCspType(roleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
 	var mappings []*model.RoleMasterCspRoleMapping
 	err := r.db.
+		Joins("JOIN mcmp_role_csp_roles ON mcmp_role_csp_roles.id = mcmp_role_csp_role_mappings.csp_role_id").
 		Preload("CspRole").
-		Where("role_id = ? AND csp_type = ?", roleID, cspType).
+		Where("mcmp_role_csp_role_mappings.role_id = ? AND mcmp_role_csp_roles.csp_type = ?", roleID, cspType).
 		Find(&mappings).Error
 	if err != nil {
 		return nil, err

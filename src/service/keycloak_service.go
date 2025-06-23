@@ -1148,6 +1148,10 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 		return nil, fmt.Errorf("OIDC client ID or secret not configured in KeycloakConfig")
 	}
 
+	log.Printf("[DEBUG] Impersonation clientID: %s", clientID)
+	log.Printf("[DEBUG] Impersonation clientSecret: %s", clientSecret)
+	log.Printf("[DEBUG] Impersonation realm: %s", config.KC.Realm)
+
 	// 서비스 계정으로 로그인
 	token, err := config.KC.Client.LoginClient(ctx, clientID, clientSecret, config.KC.Realm)
 	if err != nil {

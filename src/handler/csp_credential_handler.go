@@ -55,10 +55,20 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 	// }
 
 	// 2. Bind request body
-	var req *model.CspCredentialRequest
+	var req model.CspCredentialRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body: " + err.Error()})
 	}
+
+	// Validate request
+	if req.WorkspaceID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "workspaceId is required"})
+	}
+	if req.CspType == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "cspType is required"})
+	}
+
+	log.Printf("Request: %+v", req)
 
 	kcUserId := c.Get("kcUserId").(string)
 
@@ -71,8 +81,9 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 	userID := user.ID
 
 	// 2. Call the CspCredentialService with values from context
-	credentials, err := h.credService.GetTemporaryCredentials(c.Request().Context(), userID, kcUserId, req)
+	credentials, err := h.credService.GetTemporaryCredentials(c.Request().Context(), userID, kcUserId, &req)
 	if err != nil {
+		log.Printf("Error: %v", err)
 		// Handle specific errors from the service
 		if errors.Is(err, service.ErrUserNotFound) || errors.Is(err, service.ErrWorkspaceNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
@@ -88,6 +99,7 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 			// Provide a more generic error to the client for security
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "Failed to assume target CSP role. Check IAM policies and mappings."})
 		}
+
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get temporary credentials: %v", err)})
 	}
 
