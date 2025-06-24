@@ -214,7 +214,7 @@ func main() {
 		workspaces.POST("/workspace-ticket", authHandler.WorkspaceTicket) // 1개 워크스페이스에 대한 티켓 설정
 		workspaces.POST("/temporary-credentials", cspCredentialHandler.GetTemporaryCredentials)
 
-		workspaces.POST("/users/list", workspaceHandler.ListUserWorkspaces)                                                                    //                                                                        // workspace의 사용자 목록 조회
+		workspaces.POST("/users/list", workspaceHandler.ListWorkspaceUsers)                                                                    // workspace의 사용자 목록 조회
 		workspaces.POST("/users-roles/list", workspaceHandler.ListWorkspaceUsersAndRoles, middleware.PlatformRoleMiddleware(middleware.Write)) // workspace와 사용자 및 role 조회
 
 		workspaces.POST("/projects/list", workspaceHandler.ListWorkspaceProjects)

@@ -964,7 +964,7 @@ func (h *RoleHandler) GetCspRoleByID(c echo.Context) error {
 
 	log.Printf("역할 조회 요청 - ID: %d", roleIDInt)
 
-	role, err := h.roleService.GetRoleByID(roleIDInt, roleType)
+	role, err := h.roleService.GetCspRoleByID(roleIDInt)
 	if err != nil {
 		log.Printf("역할 조회 실패 - ID: %d, 에러: %v", roleIDInt, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 조회 실패: %v", err)})
@@ -997,7 +997,7 @@ func (h *RoleHandler) GetCspRoleByName(c echo.Context) error {
 
 	roleName := c.Param("roleName")
 
-	role, err := h.roleService.GetRoleByName(roleName, roleType)
+	role, err := h.roleService.GetCspRoleByName(roleName)
 	if err != nil {
 		log.Printf("csp 역할 조회 실패 - Name: %s, 에러: %v", roleName, err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "csp 역할 조회 싶패패"})

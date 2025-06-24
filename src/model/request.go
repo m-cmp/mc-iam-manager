@@ -17,6 +17,18 @@ type SetupInitialAdminRequest struct {
 	Email    string `json:"email"`
 }
 
+type ProjectFilterRequest struct {
+	ProjectID     string `json:"projectId"`
+	ProjectName   string `json:"projectName"`
+	WorkspaceID   string `json:"workspaceId"`
+	WorkspaceName string `json:"workspaceName"`
+}
+
+type CreateProjectRequest struct {
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description"`
+}
+
 // McmpApiRequestParams defines the structure for parameters needed in an API call.
 type McmpApiRequestParams struct {
 	PathParams  map[string]string `json:"pathParams"`  // Parameters to replace in the resource path (e.g., {userId})
@@ -92,11 +104,6 @@ type CreateCspRoleRequest struct {
 type CreateCspRolesRequest struct {
 	CspRoles []CreateCspRoleRequest `json:"cspRoles" validate:"required,dive"`
 }
-
-// type WorkspaceProjectFilterRequest struct {
-// 	WorkspaceID string `json:"workspaceId,omitempty"`
-// 	ProjectID   string `json:"projectId,omitempty"`
-// }
 
 type CreateMenuRequest struct {
 	ID          string `json:"id" validate:"required"`

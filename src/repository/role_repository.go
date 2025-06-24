@@ -217,6 +217,9 @@ func (r *RoleRepository) FindUserWorkspaceRoles(userID, workspaceID uint) ([]mod
 	query := r.db.
 		Joins("JOIN mcmp_role_masters ON mcmp_role_masters.id = mcmp_user_workspace_roles.role_id").
 		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+		Joins("JOIN mcmp_users ON mcmp_users.id = mcmp_user_workspace_roles.user_id").
+		Joins("JOIN mcmp_workspaces ON mcmp_workspaces.id = mcmp_user_workspace_roles.workspace_id").
+		Select("mcmp_user_workspace_roles.*, mcmp_users.username, mcmp_role_masters.name as role_name, mcmp_workspaces.name as workspace_name").
 		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_role_subs.role_type = ?", userID, constants.RoleTypeWorkspace)
 
 	if workspaceID != 0 {
@@ -442,48 +445,46 @@ func (r *RoleRepository) FindUsersAndRolesWithWorkspaces(req model.WorkspaceFilt
 
 // FindWorkspaceWithUsersRoles 특정 워크스페이스에 속한 사용자 및 역할 목록 조회 : workspace 기준
 func (r *RoleRepository) FindWorkspaceWithUsersRoles(req model.WorkspaceFilterRequest) ([]*model.WorkspaceWithUsersAndRoles, error) {
-	var userWorkspaceRoles []*model.WorkspaceWithUsersAndRoles
+	var workspaces []*model.WorkspaceWithUsersAndRoles
 
-	query := r.db.Table("mcmp_workspaces").
-		Select("mcmp_workspaces.*, mcmp_user_workspace_roles.user_id, mcmp_user_workspace_roles.workspace_id, mcmp_user_workspace_roles.role_id, mcmp_users.username, mcmp_workspaces.name as workspace_name, mcmp_role_masters.name as role_name").
-		Joins("JOIN mcmp_user_workspace_roles ON mcmp_user_workspace_roles.workspace_id = mcmp_workspaces.id").
-		Joins("JOIN mcmp_users ON mcmp_users.id = mcmp_user_workspace_roles.user_id").
-		Joins("JOIN mcmp_role_masters ON mcmp_role_masters.id = mcmp_user_workspace_roles.role_id")
+	// 워크스페이스 정보와 사용자 정보를 한 번의 쿼리로 조회
+	query := r.db.Model(&model.WorkspaceWithUsersAndRoles{}).
+		Preload("Users", func(db *gorm.DB) *gorm.DB {
+			userQuery := db.Joins("LEFT JOIN mcmp_users ON mcmp_users.id = mcmp_user_workspace_roles.user_id").
+				Joins("LEFT JOIN mcmp_role_masters ON mcmp_role_masters.id = mcmp_user_workspace_roles.role_id").
+				Select("mcmp_user_workspace_roles.*, mcmp_users.username, mcmp_role_masters.name as role_name")
 
+			// 사용자 필터 조건
+			if req.RoleID != "" {
+				if roleIdInt, err := util.StringToUint(req.RoleID); err == nil {
+					userQuery = userQuery.Where("mcmp_user_workspace_roles.role_id = ?", roleIdInt)
+				}
+			}
+
+			if req.UserID != "" {
+				if userIdInt, err := util.StringToUint(req.UserID); err == nil {
+					userQuery = userQuery.Where("mcmp_user_workspace_roles.user_id = ?", userIdInt)
+				}
+			}
+
+			return userQuery
+		})
+
+	// 워크스페이스 필터 조건
 	if req.WorkspaceID != "" {
 		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid workspace ID: %w", err)
 		}
-		query = query.Where("mcmp_user_workspace_roles.workspace_id = ?", workspaceIdInt)
+		query = query.Where("id = ?", workspaceIdInt)
 	}
 
-	if req.RoleID != "" {
-		roleIdInt, err := util.StringToUint(req.RoleID)
-		if err != nil {
-			return nil, err
-		}
-		query = query.Where("mcmp_user_workspace_roles.role_id = ?", roleIdInt)
+	// 쿼리 실행
+	if err := query.Find(&workspaces).Error; err != nil {
+		return nil, fmt.Errorf("워크스페이스 사용자 조회 실패: %w", err)
 	}
 
-	if req.UserID != "" {
-		userIdInt, err := util.StringToUint(req.UserID)
-		if err != nil {
-			return nil, err
-		}
-		query = query.Where("mcmp_user_workspace_roles.user_id = ?", userIdInt)
-	}
-
-	// Find all workspace entries with joined user and role data
-	err := query.Find(&userWorkspaceRoles).Error
-
-	if err != nil {
-		// Don't return ErrWorkspaceNotFound here, as an empty result is valid.
-		// Return other DB errors.
-		return nil, err
-	}
-
-	return userWorkspaceRoles, nil
+	return workspaces, nil
 }
 
 // IsAssignedPlatformRole 사용자에게 특정 플랫폼 역할이 할당되어 있는지 확인
@@ -588,6 +589,15 @@ func (r *RoleRepository) FindCspRoleById(cspRoleId uint) (*model.CspRole, error)
 	err := r.db.
 		Where("id = ?", cspRoleId).
 		First(&cspRole).Error
+	if err != nil {
+		return nil, err
+	}
+	return cspRole, err
+}
+
+func (r *RoleRepository) FindCspRoleByName(cspRoleName string) (*model.CspRole, error) {
+	var cspRole *model.CspRole
+	err := r.db.Where("name = ?", cspRoleName).First(&cspRole).Error
 	if err != nil {
 		return nil, err
 	}

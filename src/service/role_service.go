@@ -275,6 +275,10 @@ func (s *RoleService) GetCspRoleByID(cspRoleId uint) (*model.CspRole, error) {
 	return s.roleRepository.FindCspRoleById(cspRoleId)
 }
 
+func (s *RoleService) GetCspRoleByName(cspRoleName string) (*model.CspRole, error) {
+	return s.roleRepository.FindCspRoleByName(cspRoleName)
+}
+
 // GetWorkspaceRoleCspRoleMappings 역할-CSP 역할 매핑 목록 조회. 1개 master Role에 여러개의 csp Role이 나온다.
 func (s *RoleService) GetRoleCspRoleMappings(req *model.RoleMasterCspRoleMappingRequest) ([]*model.RoleMasterCspRoleMapping, error) {
 	return s.roleRepository.FindRoleMasterCspRoleMappings(req)

@@ -80,14 +80,15 @@ func (s *CspRoleService) CreateCSPRole(req *model.CreateCspRoleRequest) (*model.
 // 1-2. CSP 역할이 없으면 대상 CSP에 역할을 추가하고 5초간 대기한 후 조회해서 정보를 저장
 func (s *CspRoleService) handleCspRole(req *model.CreateCspRoleRequest) (*model.CspRole, error) {
 	// CSP 역할 존재 여부 확인 (DB에서)
-	exists, err := s.ExistCspRoleByName(req.RoleName)
+	cspRoleName := constants.CspRoleNamePrefix + req.RoleName
+	exists, err := s.ExistCspRoleByName(cspRoleName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing CSP role: %w", err)
 	}
 
 	if exists {
 		// 1-1. CSP 역할이 있으면 대상 CSP에서 역할 조회하여 정보를 CspRole 테이블에 저장
-		existingCspRole, err := s.cspRoleRepo.GetRoleByName(req.RoleName)
+		existingCspRole, err := s.cspRoleRepo.GetRoleByName(cspRoleName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get existing CSP role: %w", err)
 		}
