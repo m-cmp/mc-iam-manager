@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/google/uuid"
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/csp"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"gorm.io/gorm"
@@ -244,8 +245,9 @@ func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*mod
 
 		// DB에 역할이 없는 경우
 		// 2. CSP에서 역할 존재 여부 확인
+		cspRoleName := constants.CspRoleNamePrefix + newRole.Name // 구분을 위한 prefix를 붙임.
 		getRoleInput := &iam.GetRoleInput{
-			RoleName: aws.String(newRole.Name),
+			RoleName: aws.String(cspRoleName),
 		}
 		var targetCspRole *iam.GetRoleOutput
 		if cspRoleResponse, err := r.iamClient.GetRole(context.TODO(), getRoleInput); err == nil {

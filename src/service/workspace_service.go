@@ -136,14 +136,25 @@ func (s *WorkspaceService) ListWorkspacesByUserID(userID uint) ([]*model.Workspa
 }
 
 // GetUsersByWorkspaceID 워크스페이스에 속한 사용자 목록을 조회합니다.
-func (s *WorkspaceService) ListUsersByWorkspaceID(req model.WorkspaceFilterRequest) ([]*model.UserWorkspaceRole, error) {
+func (s *WorkspaceService) ListWorkspaceUsers(req model.WorkspaceFilterRequest) ([]*model.WorkspaceWithUsersAndRoles, error) {
 	// 워크스페이스 존재 여부 확인
-	workspaceUsers, err := s.roleRepo.FindUsersAndRolesWithWorkspaces(req)
+	workspaceUsers, err := s.roleRepo.FindWorkspaceWithUsersRoles(req)
 	if err != nil {
 		return nil, err
 	}
 
 	return workspaceUsers, nil
+}
+
+// GetUsersByWorkspaceID 워크스페이스에 속한 사용자와 역할 목록을 조회합니다.
+func (s *WorkspaceService) ListWorkspaceUsersAndRoles(req model.WorkspaceFilterRequest) ([]*model.UserWorkspaceRole, error) {
+	// 워크스페이스 존재 여부 확인
+	workspaceUserRoles, err := s.roleRepo.FindUsersAndRolesWithWorkspaces(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return workspaceUserRoles, nil
 }
 
 // AddProjectToWorkspace 워크스페이스에 프로젝트 연결
@@ -321,9 +332,8 @@ func (s *WorkspaceService) RemoveUserFromWorkspace(workspaceID, userID uint) err
 	return nil
 }
 
-// TODO : move to workspace service
 // GetUserWorkspaceAndWorkspaceRoles 사용자의 워크스페이스와 역할 정보를 조회합니다.
-func (s *WorkspaceService) GetUserWorkspaceAndWorkspaceRoles(ctx context.Context, userID uint) ([]*model.UserWorkspaceRole, error) {
+func (s *WorkspaceService) ListUserWorkspaceAndWorkspaceRoles(ctx context.Context, userID uint) ([]*model.UserWorkspaceRole, error) {
 	// 사용자 존재 여부 확인
 	_, err := s.userRepo.FindUserByID(userID)
 	if err != nil {

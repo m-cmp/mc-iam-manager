@@ -241,9 +241,9 @@ func (h *WorkspaceHandler) DeleteWorkspace(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// ListUserWorkspaces godoc
+// ListWorkspaceUsers godoc
 // @Summary 워크스페이스 목록 조회
-// @Description 유저가 속한 모든 워크스페이스 목록을 조회합니다
+// @Description 워크스페이스 기준으로 사용자 목록만 조회합니다
 // @Tags workspaces
 // @Accept json
 // @Produce json
@@ -251,55 +251,62 @@ func (h *WorkspaceHandler) DeleteWorkspace(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /workspaces/users [post]
-// @OperationId listUserWorkspaces
-func (h *WorkspaceHandler) ListUserWorkspaces(c echo.Context) error {
+// @Router /workspaces/users/list [post]
+// @OperationId listWorkspaceUsers
+func (h *WorkspaceHandler) ListWorkspaceUsers(c echo.Context) error {
 	var req model.WorkspaceFilterRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
-	if req.UserID == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID가 필요합니다"})
-	}
+	// if req.UserID == "" {
+	// 	return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID가 필요합니다"})
+	// }
 
-	// --- Permission Check ---
-	userID, platformRoles, err := getUserDbIdAndPlatformRoles(c.Request().Context(), c, h.userService) // Pass context
-	if err != nil {
-		log.Printf("Error getting user info for ListWorkspaces: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to identify user"})
-	}
+	// // --- Permission Check ---
+	// userID, platformRoles, err := getUserDbIdAndPlatformRoles(c.Request().Context(), c, h.userService) // Pass context
+	// if err != nil {
+	// 	log.Printf("Error getting user info for ListWorkspaces: %v", err)
+	// 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to identify user"})
+	// }
 
-	// Check for 'list_all' permission (Platform level)
-	hasListAllPermission, err := checkPlatformPermission(h.permissionRepo, platformRoles, "mc-iam-manager:workspace:list_all") // Use helper
-	if err != nil {
-		log.Printf("Error checking list_all workspace permission for user %d: %v", userID, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "권한 확인 중 오류 발생"})
-	}
+	// // Check for 'list_all' permission (Platform level)
+	// hasListAllPermission, err := checkPlatformPermission(h.permissionRepo, platformRoles, "mc-iam-manager:workspace:list_all") // Use helper
+	// if err != nil {
+	// 	log.Printf("Error checking list_all workspace permission for user %d: %v", userID, err)
+	// 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": "권한 확인 중 오류 발생"})
+	// }
 
-	userIDInt, err := util.StringToUint(req.UserID)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 사용자 ID 형식입니다"})
-	}
+	// userIDInt, err := util.StringToUint(req.UserID)
+	// if err != nil {
+	// 	return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 사용자 ID 형식입니다"})
+	// }
 
 	var workspaces []*model.WorkspaceWithUsersAndRoles
-	if hasListAllPermission {
-		// User has permission to list all workspaces
-		workspaces, err = h.workspaceService.ListWorkspacesByUserID(userIDInt)
-	} else {
-		// User can only list assigned workspaces
-		// TODO: Check for 'list_assigned' permission if needed for more granular control
-		if req.UserID == "" {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID가 필요합니다"})
-		}
-
-		workspaces, err = h.workspaceService.ListWorkspacesByUserID(userIDInt) // Use the new repo method via userService
-	}
-
+	workspacesUserRoles, err := h.workspaceService.ListWorkspaceUsers(req)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 목록 조회 실패: %v", err)})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 사용자 목록 조회 실패: %v", err)})
 	}
-	// --- End Permission Check ---
+
+	return c.JSON(http.StatusOK, workspacesUserRoles)
+
+	// if hasListAllPermission {
+	// 	// User has permission to list all workspaces
+	// 	workspaces, err = h.workspaceService.ListWorkspacesByUserID(userIDInt)
+	// } else {
+	// 	// User can only list assigned workspaces
+	// 	// TODO: Check for 'list_assigned' permission if needed for more granular control
+	// 	if req.UserID == "" {
+	// 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID가 필요합니다"})
+	// 	}
+
+	// 	workspaces, err = h.workspaceService.ListWorkspacesByUserID(userIDInt) // Use the new repo method via userService
+	// }
+
+	// if err != nil {
+	// 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 목록 조회 실패: %v", err)})
+	// }
+	// // --- End Permission Check ---
 
 	return c.JSON(http.StatusOK, workspaces)
 }
@@ -535,22 +542,22 @@ func (h *WorkspaceHandler) ListWorkspaceRoles(c echo.Context) error {
 // @Security BearerAuth
 // @Router /workspaces/{id}/users [get]
 // @OperationId ListWorkspaceUsers
-func (h *WorkspaceHandler) ListWorkspaceUsers(c echo.Context) error {
-	var req model.WorkspaceFilterRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
-	}
+// func (h *WorkspaceHandler) ListWorkspaceUsers(c echo.Context) error {
+// 	var req model.WorkspaceFilterRequest
+// 	if err := c.Bind(&req); err != nil {
+// 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+// 	}
 
-	workspaceUsers, err := h.workspaceService.ListWorkspaces(&req)
-	if err != nil {
-		if err.Error() == "workspace not found" {
-			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("사용자 목록 조회 실패: %v", err)})
-	}
+// 	workspaceUsers, err := h.workspaceService.ListWorkspaces(&req)
+// 	if err != nil {
+// 		if err.Error() == "workspace not found" {
+// 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+// 		}
+// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("사용자 목록 조회 실패: %v", err)})
+// 	}
 
-	return c.JSON(http.StatusOK, workspaceUsers)
-}
+// 	return c.JSON(http.StatusOK, workspaceUsers)
+// }
 
 // AddUserToWorkspace godoc
 // @Summary Add user to workspace

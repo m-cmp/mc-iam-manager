@@ -21,4 +21,6 @@ const (
 	CSPTypeAWS   CSPType = "aws"
 	CSPTypeGCP   CSPType = "gcp"
 	CSPTypeAzure CSPType = "azure"
+
+	CspRoleNamePrefix = "mciam-" // csp에 role을 추가할 때 접두사를 붙인다.
 )
