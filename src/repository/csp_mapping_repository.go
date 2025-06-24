@@ -24,35 +24,54 @@ func NewCspMappingRepository(db *gorm.DB) *CspMappingRepository {
 }
 
 // FindCspRoleMappingsByWorkspaceRoleIDAndCspType 워크스페이스 역할 ID와 CSP 타입으로 CSP 역할 매핑 조회
-func (r *CspMappingRepository) FindCspRoleMappingsByWorkspaceRoleIDAndCspType(roleID uint, cspType string) ([]*model.RoleMasterCspRoleMapping, error) {
+func (r *CspMappingRepository) FindCspRoleMappingsByRoleIDAndCspType(roleID uint, cspType string) (*model.RoleMasterCspRoleMapping, error) {
 	var mappings []*model.RoleMasterCspRoleMapping
 	err := r.db.
 		Joins("JOIN mcmp_role_csp_roles ON mcmp_role_csp_roles.id = mcmp_role_csp_role_mappings.csp_role_id").
-		Preload("CspRole").
 		Where("mcmp_role_csp_role_mappings.role_id = ? AND mcmp_role_csp_roles.csp_type = ?", roleID, cspType).
 		Find(&mappings).Error
 	if err != nil {
 		return nil, err
 	}
-	return mappings, err
+
+	if len(mappings) == 0 {
+		return nil, nil
+	}
+
+	// 첫 번째 매핑을 반환하고 CspRoles 배열을 채움
+	targetMapping := mappings[0]
+
+	// CspRoles 배열을 채우기 위해 CspRole 정보를 조회
+	var cspRole model.CspRole
+	if err := r.db.Where("id = ?", targetMapping.CspRoleID).First(&cspRole).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return nil, err
+		}
+		// CSP 역할이 없으면 빈 배열로 설정
+		targetMapping.CspRoles = []*model.CspRole{}
+	} else {
+		targetMapping.CspRoles = []*model.CspRole{&cspRole}
+	}
+
+	return targetMapping, nil
 }
 
-// CreateWorkspaceRoleCspRoleMapping 워크스페이스 역할과 CSP 역할 매핑 생성
-func (r *CspMappingRepository) CreateWorkspaceRoleCspRoleMapping(ctx context.Context, mapping *model.RoleMasterCspRoleMapping) error {
-	result := r.db.WithContext(ctx).Create(mapping)
-	if result.Error != nil {
-		if r.db.WithContext(ctx).Where(
-			"workspace_role_id = ? AND auth_method = ? AND csp_role_id = ?",
-			mapping.RoleID,
-			mapping.AuthMethod,
-			mapping.CspRoleID,
-		).First(&model.RoleMasterCspRoleMapping{}).Error == nil {
-			return ErrCspMappingAlreadyExists
-		}
-		return result.Error
-	}
-	return nil
-}
+// // CreateWorkspaceRoleCspRoleMapping 워크스페이스 역할과 CSP 역할 매핑 생성
+// func (r *CspMappingRepository) CreateWorkspaceRoleCspRoleMapping(ctx context.Context, mapping *model.RoleMasterCspRoleMapping) error {
+// 	result := r.db.WithContext(ctx).Create(mapping)
+// 	if result.Error != nil {
+// 		if r.db.WithContext(ctx).Where(
+// 			"workspace_role_id = ? AND auth_method = ? AND csp_role_id = ?",
+// 			mapping.RoleID,
+// 			mapping.AuthMethod,
+// 			mapping.CspRoleID,
+// 		).First(&model.RoleMasterCspRoleMapping{}).Error == nil {
+// 			return ErrCspMappingAlreadyExists
+// 		}
+// 		return result.Error
+// 	}
+// 	return nil
+// }
 
 // DeleteWorkspaceRoleCspRoleMapping 워크스페이스 역할과 CSP 역할 매핑 삭제
 func (r *CspMappingRepository) DeleteWorkspaceRoleCspRoleMapping(ctx context.Context, workspaceRoleID uint, cspType string, cspRoleID string) error {

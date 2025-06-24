@@ -67,7 +67,7 @@ func (s *CspRoleService) CreateCSPRole(req *model.CreateCspRoleRequest) (*model.
 	}
 
 	// 3. RoleMaster와 CSP Role 매핑
-	err = s.createRoleMapping(roleMasterID, cspRole.ID, req.Description)
+	err = s.createCspRoleMapping(roleMasterID, cspRole.ID, req.Description)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create role mapping: %w", err)
 	}
@@ -168,9 +168,9 @@ func (s *CspRoleService) handleRoleMasterAndSub(req *model.CreateCspRoleRequest)
 
 // createRoleMapping RoleMaster와 CSP Role 매핑을 생성합니다.
 // 중복 체크 후 저장하고, 이미 있는 경우는 로그만 남깁니다.
-func (s *CspRoleService) createRoleMapping(roleMasterID uint, cspRoleID uint, description string) error {
+func (s *CspRoleService) createCspRoleMapping(roleMasterID uint, cspRoleID uint, description string) error {
 	// 매핑 요청 객체 생성
-	mappingReq := &model.RoleMasterCspRoleMappingRequest{
+	mappingReq := &model.CreateRoleMasterCspRoleMappingRequest{
 		RoleID:      fmt.Sprintf("%d", roleMasterID),
 		CspRoleID:   fmt.Sprintf("%d", cspRoleID),
 		AuthMethod:  constants.AuthMethodOIDC,

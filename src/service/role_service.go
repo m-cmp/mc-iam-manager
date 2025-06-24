@@ -6,6 +6,7 @@ import (
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
+	"github.com/m-cmp/mc-iam-manager/util"
 	"gorm.io/gorm"
 )
 
@@ -216,7 +217,7 @@ func (s *RoleService) GetUserPlatformRoles(userID uint) ([]model.RoleMaster, err
 }
 
 // 있으면 update, 없으면 insert
-func (s *RoleService) CreateRoleCspRoleMapping(req *model.RoleMasterCspRoleMappingRequest) error {
+func (s *RoleService) CreateRoleCspRoleMapping(req *model.CreateRoleMasterCspRoleMappingRequest) error {
 
 	// 매핑 생성
 	err := s.roleRepository.CreateRoleCspRoleMapping(req)
@@ -228,32 +229,37 @@ func (s *RoleService) CreateRoleCspRoleMapping(req *model.RoleMasterCspRoleMappi
 }
 
 // CreateWorkspaceRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 생성
-func (s *RoleService) CreateWorkspaceRoleCspRoleMapping(mapping model.RoleMasterCspRoleMapping) (*model.RoleMasterCspRoleMapping, error) {
-	// 1. 워크스페이스 역할이 존재하는지 확인
-	workspaceRole, err := s.roleRepository.FindRoleByRoleID(mapping.RoleID, constants.RoleTypeWorkspace)
+func (s *RoleService) CreateWorkspaceRoleCspRoleMapping(mapping model.CreateCspRolesMappingRequest) error {
+	roleIDInt, err := util.StringToUint(mapping.RoleID)
 	if err != nil {
-		return nil, fmt.Errorf("워크스페이스 역할 조회 실패: %w", err)
+		return fmt.Errorf("잘못된 역할 ID 형식: %w", err)
+	}
+
+	// 1. 워크스페이스 역할이 존재하는지 확인
+	workspaceRole, err := s.roleRepository.FindRoleByRoleID(roleIDInt, constants.RoleTypeWorkspace)
+	if err != nil {
+		return fmt.Errorf("워크스페이스 역할 조회 실패: %w", err)
 	}
 	if workspaceRole == nil {
-		return nil, fmt.Errorf("워크스페이스 역할을 찾을 수 없습니다")
+		return fmt.Errorf("워크스페이스 역할을 찾을 수 없습니다")
 	}
 
 	// 2. CSP 역할이 존재하는지 확인
-	cspRole, err := s.roleRepository.FindRoleByRoleID(mapping.CspRoleID, constants.RoleTypeCSP)
+	cspRole, err := s.roleRepository.FindRoleByRoleID(roleIDInt, constants.RoleTypeCSP)
 	if err != nil {
-		return nil, fmt.Errorf("CSP 역할 조회 실패: %w", err)
+		return fmt.Errorf("CSP 역할 조회 실패: %w", err)
 	}
 	if cspRole == nil {
-		return nil, fmt.Errorf("CSP 역할을 찾을 수 없습니다")
+		return fmt.Errorf("CSP 역할을 찾을 수 없습니다")
 	}
 
 	// 3. 매핑 생성
 	err = s.roleRepository.CreateWorkspaceRoleCspRoleMapping(&mapping)
 	if err != nil {
-		return nil, fmt.Errorf("매핑 생성 실패: %w", err)
+		return fmt.Errorf("매핑 생성 실패: %w", err)
 	}
 
-	return &mapping, nil
+	return err
 }
 
 // DeleteWorkspaceRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 삭제
@@ -280,8 +286,18 @@ func (s *RoleService) GetCspRoleByName(cspRoleName string) (*model.CspRole, erro
 }
 
 // GetWorkspaceRoleCspRoleMappings 역할-CSP 역할 매핑 목록 조회. 1개 master Role에 여러개의 csp Role이 나온다.
-func (s *RoleService) GetRoleCspRoleMappings(req *model.RoleMasterCspRoleMappingRequest) ([]*model.RoleMasterCspRoleMapping, error) {
-	return s.roleRepository.FindRoleMasterCspRoleMappings(req)
+func (s *RoleService) GetRoleCspRoleMappings(req *model.RoleMasterCspRoleMappingRequest) (*model.RoleMasterCspRoleMapping, error) {
+	// 단건 return
+	mappings, err := s.roleRepository.FindRoleMasterCspRoleMappings(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(mappings) == 0 {
+		return nil, nil
+	}
+
+	return mappings[0], nil
 }
 
 // GetUsersByWorkspaceID 워크스페이스에 속한 사용자 목록을 조회합니다.
@@ -330,4 +346,8 @@ func (s *RoleService) IsAssignedRole(userID uint, roleID uint, roleType constant
 // AddRoleSub RoleSub만 추가 (중복 체크 포함)
 func (s *RoleService) AddRoleSub(roleID uint, roleSub *model.RoleSub) error {
 	return s.roleRepository.CreateRoleSub(roleID, roleSub)
+}
+
+func (s *RoleService) AddCspRolesMapping(req *model.CreateRoleMasterCspRoleMappingRequest) error {
+	return s.roleRepository.CreateRoleCspRoleMapping(req)
 }

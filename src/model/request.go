@@ -105,6 +105,15 @@ type CreateCspRolesRequest struct {
 	CspRoles []CreateCspRoleRequest `json:"cspRoles" validate:"required,dive"`
 }
 
+// CreateCspRolesRequest 복수 CSP 역할 생성 요청 구조체
+type CreateCspRolesMappingRequest struct {
+	RoleID      string               `json:"roleId"`
+	AuthMethod  constants.AuthMethod `json:"authMethod"`
+	Description string               `json:"description"`
+
+	CspRoles []CreateCspRoleRequest `json:"cspRoles" validate:"required,dive"`
+}
+
 type CreateMenuRequest struct {
 	ID          string `json:"id" validate:"required"`
 	ParentID    string `json:"parentId,omitempty"`
@@ -150,11 +159,12 @@ type RemoveWorkspaceRoleRequest struct {
 }
 
 // WorkspaceRoleCspRoleMappingRequest 워크스페이스 역할-CSP 역할 매핑 요청 구조체
-type WorkspaceRoleCspRoleMappingRequest struct {
+type CreateRoleCspRoleMappingRequest struct {
 	//WorkspaceID     string `json:"workspaceId" validate:"required"`     // 워크스페이스 ID
-	WorkspaceRoleID string               `json:"workspaceRoleId" validate:"required"` // 역할 ID
-	CspRoleID       string               `json:"cspRoleId" validate:"required"`       // CSP 역할 ID
-	AuthMethod      constants.AuthMethod `json:"authMethod" validate:"required"`      // CSP 타입
+	WorkspaceRoleID string                 `json:"workspaceRoleId" validate:"required"` // 역할 ID
+	CspRoleID       string                 `json:"cspRoleId" validate:"required"`       // CSP 역할 ID
+	AuthMethod      constants.AuthMethod   `json:"authMethod" validate:"required"`      // CSP 타입
+	CspRoles        []CreateCspRoleRequest `json:"cspRoles" validate:"required,dive"`
 }
 
 // UserStatusRequest 사용자 상태 변경 요청 구조체( request, confirm, reject, active, inactive)
@@ -167,6 +177,16 @@ type UserStatusRequest struct {
 }
 
 // WorkspaceRoleCspRoleMapping 워크스페이스 역할 - CSP 역할 매핑 (DB 테이블: mcmp_workspace_role_csp_role_mapping)
+type CreateRoleMasterCspRoleMappingRequest struct {
+	RoleID      string                 `json:"roleId,omitempty"`
+	CspType     constants.CSPType      `json:"cspType,omitempty"`
+	CspRoleID   string                 `json:"cspRoleId,omitempty"`
+	Description string                 `json:"description,omitempty"`
+	AuthMethod  constants.AuthMethod   `json:"authMethod,omitempty"`
+	CspRoles    []CreateCspRoleRequest `json:"cspRoles,omitempty"`
+}
+
+// 조회 request 구조체
 type RoleMasterCspRoleMappingRequest struct {
 	RoleID      string               `json:"roleId,omitempty"`
 	CspType     constants.CSPType    `json:"cspType,omitempty"`

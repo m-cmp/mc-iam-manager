@@ -61,6 +61,10 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 
 	cspType := req.CspType
 	region := req.Region
+	if cspType == "" {
+		log.Printf("[CSP_CREDENTIAL] Error: csp type is empty")
+		return nil, fmt.Errorf("csp type is required")
+	}
 	log.Printf("[CSP_CREDENTIAL] Parameters - WorkspaceID: %d, CspType: %s, Region: %s", workspaceIDInt, cspType, region)
 
 	// 1. Get User's Roles for the specified Workspace
@@ -80,25 +84,30 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 
 	// 2. Find the first matching CSP role mapping
 	log.Printf("[CSP_CREDENTIAL] Finding CSP role mappings for role %d and csp type %s", userWorkspaceRole.RoleID, cspType)
-	var targetMapping *model.RoleMasterCspRoleMapping
-	cspRoleMappings, err := s.mappingRepo.FindCspRoleMappingsByWorkspaceRoleIDAndCspType(userWorkspaceRole.RoleID, cspType)
+	targetMapping, err := s.mappingRepo.FindCspRoleMappingsByRoleIDAndCspType(userWorkspaceRole.RoleID, cspType)
 	if err != nil {
 		log.Printf("[CSP_CREDENTIAL] Error finding CSP role mapping for role %d: %v", userWorkspaceRole.RoleID, err)
 	}
 
-	if len(cspRoleMappings) == 0 {
+	if targetMapping == nil {
 		log.Printf("[CSP_CREDENTIAL] Error: No CSP role mappings found for role %d and csp type %s", userWorkspaceRole.RoleID, cspType)
 		return nil, ErrNoCspRoleMappingFound
 	}
-	targetMapping = cspRoleMappings[0]
-	log.Printf("[CSP_CREDENTIAL] Found CSP role mapping - RoleID: %d, CspRoleID: %d", targetMapping.RoleID, targetMapping.CspRoleID)
+
+	// CspRoles 배열에서 첫 번째 요소를 사용
+	if len(targetMapping.CspRoles) == 0 {
+		log.Printf("[CSP_CREDENTIAL] Error: No CSP roles found in mapping")
+		return nil, fmt.Errorf("CSP 역할 정보가 없습니다")
+	}
+	targetCspRole := targetMapping.CspRoles[0]
+	log.Printf("[CSP_CREDENTIAL] Found CSP role mapping - RoleID: %d, CspRoleID: %d", targetMapping.RoleID, targetCspRole.ID)
 
 	// 3. IDP ARN 가져오기
-	if targetMapping.CspRole == nil {
+	if targetCspRole == nil {
 		log.Printf("[CSP_CREDENTIAL] Error: CSP role information is nil")
 		return nil, fmt.Errorf("CSP 역할 정보가 없습니다")
 	}
-	idpArn := targetMapping.CspRole.IdpIdentifier
+	idpArn := targetCspRole.IdpIdentifier
 	if idpArn == "" {
 		log.Printf("[CSP_CREDENTIAL] Error: IDP ARN is empty")
 		return nil, fmt.Errorf("IDP ARN이 설정되지 않았습니다")
@@ -106,7 +115,7 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 	log.Printf("[CSP_CREDENTIAL] IDP ARN: %s", idpArn)
 
 	// 4. Role ARN 가져오기
-	roleArn := targetMapping.CspRole.IamIdentifier
+	roleArn := targetCspRole.IamIdentifier
 	if roleArn == "" {
 		log.Printf("[CSP_CREDENTIAL] Error: Role ARN is empty")
 		return nil, fmt.Errorf("Role ARN이 설정되지 않았습니다")
@@ -131,11 +140,6 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 			return nil, fmt.Errorf("AWS credential service is not initialized")
 		}
 		log.Printf("[CSP_CREDENTIAL] Calling AWS AssumeRoleWithWebIdentity...")
-		log.Printf("[CSP_CREDENTIAL] Role ARN: %s", roleArn)
-		log.Printf("[CSP_CREDENTIAL] IDP ARN: %s", idpArn)
-		log.Printf("[CSP_CREDENTIAL] Region: %s", region)
-		log.Printf("[CSP_CREDENTIAL] KcUserId: %s", kcUserId)
-		log.Printf("[CSP_CREDENTIAL] Impersonation Token: %s", impersonationToken.AccessToken)
 		return s.awsCredService.AssumeRoleWithWebIdentity(ctx, roleArn, kcUserId, impersonationToken.AccessToken, idpArn, region)
 	case "gcp":
 		log.Printf("[CSP_CREDENTIAL] Error: GCP not supported yet")
