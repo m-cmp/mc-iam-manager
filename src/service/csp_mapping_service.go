@@ -44,7 +44,7 @@ func NewCspMappingService(
 }
 
 // CreateWorkspaceRoleCspRoleMapping 워크스페이스 역할과 CSP 역할 매핑 생성
-func (s *CspMappingService) CreateWorkspaceRoleCspRoleMapping(ctx context.Context, mapping *model.WorkspaceRoleCspRoleMappingRequest) error {
+func (s *CspMappingService) CreateRoleCspRoleMapping(ctx context.Context, mapping *model.CreateRoleCspRoleMappingRequest) error {
 	var workspaceRoleID uint
 	if mapping.WorkspaceRoleID != "" {
 		// roleId가 있으면 uint로 변환
@@ -82,10 +82,10 @@ func (s *CspMappingService) CreateWorkspaceRoleCspRoleMapping(ctx context.Contex
 		return ErrCspRoleNotFound
 	}
 
-	roleMapping := model.RoleMasterCspRoleMapping{}
-	roleMapping.RoleID = workspaceRoleID
+	roleMapping := model.CreateCspRolesMappingRequest{}
+	roleMapping.RoleID = mapping.WorkspaceRoleID
 	roleMapping.AuthMethod = mapping.AuthMethod
-	roleMapping.CspRoleID = cspRoleID
+	roleMapping.CspRoles = mapping.CspRoles
 
 	return s.roleRepo.CreateWorkspaceRoleCspRoleMapping(&roleMapping)
 }
@@ -106,8 +106,11 @@ func (s *CspMappingService) UpdateWorkspaceRoleCspRoleMapping(mapping *model.Rol
 		return ErrWorkspaceRoleNotFound
 	}
 
-	// CSP 역할 존재 여부 확인
-	exists, err = s.cspRoleRepo.ExistsCspRoleByID(mapping.CspRoleID)
+	// CSP 역할 존재 여부 확인 (CspRoles 배열에서 첫 번째 요소 사용)
+	if len(mapping.CspRoles) == 0 {
+		return ErrCspRoleNotFound
+	}
+	exists, err = s.cspRoleRepo.ExistsCspRoleByID(mapping.CspRoles[0].ID)
 	if err != nil {
 		return err
 	}

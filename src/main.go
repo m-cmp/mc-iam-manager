@@ -262,8 +262,9 @@ func main() {
 		roles.POST("/assign/workspace-role", roleHandler.AssignWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
 		roles.DELETE("/unassign/workspace-role", roleHandler.RemoveWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
 
-		roles.POST("/assign/csp-roles", roleHandler.AssignCspRole, middleware.PlatformRoleMiddleware(middleware.Manage))
-		roles.DELETE("/unassign/csp-roles", roleHandler.RemoveCspRole, middleware.PlatformRoleMiddleware(middleware.Manage))
+		// csp role 매핑 관리
+		roles.POST("/assign/csp-roles", roleHandler.AddCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.DELETE("/unassign/csp-roles", roleHandler.RemoveCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Manage))
 
 		//roles.GET("/id/:workspaceRoleId/csp-roles", roleHandler.ListCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Write))
 
@@ -279,12 +280,14 @@ func main() {
 		roles.GET("/workspace-roles/id/:roleId", roleHandler.GetWorkspaceRoleByID)
 		roles.GET("/workspace-roles/name/:roleName", roleHandler.GetWorkspaceRoleByName)
 
-		roles.POST("/csp-roles/list", roleHandler.ListCSPRoles)
-		roles.POST("/csp-roles", roleHandler.CreateCspRole)
-		roles.POST("/csp-roles/batch", roleHandler.CreateCspRoles)
-		roles.DELETE("/csp-roles", roleHandler.DeleteCspRole)
-		roles.GET("/csp-roles/id/:roleId", roleHandler.GetCspRoleByID)
-		roles.GET("/csp-roles/name/:roleName", roleHandler.GetCspRoleByName)
+		roles.POST("/csp-roles/list", roleHandler.ListCspRoleMappings)
+		roles.GET("/csp-roles/id/:roleId", roleHandler.GetCspRoleMappings)
+		roles.POST("/csp/list", roleHandler.ListCSPRoles)
+		roles.POST("/csp", roleHandler.CreateCspRole)
+		roles.POST("/csp/batch", roleHandler.CreateCspRoles)
+		roles.DELETE("/csp", roleHandler.DeleteCspRole)
+		roles.GET("/csp/id/:roleId", roleHandler.GetCspRoleByID)
+		roles.GET("/csp/name/:roleName", roleHandler.GetCspRoleByName)
 
 		//old begin
 		// roles.GET("/csp-roles/all", cspRoleHandler.GetAllCSPRoles)
