@@ -1757,6 +1757,18 @@ func (h *RoleHandler) ListCspRoleMappings(c echo.Context) error {
 	return c.JSON(http.StatusOK, mappings)
 }
 
+// @Summary Get role-CSP role mapping
+// @Description Get a mapping between role and CSP role
+// @Tags roles
+// @Accept json
+// @Produce json
+// @Param mapping body model.RoleMasterCspRoleMappingRequest true "Mapping Info"
+// @Success 200 {object} model.RoleMasterCspRoleMappingRequest
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/roles/csp-roles/id/:roleId [get]
+// @OperationId getCspRoleMappingByRoleId
 func (h *RoleHandler) GetCspRoleMappings(c echo.Context) error {
 	roleID := c.Param("roleId")
 

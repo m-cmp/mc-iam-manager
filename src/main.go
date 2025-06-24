@@ -263,8 +263,8 @@ func main() {
 		roles.DELETE("/unassign/workspace-role", roleHandler.RemoveWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
 
 		// csp role 매핑 관리
-		roles.POST("/assign/csp-roles", roleHandler.AddCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Manage))
-		roles.DELETE("/unassign/csp-roles", roleHandler.RemoveCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.POST("/csp-roles", roleHandler.AddCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.DELETE("/csp-roles", roleHandler.RemoveCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Manage))
 
 		//roles.GET("/id/:workspaceRoleId/csp-roles", roleHandler.ListCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Write))
 
