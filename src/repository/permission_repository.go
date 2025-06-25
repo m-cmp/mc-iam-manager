@@ -39,7 +39,7 @@ func (r *MciamPermissionRepository) Create(permission *model.MciamPermission) er
 }
 
 // List MC-IAM 권한 목록 조회 - Renamed
-func (r *MciamPermissionRepository) List(frameworkID, resourceTypeID string) ([]model.MciamPermission, error) {
+func (r *MciamPermissionRepository) ListMcIamPermissions(frameworkID, resourceTypeID string) ([]model.MciamPermission, error) {
 	var permissions []model.MciamPermission
 	query := r.db
 	if frameworkID != "" {
@@ -67,7 +67,7 @@ func (r *MciamPermissionRepository) GetByID(id string) (*model.MciamPermission, 
 }
 
 // Update MC-IAM 권한 정보 부분 업데이트 - Renamed
-func (r *MciamPermissionRepository) Update(id string, updates map[string]interface{}) error {
+func (r *MciamPermissionRepository) UpdateMcIamPermission(id string, updates map[string]interface{}) error {
 	if len(updates) == 0 {
 		return errors.New("no fields provided for update")
 	}
@@ -89,7 +89,7 @@ func (r *MciamPermissionRepository) Update(id string, updates map[string]interfa
 }
 
 // Delete MC-IAM 권한 삭제 - Renamed
-func (r *MciamPermissionRepository) Delete(id string) error {
+func (r *MciamPermissionRepository) DeleteMcIamPermission(id string) error {
 	result := r.db.Where("id = ?", id).Delete(&model.MciamPermission{})
 	if result.Error != nil {
 		return result.Error

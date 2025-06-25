@@ -431,11 +431,13 @@ func (h *WorkspaceHandler) AddProjectToWorkspace(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
 	}
-	for _, projectID := range req.ProjectID {
+
+	for _, projectID := range req.ProjectIDs {
 		projectIDInt, err := util.StringToUint(projectID)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID 형식입니다"})
 		}
+		// workspace, project 존재여부는 AddProjectToWorkspace 함수에서 체크
 		if err := h.workspaceService.AddProjectToWorkspace(workspaceIDInt, projectIDInt); err != nil {
 			if err.Error() == "workspace not found" || err.Error() == "project not found" {
 				return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
@@ -443,7 +445,10 @@ func (h *WorkspaceHandler) AddProjectToWorkspace(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 연결 실패: %v", err)})
 		}
 	}
-	return c.NoContent(http.StatusNoContent)
+	return c.JSON(http.StatusOK, model.Response{
+		Message: "Assigned project to workspace successfully",
+	})
+	// return c.NoContent(http.StatusNoContent)
 }
 
 // RemoveProjectFromWorkspace 워크스페이스에서 프로젝트 제거
@@ -469,7 +474,12 @@ func (h *WorkspaceHandler) RemoveProjectFromWorkspace(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
 	}
 
-	for _, projectID := range req.ProjectID {
+	// 기본 workspace에서는 프로젝트 제거 불가
+	if req.WorkspaceID == "1" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "기본 워크스페이스에서는 프로젝트 제거 불가능합니다"})
+	}
+
+	for _, projectID := range req.ProjectIDs {
 		projectIDInt, err := util.StringToUint(projectID)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID 형식입니다"})
@@ -479,7 +489,10 @@ func (h *WorkspaceHandler) RemoveProjectFromWorkspace(c echo.Context) error {
 		}
 	}
 
-	return c.NoContent(http.StatusNoContent)
+	return c.JSON(http.StatusOK, model.Response{
+		Message: "Released project from workspace successfully",
+	})
+	// return c.NoContent(http.StatusNoContent)
 }
 
 // ListAllWorkspaceUsersAndRoles godoc

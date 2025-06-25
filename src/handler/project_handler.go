@@ -276,7 +276,7 @@ func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "워크스페이스 ID가 필요합니다"})
 	}
 
-	if req.ProjectID == nil {
+	if req.ProjectIDs == nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "프로젝트 ID가 필요합니다"})
 	}
 
@@ -285,7 +285,7 @@ func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
 	}
 
-	for _, projectID := range req.ProjectID {
+	for _, projectID := range req.ProjectIDs {
 		projectIDInt, err := util.StringToUint(projectID)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID 형식입니다"})
@@ -320,7 +320,7 @@ func (h *ProjectHandler) RemoveWorkspaceFromProject(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "워크스페이스 ID가 필요합니다"})
 	}
 
-	if req.ProjectID == nil {
+	if req.ProjectIDs == nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "프로젝트 ID가 필요합니다"})
 	}
 
@@ -329,7 +329,7 @@ func (h *ProjectHandler) RemoveWorkspaceFromProject(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
 	}
 
-	for _, projectID := range req.ProjectID {
+	for _, projectID := range req.ProjectIDs {
 		projectIDInt, err := util.StringToUint(projectID)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 프로젝트 ID 형식입니다"})

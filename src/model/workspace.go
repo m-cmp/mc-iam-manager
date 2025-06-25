@@ -50,3 +50,14 @@ type UserWorkspace struct {
 	WorkspaceName string       `json:"workspace_name"`
 	Roles         []RoleMaster `json:"roles"`
 }
+
+// WorkspaceProject 워크스페이스와 프로젝트의 관계를 정의하는 모델 (DB 테이블: mcmp_workspace_projects)
+type WorkspaceProject struct {
+	WorkspaceID uint `json:"workspace_id" gorm:"primaryKey;column:workspace_id"`
+	ProjectID   uint `json:"project_id" gorm:"primaryKey;column:project_id"`
+}
+
+// TableName WorkspaceProject의 테이블 이름을 지정합니다
+func (WorkspaceProject) TableName() string {
+	return "mcmp_workspace_projects"
+}
