@@ -294,7 +294,7 @@ func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*mod
 			}
 
 			input := &iam.CreateRoleInput{
-				RoleName:                 aws.String(newRole.Name),
+				RoleName:                 aws.String(constants.CspRoleNamePrefix + newRole.Name),
 				AssumeRolePolicyDocument: aws.String(assumeRolePolicyDocument),
 				Description:              aws.String(newRole.Description),
 			}
@@ -306,8 +306,9 @@ func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*mod
 				return nil, fmt.Errorf("failed to create IAM role: %v", err)
 			}
 
-			// 5. AWS IAM Role이 실제로 생성될 때까지 최대 5번, 1초 간격으로 확인
-			for i := 0; i < 5; i++ {
+			// 5. AWS IAM Role이 실제로 생성될 때까지 최대 30번, 1초 간격으로 확인
+			// aws에서는 5분뒤에 확인하라고 함. verify IAM role creation after 5 attempts
+			for i := 0; i < 30; i++ {
 				time.Sleep(1 * time.Second)
 
 				getRoleResult, err := r.iamClient.GetRole(context.TODO(), getRoleInput)

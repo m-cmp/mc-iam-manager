@@ -260,14 +260,23 @@ func (r *RoleRepository) CreateRoleCspRoleMapping(req *model.CreateRoleMasterCsp
 		return fmt.Errorf("잘못된 CSP 역할 ID 형식: %w", err)
 	}
 
+	// TODO :authMethod 는 default로 할지 아니면 선택하는 로직 추가 필요. 우선은 OIDC로 고정. TODO : 선택하는 로직 추가 필요
+	req.AuthMethod = constants.AuthMethodOIDC
+
 	// 중복 체크
 	var existingMapping model.RoleMasterCspRoleMapping
 	if err := r.db.Where("role_id = ? AND auth_method = ? AND csp_role_id = ?",
 		roleIDInt, req.AuthMethod, cspRoleIDInt).
 		First(&existingMapping).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-
-			return r.db.Create(req).Error
+			// RoleMasterCspRoleMapping 모델을 사용하여 저장
+			mapping := &model.RoleMasterCspRoleMapping{
+				RoleID:      roleIDInt,
+				AuthMethod:  req.AuthMethod,
+				CspRoleID:   cspRoleIDInt,
+				Description: req.Description,
+			}
+			return r.db.Create(mapping).Error
 		} else {
 			return fmt.Errorf("failed to check existing role mapping: %w", err)
 		}
@@ -313,12 +322,15 @@ func (r *RoleRepository) CreateWorkspaceRoleCspRoleMapping(req *model.CreateCspR
 			if err != nil {
 				return fmt.Errorf("failed to create csp role: %w", err)
 			}
-			savedCspRoleId := util.UintToString(savedCspRole.ID)
+
 			// 4. RoleMasterCspRoleMapping에 RoleMaster의 ID 설정
-			mapping := &model.CreateRoleMasterCspRoleMappingRequest{
-				RoleID:     req.RoleID,
-				CspRoleID:  savedCspRoleId,
-				AuthMethod: req.AuthMethod,
+			cspRoleIDInt := savedCspRole.ID
+
+			mapping := &model.RoleMasterCspRoleMapping{
+				RoleID:      roleIDInt,
+				AuthMethod:  req.AuthMethod,
+				CspRoleID:   cspRoleIDInt,
+				Description: req.Description,
 			}
 
 			if err := tx.Create(mapping).Error; err != nil {
@@ -516,17 +528,37 @@ func (r *RoleRepository) FindWorkspaceWithUsersRoles(req model.WorkspaceFilterRe
 	return workspaces, nil
 }
 
-// IsAssignedPlatformRole 사용자에게 특정 플랫폼 역할이 할당되어 있는지 확인
+// IsAssignedRole 사용자에게 특정 역할이 할당되어 있는지 확인
 func (r *RoleRepository) IsAssignedRole(userID uint, roleID uint, roleType constants.IAMRoleType) (bool, error) {
 	var count int64
-	query := r.db.Model(&model.RoleMaster{}).
-		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
-		Joins("JOIN mcmp_user_role ON mcmp_role_masters.id = mcmp_user_role.role_id").
-		Where("mcmp_role_masters.id = ? AND mcmp_user_role.user_id = ?", roleID, userID)
+	var query *gorm.DB
 
-	// roleType이 있는 경우에만 조건 추가
-	if roleType != "" {
-		query = query.Where("mcmp_role_subs.role_type = ?", roleType)
+	switch roleType {
+	case constants.RoleTypePlatform:
+		// Platform 역할인 경우 mcmp_user_platform_roles와 조인
+		query = r.db.Model(&model.RoleMaster{}).
+			Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+			Joins("JOIN mcmp_user_platform_roles ON mcmp_role_masters.id = mcmp_user_platform_roles.role_id").
+			Where("mcmp_role_masters.id = ? AND mcmp_user_platform_roles.user_id = ? AND mcmp_role_subs.role_type = ?",
+				roleID, userID, constants.RoleTypePlatform)
+
+	case constants.RoleTypeWorkspace:
+		// Workspace 역할인 경우 mcmp_user_workspace_roles와 조인
+		query = r.db.Model(&model.RoleMaster{}).
+			Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+			Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_masters.id = mcmp_user_workspace_roles.role_id").
+			Where("mcmp_role_masters.id = ? AND mcmp_user_workspace_roles.user_id = ? AND mcmp_role_subs.role_type = ?",
+				roleID, userID, constants.RoleTypeWorkspace)
+
+	case constants.RoleTypeCSP:
+		// CSP 역할인 경우 mcmp_role_subs만 확인 (CSP 역할은 직접 할당되지 않음)
+		query = r.db.Model(&model.RoleMaster{}).
+			Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+			Where("mcmp_role_masters.id = ? AND mcmp_role_subs.role_type = ?",
+				roleID, constants.RoleTypeCSP)
+
+	default:
+		return false, fmt.Errorf("지원하지 않는 역할 타입: %s", roleType)
 	}
 
 	result := query.Count(&count)
@@ -559,8 +591,8 @@ func (r *RoleRepository) IsAssignedWorkspaceRole(userID uint, roleID uint) (bool
 	var count int64
 	query := r.db.Model(&model.RoleMaster{}).
 		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
-		Joins("JOIN mcmp_workspace_user_roles ON mcmp_role_masters.id = mcmp_workspace_user_rolses.role_id").
-		Where("mcmp_role_masters.id = ? AND mcmp_workspace_user_roless.user_id = ?", roleID, userID).
+		Joins("JOIN mcmp_user_workspace_roles ON mcmp_role_masters.id = mcmp_user_workspace_roles.role_id").
+		Where("mcmp_role_masters.id = ? AND mcmp_user_workspace_roles.user_id = ?", roleID, userID).
 		Where("mcmp_role_subs.role_type = ?", constants.RoleTypeWorkspace)
 
 	result := query.Count(&count)

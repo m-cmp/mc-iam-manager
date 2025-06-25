@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"log"
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/util"
@@ -63,6 +64,7 @@ func (r *WorkspaceRepository) FindWorkspaces(req *model.WorkspaceFilterRequest) 
 	// filter 조건이 있으면 조건에 맞는 워크스페이스 조회
 	// 쿼리 빌더를 사용하여 기본 쿼리 생성
 	query := r.db.Model(&model.Workspace{})
+	log.Printf("req", req)
 
 	if req.WorkspaceID != "" {
 		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)

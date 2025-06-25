@@ -107,6 +107,7 @@ func (s *CspRoleService) handleCspRole(req *model.CreateCspRoleRequest) (*model.
 		// 1-2. CSP 역할이 없으면 대상 CSP에 역할을 추가하고 5초간 대기한 후 조회해서 정보를 저장
 		cspRole, err := s.cspRoleRepo.CreateCSPRole(req)
 		if err != nil {
+			log.Printf("role requested: %v", req)
 			log.Printf("Failed to create CSP role: %v", err)
 			return nil, err
 		}
@@ -286,22 +287,34 @@ func (s *CspRoleService) DeleteRolePolicy(ctx context.Context, roleName string, 
 
 // CreateOrUpdateCspRole CSP 역할을 생성하거나 업데이트합니다.
 // ID가 비어있으면 새로 생성하고, ID가 있으면 기존 것을 업데이트합니다.
-func (s *CspRoleService) CreateOrUpdateCspRole(cspRole *model.CspRole) (*model.CspRole, error) {
-	if cspRole.ID == 0 {
+func (s *CspRoleService) CreateOrUpdateCspRole(req *model.CreateCspRoleRequest) (*model.CspRole, error) {
+	if req.ID == 0 {
 		// ID가 비어있으면 새로 생성
-		req := &model.CreateCspRoleRequest{
-			RoleName:      cspRole.Name,
-			Description:   cspRole.Description,
-			CspType:       cspRole.CspType,
-			IdpIdentifier: cspRole.IdpIdentifier,
-			IamIdentifier: cspRole.IamIdentifier,
-			Status:        cspRole.Status,
-			Path:          cspRole.Path,
-			IamRoleId:     cspRole.IamRoleId,
-		}
+
+		// if constants.CSPTypeAWS == constants.CSPType(req.CspType) {
+		// 	//req.RoleName = constants.CspRoleNamePrefix + req.RoleName
+
+		// 	idpIdentifier := "arn:aws:iam::050864702683:oidc-provider/mciambase.onecloudcon.com/realms/mciam-demo"
+		// 	iamIdentifier := "arn:aws:iam::050864702683:role/" + constants.CspRoleNamePrefix + req.RoleName
+
+		// 	req.IdpIdentifier = idpIdentifier
+		// 	req.IamIdentifier = iamIdentifier
+		// }
+
 		return s.CreateCSPRole(req)
 	} else {
 		// ID가 있으면 업데이트
+		cspRole := &model.CspRole{
+			ID:            req.ID,
+			Name:          req.RoleName,
+			Description:   req.Description,
+			CspType:       req.CspType,
+			IdpIdentifier: req.IdpIdentifier,
+			IamIdentifier: req.IamIdentifier,
+			Status:        req.Status,
+			Path:          req.Path,
+			IamRoleId:     req.IamRoleId,
+		}
 		err := s.UpdateCSPRole(cspRole)
 		if err != nil {
 			return nil, err
