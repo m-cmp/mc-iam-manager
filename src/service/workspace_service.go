@@ -158,6 +158,7 @@ func (s *WorkspaceService) ListWorkspaceUsersAndRoles(req model.WorkspaceFilterR
 }
 
 // AddProjectToWorkspace 워크스페이스에 프로젝트 연결
+// 워크스페이스와 프로젝트가 존재하는지 확인하고 연결
 func (s *WorkspaceService) AddProjectToWorkspace(workspaceID, projectID uint) error {
 	// Check if both workspace and project exist
 	_, errWs := s.workspaceRepo.FindWorkspaceByID(workspaceID)

@@ -171,17 +171,24 @@ func (r *WorkspaceRepository) FindWorkspaceProjectsByWorkspaceID(id uint) (*mode
 
 // AddProjectAssociation 워크스페이스에 프로젝트 연결 추가
 func (r *WorkspaceRepository) AddProjectAssociation(workspaceID, projectID uint) error {
-	workspace := &model.Workspace{ID: workspaceID}
-	project := &model.Project{ID: projectID}
+	workspaceProject := &model.WorkspaceProject{
+		WorkspaceID: workspaceID,
+		ProjectID:   projectID,
+	}
 
-	// Check if workspace and project exist first (optional but recommended)
-	// ...
+	// 기본 workspace에 저장되어 있던 project면 기본 workspace에서 뺀다.
+	if workspaceID != 1 {
+		result := r.db.Where("workspace_id = ? AND project_id = ?", 1, projectID).
+			Delete(&model.WorkspaceProject{})
+		if result.Error != nil {
+			return result.Error
+		}
+	}
 
-	// Append the association
-	err := r.db.Model(&workspace).Association("Projects").Append(&project)
+	// mcmp_workspace_projects 테이블에 직접 저장
+	err := r.db.Save(workspaceProject).Error
 	if err != nil {
-		// Handle potential errors like duplicate entry if association already exists
-		// GORM might handle duplicates gracefully depending on DB driver
+
 		return err
 	}
 	return nil
@@ -189,15 +196,36 @@ func (r *WorkspaceRepository) AddProjectAssociation(workspaceID, projectID uint)
 
 // RemoveProjectAssociation 워크스페이스에서 프로젝트 연결 제거
 func (r *WorkspaceRepository) RemoveProjectAssociation(workspaceID, projectID uint) error {
-	workspace := &model.Workspace{ID: workspaceID}
-	project := &model.Project{ID: projectID}
+	// 기본 workspace에서는 제거가 불가하며 타 워크스페이스에서 연결 제거 시 기본 workspace로 할당
 
-	// Delete the association
-	err := r.db.Model(&workspace).Association("Projects").Delete(&project)
+	// mcmp_workspace_projects 테이블에서 직접 삭제
+	result := r.db.Where("workspace_id = ? AND project_id = ?", workspaceID, projectID).
+		Delete(&model.WorkspaceProject{})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	workspaceProject := &model.WorkspaceProject{
+		WorkspaceID: 1, // 기본 workspace ID
+		ProjectID:   projectID,
+	}
+
+	err := r.db.Save(workspaceProject).Error
 	if err != nil {
+
 		return err
 	}
-	// GORM's Delete association might not return error if association didn't exist
+
+	// mcmp_workspace_projects 테이블에서 직접 삭제
+	// result := r.db.Where("workspace_id = ? AND project_id = ?", workspaceID, projectID).
+	// 	Delete(&model.WorkspaceProject{})
+
+	// if result.Error != nil {
+	// 	return result.Error
+	// }
+
+	// 삭제된 레코드가 없어도 에러로 처리하지 않음 (이미 관계가 없었을 수 있음)
 	return nil
 }
 

@@ -43,20 +43,20 @@ func (s *MciamPermissionService) GetMcIamPermissionByID(ctx context.Context, id 
 
 // List MC-IAM 권한 목록 조회 (필터 추가) - Renamed
 func (s *MciamPermissionService) ListMcIamPermissions(ctx context.Context, frameworkID, resourceTypeID string) ([]model.MciamPermission, error) { // Use renamed model
-	return s.permissionRepo.List(frameworkID, resourceTypeID)
+	return s.permissionRepo.ListMcIamPermissions(frameworkID, resourceTypeID)
 }
 
 // Update MC-IAM 권한 정보 부분 업데이트 - Renamed
 func (s *MciamPermissionService) UpdateMcIamPermission(ctx context.Context, id string, updates map[string]interface{}) error {
 	// Add validation for updates map if needed (e.g., allowed fields)
 	// The repository already prevents updating PKs and createdAt
-	return s.permissionRepo.Update(id, updates)
+	return s.permissionRepo.UpdateMcIamPermission(id, updates)
 }
 
 // Delete MC-IAM 권한 삭제 - Renamed
 func (s *MciamPermissionService) DeleteMcIamPermission(ctx context.Context, id string) error {
 	// Add business logic if needed before deleting
-	return s.permissionRepo.Delete(id)
+	return s.permissionRepo.DeleteMcIamPermission(id)
 }
 
 // AssignMciamPermissionToRole 역할에 MC-IAM 권한 할당 - Renamed

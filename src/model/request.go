@@ -77,7 +77,7 @@ type RoleFilterRequest struct {
 // { "workspaceId": 1, "projectId": [2, 3] }
 type WorkspaceProjectMappingRequest struct {
 	WorkspaceID string   `json:"workspaceId" validate:"required"`
-	ProjectID   []string `json:"projectId" validate:"required"`
+	ProjectIDs  []string `json:"projectIds" validate:"required"`
 }
 
 type WorkspaceFilterRequest struct {
