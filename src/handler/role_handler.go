@@ -129,22 +129,13 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 
 	// Role과 csp role mapping
 	if len(req.CspRoles) > 0 {
+		log.Printf("cspRoles requested: %v", req.CspRoles)
 		for _, cspRole := range req.CspRoles {
-			// CSP 역할 생성 또는 업데이트
-			updatedCspRole, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
+			log.Printf("cspRole requested: %v", cspRole)
+			// CSP 역할 생성 또는 업데이트 (매핑도 함께 처리됨)
+			_, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 생성/업데이트 실패: %v", err)})
-			}
-
-			roleMapping := &model.CreateRoleMasterCspRoleMappingRequest{
-				RoleID:      util.UintToString(createdRole.ID),
-				CspRoleID:   util.UintToString(updatedCspRole.ID),
-				AuthMethod:  constants.AuthMethodOIDC,
-				Description: req.Description,
-			}
-
-			if err := h.roleService.CreateRoleCspRoleMapping(roleMapping); err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 매핑 생성 실패: %v", err)})
 			}
 		}
 	}
@@ -611,7 +602,7 @@ func (h *RoleHandler) ListWorkspaceRoles(c echo.Context) error {
 	if req.RoleTypes == nil {
 		req.RoleTypes = []constants.IAMRoleType{constants.RoleTypeWorkspace}
 	}
-
+	log.Printf("req ListWorkspaceRoles : %v", req)
 	roles, err := h.roleService.ListWorkspaceRoles(&req)
 	if err != nil {
 		log.Printf("역할 목록 조회 실패: %v", err)
@@ -1608,7 +1599,7 @@ func (h *RoleHandler) RemoveWorkspaceRole(c echo.Context) error {
 // @Router /api/roles/assign/csp-roles [post]
 // @OperationId addCspRoleMappings
 func (h *RoleHandler) AddCspRoleMappings(c echo.Context) error {
-	var req *model.CreateRoleMasterCspRoleMappingRequest
+	var req model.CreateRoleMasterCspRoleMappingRequest
 	if err := c.Bind(&req); err != nil {
 		log.Printf("Master 역할-CSP 역할 매핑 생성 요청 바인딩 실패: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
@@ -1636,7 +1627,7 @@ func (h *RoleHandler) AddCspRoleMappings(c echo.Context) error {
 	}
 
 	// 해당 역할이 CSP 역할에 정의 되어 있는지 조회
-	// 해당 역할이 존재하지 않는다면 존재하지 않는 역할이라고 알려준다.
+	// . 해당 역할이 존재하지 않는다면 존재하지 않는 역할이라고 알려준다.
 	cspRole, err := h.roleService.GetCspRoleByID(cspRoleIDInt)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 조회 실패: %v", err)})
@@ -1673,7 +1664,7 @@ func (h *RoleHandler) AddCspRoleMappings(c echo.Context) error {
 	// }
 
 	// mapping 관계만 추가
-	err = h.roleService.AddCspRolesMapping(req)
+	err = h.roleService.AddCspRolesMapping(&req)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 할당 실패: %v", err)})
 	}

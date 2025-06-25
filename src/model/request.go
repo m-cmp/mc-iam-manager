@@ -61,8 +61,8 @@ type CreateRoleRequest struct {
 	//RoleTypes   []constants.IAMRoleType `json:"roleTypes" validate:"required,dive,oneof=platform workspace csp"`
 	RoleTypes []constants.IAMRoleType `json:"roleTypes,omitempty"`
 
-	MenuIDs  []string  `json:"menuIds,omitempty"`
-	CspRoles []CspRole `json:"cspRoles,omitempty"`
+	MenuIDs  []string               `json:"menuIds,omitempty"`
+	CspRoles []CreateCspRoleRequest `json:"cspRoles,omitempty"`
 }
 
 // RoleRequest 역할 조회 요청 구조체
@@ -89,6 +89,7 @@ type WorkspaceFilterRequest struct {
 }
 
 type CreateCspRoleRequest struct {
+	ID            uint   `json:"id,omitempty"`
 	RoleName      string `json:"roleName",omitempty"`
 	Description   string `json:"description,omitempty"`
 	CspType       string `json:"cspType,omitempty"`
@@ -97,7 +98,7 @@ type CreateCspRoleRequest struct {
 	Status        string `json:"status,omitempty"`
 	Path          string `json:"path,omitempty"`
 	IamRoleId     string `json:"iamRoleId,omitempty"`
-	Tags          []Tag  `json:"tags,omitempty"`
+	Tags          []Tag  `json:"tags,omitempty" gorm:"-"`
 }
 
 // CreateCspRolesRequest 복수 CSP 역할 생성 요청 구조체
@@ -183,7 +184,7 @@ type CreateRoleMasterCspRoleMappingRequest struct {
 	CspRoleID   string                 `json:"cspRoleId,omitempty"`
 	Description string                 `json:"description,omitempty"`
 	AuthMethod  constants.AuthMethod   `json:"authMethod,omitempty"`
-	CspRoles    []CreateCspRoleRequest `json:"cspRoles,omitempty"`
+	CspRoles    []CreateCspRoleRequest `json:"cspRoles,omitempty" gorm:"-"`
 }
 
 // 조회 request 구조체
