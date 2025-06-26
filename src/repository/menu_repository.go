@@ -28,7 +28,7 @@ func NewMenuRepository(db *gorm.DB) *MenuRepository {
 	// AutoMigrate the required tables
 	err := db.AutoMigrate(
 		&model.Menu{},
-		&model.PlatformRoleMenuMapping{},
+		&model.RoleMenuMapping{},
 		&model.MenuMapping{},
 		&model.MciamPermission{},
 		&model.MciamRoleMciamPermission{},
@@ -262,11 +262,11 @@ func (r *MenuRepository) UpsertMenus(menus []model.Menu) error {
 	return nil
 }
 
-// FindMappedMenusByRole returns menu IDs mapped to the given platform role
-func (r *MenuRepository) FindMappedMenusByRole(platformRoleID uint) ([]string, error) {
+// FindMappedMenusByRole returns menu IDs mapped to the given role
+func (r *MenuRepository) FindMappedMenusByRole(roleID uint) ([]string, error) {
 	var menuIDs []string
-	err := r.db.Model(&model.PlatformRoleMenuMapping{}).
-		Where("platform_role = ?", platformRoleID).
+	err := r.db.Model(&model.RoleMenuMapping{}).
+		Where("role_id = ?", roleID).
 		Pluck("menu_id", &menuIDs).Error
 	return menuIDs, err
 }
@@ -293,4 +293,9 @@ func (r *MenuRepository) FindAll(req *model.MenuFilterRequest) ([]*model.Menu, e
 		return nil, err
 	}
 	return menus, nil
+}
+
+// CreateRoleMenuMappings 역할-메뉴 매핑을 생성합니다
+func (r *MenuRepository) CreateRoleMenuMappings(mappings []*model.RoleMenuMapping) error {
+	return r.db.Create(mappings).Error
 }

@@ -636,3 +636,8 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 
 	return nil
 }
+
+// CreateRoleMenuMappings 역할-메뉴 매핑을 생성합니다
+func (s *MenuService) CreateRoleMenuMappings(mappings []*model.RoleMenuMapping) error {
+	return s.menuRepo.CreateRoleMenuMappings(mappings)
+}

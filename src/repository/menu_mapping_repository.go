@@ -16,11 +16,11 @@ func NewMenuMappingRepository(db *gorm.DB) *MenuMappingRepository {
 	return &MenuMappingRepository{db: db}
 }
 
-// GetMappedMenuIDs 플랫폼 역할에 매핑된 메뉴 ID 목록 조회
-func (r *MenuMappingRepository) GetMappedMenuIDs(platformRoleID uint) ([]string, error) {
+// GetMappedMenuIDs 역할에 매핑된 메뉴 ID 목록 조회
+func (r *MenuMappingRepository) GetMappedMenuIDs(roleID uint) ([]string, error) {
 	var menuIDs []string
-	query := r.db.Model(&model.PlatformRoleMenuMapping{}).
-		Where("platform_role = ?", platformRoleID).
+	query := r.db.Model(&model.RoleMenuMapping{}).
+		Where("role_id = ?", roleID).
 		Pluck("menu_id", &menuIDs)
 	if err := query.Error; err != nil {
 		return nil, err
@@ -28,31 +28,31 @@ func (r *MenuMappingRepository) GetMappedMenuIDs(platformRoleID uint) ([]string,
 	return menuIDs, nil
 }
 
-// CreateMapping 플랫폼 역할-메뉴 매핑 생성
-func (r *MenuMappingRepository) CreateMapping(platformRoleID uint, menuID string) error {
-	mapping := model.PlatformRoleMenuMapping{
-		PlatformRole: platformRoleID,
-		MenuID:       menuID,
+// CreateMapping 역할-메뉴 매핑 생성
+func (r *MenuMappingRepository) CreateMapping(roleID uint, menuID string) error {
+	mapping := model.RoleMenuMapping{
+		RoleID: roleID,
+		MenuID: menuID,
 	}
 	query := r.db.Create(&mapping)
 	return query.Error
 }
 
-// DeleteMapping 플랫폼 역할-메뉴 매핑 삭제
-func (r *MenuMappingRepository) DeleteMapping(platformRoleID uint, menuID string) error {
-	query := r.db.Where("platform_role = ? AND menu_id = ?", platformRoleID, menuID).
-		Delete(&model.PlatformRoleMenuMapping{})
+// DeleteMapping 역할-메뉴 매핑 삭제
+func (r *MenuMappingRepository) DeleteMapping(roleID uint, menuID string) error {
+	query := r.db.Where("role_id = ? AND menu_id = ?", roleID, menuID).
+		Delete(&model.RoleMenuMapping{})
 	return query.Error
 }
 
-// FindMappedMenusWithParents 플랫폼 역할에 매핑된 메뉴와 그 상위 메뉴들을 포함한 메뉴 트리 조회
+// FindMappedMenusWithParents 역할에 매핑된 메뉴와 그 상위 메뉴들을 포함한 메뉴 트리 조회
 func (r *MenuMappingRepository) FindMappedMenusWithParents(req *model.MenuMappingFilterRequest) ([]*model.Menu, error) {
 	var menus []*model.Menu
 
 	// 1. 매핑된 메뉴 ID 목록 조회
 	var mappedMenuIDs []string
-	query := r.db.Model(&model.PlatformRoleMenuMapping{}).
-		Where("platform_role in ?", req.RoleID).
+	query := r.db.Model(&model.RoleMenuMapping{}).
+		Where("role_id in ?", req.RoleID).
 		Pluck("menu_id", &mappedMenuIDs)
 	if err := query.Error; err != nil {
 		return nil, err
@@ -69,13 +69,13 @@ func (r *MenuMappingRepository) FindMappedMenusWithParents(req *model.MenuMappin
 }
 
 // 해당 role에 매핑된 메뉴 목록 조회
-func (r *MenuMappingRepository) FindMappedMenus(platformRoleID uint) ([]*model.Menu, error) {
+func (r *MenuMappingRepository) FindMappedMenus(roleID uint) ([]*model.Menu, error) {
 	var menus []*model.Menu
 
 	// 1. 매핑된 메뉴 ID 목록 조회
 	var mappedMenuIDs []string
-	query := r.db.Model(&model.PlatformRoleMenuMapping{}).
-		Where("platform_role = ?", platformRoleID).
+	query := r.db.Model(&model.RoleMenuMapping{}).
+		Where("role_id = ?", roleID).
 		Pluck("menu_id", &mappedMenuIDs)
 	if err := query.Error; err != nil {
 		return nil, err
@@ -90,39 +90,39 @@ func (r *MenuMappingRepository) FindMappedMenus(platformRoleID uint) ([]*model.M
 	return menus, nil
 }
 
-func (r *MenuMappingRepository) Create(mapping *model.PlatformRoleMenuMapping) error {
+func (r *MenuMappingRepository) Create(mapping *model.RoleMenuMapping) error {
 	return r.db.Create(mapping).Error
 }
 
-func (r *MenuMappingRepository) GetByMenuID(menuID uint) ([]model.PlatformRoleMenuMapping, error) {
-	var mappings []model.PlatformRoleMenuMapping
+func (r *MenuMappingRepository) GetByMenuID(menuID uint) ([]model.RoleMenuMapping, error) {
+	var mappings []model.RoleMenuMapping
 	err := r.db.Where("menu_id = ?", menuID).Find(&mappings).Error
 	return mappings, err
 }
 
-func (r *MenuMappingRepository) GetByPermissionID(permissionID uint) ([]model.PlatformRoleMenuMapping, error) {
-	var mappings []model.PlatformRoleMenuMapping
+func (r *MenuMappingRepository) GetByPermissionID(permissionID uint) ([]model.RoleMenuMapping, error) {
+	var mappings []model.RoleMenuMapping
 	err := r.db.Where("permission_id = ?", permissionID).Find(&mappings).Error
 	return mappings, err
 }
 
 func (r *MenuMappingRepository) DeleteByMenuID(menuID uint) error {
-	return r.db.Where("menu_id = ?", menuID).Delete(&model.PlatformRoleMenuMapping{}).Error
+	return r.db.Where("menu_id = ?", menuID).Delete(&model.RoleMenuMapping{}).Error
 }
 
 func (r *MenuMappingRepository) DeleteByPermissionID(permissionID uint) error {
-	return r.db.Where("permission_id = ?", permissionID).Delete(&model.PlatformRoleMenuMapping{}).Error
+	return r.db.Where("permission_id = ?", permissionID).Delete(&model.RoleMenuMapping{}).Error
 }
 
 func (r *MenuMappingRepository) DeleteByMenuIDAndPermissionID(menuID, permissionID uint) error {
-	return r.db.Where("menu_id = ? AND permission_id = ?", menuID, permissionID).Delete(&model.PlatformRoleMenuMapping{}).Error
+	return r.db.Where("menu_id = ? AND permission_id = ?", menuID, permissionID).Delete(&model.RoleMenuMapping{}).Error
 }
 
-// FindMappedMenusByRole returns menu IDs mapped to the given platform role
+// FindMappedMenusByRole returns menu IDs mapped to the given role
 func (r *MenuMappingRepository) FindMappedMenuIDs(req *model.MenuMappingFilterRequest) ([]*string, error) {
 	var mappings []*string
 
-	query := r.db.Model(&model.PlatformRoleMenuMapping{})
+	query := r.db.Model(&model.RoleMenuMapping{})
 
 	roleIDs := []uint{}
 	if len(req.RoleID) > 0 {
@@ -134,11 +134,11 @@ func (r *MenuMappingRepository) FindMappedMenuIDs(req *model.MenuMappingFilterRe
 			roleIDs = append(roleIDs, roleIDInt)
 		}
 
-		query = query.Where("platform_role in ?", roleIDs)
+		query = query.Where("role_id in ?", roleIDs)
 	}
 	// for _, roleID := range req.RoleID {
 	// 	if roleID != "" {
-	// 		query = query.Where("platform_role = ?", roleID)
+	// 		query = query.Where("role_id = ?", roleID)
 	// 	}
 	// }
 	if req.MenuID != "" {

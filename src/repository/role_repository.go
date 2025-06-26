@@ -703,6 +703,7 @@ func (r *RoleRepository) CreateRoleWithSubs(role *model.RoleMaster, roleSubs []m
 				// RoleSub가 이미 존재하는 경우 로그만 남기고 계속 진행
 				log.Printf("역할 서브 타입 (RoleID: %d, Type: %s)가 이미 존재합니다. 건너뜁니다.", role.ID, sub.RoleType)
 			}
+
 		}
 
 		// 3. 생성된 RoleMaster와 RoleSubs를 함께 조회
@@ -713,6 +714,6 @@ func (r *RoleRepository) CreateRoleWithSubs(role *model.RoleMaster, roleSubs []m
 		result = role
 		return nil
 	})
-
+	log.Printf("[DEBUG] CreateRoleWithSubsTx 완료 - ID: %d, 이름: %s", role.ID, role.Name)
 	return result, err
 }

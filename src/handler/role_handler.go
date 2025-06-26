@@ -113,17 +113,28 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 
 	// Role과 메뉴 mapping : CreateMenusRolesMapping
 	if len(req.MenuIDs) > 0 {
-		mappings := make([]*model.MenuMapping, 0)
-		for _, menuID := range req.MenuIDs {
-
-			mapping := &model.MenuMapping{
-				RoleID: createdRole.ID,
-				MenuID: menuID,
+		// Platform role인 경우 RoleMenuMapping 사용
+		hasPlatformRole := false
+		for _, roleType := range req.RoleTypes {
+			if roleType == constants.RoleTypePlatform {
+				hasPlatformRole = true
+				break
 			}
-			mappings = append(mappings, mapping)
 		}
-		if err := h.menuService.CreateMenuMappings(mappings); err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("메뉴 매핑 생성 실패: %v", err)})
+
+		if hasPlatformRole {
+			// Platform role menu mapping 생성
+			mappings := make([]*model.RoleMenuMapping, 0)
+			for _, menuID := range req.MenuIDs {
+				mapping := &model.RoleMenuMapping{
+					RoleID: createdRole.ID,
+					MenuID: menuID,
+				}
+				mappings = append(mappings, mapping)
+			}
+			if err := h.menuService.CreateRoleMenuMappings(mappings); err != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 메뉴 매핑 생성 실패: %v", err)})
+			}
 		}
 	}
 	// Role과 workspace mapping : RoleSub에 workspace 타입이 들어있었으면 생성되어 있을 것임.
@@ -144,9 +155,21 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 
 			log.Printf("cspRole requested: %v", cspRole)
 			// CSP 역할 생성 또는 업데이트 (매핑도 함께 처리됨)
-			_, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
+			cspRole, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 생성/업데이트 실패: %v", err)})
+			}
+
+			// mapping 관계 추가
+			roleMappingRequest := &model.CreateRoleMasterCspRoleMappingRequest{
+				RoleID:      util.UintToString(createdRole.ID),
+				CspRoleID:   util.UintToString(cspRole.ID),
+				AuthMethod:  constants.AuthMethodOIDC,
+				Description: req.Description,
+			}
+
+			if err := h.roleService.CreateRoleCspRoleMapping(roleMappingRequest); err != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 매핑 생성 실패: %v", err)})
 			}
 		}
 	}
