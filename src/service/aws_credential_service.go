@@ -33,9 +33,11 @@ func NewAwsCredentialService() AwsCredentialService {
 // kcUserId is used to generate a unique RoleSessionName.
 func (s *awsCredentialService) AssumeRoleWithWebIdentity(ctx context.Context, roleArn, kcUserId, webIdentityToken, idpArn, region string) (*model.CspCredentialResponse, error) {
 	// Load default AWS configuration
+	log.Printf("[AWS_CREDENTIAL] Loading AWS configuration...")
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
-		log.Printf("Unable to load AWS SDK config: %v", err)
+		log.Printf("[AWS_CREDENTIAL] Unable to load AWS SDK config: %v", err)
+
 		return nil, fmt.Errorf("failed to load AWS configuration: %w", err)
 	}
 
@@ -45,7 +47,7 @@ func (s *awsCredentialService) AssumeRoleWithWebIdentity(ctx context.Context, ro
 	} else if envRegion := os.Getenv("AWS_REGION"); envRegion != "" {
 		awsCfg.Region = envRegion
 	}
-	log.Printf("Using AWS Region: %s for STS call", awsCfg.Region)
+	log.Printf("[AWS_CREDENTIAL] Using AWS Region: %s for STS call", awsCfg.Region)
 
 	stsClient := sts.NewFromConfig(awsCfg)
 
@@ -63,10 +65,10 @@ func (s *awsCredentialService) AssumeRoleWithWebIdentity(ctx context.Context, ro
 		DurationSeconds:  nil, // Use default duration (1 hour)
 	}
 
-	log.Printf("Attempting to assume role %s with web identity token for session %s", roleArn, roleSessionName)
+	log.Printf("[AWS_CREDENTIAL] Attempting to assume role %s with web identity token for session %s", roleArn, roleSessionName)
 	result, err := stsClient.AssumeRoleWithWebIdentity(ctx, input)
 	if err != nil {
-		log.Printf("AWS AssumeRoleWithWebIdentity failed for role %s: %v", roleArn, err)
+		log.Printf("[AWS_CREDENTIAL] AWS AssumeRoleWithWebIdentity failed for role %s: %v", roleArn, err)
 		return nil, fmt.Errorf("failed to assume AWS role %s: %w", roleArn, err)
 	}
 
@@ -74,7 +76,7 @@ func (s *awsCredentialService) AssumeRoleWithWebIdentity(ctx context.Context, ro
 		return nil, fmt.Errorf("received nil credentials from AWS STS for role %s", roleArn)
 	}
 
-	log.Printf("Successfully assumed role %s, Expiration: %s", roleArn, result.Credentials.Expiration.String())
+	log.Printf("[AWS_CREDENTIAL] Successfully assumed role %s, Expiration: %s", roleArn, result.Credentials.Expiration.String())
 
 	// Map STS response to our generic response model
 	response := &model.CspCredentialResponse{

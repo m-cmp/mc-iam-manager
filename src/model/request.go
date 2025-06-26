@@ -90,7 +90,7 @@ type WorkspaceFilterRequest struct {
 
 type CreateCspRoleRequest struct {
 	ID            uint   `json:"id,omitempty"`
-	RoleName      string `json:"roleName",omitempty"`
+	CspRoleName   string `json:"cspRoleName",omitempty"` // csp의 RoleName. 여러 role이 있기때문에 csp에 정의한 role로 구분하기 위해 사용
 	Description   string `json:"description,omitempty"`
 	CspType       string `json:"cspType,omitempty"`
 	IdpIdentifier string `json:"idpIdentifier,omitempty"`

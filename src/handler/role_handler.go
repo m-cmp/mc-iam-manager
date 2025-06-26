@@ -29,7 +29,7 @@ func NewRoleHandler(db *gorm.DB) *RoleHandler {
 	userService := service.NewUserService(db)
 	keycloakService := service.NewKeycloakService()
 	menuService := service.NewMenuService(db)
-	cspRoleService := service.NewCspRoleService(db)
+	cspRoleService := service.NewCspRoleService(db, keycloakService)
 	return &RoleHandler{
 		roleService:     roleService,
 		userService:     userService,
@@ -779,7 +779,7 @@ func (h *RoleHandler) CreateCspRole(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	createdRole, err := h.cspRoleService.CreateCSPRole(&req)
+	createdRole, err := h.cspRoleService.CreateCspRole(&req)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

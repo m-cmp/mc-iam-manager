@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/google/uuid"
@@ -23,24 +25,15 @@ import (
 
 // CspRoleRepository CSP 역할 레포지토리
 type CspRoleRepository struct {
-	db        *gorm.DB
-	iamClient *iam.Client
+	db                 *gorm.DB
+	tempCredentialRepo *TempCredentialRepository
 }
 
 // NewCspRoleRepository 새 CspRoleRepository 인스턴스 생성
 func NewCspRoleRepository(db *gorm.DB) *CspRoleRepository {
-	// AWS SDK 설정
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return nil
-	}
-
-	// IAM 클라이언트 생성
-	client := iam.NewFromConfig(cfg)
-
 	return &CspRoleRepository{
-		iamClient: client,
-		db:        db,
+		db:                 db,
+		tempCredentialRepo: NewTempCredentialRepository(db),
 	}
 }
 
@@ -55,7 +48,12 @@ func (r *CspRoleRepository) FindAll() ([]*model.CspRole, error) {
 			Marker: marker,
 		}
 
-		result, err := r.iamClient.ListRoles(context.TODO(), input)
+		awsIamClient, err := r.getAwsIamClient("system")
+		if err != nil {
+			return nil, fmt.Errorf("failed to get AWS IAM client: %v", err)
+		}
+
+		result, err := awsIamClient.ListRoles(context.TODO(), input)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list IAM roles: %v", err)
 		}
@@ -92,7 +90,12 @@ func (r *CspRoleRepository) FindMciamRoleFromCsp(cspType string) ([]*model.CspRo
 			Marker: marker, // for pagenation
 		}
 
-		result, err := r.iamClient.ListRoles(context.TODO(), input)
+		awsIamClient, err := r.getAwsIamClient("system")
+		if err != nil {
+			return nil, fmt.Errorf("failed to get AWS IAM client: %v", err)
+		}
+
+		result, err := awsIamClient.ListRoles(context.TODO(), input)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list IAM roles: %v", err)
 		}
@@ -143,7 +146,7 @@ type PolicyValues struct {
 	Audience         string
 }
 
-// getManagerAssumeRolePolicyDocument 플랫폼 관리자용 AssumeRole 정책 문서를 반환합니다.
+// getRoleManagerAssumeRolePolicyDocument 플랫폼 관리자용 AssumeRole 정책 문서를 반환합니다.
 func getRoleManagerAssumeRolePolicyDocument(role *model.CspRole) (string, error) {
 	const policyTemplate = `{
 		"Version": "2012-10-17",
@@ -164,11 +167,17 @@ func getRoleManagerAssumeRolePolicyDocument(role *model.CspRole) (string, error)
 	}`
 	// "{{.KeycloakHostname}}:sub": "{{.Subject}}",
 
+	// 환경 변수에서 OIDC 클라이언트 ID 가져오기
+	oidcClientID := os.Getenv("KEYCLOAK_OIDC_CLIENT_ID")
+	if oidcClientID == "" {
+		return "", fmt.Errorf("KEYCLOAK_OIDC_CLIENT environment variable is not set")
+	}
+
 	values := PolicyValues{
 		AccountID:        "050864702683",
 		KeycloakHostname: "mciam.onecloudcon.com",
 		//Subject:          "user@example.com",
-		Audience: "mciam-oidc-Client",
+		Audience: oidcClientID, // 하드코딩된 값 대신 환경 변수 사용
 	}
 
 	tmpl, err := template.New("policy").Parse(policyTemplate)
@@ -225,64 +234,78 @@ func getUserAssumeRolePolicyDocument() string {
 	}`
 }
 
-// CreateCSPRole AWS IAM Role을 생성하고 생성 완료를 기다린 후 상세 정보를 반환합니다.
-// 저장 전에 채워지는 Data가 있고 저장 후 채워지는 Data가 있음.
-func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*model.CspRole, error) {
-	idpIdentifier := ""
-	// 1. DB에서 역할 존재 여부 확인
-	var existingRole model.CspRole
+// CreateCspRole AWS IAM Role을 생성하고 생성 완료를 기다린 후 상세 정보를 반환합니다.
+// 내부에서 임시 자격 증명을 관리합니다.
+func (r *CspRoleRepository) CreateCspRole(req *model.CreateCspRoleRequest, issuedBy string) (*model.CspRole, error) {
+	// 1. 유효한 임시 자격 증명 조회 또는 생성 (RoleMaster ID 없이 시스템 레벨 자격 증명 사용)
+	credential, err := r.tempCredentialRepo.GetOrCreateValidCredential("aws", "oidc", "ap-northeast-2", nil, issuedBy, func() (*model.TempCredential, error) {
+		// 새로운 자격 증명 생성 로직 (service 계층에서 처리되어야 하지만, 여기서는 기본값 사용)
+		return &model.TempCredential{
+			Provider:        "aws",
+			AuthType:        "oidc",
+			AccessKeyId:     "temp-access-key",    // 실제로는 service에서 생성
+			SecretAccessKey: "temp-secret-key",    // 실제로는 service에서 생성
+			SessionToken:    "temp-session-token", // 실제로는 service에서 생성
+			Region:          "ap-northeast-2",
+			IssuedAt:        time.Now(),
+			ExpiresAt:       time.Now().Add(1 * time.Hour), // 1시간 후 만료
+			IsActive:        true,
+			IssuedBy:        issuedBy,
+		}, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get or create valid credential: %v", err)
+	}
 
-	// masterRoleId와 cspType을 이용하여 역할 존재 여부 확인
+	// 2. 임시 자격 증명으로 AWS IAM 클라이언트 생성
+	awsCfg, err := r.createAwsConfigWithTempCredential(credential)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AWS config with temp credential: %v", err)
+	}
+	iamClient := iam.NewFromConfig(awsCfg)
+
+	// 3. 기존 CreateCspRoleWithIamClient 로직 실행
+	return r.CreateCspRoleWithIamClient(req, iamClient)
+}
+
+// CreateCspRoleWithIamClient 내부 메서드로 변경
+func (r *CspRoleRepository) CreateCspRoleWithIamClient(req *model.CreateCspRoleRequest, awsIamClient *iam.Client) (*model.CspRole, error) {
+	idpIdentifier := ""
+	var existingRole model.CspRole
+	cspRoleName := constants.CspRoleNamePrefix + req.CspRoleName
 	newRole := &model.CspRole{
-		Name:    req.RoleName,
+		Name:    cspRoleName,
 		CspType: req.CspType,
 	}
-	if err := r.db.Where("name = ? AND csp_type = ?", req.RoleName, req.CspType).First(&existingRole).Error; err != nil {
+	if err := r.db.Where("name = ? AND csp_type = ?", cspRoleName, req.CspType).First(&existingRole).Error; err != nil {
 		if err != gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("이미 존재합니다. 중복 생성 불가: %v", err)
 		}
 		log.Printf("db existing role: %v", existingRole)
-
-		// DB에 역할이 없는 경우
-		// 2. CSP에서 역할 존재 여부 확인
-		cspRoleName := constants.CspRoleNamePrefix + newRole.Name // 구분을 위한 prefix를 붙임.
-		getRoleInput := &iam.GetRoleInput{
-			RoleName: aws.String(cspRoleName),
-		}
+		getRoleInput := &iam.GetRoleInput{RoleName: aws.String(cspRoleName)}
 		var targetCspRole *iam.GetRoleOutput
-		if cspRoleResponse, err := r.iamClient.GetRole(context.TODO(), getRoleInput); err == nil {
-			// CSP에 역할이 있으면 status를 created로 설정하여 저장
+		if cspRoleResponse, err := awsIamClient.GetRole(context.TODO(), getRoleInput); err == nil {
 			newRole.Status = "created"
 			targetCspRole = cspRoleResponse
 		} else {
-			// CSP에 역할이 없으면 status를 creating으로 설정하여 저장
 			newRole.Status = "creating"
 		}
-
-		// 3. DB에 저장
 		if err := r.db.Create(newRole).Error; err != nil {
 			return nil, fmt.Errorf("failed to create CSP role in database: %v", err)
 		}
-
-		// 4. CSP에 역할이 없는 경우에만 생성
 		if newRole.Status == "creating" {
-			// AWS IAM Role 생성 요청
 			assumeRolePolicyDocument, err := getRoleManagerAssumeRolePolicyDocument(newRole)
 			if err != nil {
 				newRole.Status = "failed"
 				r.db.Save(newRole)
 				return nil, fmt.Errorf("failed to generate assume role policy document: %v", err)
 			}
-
-			// assumeRolePolicyDocument에서 Principal.Federated 값 추출
 			var policyDoc map[string]interface{}
 			if err := json.Unmarshal([]byte(assumeRolePolicyDocument), &policyDoc); err != nil {
 				newRole.Status = "failed"
 				r.db.Save(newRole)
 				return nil, fmt.Errorf("failed to parse assume role policy document: %v", err)
 			}
-
-			// Principal.Federated 값 추출하여 idpIdentifier에 설정
 			if statements, ok := policyDoc["Statement"].([]interface{}); ok && len(statements) > 0 {
 				if statement, ok := statements[0].(map[string]interface{}); ok {
 					if principal, ok := statement["Principal"].(map[string]interface{}); ok {
@@ -292,28 +315,21 @@ func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*mod
 					}
 				}
 			}
-
 			input := &iam.CreateRoleInput{
-				RoleName:                 aws.String(constants.CspRoleNamePrefix + newRole.Name),
+				RoleName:                 aws.String(cspRoleName),
 				AssumeRolePolicyDocument: aws.String(assumeRolePolicyDocument),
 				Description:              aws.String(newRole.Description),
 			}
-
-			_, err = r.iamClient.CreateRole(context.TODO(), input)
+			_, err = awsIamClient.CreateRole(context.TODO(), input)
 			if err != nil {
 				newRole.Status = "failed"
 				r.db.Save(newRole)
 				return nil, fmt.Errorf("failed to create IAM role: %v", err)
 			}
-
-			// 5. AWS IAM Role이 실제로 생성될 때까지 최대 30번, 1초 간격으로 확인
-			// aws에서는 5분뒤에 확인하라고 함. verify IAM role creation after 5 attempts
 			for i := 0; i < 30; i++ {
 				time.Sleep(1 * time.Second)
-
-				getRoleResult, err := r.iamClient.GetRole(context.TODO(), getRoleInput)
+				getRoleResult, err := awsIamClient.GetRole(context.TODO(), getRoleInput)
 				if err == nil && getRoleResult != nil && getRoleResult.Role != nil {
-					// 역할이 생성되었으면 상세 정보 추출
 					createdRole := &model.CspRole{
 						ID:            newRole.ID,
 						Name:          *getRoleResult.Role.RoleName,
@@ -326,18 +342,12 @@ func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*mod
 						IamRoleId:     *getRoleResult.Role.RoleId,
 						IamIdentifier: *getRoleResult.Role.Arn,
 					}
-
-					// MaxSessionDuration 설정
 					if getRoleResult.Role.MaxSessionDuration != nil {
 						createdRole.MaxSessionDuration = getRoleResult.Role.MaxSessionDuration
 					}
-
-					// PermissionsBoundary 설정
 					if getRoleResult.Role.PermissionsBoundary != nil && getRoleResult.Role.PermissionsBoundary.PermissionsBoundaryArn != nil {
 						createdRole.PermissionsBoundary = *getRoleResult.Role.PermissionsBoundary.PermissionsBoundaryArn
 					}
-
-					// RoleLastUsed 설정
 					if getRoleResult.Role.RoleLastUsed != nil {
 						roleLastUsed := &model.RoleLastUsed{}
 						if getRoleResult.Role.RoleLastUsed.LastUsedDate != nil {
@@ -348,8 +358,6 @@ func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*mod
 						}
 						createdRole.RoleLastUsed = roleLastUsed
 					}
-
-					// Tags 설정
 					if len(getRoleResult.Role.Tags) > 0 {
 						tags := make([]model.Tag, len(getRoleResult.Role.Tags))
 						for i, tag := range getRoleResult.Role.Tags {
@@ -362,155 +370,43 @@ func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*mod
 						}
 						createdRole.Tags = tags
 					}
-
-					// DB 업데이트
 					if err := r.db.Save(createdRole).Error; err != nil {
 						return nil, fmt.Errorf("failed to update CSP role in database: %v", err)
 					}
-
 					return createdRole, nil
 				}
 			}
-
-			// 최대 시도 횟수를 초과하면 실패로 표시하고 DB 업데이트
 			newRole.Status = "failed"
 			if err := r.db.Save(newRole).Error; err != nil {
 				return nil, fmt.Errorf("failed to update CSP role status to failed: %v", err)
 			}
 			return nil, fmt.Errorf("failed to verify IAM role creation after 5 attempts")
 		} else {
-			// 대상 csp에 role 정보를 db에 갱신
 			newRole.Status = "created"
 			newRole.IamIdentifier = *targetCspRole.Role.Arn
 			newRole.CreateDate = *targetCspRole.Role.CreateDate
 			newRole.Path = *targetCspRole.Role.Path
 			newRole.IamRoleId = *targetCspRole.Role.RoleId
-
-			if err := r.db.Save(newRole).Error; err != nil {
-				return nil, fmt.Errorf("failed to update CSP role status to created: %v", err)
+			newRole.Description = getRoleDescription(*targetCspRole.Role)
+			if targetCspRole.Role.MaxSessionDuration != nil {
+				newRole.MaxSessionDuration = targetCspRole.Role.MaxSessionDuration
 			}
-		}
-
-		return newRole, nil
-	}
-
-	// DB에 역할이 있는 경우
-	// 1. status가 created인 경우 CSP에서 역할 존재 여부 확인
-	if existingRole.Status == "created" {
-		getRoleInput := &iam.GetRoleInput{
-			RoleName: aws.String(newRole.Name),
-		}
-		if _, err := r.iamClient.GetRole(context.TODO(), getRoleInput); err == nil {
-			return nil, fmt.Errorf("role already exists with status 'created'")
-		}
-	}
-
-	// 2. status가 created가 아닌 경우
-	// CSP에서 역할 존재 여부 확인
-	getRoleInput := &iam.GetRoleInput{
-		RoleName: aws.String(newRole.Name),
-	}
-	if getRoleResult, err := r.iamClient.GetRole(context.TODO(), getRoleInput); err == nil && getRoleResult != nil && getRoleResult.Role != nil {
-		log.Printf("csp existing role: %v", getRoleResult)
-		// CSP에 역할이 있으면 status를 created로 업데이트
-		existingRole.Status = "created"
-		existingRole.IamIdentifier = *getRoleResult.Role.Arn
-		existingRole.CreateDate = *getRoleResult.Role.CreateDate
-		existingRole.Path = *getRoleResult.Role.Path
-		existingRole.IamRoleId = *getRoleResult.Role.RoleId
-
-		if getRoleResult.Role.MaxSessionDuration != nil {
-			existingRole.MaxSessionDuration = getRoleResult.Role.MaxSessionDuration
-		}
-
-		if err := r.db.Save(&existingRole).Error; err != nil {
-			return nil, fmt.Errorf("failed to update role status to created: %v", err)
-		}
-		return &existingRole, nil
-	}
-
-	// CSP에 역할이 없으면 생성
-	assumeRolePolicyDocument, err := getRoleManagerAssumeRolePolicyDocument(newRole)
-	if err != nil {
-		existingRole.Status = "failed"
-		r.db.Save(&existingRole)
-		return nil, fmt.Errorf("failed to generate assume role policy document: %v", err)
-	}
-
-	// assumeRolePolicyDocument에서 Principal.Federated 값 추출
-	var policyDoc map[string]interface{}
-	if err := json.Unmarshal([]byte(assumeRolePolicyDocument), &policyDoc); err != nil {
-		existingRole.Status = "failed"
-		r.db.Save(&existingRole)
-		return nil, fmt.Errorf("failed to parse assume role policy document: %v", err)
-	}
-
-	// Principal.Federated 값 추출하여 existingRole.IdpIdentifier에 설정
-	if statements, ok := policyDoc["Statement"].([]interface{}); ok && len(statements) > 0 {
-		if statement, ok := statements[0].(map[string]interface{}); ok {
-			if principal, ok := statement["Principal"].(map[string]interface{}); ok {
-				if federated, ok := principal["Federated"].(string); ok {
-					existingRole.IdpIdentifier = federated
-					// DB에 즉시 저장하여 IdpIdentifier 값이 유실되지 않도록 함
-					if err := r.db.Save(&existingRole).Error; err != nil {
-						return nil, fmt.Errorf("failed to save IdpIdentifier: %v", err)
-					}
-				}
+			if targetCspRole.Role.PermissionsBoundary != nil && targetCspRole.Role.PermissionsBoundary.PermissionsBoundaryArn != nil {
+				newRole.PermissionsBoundary = *targetCspRole.Role.PermissionsBoundary.PermissionsBoundaryArn
 			}
-		}
-	}
-
-	input := &iam.CreateRoleInput{
-		RoleName:                 aws.String(newRole.Name),
-		AssumeRolePolicyDocument: aws.String(assumeRolePolicyDocument),
-		Description:              aws.String(newRole.Description),
-	}
-
-	_, err = r.iamClient.CreateRole(context.TODO(), input)
-	if err != nil {
-		existingRole.Status = "failed"
-		r.db.Save(&existingRole)
-		return nil, fmt.Errorf("failed to create IAM role: %v", err)
-	}
-
-	// AWS IAM Role이 실제로 생성될 때까지 최대 5번, 1초 간격으로 확인
-	for i := 0; i < 5; i++ {
-		time.Sleep(1 * time.Second)
-
-		getRoleResult, err := r.iamClient.GetRole(context.TODO(), getRoleInput)
-		if err == nil && getRoleResult != nil && getRoleResult.Role != nil {
-			// 역할이 생성되었으면 상세 정보 추출
-			existingRole.Status = "created"
-			existingRole.IamIdentifier = *getRoleResult.Role.Arn
-			existingRole.CreateDate = *getRoleResult.Role.CreateDate
-			existingRole.Path = *getRoleResult.Role.Path
-			existingRole.IamRoleId = *getRoleResult.Role.RoleId
-
-			if getRoleResult.Role.MaxSessionDuration != nil {
-				existingRole.MaxSessionDuration = getRoleResult.Role.MaxSessionDuration
-			}
-
-			// PermissionsBoundary 설정
-			if getRoleResult.Role.PermissionsBoundary != nil && getRoleResult.Role.PermissionsBoundary.PermissionsBoundaryArn != nil {
-				existingRole.PermissionsBoundary = *getRoleResult.Role.PermissionsBoundary.PermissionsBoundaryArn
-			}
-
-			// RoleLastUsed 설정
-			if getRoleResult.Role.RoleLastUsed != nil {
+			if targetCspRole.Role.RoleLastUsed != nil {
 				roleLastUsed := &model.RoleLastUsed{}
-				if getRoleResult.Role.RoleLastUsed.LastUsedDate != nil {
-					roleLastUsed.LastUsedDate = *getRoleResult.Role.RoleLastUsed.LastUsedDate
+				if targetCspRole.Role.RoleLastUsed.LastUsedDate != nil {
+					roleLastUsed.LastUsedDate = *targetCspRole.Role.RoleLastUsed.LastUsedDate
 				}
-				if getRoleResult.Role.RoleLastUsed.Region != nil {
-					roleLastUsed.Region = *getRoleResult.Role.RoleLastUsed.Region
+				if targetCspRole.Role.RoleLastUsed.Region != nil {
+					roleLastUsed.Region = *targetCspRole.Role.RoleLastUsed.Region
 				}
-				existingRole.RoleLastUsed = roleLastUsed
+				newRole.RoleLastUsed = roleLastUsed
 			}
-
-			// Tags 설정
-			if len(getRoleResult.Role.Tags) > 0 {
-				tags := make([]model.Tag, len(getRoleResult.Role.Tags))
-				for i, tag := range getRoleResult.Role.Tags {
+			if len(targetCspRole.Role.Tags) > 0 {
+				tags := make([]model.Tag, len(targetCspRole.Role.Tags))
+				for i, tag := range targetCspRole.Role.Tags {
 					if tag.Key != nil && tag.Value != nil {
 						tags[i] = model.Tag{
 							Key:   *tag.Key,
@@ -518,24 +414,37 @@ func (r *CspRoleRepository) CreateCSPRole(req *model.CreateCspRoleRequest) (*mod
 						}
 					}
 				}
-				existingRole.Tags = tags
+				newRole.Tags = tags
 			}
-
-			// DB 업데이트
-			if err := r.db.Save(&existingRole).Error; err != nil {
+			if err := r.db.Save(newRole).Error; err != nil {
 				return nil, fmt.Errorf("failed to update CSP role in database: %v", err)
 			}
-
-			return &existingRole, nil
+			return newRole, nil
 		}
+	} else {
+		return nil, fmt.Errorf("role already exists in database")
+	}
+}
+
+// createAwsConfigWithTempCredential 임시 자격 증명으로 AWS 설정을 생성합니다.
+func (r *CspRoleRepository) createAwsConfigWithTempCredential(credential *model.TempCredential) (aws.Config, error) {
+	// AWS SDK v2 설정 생성
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return aws.Config{}, fmt.Errorf("failed to load default AWS config: %v", err)
 	}
 
-	// 최대 시도 횟수를 초과하면 실패로 표시하고 DB 업데이트
-	existingRole.Status = "failed"
-	if err := r.db.Save(&existingRole).Error; err != nil {
-		return nil, fmt.Errorf("failed to update CSP role status to failed: %v", err)
-	}
-	return nil, fmt.Errorf("failed to verify IAM role creation after 5 attempts")
+	// 임시 자격 증명으로 설정 업데이트
+	cfg.Credentials = aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(
+		credential.AccessKeyId,
+		credential.SecretAccessKey,
+		credential.SessionToken,
+	))
+
+	// 리전 설정
+	cfg.Region = credential.Region
+
+	return cfg, nil
 }
 
 // Update AWS IAM Role을 수정합니다.
@@ -546,7 +455,12 @@ func (r *CspRoleRepository) UpdateCSPRole(role *model.CspRole) error {
 		Description: &role.Description,
 	}
 
-	result, err := r.iamClient.UpdateRoleDescription(context.TODO(), input)
+	awsIamClient, err := r.getAwsIamClient("system")
+	if err != nil {
+		return fmt.Errorf("failed to get AWS IAM client: %v", err)
+	}
+
+	result, err := awsIamClient.UpdateRoleDescription(context.TODO(), input)
 	if err != nil {
 		return fmt.Errorf("failed to update IAM role: %v", err)
 	}
@@ -581,7 +495,12 @@ func (r *CspRoleRepository) DeleteCSPRole(id string) error {
 		RoleName: aws.String(role.Name),
 	}
 
-	_, err := r.iamClient.DeleteRole(context.TODO(), input)
+	awsIamClient, err := r.getAwsIamClient("system")
+	if err != nil {
+		return fmt.Errorf("failed to get AWS IAM client: %v", err)
+	}
+
+	_, err = awsIamClient.DeleteRole(context.TODO(), input)
 	if err != nil {
 		return fmt.Errorf("failed to delete IAM role: %v", err)
 	}
@@ -691,11 +610,16 @@ func (r *CspRoleRepository) ExistCspRoleByName(roleName string) (bool, error) {
 
 // ListAttachedRolePolicies 역할에 연결된 관리형 정책 목록 조회
 func (r *CspRoleRepository) ListAttachedRolePolicies(ctx context.Context, roleName string) ([]string, error) {
+	awsIamClient, err := r.getAwsIamClient("system")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get AWS IAM client: %v", err)
+	}
+
 	input := &iam.ListAttachedRolePoliciesInput{
 		RoleName: aws.String(roleName),
 	}
 
-	result, err := r.iamClient.ListAttachedRolePolicies(ctx, input)
+	result, err := awsIamClient.ListAttachedRolePolicies(ctx, input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list attached role policies: %w", err)
 	}
@@ -710,11 +634,16 @@ func (r *CspRoleRepository) ListAttachedRolePolicies(ctx context.Context, roleNa
 
 // ListRolePolicies 역할의 인라인 정책 목록 조회
 func (r *CspRoleRepository) ListRolePolicies(ctx context.Context, roleName string) ([]string, error) {
+	awsIamClient, err := r.getAwsIamClient("system")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get AWS IAM client: %v", err)
+	}
+
 	input := &iam.ListRolePoliciesInput{
 		RoleName: aws.String(roleName),
 	}
 
-	result, err := r.iamClient.ListRolePolicies(ctx, input)
+	result, err := awsIamClient.ListRolePolicies(ctx, input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list role policies: %w", err)
 	}
@@ -724,12 +653,17 @@ func (r *CspRoleRepository) ListRolePolicies(ctx context.Context, roleName strin
 
 // GetRolePolicy 역할의 특정 인라인 정책 조회
 func (r *CspRoleRepository) GetRolePolicy(ctx context.Context, roleName string, policyName string) (*csp.RolePolicy, error) {
+	awsIamClient, err := r.getAwsIamClient("system")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get AWS IAM client: %v", err)
+	}
+
 	input := &iam.GetRolePolicyInput{
 		RoleName:   aws.String(roleName),
 		PolicyName: aws.String(policyName),
 	}
 
-	result, err := r.iamClient.GetRolePolicy(ctx, input)
+	result, err := awsIamClient.GetRolePolicy(ctx, input)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get role policy: %w", err)
 	}
@@ -749,13 +683,18 @@ func (r *CspRoleRepository) PutRolePolicy(ctx context.Context, roleName string, 
 		return fmt.Errorf("failed to marshal policy document: %w", err)
 	}
 
+	awsIamClient, err := r.getAwsIamClient("system")
+	if err != nil {
+		return fmt.Errorf("failed to get AWS IAM client: %v", err)
+	}
+
 	input := &iam.PutRolePolicyInput{
 		RoleName:       aws.String(roleName),
 		PolicyName:     aws.String(policyName),
 		PolicyDocument: aws.String(string(policyDocument)),
 	}
 
-	_, err = r.iamClient.PutRolePolicy(ctx, input)
+	_, err = awsIamClient.PutRolePolicy(ctx, input)
 	if err != nil {
 		return fmt.Errorf("failed to put role policy: %w", err)
 	}
@@ -765,12 +704,17 @@ func (r *CspRoleRepository) PutRolePolicy(ctx context.Context, roleName string, 
 
 // DeleteRolePolicy 역할에서 인라인 정책 삭제
 func (r *CspRoleRepository) DeleteRolePolicy(ctx context.Context, roleName string, policyName string) error {
+	awsIamClient, err := r.getAwsIamClient("system")
+	if err != nil {
+		return fmt.Errorf("failed to get AWS IAM client: %v", err)
+	}
+
 	input := &iam.DeleteRolePolicyInput{
 		RoleName:   aws.String(roleName),
 		PolicyName: aws.String(policyName),
 	}
 
-	_, err := r.iamClient.DeleteRolePolicy(ctx, input)
+	_, err = awsIamClient.DeleteRolePolicy(ctx, input)
 	if err != nil {
 		return fmt.Errorf("failed to delete role policy: %w", err)
 	}
@@ -790,11 +734,16 @@ func (r *CspRoleRepository) ExistsCspRoleByID(id uint) (bool, error) {
 // SyncCspRoleFromCloud 실제 CSP에서 역할 정보를 조회하여 DB를 업데이트합니다.
 func (r *CspRoleRepository) SyncCspRoleFromCloud(roleName string) (*model.CspRole, error) {
 	// AWS IAM에서 역할 정보 조회
+	awsIamClient, err := r.getAwsIamClient("system")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get AWS IAM client: %v", err)
+	}
+
 	getRoleInput := &iam.GetRoleInput{
 		RoleName: aws.String(roleName),
 	}
 
-	getRoleResult, err := r.iamClient.GetRole(context.TODO(), getRoleInput)
+	getRoleResult, err := awsIamClient.GetRole(context.TODO(), getRoleInput)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get role from AWS IAM: %w", err)
 	}
@@ -863,4 +812,21 @@ func (r *CspRoleRepository) SyncCspRoleFromCloud(roleName string) (*model.CspRol
 	}
 
 	return &existingRole, nil
+}
+
+// getAwsIamClient 임시 자격 증명으로 AWS IAM 클라이언트를 생성합니다.
+func (r *CspRoleRepository) getAwsIamClient(issuedBy string) (*iam.Client, error) {
+	// 유효한 임시 자격 증명 조회 (시스템 레벨)
+	credential, err := r.tempCredentialRepo.GetValidCredential("aws", "oidc", "ap-northeast-2", nil, issuedBy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get valid credential: %v", err)
+	}
+
+	// AWS 설정 생성
+	cfg, err := r.createAwsConfigWithTempCredential(credential)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AWS config: %v", err)
+	}
+
+	return iam.NewFromConfig(cfg), nil
 }

@@ -43,6 +43,13 @@ import (
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token.
 func main() {
+	// Load environment variables from .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Printf("Warning: Error loading .env file: %v", err)
+		// .env 파일이 없어도 계속 진행 (환경 변수에서 직접 설정 가능)
+	}
+
 	// 로그 파일 설정
 	logPath := filepath.Join("..", "app.log")
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -96,6 +103,7 @@ func main() {
 		&model.UserPlatformRole{},
 		&model.UserWorkspaceRole{},
 		&model.RoleMasterCspRoleMapping{},
+		&model.TempCredential{},
 		&mcmpapi.McmpApiService{},
 		&mcmpapi.McmpApiAction{},
 	); err != nil {
