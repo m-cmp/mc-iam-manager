@@ -272,17 +272,22 @@ func (r *CspRoleRepository) CreateCspRole(req *model.CreateCspRoleRequest, issue
 func (r *CspRoleRepository) CreateCspRoleWithIamClient(req *model.CreateCspRoleRequest, awsIamClient *iam.Client) (*model.CspRole, error) {
 	idpIdentifier := ""
 	var existingRole model.CspRole
-	cspRoleName := constants.CspRoleNamePrefix + req.CspRoleName
+
+	// roleName이 prefix로 시작하지 않으면 자동으로 prefix를 붙여서 cspRoleName 생성
+	if !strings.HasPrefix(req.CspRoleName, constants.CspRoleNamePrefix) {
+		req.CspRoleName = constants.CspRoleNamePrefix + req.CspRoleName
+	}
+
 	newRole := &model.CspRole{
-		Name:    cspRoleName,
+		Name:    req.CspRoleName,
 		CspType: req.CspType,
 	}
-	if err := r.db.Where("name = ? AND csp_type = ?", cspRoleName, req.CspType).First(&existingRole).Error; err != nil {
+	if err := r.db.Where("name = ? AND csp_type = ?", req.CspRoleName, req.CspType).First(&existingRole).Error; err != nil {
 		if err != gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("이미 존재합니다. 중복 생성 불가: %v", err)
 		}
 		log.Printf("db existing role: %v", existingRole)
-		getRoleInput := &iam.GetRoleInput{RoleName: aws.String(cspRoleName)}
+		getRoleInput := &iam.GetRoleInput{RoleName: aws.String(req.CspRoleName)}
 		var targetCspRole *iam.GetRoleOutput
 		if cspRoleResponse, err := awsIamClient.GetRole(context.TODO(), getRoleInput); err == nil {
 			newRole.Status = "created"
@@ -316,7 +321,7 @@ func (r *CspRoleRepository) CreateCspRoleWithIamClient(req *model.CreateCspRoleR
 				}
 			}
 			input := &iam.CreateRoleInput{
-				RoleName:                 aws.String(cspRoleName),
+				RoleName:                 aws.String(req.CspRoleName),
 				AssumeRolePolicyDocument: aws.String(assumeRolePolicyDocument),
 				Description:              aws.String(newRole.Description),
 			}

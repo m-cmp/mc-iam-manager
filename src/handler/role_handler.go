@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/constants"
@@ -131,6 +132,16 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 	if len(req.CspRoles) > 0 {
 		log.Printf("cspRoles requested: %v", req.CspRoles)
 		for _, cspRole := range req.CspRoles {
+			// TODO: CSPRoleName 로직을 function으로 빼자
+			if cspRole.CspRoleName == "" {
+				cspRoleName := constants.CspRoleNamePrefix + req.Name // roleName 에 prefix를 붙여서 cspRoleName 생성
+				cspRole.CspRoleName = cspRoleName
+			}
+
+			if !strings.HasPrefix(cspRole.CspRoleName, constants.CspRoleNamePrefix) {
+				cspRole.CspRoleName = constants.CspRoleNamePrefix + cspRole.CspRoleName
+			}
+
 			log.Printf("cspRole requested: %v", cspRole)
 			// CSP 역할 생성 또는 업데이트 (매핑도 함께 처리됨)
 			_, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
