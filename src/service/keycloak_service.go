@@ -66,6 +66,8 @@ type KeycloakService interface {
 	IssueWorkspaceTicket(ctx context.Context, kcUserId string, workspaceID uint) (string, map[string]interface{}, error)
 	// 기본 Role 정의
 	SetupPredefinedRoles(ctx context.Context, accessToken string) error
+	// GetClientCredentialsToken 클라이언트 자격 증명으로 토큰을 발급받습니다.
+	GetClientCredentialsToken(ctx context.Context) (*gocloak.JWT, error)
 }
 
 // keycloakService is now stateless, methods directly use config.KC
@@ -245,7 +247,7 @@ func (s *keycloakService) GetRequestingPartyToken(ctx context.Context, accessTok
 
 	// The Audience for RPT is often the resource server (client acting as resource server)
 	if options.Audience == nil {
-		options.Audience = &config.KC.ClientID
+		options.Audience = &config.KC.ClientName
 	}
 
 	// Call the gocloak function to get the RPT
@@ -367,15 +369,15 @@ func (s *keycloakService) CheckRealm(ctx context.Context) (bool, error) {
 	// Check client permissions
 	log.Printf("[DEBUG] Checking client permissions for realm management")
 	clients, err := config.KC.Client.GetClients(ctx, token.AccessToken, config.KC.Realm, gocloak.GetClientsParams{
-		ClientID: &config.KC.ClientID,
+		ClientID: &config.KC.ClientName, // 클라이언트 이름으로 조회
 	})
 	if err != nil {
 		log.Printf("[DEBUG] Failed to get client info: %v", err)
 		return false, fmt.Errorf("failed to get client info: %w", err)
 	}
 	if len(clients) == 0 {
-		log.Printf("[DEBUG] Client '%s' not found", config.KC.ClientID)
-		return false, fmt.Errorf("client '%s' not found", config.KC.ClientID)
+		log.Printf("[DEBUG] Client '%s' not found", config.KC.ClientName)
+		return false, fmt.Errorf("client '%s' not found", config.KC.ClientName)
 	}
 
 	// Log required permissions
@@ -458,12 +460,12 @@ func (s *keycloakService) CheckClient(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("admin login failed, cannot check client: %w", err)
 	}
-	clients, err := config.KC.Client.GetClients(ctx, token.AccessToken, config.KC.Realm, gocloak.GetClientsParams{ClientID: &config.KC.ClientID})
+	clients, err := config.KC.Client.GetClients(ctx, token.AccessToken, config.KC.Realm, gocloak.GetClientsParams{ClientID: &config.KC.ClientName})
 	if err != nil {
-		return false, fmt.Errorf("failed to get client '%s': %w", config.KC.ClientID, err)
+		return false, fmt.Errorf("failed to get client '%s': %w", config.KC.ClientName, err)
 	}
 	if len(clients) == 0 {
-		return false, fmt.Errorf("client '%s' not found", config.KC.ClientID)
+		return false, fmt.Errorf("client '%s' not found", config.KC.ClientName)
 	}
 	return true, nil
 }
@@ -471,19 +473,19 @@ func (s *keycloakService) CheckClient(ctx context.Context) (bool, error) {
 // CheckClient checks if the configured client ID exists within the realm. Requires admin token.
 func (s *keycloakService) ExistClient(ctx context.Context, accessToken string) (bool, error) {
 
-	clients, err := config.KC.Client.GetClients(ctx, accessToken, config.KC.Realm, gocloak.GetClientsParams{ClientID: &config.KC.ClientID})
+	clients, err := config.KC.Client.GetClients(ctx, accessToken, config.KC.Realm, gocloak.GetClientsParams{ClientID: &config.KC.ClientName})
 	if err != nil {
-		return false, fmt.Errorf("failed to get client '%s': %w", config.KC.ClientID, err)
+		return false, fmt.Errorf("failed to get client '%s': %w", config.KC.ClientName, err)
 	}
 	if len(clients) == 0 {
-		return false, fmt.Errorf("client '%s' not found", config.KC.ClientID)
+		return false, fmt.Errorf("client '%s' not found", config.KC.ClientName)
 	}
 	return true, nil
 }
 
 func (s *keycloakService) CreateClient(ctx context.Context, accessToken string) (bool, error) {
 	newClient := gocloak.Client{
-		ClientID:                  gocloak.StringP(config.KC.ClientID),
+		ClientID:                  gocloak.StringP(config.KC.ClientName),
 		Secret:                    gocloak.StringP(config.KC.ClientSecret),
 		Enabled:                   gocloak.BoolP(true),
 		PublicClient:              gocloak.BoolP(false), // 'false'는 confidential client (비밀번호 필요)
@@ -492,7 +494,7 @@ func (s *keycloakService) CreateClient(ctx context.Context, accessToken string) 
 	}
 	clientInfo, err := config.KC.Client.CreateClient(ctx, accessToken, config.KC.Realm, newClient)
 	if err != nil {
-		return false, fmt.Errorf("failed to create client '%s': %w", config.KC.ClientID, err)
+		return false, fmt.Errorf("failed to create client '%s': %w", config.KC.ClientName, err)
 	}
 	log.Printf("[DEBUG] Client '%s' created successfully", clientInfo)
 	return true, nil
@@ -532,11 +534,11 @@ func (s *keycloakService) Login(ctx context.Context, username, password string) 
 	log.Printf("[DEBUG] Keycloak Login Configuration:")
 	log.Printf("[DEBUG] - Host: %s", config.KC.Host)
 	log.Printf("[DEBUG] - Realm: %s", config.KC.Realm)
-	log.Printf("[DEBUG] - ClientID: %s", config.KC.ClientID)
+	log.Printf("[DEBUG] - ClientID: %s", config.KC.ClientName)
 	log.Printf("[DEBUG] - ClientSecret: %s", config.KC.ClientSecret)
 	log.Printf("[DEBUG] - Username: %s", username)
 
-	token, err := config.KC.Client.Login(ctx, config.KC.ClientID, config.KC.ClientSecret, config.KC.Realm, username, password)
+	token, err := config.KC.Client.Login(ctx, config.KC.ClientName, config.KC.ClientSecret, config.KC.Realm, username, password)
 	if err != nil {
 		// Consider more specific error handling for invalid credentials vs other errors
 		return nil, fmt.Errorf("keycloak login failed: %w", err)
@@ -565,7 +567,7 @@ func (s *keycloakService) RefreshToken(ctx context.Context, refreshToken string)
 	if config.KC == nil || config.KC.Client == nil {
 		return nil, fmt.Errorf("keycloak configuration not initialized")
 	}
-	newToken, err := config.KC.Client.RefreshToken(ctx, refreshToken, config.KC.ClientID, config.KC.ClientSecret, config.KC.Realm)
+	newToken, err := config.KC.Client.RefreshToken(ctx, refreshToken, config.KC.ClientName, config.KC.ClientSecret, config.KC.Realm)
 	if err != nil {
 		return nil, fmt.Errorf("keycloak token refresh failed: %w", err)
 	}
@@ -863,7 +865,7 @@ func (s *keycloakService) CheckUserRoles(ctx context.Context, username string) e
 	// Admin 로그인
 	log.Printf("[DEBUG] === Keycloak 설정 정보 ===")
 	log.Printf("[DEBUG] Realm: %s", config.KC.Realm)
-	log.Printf("[DEBUG] ClientID: %s", config.KC.ClientID)
+	log.Printf("[DEBUG] ClientName: %s", config.KC.ClientName)
 	log.Printf("[DEBUG] Host: %s", config.KC.Host)
 	log.Printf("[DEBUG] ======================")
 
@@ -921,15 +923,15 @@ func (s *keycloakService) CheckUserRoles(ctx context.Context, username string) e
 
 	// 클라이언트 정보 가져오기
 	clients, err := config.KC.Client.GetClients(ctx, adminToken.AccessToken, config.KC.Realm, gocloak.GetClientsParams{
-		ClientID: &config.KC.ClientID,
+		ClientID: &config.KC.ClientName,
 	})
 	if err != nil {
 		log.Printf("[DEBUG] 클라이언트 목록 조회 실패: %v", err)
 		return fmt.Errorf("클라이언트 정보 조회 실패: %w", err)
 	}
 	if len(clients) == 0 {
-		log.Printf("[DEBUG] 클라이언트를 찾을 수 없음: %s", config.KC.ClientID)
-		return fmt.Errorf("클라이언트를 찾을 수 없습니다: %s", config.KC.ClientID)
+		log.Printf("[DEBUG] 클라이언트를 찾을 수 없음: %s", config.KC.ClientName)
+		return fmt.Errorf("클라이언트를 찾을 수 없습니다: %s", config.KC.ClientName)
 	}
 	clientID := *clients[0].ID
 	log.Printf("[DEBUG] 클라이언트 ID: %s", clientID)
@@ -981,7 +983,7 @@ func (s *keycloakService) GetUserPermissions(ctx context.Context, roles []string
 
 	// Get client ID
 	clients, err := config.KC.Client.GetClients(ctx, token.AccessToken, config.KC.Realm, gocloak.GetClientsParams{
-		ClientID: &config.KC.ClientID,
+		ClientID: &config.KC.ClientName,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get client: %w", err)
@@ -1095,7 +1097,21 @@ func (s *keycloakService) GetImpersonationTokenByAdminToken(ctx context.Context,
 	// if targetClientID != "" {
 	// 	body["client_id"] = targetClientID
 	// }
-	body["client_id"] = "4d379bce-e16a-49a5-bb82-7b5d8ee9bd8d" //"mciam-oidc-client-demp3"
+
+	// 환경 변수에서 OIDC 클라이언트 ID 가져오기
+	log.Printf("[DEBUG] Attempting to get KEYCLOAK_OIDC_CLIENT_ID from environment")
+	oidcClientID := os.Getenv("KEYCLOAK_OIDC_CLIENT_ID")
+	log.Printf("[DEBUG] KEYCLOAK_OIDC_CLIENT_ID value: '%s'", oidcClientID)
+	if oidcClientID == "" {
+		log.Printf("[DEBUG] KEYCLOAK_OIDC_CLIENT_ID is empty, checking alternative environment variables")
+		// 대안 환경 변수들 확인
+		alt1 := os.Getenv("KEYCLOAK_OIDC_CLIENT_NAME")
+		log.Printf("[DEBUG] KEYCLOAK_OIDC_CLIENT_NAME value: '%s'", alt1)
+		alt2 := os.Getenv("KEYCLOAK_CLIENT_NAME")
+		log.Printf("[DEBUG] KEYCLOAK_CLIENT_NAME value: '%s'", alt2)
+		return "", fmt.Errorf("KEYCLOAK_OIDC_CLIENT_ID environment variable is not set")
+	}
+	body["client_id"] = oidcClientID // 하드코딩된 값 대신 환경 변수 사용
 	jsonBody, _ := json.Marshal(body)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonBody))
@@ -1285,4 +1301,35 @@ func (s *keycloakService) GetCerts(ctx context.Context) (*gocloak.CertResponse, 
 		return nil, err
 	}
 	return cert, nil
+}
+
+// GetClientCredentialsToken 클라이언트 자격 증명으로 토큰을 발급받습니다.
+func (s *keycloakService) GetClientCredentialsToken(ctx context.Context) (*gocloak.JWT, error) {
+	if config.KC == nil || config.KC.Client == nil {
+		return nil, fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	// Get client credentials
+	realm := config.KC.Realm
+	oidcClientID := config.KC.OIDCClientID
+	oidcClientName := config.KC.OIDCClientName
+	oidcClientSecret := config.KC.OIDCClientSecret
+
+	if oidcClientID == "" || oidcClientSecret == "" {
+		return nil, fmt.Errorf("OIDC client ID or secret not configured in KeycloakConfig")
+	}
+
+	log.Printf("[DEBUG] Impersonation realm: %s", realm)
+	log.Printf("[DEBUG] Impersonation clientID: %s", oidcClientID)
+	log.Printf("[DEBUG] Impersonation clientName: %s", oidcClientName)
+	log.Printf("[DEBUG] Impersonation clientSecret: %s", oidcClientSecret)
+
+	// Login with client credentials
+	token, err := config.KC.Client.LoginClient(ctx, oidcClientName, oidcClientSecret, realm)
+	if err != nil {
+		log.Printf("[DEBUG] KC.Client.LoginClient failed : %s", err)
+		return nil, fmt.Errorf("failed to login with client credentials: %w", err)
+	}
+	//log.Printf("[DEBUG] client credentials token: %s", token)
+	return token, nil
 }

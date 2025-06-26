@@ -24,8 +24,10 @@ type KeycloakConfig struct {
 	tokenExpiry time.Time
 	tokenMutex  sync.RWMutex
 
+	ClientName       string
 	ClientID         string
 	ClientSecret     string
+	OIDCClientName   string
 	OIDCClientID     string
 	OIDCClientSecret string
 }
@@ -46,16 +48,30 @@ func InitKeycloak() error {
 	}
 	fmt.Printf("KEYCLOAK_REALM: %s\n", realm)
 
-	clientID := os.Getenv("KEYCLOAK_CLIENT")
-	if clientID == "" {
-		return fmt.Errorf("KEYCLOAK_CLIENT is not set")
+	clientName := os.Getenv("KEYCLOAK_CLIENT_NAME")
+	if clientName == "" {
+		return fmt.Errorf("KEYCLOAK_CLIENT_NAME is not set")
 	}
-	fmt.Printf("KEYCLOAK_CLIENT: %s\n", clientID)
-	oidcClientID := os.Getenv("KEYCLOAK_OIDC_CLIENT")
+	fmt.Printf("KEYCLOAK_CLIENT_NAME: %s\n", clientName)
+
+	// clientID := os.Getenv("KEYCLOAK_CLIENT_ID")
+	// if clientID == "" {
+	// 	return fmt.Errorf("KEYCLOAK_CLIENT_ID is not set")
+	// }
+	// fmt.Printf("KEYCLOAK_CLIENT_ID: %s\n", clientID)
+
+	oidcClientID := os.Getenv("KEYCLOAK_OIDC_CLIENT_ID")
 	if oidcClientID == "" {
-		return fmt.Errorf("KEYCLOAK_OIDC_CLIENT is not set")
+		return fmt.Errorf("KEYCLOAK_OIDC_CLIENT_ID is not set")
 	}
-	fmt.Printf("KEYCLOAK_OIDC_CLIENT: %s\n", oidcClientID)
+	fmt.Printf("KEYCLOAK_OIDC_CLIENT_ID: %s\n", oidcClientID)
+
+	oidcClientName := os.Getenv("KEYCLOAK_OIDC_CLIENT_NAME")
+	if oidcClientName == "" {
+		return fmt.Errorf("KEYCLOAK_OIDC_CLIENT_NAME is not set")
+	}
+	fmt.Printf("KEYCLOAK_OIDC_CLIENT_NAME: %s\n", oidcClientName)
+
 	clientSecret := os.Getenv("KEYCLOAK_CLIENT_SECRET")
 	if clientSecret == "" {
 		return fmt.Errorf("KEYCLOAK_CLIENT_SECRET is not set")
@@ -77,12 +93,14 @@ func InitKeycloak() error {
 	client := gocloak.NewClient(host)
 
 	KC = &KeycloakConfig{
-		Realm:            realm,
-		Host:             host,
-		Client:           client,
-		ClientID:         clientID,
+		Realm:      realm,
+		Host:       host,
+		Client:     client,
+		ClientName: clientName,
+		// ClientID:         clientID,
 		ClientSecret:     clientSecret,
 		OIDCClientID:     oidcClientID,
+		OIDCClientName:   oidcClientName,
 		OIDCClientSecret: oidcClientSecret,
 	}
 
@@ -98,7 +116,7 @@ func InitKeycloak() error {
 
 // GetToken gets a new token from Keycloak
 func (kc *KeycloakConfig) GetToken(ctx context.Context) (*gocloak.JWT, error) {
-	token, err := kc.Client.LoginClient(ctx, kc.ClientID, kc.ClientSecret, kc.Realm)
+	token, err := kc.Client.LoginClient(ctx, kc.ClientName, kc.ClientSecret, kc.Realm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token: %v", err)
 	}
@@ -107,7 +125,7 @@ func (kc *KeycloakConfig) GetToken(ctx context.Context) (*gocloak.JWT, error) {
 
 // ValidateToken validates the given token
 func (kc *KeycloakConfig) ValidateToken(ctx context.Context, accessToken string) (*gocloak.IntroSpectTokenResult, error) {
-	result, err := kc.Client.RetrospectToken(ctx, accessToken, kc.ClientID, kc.ClientSecret, kc.Realm)
+	result, err := kc.Client.RetrospectToken(ctx, accessToken, kc.ClientName, kc.ClientSecret, kc.Realm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate token: %v", err)
 	}

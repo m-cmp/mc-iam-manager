@@ -4,29 +4,34 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
+	"os"
+	"time"
 
-	"github.com/m-cmp/mc-iam-manager/constants"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/m-cmp/mc-iam-manager/csp"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gorm.io/gorm"
 )
 
+// CspRoleService CSP 역할 서비스
 type CspRoleService struct {
-	db          *gorm.DB
-	cspRoleRepo *repository.CspRoleRepository
-	roleService *RoleService
+	db                 *gorm.DB
+	cspRoleRepo        *repository.CspRoleRepository
+	tempCredentialRepo *repository.TempCredentialRepository
+	keycloakService    KeycloakService
 }
 
-func NewCspRoleService(db *gorm.DB) *CspRoleService {
-	cspRoleRepo := repository.NewCspRoleRepository(db)
-	roleService := NewRoleService(db)
-
+// NewCspRoleService 새 CspRoleService 인스턴스 생성
+func NewCspRoleService(db *gorm.DB, keycloakService KeycloakService) *CspRoleService {
 	return &CspRoleService{
-		cspRoleRepo: cspRoleRepo,
-		roleService: roleService,
-		db:          db,
+		cspRoleRepo:        repository.NewCspRoleRepository(db),
+		tempCredentialRepo: repository.NewTempCredentialRepository(db),
+		keycloakService:    keycloakService,
 	}
 }
 
@@ -52,144 +57,136 @@ func (s *CspRoleService) GetMciamCSPRoles(ctx context.Context, cspType string) (
 	return roles, nil
 }
 
-// CreateCSPRole CSP 역할을 생성하고 RoleMaster와 매핑합니다.
-func (s *CspRoleService) CreateCSPRole(req *model.CreateCspRoleRequest) (*model.CspRole, error) {
-	// 1. RoleMaster와 RoleSub 처리 (먼저 처리)
-	roleMasterID, err := s.handleRoleMasterAndSub(req)
+// CreateCspRole CSP 역할을 생성합니다.
+func (s *CspRoleService) CreateCspRole(req *model.CreateCspRoleRequest) (*model.CspRole, error) {
+	// 1. 유효한 임시 자격 증명이 있는지 확인하고, 없으면 새로 생성
+	issuedBy := "system" // cspRole 생성은 system만 한다.
+	credential, err := s.tempCredentialRepo.GetOrCreateValidCredential("aws", "oidc", "ap-northeast-2", nil, issuedBy, func() (*model.TempCredential, error) {
+		return s.createNewAwsCredential(issuedBy)
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to handle role master and sub: %w", err)
+		return nil, fmt.Errorf("failed to get or create valid credential: %v", err)
 	}
 
-	// 2. CSP 역할 처리 (독립적으로 처리)
-	cspRole, err := s.handleCspRole(req)
+	// 2. 임시 자격 증명으로 AWS IAM 클라이언트 생성
+	awsCfg, err := s.createAwsConfigWithTempCredential(credential)
 	if err != nil {
-		return nil, fmt.Errorf("failed to handle CSP role: %w", err)
+		return nil, fmt.Errorf("failed to create AWS config with temp credential: %v", err)
 	}
+	iamClient := iam.NewFromConfig(awsCfg)
 
-	// 3. RoleMaster와 CSP Role 매핑
-	err = s.createCspRoleMapping(roleMasterID, cspRole.ID, req.Description)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create role mapping: %w", err)
-	}
-
-	return cspRole, nil
+	// 3. CspRoleRepository의 내부 메서드 호출 (임시 자격 증명 관리 로직 제거)
+	return s.cspRoleRepo.CreateCspRoleWithIamClient(req, iamClient)
 }
 
-// handleCspRole CSP 역할을 처리합니다.
-// 1-1. CSP 역할이 있으면 대상 CSP에서 역할 조회하여 정보를 CspRole 테이블에 저장
-// 1-2. CSP 역할이 없으면 대상 CSP에 역할을 추가하고 5초간 대기한 후 조회해서 정보를 저장
-func (s *CspRoleService) handleCspRole(req *model.CreateCspRoleRequest) (*model.CspRole, error) {
-	// CSP 역할 존재 여부 확인 (DB에서)
-	cspRoleName := constants.CspRoleNamePrefix + req.RoleName
-	exists, err := s.ExistCspRoleByName(cspRoleName)
+// createNewAwsCredential 새로운 AWS 임시 자격 증명을 생성합니다.
+func (s *CspRoleService) createNewAwsCredential(issuedBy string) (*model.TempCredential, error) {
+	// Keycloak에서 OIDC 토큰 획득
+	token, err := s.keycloakService.GetClientCredentialsToken(context.TODO())
 	if err != nil {
-		return nil, fmt.Errorf("failed to check existing CSP role: %w", err)
+		return nil, fmt.Errorf("failed to get Keycloak token: %v", err)
 	}
 
-	if exists {
-		// 1-1. CSP 역할이 있으면 대상 CSP에서 역할 조회하여 정보를 CspRole 테이블에 저장
-		existingCspRole, err := s.cspRoleRepo.GetRoleByName(cspRoleName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get existing CSP role: %w", err)
-		}
+	// AWS STS AssumeRoleWithWebIdentity 호출
+	stsClient := sts.NewFromConfig(aws.Config{
+		Region: "ap-northeast-2",
+	})
 
-		// 실제 CSP에서 최신 정보를 조회하여 업데이트
-		updatedCspRole, err := s.syncCspRoleFromCloud(existingCspRole)
-		if err != nil {
-			log.Printf("Warning: failed to sync CSP role from cloud: %v", err)
-			// 동기화 실패해도 기존 정보로 계속 진행
-			return existingCspRole, nil
-		}
-
-		log.Printf("CSP role already exists and synced: %s (ID: %d)", req.RoleName, updatedCspRole.ID)
-		return updatedCspRole, nil
-	} else {
-		// 1-2. CSP 역할이 없으면 대상 CSP에 역할을 추가하고 5초간 대기한 후 조회해서 정보를 저장
-		cspRole, err := s.cspRoleRepo.CreateCSPRole(req)
-		if err != nil {
-			log.Printf("role requested: %v", req)
-			log.Printf("Failed to create CSP role: %v", err)
-			return nil, err
-		}
-		return cspRole, nil
+	// AWS Identity Provider ARN (환경 변수에서 가져오기)
+	identityProviderArn := os.Getenv("IDENTITY_PROVIDER_ARN_AWS")
+	if identityProviderArn == "" {
+		return nil, fmt.Errorf("IDENTITY_PROVIDER_ARN_AWS environment variable is not set")
 	}
+
+	// Role ARN (환경 변수에서 가져오기)
+	roleArn := os.Getenv("IDENTITY_ROLE_ARN_AWS")
+	if roleArn == "" {
+		return nil, fmt.Errorf("IDENTITY_ROLE_ARN_AWS environment variable is not set")
+	}
+
+	// AssumeRoleWithWebIdentity 호출
+	input := &sts.AssumeRoleWithWebIdentityInput{
+		RoleArn:          aws.String(roleArn),
+		RoleSessionName:  aws.String("mcmp-iam-manager-session"),
+		WebIdentityToken: aws.String(token.AccessToken),
+	}
+
+	result, err := stsClient.AssumeRoleWithWebIdentity(context.TODO(), input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to assume role with web identity: %v", err)
+	}
+
+	// 임시 자격 증명 모델 생성
+	credential := &model.TempCredential{
+		Provider:        "aws",
+		AuthType:        "oidc",
+		AccessKeyId:     *result.Credentials.AccessKeyId,
+		SecretAccessKey: *result.Credentials.SecretAccessKey,
+		SessionToken:    *result.Credentials.SessionToken,
+		Region:          "ap-northeast-2",
+		IssuedAt:        time.Now(),
+		ExpiresAt:       *result.Credentials.Expiration,
+		IsActive:        true,
+		IssuedBy:        issuedBy,
+	}
+
+	return credential, nil
 }
 
-// syncCspRoleFromCloud 실제 CSP에서 역할 정보를 조회하여 DB를 업데이트합니다.
-func (s *CspRoleService) syncCspRoleFromCloud(cspRole *model.CspRole) (*model.CspRole, error) {
-	// repository를 통해 실제 CSP에서 최신 역할 정보 조회 및 DB 업데이트
-	updatedRole, err := s.cspRoleRepo.SyncCspRoleFromCloud(cspRole.Name)
+// createAwsConfigWithTempCredential 임시 자격 증명으로 AWS 설정을 생성합니다.
+func (s *CspRoleService) createAwsConfigWithTempCredential(credential *model.TempCredential) (aws.Config, error) {
+	// AWS SDK v2 설정 생성
+	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		return nil, fmt.Errorf("failed to sync CSP role from cloud: %w", err)
+		return aws.Config{}, fmt.Errorf("failed to load default AWS config: %v", err)
 	}
 
-	return updatedRole, nil
+	// 임시 자격 증명으로 설정 업데이트
+	cfg.Credentials = aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(
+		credential.AccessKeyId,
+		credential.SecretAccessKey,
+		credential.SessionToken,
+	))
+
+	// 리전 설정
+	cfg.Region = credential.Region
+
+	return cfg, nil
 }
 
-// handleRoleMasterAndSub RoleMaster와 RoleSub를 처리합니다.
-// 2-1. 없는 경우에는 RoleMaster와 RoleSub에 저장하고 해당 RoleMaster.ID를 보관
-// 2-2. RoleMaster에만 있고 RoleSub에 없는 경우 RoleSub에 추가하고 RoleMaster.ID를 보관
-// 2-3. RoleMaster, RoleSub에 모두 있으면 RoleMaster.ID를 보관
-func (s *CspRoleService) handleRoleMasterAndSub(req *model.CreateCspRoleRequest) (uint, error) {
-	// RoleMaster 존재 여부 확인
-	roleExists, err := s.roleService.ExistRoleByName(req.RoleName, constants.RoleTypeCSP)
-	if err != nil {
-		return 0, fmt.Errorf("failed to check existing role: %w", err)
-	}
-
-	if roleExists {
-		// 기존 역할이 있는 경우 해당 ID 조회
-		existingRole, err := s.roleService.GetRoleByName(req.RoleName, constants.RoleTypeCSP)
-		if err != nil {
-			return 0, fmt.Errorf("failed to get existing role: %w", err)
-		}
-		return existingRole.ID, nil
-	} else {
-		// 2-1. RoleMaster와 RoleSub가 없는 경우 새로 생성
-		roleMaster := model.RoleMaster{
-			Name:        req.RoleName,
-			Description: req.Description,
-			Predefined:  false, // CSP 역할은 기본적으로 predefined가 false
-		}
-
-		roleSubs := []model.RoleSub{
-			{
-				RoleType: constants.RoleTypeCSP, // CSP 역할은 항상 "csp" 타입
-			},
-		}
-
-		// RoleMaster와 RoleSubs 함께 생성
-		createdRole, err := s.roleService.CreateRoleWithSubs(&roleMaster, roleSubs)
-		if err != nil {
-			return 0, fmt.Errorf("역할 서브 타입 생성 실패: %w", err)
-		}
-		return createdRole.ID, nil
-	}
+// GetCspRoles CSP 역할 목록을 조회합니다.
+func (s *CspRoleService) GetCspRoles(cspType string) ([]*model.CspRole, error) {
+	return s.cspRoleRepo.FindMciamRoleFromCsp(cspType)
 }
 
-// createRoleMapping RoleMaster와 CSP Role 매핑을 생성합니다.
-// 중복 체크 후 저장하고, 이미 있는 경우는 로그만 남깁니다.
-func (s *CspRoleService) createCspRoleMapping(roleMasterID uint, cspRoleID uint, description string) error {
-	// 매핑 요청 객체 생성
-	mappingReq := &model.CreateRoleMasterCspRoleMappingRequest{
-		RoleID:      fmt.Sprintf("%d", roleMasterID),
-		CspRoleID:   fmt.Sprintf("%d", cspRoleID),
-		AuthMethod:  constants.AuthMethodOIDC,
-		Description: description,
-	}
+// GetCspRoleByID ID로 CSP 역할을 조회합니다.
+func (s *CspRoleService) GetCspRoleByID(id uint) (*model.CspRole, error) {
+	return s.cspRoleRepo.GetRoleByID(id)
+}
 
-	// repository를 통해 매핑 생성 (중복 체크 포함)
-	err := s.roleService.CreateRoleCspRoleMapping(mappingReq)
+// UpdateCspRole CSP 역할을 수정합니다.
+func (s *CspRoleService) UpdateCspRole(id uint, req *model.CreateCspRoleRequest) error {
+	// ID로 기존 역할 조회
+	existingRole, err := s.cspRoleRepo.GetRoleByID(id)
 	if err != nil {
-		// 중복 에러인 경우 로그만 남기고 계속 진행
-		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "already exists") {
-			log.Printf("Role mapping already exists for role_id=%d, csp_role_id=%d", roleMasterID, cspRoleID)
-			return nil
-		}
-		return fmt.Errorf("failed to create role mapping: %w", err)
+		return fmt.Errorf("failed to get existing role: %v", err)
 	}
 
-	return nil
+	// 요청 데이터로 업데이트
+	existingRole.Name = req.CspRoleName
+	existingRole.Description = req.Description
+
+	return s.cspRoleRepo.UpdateCSPRole(existingRole)
+}
+
+// DeleteCspRole CSP 역할을 삭제합니다.
+func (s *CspRoleService) DeleteCspRole(id uint) error {
+	return s.cspRoleRepo.DeleteCSPRole(fmt.Sprintf("%d", id))
+}
+
+// CleanupExpiredCredentials 만료된 임시 자격 증명을 정리합니다.
+func (s *CspRoleService) CleanupExpiredCredentials() error {
+	return s.tempCredentialRepo.DeleteExpiredCredentials()
 }
 
 // UpdateCSPRole CSP 역할 정보를 수정합니다.
@@ -301,12 +298,12 @@ func (s *CspRoleService) CreateOrUpdateCspRole(req *model.CreateCspRoleRequest) 
 		// 	req.IamIdentifier = iamIdentifier
 		// }
 
-		return s.CreateCSPRole(req)
+		return s.CreateCspRole(req)
 	} else {
 		// ID가 있으면 업데이트
 		cspRole := &model.CspRole{
 			ID:            req.ID,
-			Name:          req.RoleName,
+			Name:          req.CspRoleName,
 			Description:   req.Description,
 			CspType:       req.CspType,
 			IdpIdentifier: req.IdpIdentifier,
@@ -328,9 +325,9 @@ func (s *CspRoleService) CreateCspRoles(req *model.CreateCspRolesRequest) ([]*mo
 	var createdRoles []*model.CspRole
 
 	for _, cspRoleReq := range req.CspRoles {
-		createdRole, err := s.CreateCSPRole(&cspRoleReq)
+		createdRole, err := s.CreateCspRole(&cspRoleReq)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create CSP role '%s': %w", cspRoleReq.RoleName, err)
+			return nil, fmt.Errorf("failed to create CSP role '%s': %w", cspRoleReq.CspRoleName, err)
 		}
 		createdRoles = append(createdRoles, createdRole)
 	}
