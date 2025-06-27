@@ -7,12 +7,12 @@ import (
 // Menu 메뉴 정보를 나타내는 구조체 (DB 테이블: mcmp_menu)
 type Menu struct {
 	ID          string    `json:"id" yaml:"id" gorm:"primaryKey;column:id"`
-	ParentID    string    `json:"parent_id,omitempty" yaml:"parentid" gorm:"column:parent_id"`
-	DisplayName string    `json:"display_name" yaml:"displayname" gorm:"column:display_name;not null"`
-	ResType     string    `json:"res_type" yaml:"restype" gorm:"column:res_type;not null"`
-	IsAction    bool      `json:"is_action" yaml:"isaction" gorm:"column:is_action;default:false"`
+	ParentID    string    `json:"parentId,omitempty" yaml:"parentid" gorm:"column:parent_id"`
+	DisplayName string    `json:"displayName" yaml:"displayname" gorm:"column:display_name;not null"`
+	ResType     string    `json:"resType" yaml:"restype" gorm:"column:res_type;not null"`
+	IsAction    bool      `json:"isAction" yaml:"isaction" gorm:"column:is_action;default:false"`
 	Priority    uint      `json:"priority" yaml:"priority" gorm:"column:priority;not null"`
-	MenuNumber  uint      `json:"menu_number" yaml:"menunumber" gorm:"column:menu_number;not null"`
+	MenuNumber  uint      `json:"menuNumber" yaml:"menunumber" gorm:"column:menu_number;not null"`
 	CreatedAt   time.Time `json:"-" yaml:"-" gorm:"column:created_at;autoCreateTime"` // GORM이 자동 처리
 	UpdatedAt   time.Time `json:"-" yaml:"-" gorm:"column:updated_at;autoUpdateTime"` // GORM이 자동 처리
 }
@@ -45,16 +45,4 @@ type RoleMenuMapping struct {
 // TableName 테이블 이름 지정
 func (RoleMenuMapping) TableName() string {
 	return "mcmp_role_menu_mappings"
-}
-
-// MenuMapping 메뉴 매핑 구조체
-type MenuMapping struct {
-	MenuID    string    `json:"menuId" gorm:"column:menu_id"`
-	RoleID    uint      `json:"roleId" gorm:"column:role_id"`
-	CreatedAt time.Time `json:"createdAt" gorm:"column:created_at;autoCreateTime"`
-}
-
-// TableName MenuMapping의 테이블 이름을 지정합니다
-func (MenuMapping) TableName() string {
-	return "mcmp_menu_mappings"
 }

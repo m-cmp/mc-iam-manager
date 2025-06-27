@@ -315,3 +315,37 @@ func (h *AdminHandler) DeletePlatformRole(c echo.Context) error {
 	// Implementation of DeletePlatformRole method
 	return nil // Placeholder return, actual implementation needed
 }
+
+// InitializeMenuPermissions godoc
+// @Summary Initialize menu permissions from CSV
+// @Description CSV 파일을 읽어서 메뉴 권한을 초기화합니다
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param filePath query string false "CSV file path (optional, uses default if not provided)"
+// @Success 200 {object} model.Response
+// @Failure 400 {object} model.Response
+// @Failure 500 {object} model.Response
+// @Security BearerAuth
+// @Router /setup/initial-role-menu-permission [get]
+// @OperationId initializeMenuPermissions
+func (h *AdminHandler) InitializeMenuPermissions(c echo.Context) error {
+	filePath := c.QueryParam("filePath")
+
+	log.Printf("[INFO] Initializing menu permissions from CSV file: %s", filePath)
+
+	err := h.menuService.InitializeMenuPermissionsFromCSV(filePath)
+	if err != nil {
+		log.Printf("[ERROR] Initialize Menu Permissions failed: %v", err)
+		return c.JSON(http.StatusInternalServerError, model.Response{
+			Error:   true,
+			Message: fmt.Sprintf("Failed to initialize menu permissions: %v", err),
+		})
+	}
+
+	log.Printf("[INFO] Menu permissions initialized successfully")
+	return c.JSON(http.StatusOK, model.Response{
+		Error:   false,
+		Message: "Menu permissions initialized successfully",
+	})
+}

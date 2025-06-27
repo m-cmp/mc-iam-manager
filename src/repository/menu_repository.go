@@ -29,7 +29,6 @@ func NewMenuRepository(db *gorm.DB) *MenuRepository {
 	err := db.AutoMigrate(
 		&model.Menu{},
 		&model.RoleMenuMapping{},
-		&model.MenuMapping{},
 		&model.MciamPermission{},
 		&model.MciamRoleMciamPermission{},
 		&model.ResourceType{},
@@ -271,11 +270,6 @@ func (r *MenuRepository) FindMappedMenusByRole(roleID uint) ([]string, error) {
 	return menuIDs, err
 }
 
-// CreateMenuMapping 메뉴 매핑을 생성합니다 (여러 건 동시 저장 가능)
-func (r *MenuRepository) CreateMenuMappings(mappings []*model.MenuMapping) error {
-	return r.db.Create(mappings).Error
-}
-
 // FindAll 메뉴를 필터링하여 조회
 func (r *MenuRepository) FindAll(req *model.MenuFilterRequest) ([]*model.Menu, error) {
 	var menus []*model.Menu
@@ -298,4 +292,10 @@ func (r *MenuRepository) FindAll(req *model.MenuFilterRequest) ([]*model.Menu, e
 // CreateRoleMenuMappings 역할-메뉴 매핑을 생성합니다
 func (r *MenuRepository) CreateRoleMenuMappings(mappings []*model.RoleMenuMapping) error {
 	return r.db.Create(mappings).Error
+}
+
+// DeleteMapping 역할-메뉴 매핑 삭제
+func (r *MenuRepository) DeleteRoleMenuMapping(mappings []*model.RoleMenuMapping) error {
+	query := r.db.Delete(mappings)
+	return query.Error
 }

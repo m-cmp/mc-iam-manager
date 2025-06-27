@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/m-cmp/mc-iam-manager/constants"
 )
 
@@ -118,4 +122,40 @@ func GetAfterDelimiter(s, delimiter string) string {
 		return after
 	}
 	return s // 구분자가 없으면 원본 문자열 반환
+}
+
+// LoadEnvFiles loads .env files from multiple locations for compatibility
+// between local development and Docker environments
+func LoadEnvFiles() {
+	// Try loading from parent directory (for local development from src/)
+	envPath := filepath.Join("..", ".env")
+	if err := godotenv.Load(envPath); err != nil {
+		log.Printf("Warning: .env 파일을 상위 디렉토리에서 로드하는데 실패했습니다: %v", err)
+	}
+
+	// Try loading from current directory (for Docker compatibility)
+	if err := godotenv.Load(".env"); err != nil {
+		log.Printf("Warning: .env 파일을 현재 디렉토리에서 로드하는데 실패했습니다: %v", err)
+	}
+
+	// Try loading from root directory (for Docker when .env is copied to /)
+	if err := godotenv.Load("/.env"); err != nil {
+		log.Printf("Warning: .env 파일을 루트 디렉토리에서 로드하는데 실패했습니다: %v", err)
+	}
+}
+
+// GetAssetPath returns the appropriate asset path based on the execution environment
+func GetAssetPath() string {
+	// Check if we're running in Docker (current directory has asset folder)
+	if _, err := os.Stat("asset"); err == nil {
+		return "asset"
+	}
+
+	// Check if we're running from src directory (parent directory has asset folder)
+	if _, err := os.Stat("../asset"); err == nil {
+		return "../asset"
+	}
+
+	// Default fallback
+	return "asset"
 }
