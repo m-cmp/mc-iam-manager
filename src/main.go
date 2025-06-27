@@ -19,6 +19,7 @@ import (
 	"github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/handler"
 	"github.com/m-cmp/mc-iam-manager/middleware"
+	"github.com/m-cmp/mc-iam-manager/util"
 
 	// "github.com/m-cmp/mc-iam-manager/repository" // Removed unused import
 
@@ -67,10 +68,7 @@ func main() {
 	log.Printf("=== Application Starting ===")
 
 	// .env 파일 로드 (프로젝트 루트에서 찾도록 수정)
-	envPath := filepath.Join("..", ".env")
-	if err := godotenv.Load(envPath); err != nil {
-		log.Printf("Warning: .env 파일을 로드하는데 실패했습니다: %v", err)
-	}
+	util.LoadEnvFiles()
 
 	// 데이터베이스 초기화
 	dbConfig := config.NewDatabaseConfig()
@@ -207,6 +205,7 @@ func main() {
 		setup.POST("/sync-mcmp-apis", mcmpApiHandler.SyncMcmpAPIs)
 		setup.POST("/initial-menu", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
 		setup.POST("/initial-menu2", menuHandler.RegisterMenusFromBody, middleware.PlatformAdminMiddleware)
+		setup.GET("/initial-role-menu-permission", adminHandler.InitializeMenuPermissions, middleware.PlatformAdminMiddleware)
 	}
 
 	// 워크스페이스 라우트

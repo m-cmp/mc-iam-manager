@@ -28,23 +28,6 @@ func (r *MenuMappingRepository) GetMappedMenuIDs(roleID uint) ([]string, error) 
 	return menuIDs, nil
 }
 
-// CreateMapping 역할-메뉴 매핑 생성
-func (r *MenuMappingRepository) CreateMapping(roleID uint, menuID string) error {
-	mapping := model.RoleMenuMapping{
-		RoleID: roleID,
-		MenuID: menuID,
-	}
-	query := r.db.Create(&mapping)
-	return query.Error
-}
-
-// DeleteMapping 역할-메뉴 매핑 삭제
-func (r *MenuMappingRepository) DeleteMapping(roleID uint, menuID string) error {
-	query := r.db.Where("role_id = ? AND menu_id = ?", roleID, menuID).
-		Delete(&model.RoleMenuMapping{})
-	return query.Error
-}
-
 // FindMappedMenusWithParents 역할에 매핑된 메뉴와 그 상위 메뉴들을 포함한 메뉴 트리 조회
 func (r *MenuMappingRepository) FindMappedMenusWithParents(req *model.MenuMappingFilterRequest) ([]*model.Menu, error) {
 	var menus []*model.Menu

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io" // Ensure io package is imported
 	"net/http"
-	"strconv"
 	"time"
 
 	// "strings" // Removed unused import
@@ -401,19 +400,48 @@ func (h *MenuHandler) CreateMenu(c echo.Context) error {
 // @OperationId updateMenu
 func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 	id := c.Param("menuId")
-	updates := make(map[string]interface{}) // Bind to a map
+	var menu model.CreateMenuRequest
 
-	// Bind the request body to the map
-	// This automatically handles JSON unmarshalling into the map
-	if err := c.Bind(&updates); err != nil {
-		// Check for specific binding errors if needed
+	// Bind the request body to the Menu struct
+	if err := c.Bind(&menu); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": fmt.Sprintf("잘못된 요청 형식입니다: %v", err),
 		})
 	}
 
 	// Prevent updating the ID via the request body
-	delete(updates, "id")
+	menu.ID = ""
+
+	// Convert struct to map for partial updates
+	updates := make(map[string]interface{})
+	if menu.DisplayName != "" {
+		updates["display_name"] = menu.DisplayName
+	}
+	if menu.ParentID != "" {
+		updates["parent_id"] = menu.ParentID
+	}
+	if menu.ResType != "" {
+		updates["res_type"] = menu.ResType
+	}
+	updates["is_action"] = menu.IsAction
+	if menu.Priority != "" {
+		priorityInt, err := util.StringToUint(menu.Priority)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": "잘못된 priority 값입니다",
+			})
+		}
+		updates["priority"] = priorityInt
+	}
+	if menu.MenuNumber != "" {
+		menuNumberInt, err := util.StringToUint(menu.MenuNumber)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": "잘못된 menu number 값입니다",
+			})
+		}
+		updates["menu_number"] = menuNumberInt
+	}
 
 	if len(updates) == 0 {
 		return c.JSON(http.StatusBadRequest, map[string]string{
@@ -588,21 +616,21 @@ func (h *MenuHandler) CreateMenusRolesMapping(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
-	var mappings []*model.MenuMapping
+	var mappings []*model.RoleMenuMapping
 	for _, menuID := range req.MenuID {
 		roleIDInt, err := util.StringToUint(req.RoleID)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid role ID"})
 		}
 
-		mapping := &model.MenuMapping{
+		mapping := &model.RoleMenuMapping{
 			RoleID:    roleIDInt,
 			MenuID:    menuID,
 			CreatedAt: time.Now(),
 		}
 		mappings = append(mappings, mapping)
 	}
-	if err := h.menuService.CreateMenuMappings(mappings); err != nil {
+	if err := h.menuService.CreateRoleMenuMappings(mappings); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("메뉴 매핑 생성 실패: %v", err)})
 	}
 	return c.JSON(http.StatusCreated, map[string]string{"message": "Menu mapping created successfully"})
@@ -623,13 +651,21 @@ func (h *MenuHandler) CreateMenusRolesMapping(c echo.Context) error {
 // @Router /api/menus/platform-roles [delete]
 // @OperationId deleteMenusRolesMapping
 func (h *MenuHandler) DeleteMenusRolesMapping(c echo.Context) error {
-	platformRoleID, err := strconv.ParseUint(c.Param("role"), 10, 32)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid platform role ID"})
-	}
+	roleID := c.Param("roleId")
 	menuID := c.Param("menuId")
 
-	err = h.menuService.DeleteMenuMapping(uint(platformRoleID), menuID)
+	roleIDInt, err := util.StringToUint(roleID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid role ID"})
+	}
+
+	mappings := []*model.RoleMenuMapping{
+		{
+			RoleID: roleIDInt,
+			MenuID: menuID,
+		},
+	}
+	err = h.menuService.DeleteRoleMenuMapping(mappings)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

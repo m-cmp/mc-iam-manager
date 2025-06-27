@@ -13,7 +13,6 @@ import (
 
 	"encoding/csv"
 
-	"github.com/joho/godotenv"
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -311,12 +310,12 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 	if effectiveFilePath == "" {
 		// Load .env file to get the URL (assuming .env is at project root)
 		// .env path should be relative to project root when running the binary
-		envPath := ".env"          // Path relative to project root
-		_ = godotenv.Load(envPath) // Ignore error if .env not found
+		util.LoadEnvFiles()
 		menuURL := os.Getenv("MCWEBCONSOLE_MENUYAML")
 
 		// Default local path relative to project root
-		defaultLocalPath := filepath.Join("asset", "menu", "menu.yaml") // Removed "../"
+		assetPath := util.GetAssetPath()
+		defaultLocalPath := filepath.Join(assetPath, "menu", "menu.yaml")
 
 		if menuURL != "" && (strings.HasPrefix(menuURL, "http://") || strings.HasPrefix(menuURL, "https://")) {
 			// Attempt to download from URL
@@ -472,16 +471,6 @@ func (s *MenuService) ListMappedMenusByRole(req *model.MenuMappingFilterRequest)
 	return menus, nil
 }
 
-// CreateMenuMapping 메뉴 매핑을 생성합니다
-func (s *MenuService) CreateMenuMappings(mappings []*model.MenuMapping) error {
-	return s.menuRepo.CreateMenuMappings(mappings)
-}
-
-// DeleteMenuMapping 플랫폼 역할-메뉴 매핑 삭제
-func (s *MenuService) DeleteMenuMapping(platformRoleID uint, menuID string) error {
-	return s.menuMappingRepo.DeleteMapping(platformRoleID, menuID)
-}
-
 // InitializeMenuPermissionsFromCSV CSV 파일을 읽어서 메뉴 권한을 초기화합니다.
 // filePath 쿼리 파라미터가 없으면 기본 경로인 asset/menu/permission.csv를 사용
 func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
@@ -490,12 +479,12 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 	// If filePath is not provided via query param
 	if effectiveFilePath == "" {
 		// Load .env file to get the URL (assuming .env is at project root)
-		envPath := ".env"          // Path relative to project root
-		_ = godotenv.Load(envPath) // Ignore error if .env not found
+		util.LoadEnvFiles()
 		permissionURL := os.Getenv("MCWEBCONSOLE_PERMISSIONCSV")
 
 		// Default local path relative to project root
-		defaultLocalPath := filepath.Join("asset", "menu", "permission.csv")
+		assetPath := util.GetAssetPath()
+		defaultLocalPath := filepath.Join(assetPath, "menu", "permission.csv")
 
 		if permissionURL != "" && (strings.HasPrefix(permissionURL, "http://") || strings.HasPrefix(permissionURL, "https://")) {
 			// Attempt to download from URL
@@ -620,7 +609,13 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 				}
 
 				// 새 매핑 생성
-				err := s.menuMappingRepo.CreateMapping(roleID, menuID)
+				mappings := []*model.RoleMenuMapping{
+					{
+						RoleID: roleID,
+						MenuID: menuID,
+					},
+				}
+				err := s.menuRepo.CreateRoleMenuMappings(mappings)
 				if err != nil {
 					return fmt.Errorf("failed to create menu mapping for %s with role %s: %w", menuID, roleName, err)
 				}
@@ -640,4 +635,9 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 // CreateRoleMenuMappings 역할-메뉴 매핑을 생성합니다
 func (s *MenuService) CreateRoleMenuMappings(mappings []*model.RoleMenuMapping) error {
 	return s.menuRepo.CreateRoleMenuMappings(mappings)
+}
+
+// DeleteRoleMenuMapping 플랫폼 역할-메뉴 매핑 삭제
+func (s *MenuService) DeleteRoleMenuMapping(mappings []*model.RoleMenuMapping) error {
+	return s.menuRepo.DeleteRoleMenuMapping(mappings)
 }

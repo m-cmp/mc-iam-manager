@@ -124,6 +124,9 @@ type CreateMenuRequest struct {
 	Priority    string `json:"priority"`
 	MenuNumber  string `json:"menuNumber"`
 }
+type CreateMenuRequests struct {
+	Menus []CreateMenuRequest `json:"menus" validate:"required,dive"`
+}
 
 type MenuFilterRequest struct {
 	MenuID   []*string `json:"menuId",omitempty"`
