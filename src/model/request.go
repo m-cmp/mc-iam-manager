@@ -211,3 +211,19 @@ type RoleMappingRequest struct {
 	CspRoleID   string                `json:"cspRoleId"`
 	WorkspaceID string                `json:"workspaceId"`
 }
+
+// Role 에 할당된 사용자 목록 조회 filter 조건
+type FilterRoleMasterMappingRequest struct {
+	RoleID        string                  `json:"roleId,omitempty"`
+	RoleTypes     []constants.IAMRoleType `json:"roleTypes,omitempty"`
+	UserID        string                  `json:"userId,omitempty"`
+	Username      string                  `json:"username,omitempty"`
+	WorkspaceID   string                  `json:"workspaceId,omitempty"`
+	WorkspaceName string                  `json:"workspaceName,omitempty"`
+	ProjectID     string                  `json:"projectId,omitempty"`
+	ProjectName   string                  `json:"projectName,omitempty"`
+	CspRoleID     string                  `json:"cspRoleId,omitempty"`
+	CspRoleName   string                  `json:"cspRoleName,omitempty"`
+	CspType       string                  `json:"cspType,omitempty"`
+	AuthMethod    string                  `json:"authMethod,omitempty"`
+}

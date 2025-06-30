@@ -47,6 +47,9 @@ type UserPlatformRole struct {
 	CreatedAt time.Time  `json:"created_at" gorm:"column:created_at;autoCreateTime"`
 	User      User       `json:"-" gorm:"foreignKey:UserID"`
 	Role      RoleMaster `json:"-" gorm:"foreignKey:RoleID"`
+
+	// 사용자 정보 (JOIN으로 가져올 필드들)
+	Username string `json:"username" gorm:"column:username"`
 }
 
 // TableName UserPlatformRole의 테이블 이름을 반환
@@ -89,4 +92,13 @@ type RoleMasterCspRoleMapping struct {
 // TableName RoleMasterCspRoleMapping의 테이블 이름을 반환
 func (RoleMasterCspRoleMapping) TableName() string {
 	return "mcmp_role_csp_role_mappings"
+}
+
+// RoleMaster와 연결된 것들.
+type RoleMasterMapping struct {
+	RoleID                    uint                       `json:"role_id" gorm:"column:role_id"`
+	RoleName                  string                     `json:"role_name" gorm:"column:role_name"`
+	UserPlatformRoles         []UserPlatformRole         `json:"user_platform_roles" gorm:"-"`
+	UserWorkspaceRoles        []UserWorkspaceRole        `json:"user_workspace_roles" gorm:"-"`
+	RoleMasterCspRoleMappings []RoleMasterCspRoleMapping `json:"role_master_csp_role_mappings" gorm:"-"`
 }

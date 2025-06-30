@@ -277,13 +277,15 @@ func main() {
 
 		roles.POST("/platform-roles/list", roleHandler.ListPlatformRoles)
 		roles.POST("/platform-roles", roleHandler.CreatePlatformRole)
-		roles.DELETE("/platform-roles", roleHandler.DeletePlatformRole)
+		//roles.DELETE("/platform-roles", roleHandler.DeletePlatformRole)
+		roles.DELETE("/platform-roles/id/:roleId", roleHandler.DeletePlatformRole) //단건삭제
 		roles.GET("/platform-roles/id/:roleId", roleHandler.GetPlatformRoleByID)
 		roles.GET("/platform-roles/name/:roleName", roleHandler.GetPlatformRoleByName)
 
 		roles.POST("/workspace-roles/list", roleHandler.ListWorkspaceRoles)
 		roles.POST("/workspace-roles", roleHandler.CreateWorkspaceRole)
-		roles.DELETE("/workspace-roles", roleHandler.DeleteWorkspaceRole)
+		//roles.DELETE("/workspace-roles", roleHandler.DeleteWorkspaceRole)
+		roles.DELETE("/workspace-roles/id/:roleId", roleHandler.DeleteWorkspaceRole) //단건삭제
 		roles.GET("/workspace-roles/id/:roleId", roleHandler.GetWorkspaceRoleByID)
 		roles.GET("/workspace-roles/name/:roleName", roleHandler.GetWorkspaceRoleByName)
 
@@ -292,9 +294,16 @@ func main() {
 		roles.POST("/csp/list", roleHandler.ListCSPRoles)
 		roles.POST("/csp", roleHandler.CreateCspRole)
 		roles.POST("/csp/batch", roleHandler.CreateCspRoles)
-		roles.DELETE("/csp", roleHandler.DeleteCspRole)
+		//roles.DELETE("/csp", roleHandler.DeleteCspRole)
+		roles.DELETE("/csp/id/:roleId", roleHandler.DeleteCspRole) //단건삭제
 		roles.GET("/csp/id/:roleId", roleHandler.GetCspRoleByID)
 		roles.GET("/csp/name/:roleName", roleHandler.GetCspRoleByName)
+
+		roles.POST("/mappings/list", roleHandler.ListRoleMasterMappings)
+		roles.GET("/mappings/role/id/:roleId", roleHandler.GetRoleMasterMappings)
+		roles.POST("/mappings/platform-roles/users/list", roleHandler.ListUsersByPlatformRole)
+		roles.POST("/mappings/workspace-roles/users/list", roleHandler.ListUsersByWorkspaceRole)
+		roles.POST("/mappings/csp-roles/list", roleHandler.ListRoleMasterMappingsByCspRole)
 
 		//old begin
 		// roles.GET("/csp-roles/all", cspRoleHandler.GetAllCSPRoles)

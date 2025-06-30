@@ -299,3 +299,9 @@ func (r *MenuRepository) DeleteRoleMenuMapping(mappings []*model.RoleMenuMapping
 	query := r.db.Delete(mappings)
 	return query.Error
 }
+
+// 해당 role 과 매핑된 모든 메뉴 매핑 삭제
+func (r *MenuRepository) DeleteRoleMenuMappingsByRoleID(roleID uint) error {
+	query := r.db.Where("role_id = ?", roleID).Delete(&model.RoleMenuMapping{})
+	return query.Error
+}
