@@ -641,3 +641,8 @@ func (s *MenuService) CreateRoleMenuMappings(mappings []*model.RoleMenuMapping) 
 func (s *MenuService) DeleteRoleMenuMapping(mappings []*model.RoleMenuMapping) error {
 	return s.menuRepo.DeleteRoleMenuMapping(mappings)
 }
+
+// 해당 role 과 매핑된 메뉴 삭제
+func (s *MenuService) DeleteRoleMenuMappingsByRoleID(roleID uint) error {
+	return s.menuRepo.DeleteRoleMenuMappingsByRoleID(roleID)
+}

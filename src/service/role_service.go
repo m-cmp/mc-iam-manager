@@ -267,6 +267,11 @@ func (s *RoleService) DeleteRoleCspRoleMapping(roleID uint, cspRoleID uint, cspT
 	return s.roleRepository.DeleteRoleCspRoleMapping(roleID, cspRoleID, cspType)
 }
 
+// 해당 Role 과 매핑된 모든 csp 역할 매핑 삭제 ( csp 역할을 삭제하는 것은 아님)
+func (s *RoleService) DeleteRoleCspRoleMappingsByRoleId(roleID uint) error {
+	return s.roleRepository.DeleteRoleCspRoleMappings(roleID)
+}
+
 // ListWorkspaceRoleCspRoleMappings 워크스페이스 역할-CSP 역할 매핑 목록 조회
 func (s *RoleService) ListWorkspaceRoleCspRoleMappings(req *model.RoleMasterCspRoleMappingRequest) ([]*model.RoleMasterCspRoleMapping, error) {
 	return s.roleRepository.FindWorkspaceRoleCspRoleMappings(req)
@@ -350,4 +355,23 @@ func (s *RoleService) AddRoleSub(roleID uint, roleSub *model.RoleSub) error {
 
 func (s *RoleService) AddCspRolesMapping(req *model.CreateRoleMasterCspRoleMappingRequest) error {
 	return s.roleRepository.CreateRoleCspRoleMapping(req)
+}
+
+// RoleMaster와 연결된 것들. 사용자, csp역할, 워크스페이스 역할 모두 조회
+func (s *RoleService) ListRoleMasterMappings(req *model.FilterRoleMasterMappingRequest) ([]*model.RoleMasterMapping, error) {
+	return s.roleRepository.FindRoleMasterMappings(req)
+}
+
+// RoleMaster와 연결된 것들. 사용자, csp역할, 워크스페이스 역할 모두 조회
+func (s *RoleService) GetRoleMasterMappings(req *model.FilterRoleMasterMappingRequest) (*model.RoleMasterMapping, error) {
+	mappings, err := s.roleRepository.FindRoleMasterMappings(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(mappings) == 0 {
+		return nil, nil
+	}
+
+	return mappings[0], nil
 }

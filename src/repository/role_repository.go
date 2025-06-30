@@ -72,12 +72,17 @@ func (r *RoleRepository) FindRoleByRoleID(roleId uint, roleType constants.IAMRol
 	var role model.RoleMaster
 
 	// 쿼리 빌더를 사용하여 기본 쿼리 생성
-	query := r.db.Preload("RoleSubs").Where("mcmp_role_masters.id = ?", roleId)
+	query := r.db.Where("mcmp_role_masters.id = ?", roleId)
 
 	// roleType이 비어있지 않다면 조건 추가
 	if roleType != "" {
 		query = query.Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
 			Where("mcmp_role_subs.role_type = ?", roleType)
+		// 해당 roleType의 RoleSubs만 preload
+		query = query.Preload("RoleSubs", "role_type = ?", roleType)
+	} else {
+		// roleType이 지정되지 않았으면 모든 RoleSubs preload
+		query = query.Preload("RoleSubs")
 	}
 
 	if err := query.First(&role).Error; err != nil {
@@ -94,12 +99,17 @@ func (r *RoleRepository) FindRoleByRoleName(roleName string, roleType constants.
 	var role model.RoleMaster
 
 	// 쿼리 빌더를 사용하여 기본 쿼리 생성
-	query := r.db.Preload("RoleSubs").Where("mcmp_role_masters.name = ?", roleName)
+	query := r.db.Where("mcmp_role_masters.name = ?", roleName)
 
 	// roleType이 비어있지 않다면 조건 추가
 	if roleType != "" {
 		query = query.Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
 			Where("mcmp_role_subs.role_type = ?", roleType)
+		// 해당 roleType의 RoleSubs만 preload
+		query = query.Preload("RoleSubs", "role_type = ?", roleType)
+	} else {
+		// roleType이 지정되지 않았으면 모든 RoleSubs preload
+		query = query.Preload("RoleSubs")
 	}
 
 	if err := query.First(&role).Error; err != nil {
@@ -290,6 +300,12 @@ func (r *RoleRepository) CreateRoleCspRoleMapping(req *model.CreateRoleMasterCsp
 // DeleteRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 삭제
 func (r *RoleRepository) DeleteRoleCspRoleMapping(roleID uint, cspRoleID uint, authMethod constants.AuthMethod) error {
 	return r.db.Where("role_id = ? AND csp_role_id = ? AND auth_method = ?", roleID, cspRoleID, authMethod).
+		Delete(&model.RoleMasterCspRoleMapping{}).Error
+}
+
+// DeleteRoleCspRoleMappings 해당 Role 과 매핑된 모든 csp 역할 매핑 삭제 ( csp 역할을 삭제하는 것은 아님)
+func (r *RoleRepository) DeleteRoleCspRoleMappings(roleID uint) error {
+	return r.db.Where("role_id = ?", roleID).
 		Delete(&model.RoleMasterCspRoleMapping{}).Error
 }
 
@@ -716,4 +732,188 @@ func (r *RoleRepository) CreateRoleWithSubs(role *model.RoleMaster, roleSubs []m
 	})
 	log.Printf("[DEBUG] CreateRoleWithSubsTx 완료 - ID: %d, 이름: %s", role.ID, role.Name)
 	return result, err
+}
+
+// 역할에 할당된 사용자/csp역할 목록 조회
+func (r *RoleRepository) FindRoleMasterMappings(req *model.FilterRoleMasterMappingRequest) ([]*model.RoleMasterMapping, error) {
+	var mappings []*model.RoleMasterMapping
+
+	// 기본 쿼리: RoleMaster와 RoleSub를 조인
+	query := r.db.Table("mcmp_role_masters").
+		Select("mcmp_role_masters.id as role_id, mcmp_role_masters.name as role_name").
+		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id")
+
+	// 필터 조건 추가
+	if req.RoleID != "" {
+		roleIDInt, err := util.StringToUint(req.RoleID)
+		if err != nil {
+			return nil, fmt.Errorf("잘못된 역할 ID 형식: %w", err)
+		}
+		query = query.Where("mcmp_role_masters.id = ?", roleIDInt)
+	}
+
+	if len(req.RoleTypes) > 0 {
+		query = query.Where("mcmp_role_subs.role_type IN (?)", req.RoleTypes)
+	}
+
+	// 기본 매핑 정보 조회
+	if err := query.Find(&mappings).Error; err != nil {
+		return nil, fmt.Errorf("역할 매핑 조회 실패: %w", err)
+	}
+
+	// RoleMaster별로 매핑을 그룹화
+	roleMappingMap := make(map[uint]*model.RoleMasterMapping)
+
+	for _, mapping := range mappings {
+		// 이미 존재하는 RoleMaster인지 확인
+		if _, exists := roleMappingMap[mapping.RoleID]; !exists {
+			// 새로운 RoleMaster 매핑 생성
+			roleMappingMap[mapping.RoleID] = &model.RoleMasterMapping{
+				RoleID:                    mapping.RoleID,
+				RoleName:                  mapping.RoleName,
+				UserPlatformRoles:         []model.UserPlatformRole{},
+				UserWorkspaceRoles:        []model.UserWorkspaceRole{},
+				RoleMasterCspRoleMappings: []model.RoleMasterCspRoleMapping{},
+			}
+		}
+	}
+
+	// 각 RoleMaster에 대해 모든 roleType의 데이터 조회
+	for roleID, roleMapping := range roleMappingMap {
+		// roleTypes 필터가 있는 경우 해당 roleType만 조회
+		shouldQueryPlatform := len(req.RoleTypes) == 0 || containsRoleType(req.RoleTypes, constants.RoleTypePlatform)
+		shouldQueryWorkspace := len(req.RoleTypes) == 0 || containsRoleType(req.RoleTypes, constants.RoleTypeWorkspace)
+		shouldQueryCSP := len(req.RoleTypes) == 0 || containsRoleType(req.RoleTypes, constants.RoleTypeCSP)
+
+		// Platform 역할에 할당된 사용자 조회
+		if shouldQueryPlatform {
+			var platformUsers []model.UserPlatformRole
+			platformQuery := r.db.Table("mcmp_user_platform_roles").
+				Select("mcmp_user_platform_roles.*, mcmp_users.username").
+				Joins("JOIN mcmp_users ON mcmp_user_platform_roles.user_id = mcmp_users.id").
+				Where("mcmp_user_platform_roles.role_id = ?", roleID)
+
+			// 사용자 필터 조건
+			if req.UserID != "" {
+				userIDInt, err := util.StringToUint(req.UserID)
+				if err == nil {
+					platformQuery = platformQuery.Where("mcmp_user_platform_roles.user_id = ?", userIDInt)
+				}
+			}
+
+			if req.Username != "" {
+				platformQuery = platformQuery.Where("mcmp_users.username = ?", req.Username)
+			}
+
+			if err := platformQuery.Find(&platformUsers).Error; err != nil {
+				return nil, fmt.Errorf("플랫폼 사용자 역할 조회 실패: %w", err)
+			}
+			roleMapping.UserPlatformRoles = platformUsers
+		}
+
+		// Workspace 역할에 할당된 사용자 조회
+		if shouldQueryWorkspace {
+			var workspaceUsers []model.UserWorkspaceRole
+			workspaceQuery := r.db.Table("mcmp_user_workspace_roles").
+				Select("mcmp_user_workspace_roles.*, mcmp_users.username, mcmp_workspaces.name as workspace_name, mcmp_role_masters.name as role_name").
+				Joins("JOIN mcmp_users ON mcmp_user_workspace_roles.user_id = mcmp_users.id").
+				Joins("JOIN mcmp_workspaces ON mcmp_user_workspace_roles.workspace_id = mcmp_workspaces.id").
+				Joins("JOIN mcmp_role_masters ON mcmp_user_workspace_roles.role_id = mcmp_role_masters.id").
+				Where("mcmp_user_workspace_roles.role_id = ?", roleID)
+
+			// 사용자 필터 조건
+			if req.UserID != "" {
+				userIDInt, err := util.StringToUint(req.UserID)
+				if err == nil {
+					workspaceQuery = workspaceQuery.Where("mcmp_user_workspace_roles.user_id = ?", userIDInt)
+				}
+			}
+
+			if req.Username != "" {
+				workspaceQuery = workspaceQuery.Where("mcmp_users.username = ?", req.Username)
+			}
+
+			// 워크스페이스 필터 조건
+			if req.WorkspaceID != "" {
+				workspaceIDInt, err := util.StringToUint(req.WorkspaceID)
+				if err == nil {
+					workspaceQuery = workspaceQuery.Where("mcmp_user_workspace_roles.workspace_id = ?", workspaceIDInt)
+				}
+			}
+
+			if req.WorkspaceName != "" {
+				workspaceQuery = workspaceQuery.Where("mcmp_workspaces.name = ?", req.WorkspaceName)
+			}
+
+			if err := workspaceQuery.Find(&workspaceUsers).Error; err != nil {
+				return nil, fmt.Errorf("워크스페이스 사용자 역할 조회 실패: %w", err)
+			}
+			roleMapping.UserWorkspaceRoles = workspaceUsers
+		}
+
+		// CSP 역할 매핑 조회
+		if shouldQueryCSP {
+			var cspMappings []model.RoleMasterCspRoleMapping
+			cspQuery := r.db.Table("mcmp_role_csp_role_mappings").
+				Select("mcmp_role_csp_role_mappings.*, mcmp_role_csp_roles.name as csp_role_name, mcmp_role_csp_roles.csp_type").
+				Joins("JOIN mcmp_role_csp_roles ON mcmp_role_csp_role_mappings.csp_role_id = mcmp_role_csp_roles.id").
+				Where("mcmp_role_csp_role_mappings.role_id = ?", roleID)
+
+			// CSP 필터 조건
+			if req.CspRoleID != "" {
+				cspRoleIDInt, err := util.StringToUint(req.CspRoleID)
+				if err == nil {
+					cspQuery = cspQuery.Where("mcmp_role_csp_role_mappings.csp_role_id = ?", cspRoleIDInt)
+				}
+			}
+
+			if req.CspRoleName != "" {
+				cspQuery = cspQuery.Where("mcmp_role_csp_roles.name = ?", req.CspRoleName)
+			}
+
+			if req.CspType != "" {
+				cspQuery = cspQuery.Where("mcmp_role_csp_roles.csp_type = ?", req.CspType)
+			}
+
+			if req.AuthMethod != "" {
+				cspQuery = cspQuery.Where("mcmp_role_csp_role_mappings.auth_method = ?", req.AuthMethod)
+			}
+
+			if err := cspQuery.Find(&cspMappings).Error; err != nil {
+				return nil, fmt.Errorf("CSP 역할 매핑 조회 실패: %w", err)
+			}
+
+			// 각 CSP 매핑에 대해 CspRole 정보 조회
+			for i := range cspMappings {
+				var cspRole model.CspRole
+				if err := r.db.Where("id = ?", cspMappings[i].CspRoleID).First(&cspRole).Error; err != nil {
+					if err != gorm.ErrRecordNotFound {
+						return nil, fmt.Errorf("CSP 역할 조회 실패: %w", err)
+					}
+					cspMappings[i].CspRoles = []*model.CspRole{}
+				} else {
+					cspMappings[i].CspRoles = []*model.CspRole{&cspRole}
+				}
+			}
+			roleMapping.RoleMasterCspRoleMappings = cspMappings
+		}
+	}
+
+	// 맵을 슬라이스로 변환
+	result := make([]*model.RoleMasterMapping, 0, len(roleMappingMap))
+	for _, mapping := range roleMappingMap {
+		result = append(result, mapping)
+	}
+
+	return result, nil
+}
+
+// containsRoleType roleTypes 슬라이스에 특정 roleType이 포함되어 있는지 확인
+func containsRoleType(roleTypes []constants.IAMRoleType, roleType constants.IAMRoleType) bool {
+	for _, rt := range roleTypes {
+		if rt == roleType {
+			return true
+		}
+	}
+	return false
 }

@@ -317,7 +317,6 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 func (h *RoleHandler) DeleteRole(c echo.Context) error {
 	roleIdInt, err := util.StringToUint(c.Param("roleId"))
 	if err != nil {
-
 		log.Printf("잘못된 역할 ID 형식: %s", c.Param("id"))
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 Role ID 형식입니다"})
 	}
@@ -347,13 +346,36 @@ func (h *RoleHandler) DeleteRole(c echo.Context) error {
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "미리 정의된 역할은 삭제할 수 없습니다"})
 	}
 
+	// 해당 역할이 할당된 사용자 조회 -> 있으면 삭제 불가
+	// TODO : 만들자.
+
+	roleSubs := role.RoleSubs
+	for _, roleSub := range roleSubs {
+		// role-platform mapping 삭제
+		if roleSub.RoleType == constants.RoleTypePlatform {
+			if err := h.menuService.DeleteRoleMenuMappingsByRoleID(roleIdInt); err != nil {
+				log.Printf("역할 메뉴 매핑 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
+			}
+		}
+
+		// role-workspace mapping 삭제는 master-sub 삭제에서 처리 됨.
+
+		// role-csp mapping 삭제
+		if roleSub.RoleType == constants.RoleTypeCSP {
+			if err := h.roleService.DeleteRoleCspRoleMappingsByRoleId(roleIdInt); err != nil {
+				log.Printf("역할 csp 매핑 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
+			}
+		}
+	}
+
 	if err := h.roleService.DeleteRoleWithSubs(roleIdInt); err != nil {
 		log.Printf("역할 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 삭제 실패: %v", err)})
 	}
 
 	log.Printf("역할 삭제 성공 - ID: %d", roleIdInt)
-	return c.NoContent(http.StatusNoContent)
+	//return c.NoContent(http.StatusNoContent)
+	return c.JSON(http.StatusOK, map[string]string{"message": "역할 삭제 성공"})
 }
 
 // @Summary Assign role
@@ -1049,7 +1071,7 @@ func (h *RoleHandler) GetCspRoleByName(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/roles/csp-roles/{roleId} [put]
+// @Router /api/roles/csp-roles/id/{roleId} [put]
 func (h *RoleHandler) UpdateCspRole(c echo.Context) error {
 	roleType := constants.RoleTypeCSP
 
@@ -1200,7 +1222,7 @@ func (h *RoleHandler) DeleteWorkspaceRole(c echo.Context) error {
 	}
 
 	log.Printf("workspace 역할 삭제 성공 - ID: %d", roleIDInt)
-	return c.NoContent(http.StatusNoContent)
+	return c.JSON(http.StatusOK, map[string]string{"message": "workspace 역할 삭제 성공"})
 }
 
 // @Summary Delete csp role
@@ -1213,7 +1235,7 @@ func (h *RoleHandler) DeleteWorkspaceRole(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/roles/csp-roles/{roleId} [delete]
+// @Router /api/roles/csp-roles/id/{roleId} [delete]
 // @OperationId deleteCspRole
 func (h *RoleHandler) DeleteCspRole(c echo.Context) error {
 	roleType := constants.RoleTypeCSP
@@ -1248,6 +1270,23 @@ func (h *RoleHandler) DeleteCspRole(c echo.Context) error {
 	if role.Predefined {
 		log.Printf("미리 정의된 역할 삭제 시도 - ID: %d", roleIDInt)
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "미리 정의된 역할은 삭제할 수 없습니다"})
+	}
+
+	// 역할에 매핑된 csp역할이 있으면 삭제 불가(먼저 삭제해야함.)
+	// 역할 타입이 없으면 사용자와 연관되는 역할 타입을 조회
+	mappingReq := model.FilterRoleMasterMappingRequest{}
+	mappingReq.RoleID = c.Param("roleId")
+	if mappingReq.RoleTypes == nil {
+		mappingReq.RoleTypes = []constants.IAMRoleType{constants.RoleTypeCSP}
+	}
+	mappings, err := h.roleService.ListRoleMasterMappings(&mappingReq)
+	if err != nil {
+		log.Printf("csp 역할 매핑 조회 실패 - ID: %d, 에러: %v", roleIDInt, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 매핑 조회 실패: %v", err)})
+	}
+	if len(mappings) > 0 {
+		log.Printf("csp 역할 매핑이 있어 삭제 불가 - ID: %d", roleIDInt)
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "csp 역할 매핑이 있어 삭제 불가"})
 	}
 
 	if err := h.roleService.DeleteRoleWithSubs(roleIDInt); err != nil {
@@ -1845,4 +1884,199 @@ func (h *RoleHandler) CreateCspRoles(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, createdRoles)
+}
+
+// Role 에 할당된 사용자 목록 조회
+// @Summary List role master mappings
+// @Description List role master mappings
+// @Tags roles
+// @Accept json
+// @Produce json
+// @Param request body model.FilterRoleMasterMappingRequest true "Filter Role Master Mapping Request"
+// @Success 200 {array} model.RoleMasterMapping
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/roles/mappings/list [post]
+// @OperationId listRoleMasterMappings
+func (h *RoleHandler) ListRoleMasterMappings(c echo.Context) error {
+
+	var req model.FilterRoleMasterMappingRequest
+	if err := c.Bind(&req); err != nil {
+		log.Printf("역할-사용자 매핑 조회 요청 바인딩 실패: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
+	// 역할 타입이 없으면 사용자와 연관되는 역할 타입을 조회
+	if req.RoleTypes == nil {
+		req.RoleTypes = []constants.IAMRoleType{constants.RoleTypePlatform, constants.RoleTypeWorkspace}
+	}
+	log.Printf("역할-사용자 매핑 조회 요청 - 역할 ID: %s, 역할 타입: %v", req.RoleID, req.RoleTypes)
+	mappings, err := h.roleService.ListRoleMasterMappings(&req)
+	if err != nil {
+		log.Printf(" 역할-사용자 매핑 조회 실패: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("매핑 조회 실패: %v", err)})
+	}
+
+	log.Printf("역할-사용자 매핑 조회 성공 - 조회된 매핑 수: %d", len(mappings))
+	return c.JSON(http.StatusOK, mappings)
+}
+
+// @Summary List users by platform role
+// @Description List users by platform role
+// @Tags roles
+// @Accept json
+// @Produce json
+// @Param request body model.FilterRoleMasterMappingRequest true "Filter Role Master Mapping Request"
+// @Success 200 {array} model.RoleMasterMapping
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/roles/mappings/platform-roles/users/list [post]
+// @OperationId listUsersByPlatformRole
+func (h *RoleHandler) ListUsersByPlatformRole(c echo.Context) error {
+	var req model.FilterRoleMasterMappingRequest
+	if err := c.Bind(&req); err != nil {
+		log.Printf("역할-사용자 매핑 조회 요청 바인딩 실패: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
+	// platform 역할 사용자만 조회
+	req.RoleTypes = []constants.IAMRoleType{constants.RoleTypePlatform}
+
+	log.Printf("역할-사용자 매핑 조회 요청 - 역할 ID: %s, 역할 타입: %v", req.RoleID, req.RoleTypes)
+	mappings, err := h.roleService.ListRoleMasterMappings(&req)
+	if err != nil {
+		log.Printf(" 역할-사용자 매핑 조회 실패: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("매핑 조회 실패: %v", err)})
+	}
+
+	// 사용자가 할당된 역할만 return
+	resultRoleMasterMappings := make([]*model.RoleMasterMapping, 0)
+	for _, mapping := range mappings {
+		if len(mapping.UserPlatformRoles) > 0 {
+			resultRoleMasterMappings = append(resultRoleMasterMappings, mapping)
+		}
+	}
+
+	log.Printf("역할-사용자 매핑 조회 성공 - 조회된 매핑 수: %d", len(resultRoleMasterMappings))
+	return c.JSON(http.StatusOK, resultRoleMasterMappings)
+}
+
+// @Summary List users by workspace role
+// @Description List users by workspace role
+// @Tags roles
+// @Accept json
+// @Produce json
+// @Param request body model.FilterRoleMasterMappingRequest true "Filter Role Master Mapping Request"
+// @Success 200 {array} model.RoleMasterMapping
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/roles/mappings/workspace-roles/users/list [post]
+// @OperationId listUsersByWorkspaceRole
+func (h *RoleHandler) ListUsersByWorkspaceRole(c echo.Context) error {
+	var req model.FilterRoleMasterMappingRequest
+	if err := c.Bind(&req); err != nil {
+		log.Printf("역할-사용자 매핑 조회 요청 바인딩 실패: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
+	// workspace 역할 사용자만 조회
+	req.RoleTypes = []constants.IAMRoleType{constants.RoleTypeWorkspace}
+
+	log.Printf("역할-사용자 매핑 조회 요청 - 역할 ID: %s, 역할 타입: %v", req.RoleID, req.RoleTypes)
+	mappings, err := h.roleService.ListRoleMasterMappings(&req)
+	if err != nil {
+		log.Printf(" 역할-사용자 매핑 조회 실패: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("매핑 조회 실패: %v", err)})
+	}
+
+	// 사용자가 할당된 역할만 return
+	resultRoleMasterMappings := make([]*model.RoleMasterMapping, 0)
+	for _, mapping := range mappings {
+		if len(mapping.UserWorkspaceRoles) > 0 {
+			resultRoleMasterMappings = append(resultRoleMasterMappings, mapping)
+		}
+	}
+
+	log.Printf("역할-사용자 매핑 조회 성공 - 조회된 매핑 수: %d", len(resultRoleMasterMappings))
+	return c.JSON(http.StatusOK, resultRoleMasterMappings)
+}
+
+// @Summary List users by csp role
+// @Description List users by csp role
+// @Tags roles
+// @Accept json
+// @Produce json
+// @Param request body model.FilterRoleMasterMappingRequest true "Filter Role Master Mapping Request"
+// @Success 200 {array} model.RoleMasterMapping
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/roles/mappings/csp-roles/list [post]
+// @OperationId listUsersByCspRole
+func (h *RoleHandler) ListRoleMasterMappingsByCspRole(c echo.Context) error {
+	var req model.FilterRoleMasterMappingRequest
+	if err := c.Bind(&req); err != nil {
+		log.Printf("역할-csp 매핑 조회 요청 바인딩 실패: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
+	// csp 역할 사용자만 조회
+	req.RoleTypes = []constants.IAMRoleType{constants.RoleTypeCSP}
+
+	log.Printf("역할-csp 매핑 조회 요청 - 역할 ID: %s, 역할 타입: %v", req.RoleID, req.RoleTypes)
+	mappings, err := h.roleService.ListRoleMasterMappings(&req)
+	if err != nil {
+		log.Printf(" 역할-csp 매핑 조회 실패: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("매핑 조회 실패: %v", err)})
+	}
+
+	// csp역할이이 할당된 역할만 return
+	resultRoleMasterMappings := make([]*model.RoleMasterMapping, 0)
+	for _, mapping := range mappings {
+		if len(mapping.RoleMasterCspRoleMappings) > 0 {
+			resultRoleMasterMappings = append(resultRoleMasterMappings, mapping)
+		}
+	}
+	log.Printf("역할-csp 매핑 조회 성공 - 조회된 매핑 수: %d", len(resultRoleMasterMappings))
+	return c.JSON(http.StatusOK, resultRoleMasterMappings)
+}
+
+// @Summary Get role master mappings
+// @Description Get role master mappings
+// @Tags roles
+// @Accept json
+// @Produce json
+// @Param request body model.FilterRoleMasterMappingRequest true "Filter Role Master Mapping Request"
+// @Success 200 {object} model.RoleMasterMapping
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/roles/mapping/role/id/:roleId [get]
+// @OperationId getRoleMasterMappings
+func (h *RoleHandler) GetRoleMasterMappings(c echo.Context) error {
+	roleID := c.Param("roleId")
+
+	if roleID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "역할 ID가 필요합니다"})
+	}
+	var req model.FilterRoleMasterMappingRequest
+	// // if err := c.Bind(&req); err != nil {
+	// // 	log.Printf("역할 매핑 조회 요청 바인딩 실패: %v", err)
+	// // 	return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	// // }
+
+	// if req.RoleID == "" {
+	req.RoleID = roleID
+	// }
+
+	mappings, err := h.roleService.GetRoleMasterMappings(&req)
+	if err != nil {
+		log.Printf(" 역할 매핑 조회 실패: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("매핑 조회 실패: %v", err)})
+	}
+
+	return c.JSON(http.StatusOK, mappings)
 }
