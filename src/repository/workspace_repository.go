@@ -130,17 +130,26 @@ func (r *WorkspaceRepository) FindWorkspaceByName(workspaceName string) (*model.
 }
 
 // FindWorkspacesProjects 모든 워크스페이스 조회 (프로젝트 정보 포함)
+// WorkspaceID로 필터링할 경우 단건만 반환, 그 외의 경우 여러 건 반환
 func (r *WorkspaceRepository) FindWorkspacesProjects(req *model.WorkspaceFilterRequest) ([]*model.WorkspaceWithProjects, error) {
 	var workspacesProjects []*model.WorkspaceWithProjects
-	query := r.db.Model(&model.Workspace{}).
+	query := r.db.Model(&model.WorkspaceWithProjects{}).
 		Preload("Projects")
 
+	// WorkspaceID로 필터링하는 경우 단건 조회
 	if req.WorkspaceID != "" {
 		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)
 		if err != nil {
 			return nil, err
 		}
-		query = query.Where("mcmp_workspaces.id = ?", workspaceIdInt)
+		var workspace model.WorkspaceWithProjects
+		if err := query.Where("id = ?", workspaceIdInt).First(&workspace).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return []*model.WorkspaceWithProjects{}, nil // 빈 배열 반환
+			}
+			return nil, err
+		}
+		return []*model.WorkspaceWithProjects{&workspace}, nil
 	}
 
 	if req.ProjectID != "" {
@@ -160,15 +169,15 @@ func (r *WorkspaceRepository) FindWorkspacesProjects(req *model.WorkspaceFilterR
 
 // FindWorkspaceProjectsByWorkspaceID ID로 워크스페이스 조회 (프로젝트 정보 포함)
 func (r *WorkspaceRepository) FindWorkspaceProjectsByWorkspaceID(id uint) (*model.WorkspaceWithProjects, error) {
-	var workspace *model.WorkspaceWithProjects
-	// Preload Projects to fetch associated projects
-	if err := r.db.Preload("Projects").First(&workspace, "id = ?", id).Error; err != nil {
+	var workspaceProjects model.WorkspaceWithProjects
+	// Preload Projects to fetch associated projects using many2many relationship
+	if err := r.db.Preload("Projects").Where("id = ?", id).First(&workspaceProjects).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrWorkspaceNotFound
 		}
 		return nil, err
 	}
-	return workspace, nil
+	return &workspaceProjects, nil
 }
 
 // AddProjectAssociation 워크스페이스에 프로젝트 연결 추가

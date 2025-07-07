@@ -120,6 +120,10 @@ func (s *WorkspaceService) ListWorkspacesProjects(req *model.WorkspaceFilterRequ
 	return workspaces, nil
 }
 
+func (s *WorkspaceService) GetWorkspaceProjectsByWorkspaceId(workspaceID uint) (*model.WorkspaceWithProjects, error) {
+	return s.workspaceRepo.FindWorkspaceProjectsByWorkspaceID(workspaceID)
+}
+
 // GetByID ID로 워크스페이스 조회
 func (s *WorkspaceService) GetWorkspaceByID(workspaceID uint) (*model.Workspace, error) {
 	return s.workspaceRepo.FindWorkspaceByID(workspaceID)
