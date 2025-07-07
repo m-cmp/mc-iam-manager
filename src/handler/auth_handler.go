@@ -277,3 +277,34 @@ func (h *AuthHandler) AuthCerts(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, cert)
 }
+
+// GetTempCredentialCsp godoc
+// @Summary Get temporary credential CSP information
+// @Description Get temporary credential provider information for AWS and GCP
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "CSP temporary credential information"
+// @Router /api/auth/temp-credential-csp [get]
+// @OperationId mciamGetTempCredentialCsp
+func (h *AuthHandler) GetTempCredentialCsp(c echo.Context) error {
+	// TODO : 기준정보로 관리 및 제공필요
+
+	// CSP별 임시 자격 증명 제공 방식 정보
+	cspInfo := []map[string]interface{}{
+		{
+			"provider": "aws",
+			"methods":  []string{"oidc", "saml"},
+		},
+		{
+			"provider": "gcp",
+			"methods":  []string{"oidc"},
+		},
+		{
+			"provider": "alibaba",
+			"methods":  []string{"oidc"},
+		},
+	}
+
+	return c.JSON(http.StatusOK, cspInfo)
+}

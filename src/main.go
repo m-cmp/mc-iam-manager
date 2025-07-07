@@ -192,6 +192,7 @@ func main() {
 		auth.POST("/logout", authHandler.Logout)
 		auth.POST("/refresh", authHandler.RefreshToken)
 		auth.GET("/certs", authHandler.AuthCerts)
+		auth.GET("/temp-credential-csp", authHandler.GetTempCredentialCsp)
 	}
 
 	// platform admin 생성. 권한체크 필요한데...
