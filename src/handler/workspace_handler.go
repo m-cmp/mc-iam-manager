@@ -402,6 +402,20 @@ func (h *WorkspaceHandler) ListWorkspaceProjects(c echo.Context) error {
 	return c.JSON(http.StatusOK, workspaceProjects)
 }
 
+// GetWorkspaceProjectsByWorkspaceId godoc
+// @Summary 워크스페이스의 프로젝트 목록 조회
+// @Description 특정 워크스페이스에 속한 프로젝트 목록을 조회합니다
+// @Tags workspaces
+// @Accept json
+// @Produce json
+// @Param workspaceId path string true "Workspace ID"
+// @Success 200 {array} model.Project
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Forbidden"
+// @Failure 404 {object} map[string]string "error: Workspace not found"
+// @Security BearerAuth
+// @Router /workspaces/id/{workspaceId}/projects/list [get]
+// @OperationId getWorkspaceProjectsByWorkspaceId
 func (h *WorkspaceHandler) GetWorkspaceProjectsByWorkspaceId(c echo.Context) error {
 	workspaceId := c.Param("workspaceId")
 	workspaceIdInt, err := util.StringToUint(workspaceId)
