@@ -402,6 +402,19 @@ func (h *WorkspaceHandler) ListWorkspaceProjects(c echo.Context) error {
 	return c.JSON(http.StatusOK, workspaceProjects)
 }
 
+func (h *WorkspaceHandler) GetWorkspaceProjectsByWorkspaceId(c echo.Context) error {
+	workspaceId := c.Param("workspaceId")
+	workspaceIdInt, err := util.StringToUint(workspaceId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
+	}
+	workspaceProjects, err := h.workspaceService.GetWorkspaceProjectsByWorkspaceId(workspaceIdInt)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 목록 조회 실패: %v", err)})
+	}
+	return c.JSON(http.StatusOK, workspaceProjects)
+}
+
 // AddProjectToWorkspace godoc
 // @Summary 워크스페이스에 프로젝트 추가
 // @Description 워크스페이스에 프로젝트를 추가합니다

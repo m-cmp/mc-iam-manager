@@ -29,6 +29,11 @@ type WorkspaceWithProjects struct {
 	Projects    []Project `json:"projects" gorm:"many2many:mcmp_workspace_projects;foreignKey:ID;joinForeignKey:workspace_id;References:ID;joinReferences:project_id"`
 }
 
+// TableName WorkspaceWithProjects의 테이블 이름을 지정합니다
+func (WorkspaceWithProjects) TableName() string {
+	return "mcmp_workspaces"
+}
+
 // WorkspaceWithUsersAndRoles 워크스페이스와 연관된 사용자 및 역할 정보를 포함하는 구조체
 type WorkspaceWithUsersAndRoles struct {
 	ID          uint                `json:"id" gorm:"primaryKey;column:id"`
