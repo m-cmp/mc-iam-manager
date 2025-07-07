@@ -287,8 +287,8 @@ func (h *AuthHandler) AuthCerts(c echo.Context) error {
 // @Success 200 {object} map[string]interface{} "CSP temporary credential information"
 // @Router /api/auth/temp-credential-csp [get]
 // @OperationId mciamGetTempCredentialCsp
-func (h *AuthHandler) GetTempCredentialCsp(c echo.Context) error {
-	// TODO : 기준정보로 관리 및 제공필요
+func (h *AuthHandler) GetTempCredentialProviders(c echo.Context) error {
+	// TODO : 기준정보로 관리 및 제공필요 : platform이 제공하는 목록과 사용자가 선택한 목록 모두 제공필요
 
 	// CSP별 임시 자격 증명 제공 방식 정보
 	cspInfo := []map[string]interface{}{
