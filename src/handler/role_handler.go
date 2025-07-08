@@ -321,14 +321,42 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 		}
 	}
 
+	// TODO : createRole에도 동일한 로직이 있음. 중복 코드 제거 필요.
 	if len(req.CspRoles) > 0 {
 		// 기존 매핑 삭제
 		if err := h.roleService.DeleteRoleCspRoleMappingsByRoleId(roleIdInt); err != nil {
 			log.Printf("역할 csp 매핑 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 csp 매핑 삭제 실패: %v", err)})
 		}
-		// 새로운 매핑 생성
+
 		for _, cspRole := range req.CspRoles {
+			// csp role이 있으면 쓰고 없으면 생성한다.
+			if cspRole.CspRoleName == "" {
+				cspRoleName := constants.CspRoleNamePrefix + req.Name // roleName 에 prefix를 붙여서 cspRoleName 생성
+				cspRole.CspRoleName = cspRoleName
+			}
+
+			if !strings.HasPrefix(cspRole.CspRoleName, constants.CspRoleNamePrefix) {
+				cspRole.CspRoleName = constants.CspRoleNamePrefix + cspRole.CspRoleName
+			}
+
+			existingCspRole, err := h.cspRoleService.GetCspRoleByName(cspRole.CspRoleName)
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 조회 실패: %v", err)})
+			}
+			if existingCspRole != nil {
+				cspRole.ID = util.UintToString(existingCspRole.ID)
+			} else {
+				log.Printf("cspRole requested: %v", cspRole)
+				// CSP 역할 생성 또는 업데이트 (매핑도 함께 처리됨)
+				newCspRole, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
+				if err != nil {
+					return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 업데이트 실패: %v", err)})
+				}
+				cspRole.ID = util.UintToString(newCspRole.ID)
+			}
+
+			// 새로운 매핑 생성
 			roleCspRoleMappingRequest := &model.CreateRoleMasterCspRoleMappingRequest{
 				RoleID:      roleId,
 				CspRoleID:   cspRole.ID,

@@ -167,22 +167,25 @@ func (r *RoleRepository) CreateRoleSub(roleID uint, roleSub *model.RoleSub) erro
 		return fmt.Errorf("failed to find role master: %w", err)
 	}
 
-	// 2. RoleSub가 이미 존재하는지 확인
-	var existingRoleSub model.RoleSub
-	if err := r.db.Where("role_id = ? AND role_type = ?", roleID, roleSub.RoleType).First(&existingRoleSub).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			// RoleSub가 존재하지 않으면 생성
-			roleSub.RoleID = roleID
-			if err := r.db.Create(roleSub).Error; err != nil {
-				return fmt.Errorf("failed to create role sub: %w", err)
-			}
-			return nil
-		}
+	// 2. RoleSub가 이미 존재하는지 확인 - 카운트로 확인
+	var count int64
+	if err := r.db.Model(&model.RoleSub{}).
+		Where("role_id = ? AND role_type = ?", roleID, roleSub.RoleType).
+		Count(&count).Error; err != nil {
 		return fmt.Errorf("failed to check existing role sub: %w", err)
 	}
 
-	// RoleSub가 이미 존재하는 경우
-	return fmt.Errorf("role sub already exists for role ID %d with type %s", roleID, roleSub.RoleType)
+	if count > 0 {
+		// RoleSub가 이미 존재하는 경우
+		return fmt.Errorf("role sub already exists for role ID %d with type %s", roleID, roleSub.RoleType)
+	}
+
+	// RoleSub가 존재하지 않으면 생성
+	roleSub.RoleID = roleID
+	if err := r.db.Create(roleSub).Error; err != nil {
+		return fmt.Errorf("failed to create role sub: %w", err)
+	}
+	return nil
 }
 
 // DeleteRoleSubs 역할 서브 타입들 삭제
@@ -273,28 +276,29 @@ func (r *RoleRepository) CreateRoleCspRoleMapping(req *model.CreateRoleMasterCsp
 	// TODO :authMethod 는 default로 할지 아니면 선택하는 로직 추가 필요. 우선은 OIDC로 고정. TODO : 선택하는 로직 추가 필요
 	req.AuthMethod = constants.AuthMethodOIDC
 
-	// 중복 체크
-	var existingMapping model.RoleMasterCspRoleMapping
-	if err := r.db.Where("role_id = ? AND auth_method = ? AND csp_role_id = ?",
-		roleIDInt, req.AuthMethod, cspRoleIDInt).
-		First(&existingMapping).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			// RoleMasterCspRoleMapping 모델을 사용하여 저장
-			mapping := &model.RoleMasterCspRoleMapping{
-				RoleID:      roleIDInt,
-				AuthMethod:  req.AuthMethod,
-				CspRoleID:   cspRoleIDInt,
-				Description: req.Description,
-			}
-			return r.db.Create(mapping).Error
-		} else {
-			return fmt.Errorf("failed to check existing role mapping: %w", err)
-		}
-	} else {
+	// 중복 체크 - 카운트로 확인
+	var count int64
+	if err := r.db.Model(&model.RoleMasterCspRoleMapping{}).
+		Where("role_id = ? AND auth_method = ? AND csp_role_id = ?",
+			roleIDInt, req.AuthMethod, cspRoleIDInt).
+		Count(&count).Error; err != nil {
+		return fmt.Errorf("failed to check existing role mapping: %w", err)
+	}
+
+	if count > 0 {
 		// 매핑이 이미 존재하면 중복 에러 반환
 		return fmt.Errorf("role mapping already exists for role_id=%d, auth_method=%s, csp_role_id=%d",
 			roleIDInt, req.AuthMethod, cspRoleIDInt)
 	}
+
+	// RoleMasterCspRoleMapping 모델을 사용하여 저장
+	mapping := &model.RoleMasterCspRoleMapping{
+		RoleID:      roleIDInt,
+		AuthMethod:  req.AuthMethod,
+		CspRoleID:   cspRoleIDInt,
+		Description: req.Description,
+	}
+	return r.db.Create(mapping).Error
 }
 
 // DeleteRoleCspRoleMapping 워크스페이스 역할-CSP 역할 매핑 삭제
@@ -705,12 +709,15 @@ func (r *RoleRepository) CreateRoleWithSubs(role *model.RoleMaster, roleSubs []m
 		for _, sub := range roleSubs {
 			sub.RoleID = role.ID // RoleMaster의 ID 설정
 
-			// RoleSub가 이미 존재하는지 확인
-			var existingSub model.RoleSub
-			if err := tx.Where("role_id = ? AND role_type = ?", role.ID, sub.RoleType).First(&existingSub).Error; err != nil {
-				if err != gorm.ErrRecordNotFound {
-					return fmt.Errorf("역할 서브 타입 조회 실패: %w", err)
-				}
+			// RoleSub가 이미 존재하는지 확인 - 카운트로 확인
+			var count int64
+			if err := tx.Model(&model.RoleSub{}).
+				Where("role_id = ? AND role_type = ?", role.ID, sub.RoleType).
+				Count(&count).Error; err != nil {
+				return fmt.Errorf("역할 서브 타입 조회 실패: %w", err)
+			}
+
+			if count == 0 {
 				// RoleSub가 존재하지 않는 경우에만 생성
 				if err := tx.Create(&sub).Error; err != nil {
 					return fmt.Errorf("역할 서브 타입 생성 실패: %w", err)
@@ -887,10 +894,12 @@ func (r *RoleRepository) FindRoleMasterMappings(req *model.FilterRoleMasterMappi
 			for i := range cspMappings {
 				var cspRole model.CspRole
 				if err := r.db.Where("id = ?", cspMappings[i].CspRoleID).First(&cspRole).Error; err != nil {
-					if err != gorm.ErrRecordNotFound {
+					if err == gorm.ErrRecordNotFound {
+						// CSP 역할이 없으면 빈 배열로 설정
+						cspMappings[i].CspRoles = []*model.CspRole{}
+					} else {
 						return nil, fmt.Errorf("CSP 역할 조회 실패: %w", err)
 					}
-					cspMappings[i].CspRoles = []*model.CspRole{}
 				} else {
 					cspMappings[i].CspRoles = []*model.CspRole{&cspRole}
 				}
