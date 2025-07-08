@@ -35,7 +35,7 @@ func (r *MenuMappingRepository) FindMappedMenusWithParents(req *model.MenuMappin
 	// 1. 매핑된 메뉴 ID 목록 조회
 	var mappedMenuIDs []string
 	query := r.db.Model(&model.RoleMenuMapping{}).
-		Where("role_id in ?", req.RoleID).
+		Where("role_id in ?", req.RoleIDs).
 		Pluck("menu_id", &mappedMenuIDs)
 	if err := query.Error; err != nil {
 		return nil, err
@@ -108,8 +108,8 @@ func (r *MenuMappingRepository) FindMappedMenuIDs(req *model.MenuMappingFilterRe
 	query := r.db.Model(&model.RoleMenuMapping{})
 
 	roleIDs := []uint{}
-	if len(req.RoleID) > 0 {
-		for _, roleID := range req.RoleID {
+	if len(req.RoleIDs) > 0 {
+		for _, roleID := range req.RoleIDs {
 			roleIDInt, err := util.StringToUint(roleID)
 			if err != nil {
 				return nil, err

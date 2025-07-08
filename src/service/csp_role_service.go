@@ -15,6 +15,7 @@ import (
 	"github.com/m-cmp/mc-iam-manager/csp"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
+	"github.com/m-cmp/mc-iam-manager/util"
 	"gorm.io/gorm"
 )
 
@@ -285,7 +286,7 @@ func (s *CspRoleService) DeleteRolePolicy(ctx context.Context, roleName string, 
 // CreateOrUpdateCspRole CSP 역할을 생성하거나 업데이트합니다.
 // ID가 비어있으면 새로 생성하고, ID가 있으면 기존 것을 업데이트합니다.
 func (s *CspRoleService) CreateOrUpdateCspRole(req *model.CreateCspRoleRequest) (*model.CspRole, error) {
-	if req.ID == 0 {
+	if req.ID == "" {
 		// ID가 비어있으면 새로 생성
 
 		// if constants.CSPTypeAWS == constants.CSPType(req.CspType) {
@@ -300,9 +301,13 @@ func (s *CspRoleService) CreateOrUpdateCspRole(req *model.CreateCspRoleRequest) 
 
 		return s.CreateCspRole(req)
 	} else {
+		id, err := util.StringToUint(req.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert ID to uint: %w", err)
+		}
 		// ID가 있으면 업데이트
 		cspRole := &model.CspRole{
-			ID:            req.ID,
+			ID:            id,
 			Name:          req.CspRoleName,
 			Description:   req.Description,
 			CspType:       req.CspType,
@@ -312,7 +317,7 @@ func (s *CspRoleService) CreateOrUpdateCspRole(req *model.CreateCspRoleRequest) 
 			Path:          req.Path,
 			IamRoleId:     req.IamRoleId,
 		}
-		err := s.UpdateCSPRole(cspRole)
+		err = s.UpdateCSPRole(cspRole)
 		if err != nil {
 			return nil, err
 		}

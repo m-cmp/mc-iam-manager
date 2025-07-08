@@ -44,11 +44,11 @@ func (r *MenuRepository) GetMenus(req *model.MenuFilterRequest) ([]*model.Menu, 
 	var menus []*model.Menu
 	query := r.db.Model(&model.Menu{})
 
-	if len(req.MenuName) > 0 {
-		query = query.Where("name IN ?", req.MenuName)
+	if len(req.MenuNames) > 0 {
+		query = query.Where("name IN ?", req.MenuNames)
 	}
-	if len(req.MenuID) > 0 {
-		query = query.Where("id IN ?", req.MenuID)
+	if len(req.MenuIDs) > 0 {
+		query = query.Where("id IN ?", req.MenuIDs)
 	}
 
 	// GORM은 기본적으로 UpdatedAt DESC 정렬을 시도할 수 있으므로 명시적 정렬 추가
@@ -275,11 +275,11 @@ func (r *MenuRepository) FindAll(req *model.MenuFilterRequest) ([]*model.Menu, e
 	var menus []*model.Menu
 	query := r.db.Model(&model.Menu{})
 
-	if len(req.MenuName) > 0 {
-		query = query.Where("name IN ?", req.MenuName)
+	if len(req.MenuNames) > 0 {
+		query = query.Where("name IN ?", req.MenuNames)
 	}
-	if len(req.MenuID) > 0 {
-		query = query.Where("id IN ?", req.MenuID)
+	if len(req.MenuIDs) > 0 {
+		query = query.Where("id IN ?", req.MenuIDs)
 	}
 
 	// GORM은 기본적으로 UpdatedAt DESC 정렬을 시도할 수 있으므로 명시적 정렬 추가

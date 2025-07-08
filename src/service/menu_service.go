@@ -82,7 +82,7 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoleIDs []u
 	// 2. 매핑된 메뉴 ID들의 상위 메뉴 ID들을 수집
 	//parentIDs := []*string{}
 	menuFilterRequest := &model.MenuFilterRequest{
-		MenuID: menuIDs,
+		MenuIDs: menuIDs,
 	}
 	menus, err := s.menuRepo.GetMenus(menuFilterRequest)
 	if err != nil {
@@ -111,7 +111,7 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoleIDs []u
 
 	// 4. 수집된 메뉴 ID들로 메뉴 정보 조회
 	parentMenuFilterRequest := &model.MenuFilterRequest{
-		MenuID: parentIDs,
+		MenuIDs: parentIDs,
 	}
 	parentMenus, err := s.menuRepo.GetMenus(parentMenuFilterRequest)
 	if err != nil {
@@ -152,7 +152,7 @@ func (s *MenuService) MenuList(req *model.MenuMappingFilterRequest) ([]*model.Me
 	parentIDMap := make(map[string]bool)
 	parentIDs := []*string{}
 	menuFilterRequest := &model.MenuFilterRequest{
-		MenuID: menuIDs,
+		MenuIDs: menuIDs,
 	}
 	menus, err := s.menuRepo.GetMenus(menuFilterRequest)
 	if err != nil {
@@ -165,7 +165,7 @@ func (s *MenuService) MenuList(req *model.MenuMappingFilterRequest) ([]*model.Me
 	}
 
 	parentMenuFilterRequest := &model.MenuFilterRequest{
-		MenuID: parentIDs,
+		MenuIDs: parentIDs,
 	}
 	parentMenus, err := s.menuRepo.GetMenus(parentMenuFilterRequest)
 	if err != nil {
@@ -456,7 +456,7 @@ func (s *MenuService) RegisterMenusFromContent(yamlContent []byte) error {
 // ListMappedMenusByRole 플랫폼 역할에 매핑된 메뉴 목록 조회
 func (s *MenuService) ListMappedMenusByRole(req *model.MenuMappingFilterRequest) ([]*model.Menu, error) {
 	var menus []*model.Menu
-	for _, roleID := range req.RoleID {
+	for _, roleID := range req.RoleIDs {
 		roleIDInt, err := util.StringToUint(roleID)
 		if err != nil {
 			return nil, err
@@ -562,7 +562,7 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 	existingMappings := make(map[string]map[uint]bool) // menuID -> roleID -> exists
 	for _, roleID := range roleIDs {
 		req := &model.MenuMappingFilterRequest{
-			RoleID: []string{strconv.FormatUint(uint64(roleID), 10)},
+			RoleIDs: []string{strconv.FormatUint(uint64(roleID), 10)},
 		}
 		menuIDs, err := s.menuMappingRepo.FindMappedMenuIDs(req)
 		if err != nil {

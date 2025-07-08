@@ -89,7 +89,7 @@ type WorkspaceFilterRequest struct {
 }
 
 type CreateCspRoleRequest struct {
-	ID            uint   `json:"id,omitempty"`
+	ID            string `json:"id,omitempty"`
 	CspRoleName   string `json:"cspRoleName",omitempty"` // csp의 RoleName. 여러 role이 있기때문에 csp에 정의한 role로 구분하기 위해 사용
 	Description   string `json:"description,omitempty"`
 	CspType       string `json:"cspType,omitempty"`
@@ -129,19 +129,19 @@ type CreateMenuRequests struct {
 }
 
 type MenuFilterRequest struct {
-	MenuID   []*string `json:"menuId",omitempty"`
-	MenuName []*string `json:"menuName",omitempty"`
+	MenuIDs   []*string `json:"menuIds",omitempty"`
+	MenuNames []*string `json:"menuNames",omitempty"`
 }
 
 // CreateMenuMappingRequest 메뉴 매핑 생성을 위한 요청 구조체
 type CreateMenuMappingRequest struct {
-	RoleID string   `json:"roleId" validate:"required"`
-	MenuID []string `json:"menuId" validate:"required"`
+	RoleID  string   `json:"roleId" validate:"required"`
+	MenuIDs []string `json:"menuIds" validate:"required"`
 }
 
 type MenuMappingFilterRequest struct {
-	RoleID []string `json:"roleId",omitempty"`
-	MenuID string   `json:"menuId",omitempty"`
+	RoleIDs []string `json:"roleId",omitempty"`
+	MenuID  string   `json:"menuIds",omitempty"`
 }
 
 // AssignWorkspaceRoleRequest 워크스페이스 역할 할당 요청 구조체

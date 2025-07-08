@@ -192,7 +192,7 @@ func main() {
 		auth.POST("/logout", authHandler.Logout)
 		auth.POST("/refresh", authHandler.RefreshToken)
 		auth.GET("/certs", authHandler.AuthCerts)
-		auth.GET("/temp-credential-csp", authHandler.GetTempCredentialProviders)
+		auth.GET("/temp-credential-csps", authHandler.GetTempCredentialProviders)
 	}
 
 	// platform admin 생성. 권한체크 필요한데...
@@ -261,7 +261,7 @@ func main() {
 
 		roles.POST("/id/:roleId/assign", roleHandler.AssignRole, middleware.PlatformRoleMiddleware(middleware.Write))
 		roles.DELETE("/id/:roleId/unassign", roleHandler.RemoveRole, middleware.PlatformRoleMiddleware(middleware.Write))
-
+		//roles.PUT("/id/:roleId/platform-roles/menus", roleHandler.UpdateRoleMenuMappings, middleware.PlatformRoleMiddleware(middleware.Write))
 		//------ 기본은 roles 관리로 되나. role관련은 특정 업무에 맞게 추가 ------//
 
 		// 사용자에게 플랫폼 역할 할당
@@ -304,6 +304,7 @@ func main() {
 		roles.POST("/mappings/list", roleHandler.ListRoleMasterMappings)
 		roles.GET("/mappings/role/id/:roleId", roleHandler.GetRoleMasterMappings)
 		roles.POST("/mappings/platform-roles/users/list", roleHandler.ListUsersByPlatformRole)
+
 		roles.POST("/mappings/workspace-roles/users/list", roleHandler.ListUsersByWorkspaceRole)
 		roles.POST("/mappings/csp-roles/list", roleHandler.ListRoleMasterMappingsByCspRole)
 

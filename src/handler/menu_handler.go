@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io" // Ensure io package is imported
 	"net/http"
+	"strconv"
 	"time"
 
 	// "strings" // Removed unused import
@@ -121,6 +122,24 @@ func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 	if err := c.Bind(req); err != nil {
 		c.Logger().Debug("ListUserMenu err %s", err)
 	}
+
+	c.Logger().Debug("ListUserMenu: platformRoles %s", c.Get("platformRoles"))
+	userPlatformRoles, ok := c.Get("platformRoles").([]string)
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, "플랫폼 역할을 가져올 수 없습니다")
+	}
+	c.Logger().Debug("getMenus: userPlatformRoles %s", userPlatformRoles)
+	// platformRole은 string이므로 db에서 id를 조회
+	platformRoleIDs := make([]string, 0, len(userPlatformRoles))
+	for _, roleName := range userPlatformRoles {
+		role, err := h.roleService.GetRoleByName(roleName, constants.RoleTypePlatform)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
+		}
+		platformRoleIDs = append(platformRoleIDs, strconv.FormatUint(uint64(role.ID), 10))
+	}
+	req.RoleIDs = platformRoleIDs
+
 	menuList, err := h.menuService.MenuList(req)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -617,7 +636,7 @@ func (h *MenuHandler) CreateMenusRolesMapping(c echo.Context) error {
 	}
 
 	var mappings []*model.RoleMenuMapping
-	for _, menuID := range req.MenuID {
+	for _, menuID := range req.MenuIDs {
 		roleIDInt, err := util.StringToUint(req.RoleID)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid role ID"})

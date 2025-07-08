@@ -265,28 +265,30 @@ func (h *RoleHandler) GetRoleByRoleName(c echo.Context) error {
 // @Router /api/roles/id/{roleId} [put]
 // @OperationId updateRole
 func (h *RoleHandler) UpdateRole(c echo.Context) error {
-	id, err := strconv.ParseUint(c.Param("roleId"), 10, 32)
+	roleId := c.Param("roleId")
+
+	roleIdInt, err := util.StringToUint(roleId)
 	if err != nil {
-		log.Printf("잘못된 역할 ID 형식: %s", c.Param("id"))
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 ROLE ID 형식입니다"})
+		log.Printf("역할 ID 변환 오류: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 ID 형식입니다"})
 	}
 
 	var req model.CreateRoleRequest
 	if err := c.Bind(&req); err != nil {
-		log.Printf("역할 수정 요청 바인딩 실패 - ID: %d, 에러: %v", id, err)
+		log.Printf("역할 수정 요청 바인딩 실패 - ID: %d, 에러: %v", roleIdInt, err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
 	log.Printf("역할 수정 요청 - ID: %d, 이름: %s, 설명: %s, 부모ID: %d, 역할타입: %v",
-		id, req.Name, req.Description, req.ParentID, req.RoleTypes)
+		roleIdInt, req.Name, req.Description, req.ParentID, req.RoleTypes)
 
 	if err := c.Validate(&req); err != nil {
-		log.Printf("역할 수정 입력값 검증 실패 - ID: %d, 에러: %v", id, err)
+		log.Printf("역할 수정 입력값 검증 실패 - ID: %d, 에러: %v", roleIdInt, err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("입력값 검증 실패: %v", err)})
 	}
 
 	role := model.RoleMaster{
-		ID:          uint(id),
+		ID:          roleIdInt,
 		Name:        req.Name,
 		Description: req.Description,
 		ParentID:    req.ParentID,
@@ -294,11 +296,58 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 
 	updatedRole, err := h.roleService.UpdateRoleWithSubs(role, req.RoleTypes)
 	if err != nil {
-		log.Printf("역할 수정 실패 - ID: %d, 에러: %v", id, err)
+		log.Printf("역할 수정 실패 - ID: %d, 에러: %v", roleIdInt, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 수정 실패: %v", err)})
 	}
 
-	log.Printf("역할 수정 성공 - ID: %d", id)
+	if len(req.MenuIDs) > 0 {
+		// 기존 매핑 삭제
+		if err := h.menuService.DeleteRoleMenuMappingsByRoleID(roleIdInt); err != nil {
+			log.Printf("역할 메뉴 매핑 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 메뉴 매핑 삭제 실패: %v", err)})
+		}
+		// 새로운 매핑 생성
+		mappings := make([]*model.RoleMenuMapping, 0)
+		for _, menuID := range req.MenuIDs {
+			mapping := &model.RoleMenuMapping{
+				RoleID: roleIdInt,
+				MenuID: menuID,
+			}
+			mappings = append(mappings, mapping)
+		}
+		if err := h.menuService.CreateRoleMenuMappings(mappings); err != nil {
+			log.Printf("역할 메뉴 매핑 생성 실패 - ID: %d, 에러: %v", roleIdInt, err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 메뉴 매핑 생성 실패: %v", err)})
+		}
+	}
+
+	if len(req.CspRoles) > 0 {
+		// 기존 매핑 삭제
+		if err := h.roleService.DeleteRoleCspRoleMappingsByRoleId(roleIdInt); err != nil {
+			log.Printf("역할 csp 매핑 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 csp 매핑 삭제 실패: %v", err)})
+		}
+		// 새로운 매핑 생성
+		for _, cspRole := range req.CspRoles {
+			roleCspRoleMappingRequest := &model.CreateRoleMasterCspRoleMappingRequest{
+				RoleID:      roleId,
+				CspRoleID:   cspRole.ID,
+				AuthMethod:  constants.AuthMethodOIDC,
+				Description: req.Description,
+			}
+
+			err = h.roleService.AddCspRolesMapping(roleCspRoleMappingRequest)
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 할당 실패: %v", err)})
+			}
+		}
+		// if err := h.roleService.UpdateRoleCspRoleMappings(updatedRole.ID, req.CspRoles); err != nil {
+		// 	log.Printf("역할 csp 매핑 수정 실패 - ID: %d, 에러: %v", id, err)
+		// 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 csp 매핑 수정 실패: %v", err)})
+		// }
+	}
+
+	log.Printf("역할 수정 성공 - ID: %d", roleIdInt)
 	return c.JSON(http.StatusOK, updatedRole)
 }
 
