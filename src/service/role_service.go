@@ -49,34 +49,74 @@ func (s *RoleService) CreateRoleWithSubs(role *model.RoleMaster, roleSubs []mode
 	return s.roleRepository.CreateRoleWithSubs(role, roleSubs)
 }
 
-// UpdateRoleWithSubs 역할과 역할 서브 타입들을 함께 수정
-func (s *RoleService) UpdateRoleWithSubs(role model.RoleMaster, roleTypes []constants.IAMRoleType) (*model.RoleMaster, error) {
-	var updatedRole *model.RoleMaster
+// CreateRoleWithAllDependencies 역할과 모든 의존성을 트랜잭션으로 함께 생성
+func (s *RoleService) CreateRoleWithAllDependencies(
+	role *model.RoleMaster,
+	roleSubs []model.RoleSub,
+	menuIDs []uint,
+	cspRoles []model.CreateCspRoleRequest,
+	description string,
+) (*model.RoleMaster, error) {
+	var createdRole *model.RoleMaster
+
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// 1. 역할 마스터 수정
-		if err := tx.Save(&role).Error; err != nil {
-			return fmt.Errorf("역할 수정 실패: %w", err)
+		// 1. 역할과 서브타입 생성
+		roleResult, err := s.roleRepository.CreateRoleWithSubsWithTx(tx, role, roleSubs)
+		if err != nil {
+			return fmt.Errorf("역할과 서브타입 생성 실패: %w", err)
 		}
+		createdRole = roleResult
 
-		// 2. 기존 역할 서브 타입들 삭제 : 기존 역할 서브 타입들을 삭제하고 새로운 역할 서브 타입들을 생성하는 방식임. roleTypes에 없으면 삭제됨.
-		if err := tx.Where("role_id = ?", role.ID).Delete(&model.RoleSub{}).Error; err != nil {
-			return fmt.Errorf("기존 역할 서브 타입 삭제 실패: %w", err)
-		}
-
-		// 3. 새로운 역할 서브 타입들 생성
-		for _, roleType := range roleTypes {
-			roleSub := model.RoleSub{
-				RoleID:   role.ID,
-				RoleType: constants.IAMRoleType(roleType),
+		// 2. 메뉴 매핑 생성 (Platform 역할인 경우)
+		if len(menuIDs) > 0 {
+			hasPlatformRole := false
+			for _, roleSub := range roleSubs {
+				if roleSub.RoleType == constants.RoleTypePlatform {
+					hasPlatformRole = true
+					break
+				}
 			}
-			if err := tx.Create(&roleSub).Error; err != nil {
-				return fmt.Errorf("역할 서브 타입 생성 실패: %w", err)
+
+			if hasPlatformRole {
+				mappings := make([]*model.RoleMenuMapping, 0)
+				for _, menuID := range menuIDs {
+					mapping := &model.RoleMenuMapping{
+						RoleID: createdRole.ID,
+						MenuID: util.UintToString(menuID),
+					}
+					mappings = append(mappings, mapping)
+				}
+
+				// 메뉴 매핑 생성 (트랜잭션 내에서)
+				for _, mapping := range mappings {
+					if err := tx.Create(mapping).Error; err != nil {
+						return fmt.Errorf("메뉴 매핑 생성 실패: %w", err)
+					}
+				}
 			}
 		}
 
-		// 4. 수정된 역할 정보 조회 (서브 타입 포함)
-		if err := tx.Preload("RoleSubs").First(&updatedRole, role.ID).Error; err != nil {
-			return fmt.Errorf("수정된 역할 조회 실패: %w", err)
+		// 3. CSP 역할 매핑 생성 (CSP 역할은 이미 생성되어 있다고 가정)
+		if len(cspRoles) > 0 {
+			for _, cspRole := range cspRoles {
+				// CSP 역할 ID를 uint로 변환
+				cspRoleID, err := util.StringToUint(cspRole.ID)
+				if err != nil {
+					return fmt.Errorf("잘못된 CSP 역할 ID 형식: %w", err)
+				}
+
+				// 매핑 생성 (트랜잭션 내에서)
+				mapping := &model.RoleMasterCspRoleMapping{
+					RoleID:      createdRole.ID,
+					CspRoleID:   cspRoleID,
+					AuthMethod:  constants.AuthMethodOIDC,
+					Description: description,
+				}
+
+				if err := tx.Create(mapping).Error; err != nil {
+					return fmt.Errorf("CSP 역할 매핑 생성 실패: %w", err)
+				}
+			}
 		}
 
 		return nil
@@ -86,20 +126,54 @@ func (s *RoleService) UpdateRoleWithSubs(role model.RoleMaster, roleTypes []cons
 		return nil, err
 	}
 
-	return updatedRole, nil
+	return createdRole, nil
 }
 
-// DeleteRoleWithSubs 역할과 관련된 모든 서브 타입을 함께 삭제
-func (s *RoleService) DeleteRoleWithSubs(roleID uint) error {
+// UpdateRoleWithSubs 역할과 역할 서브 타입들을 함께 수정
+func (s *RoleService) UpdateRoleWithSubs(role model.RoleMaster, roleTypes []constants.IAMRoleType) (*model.RoleMaster, error) {
+	return s.roleRepository.UpdateRoleWithSubs(role, roleTypes)
+}
+
+// UpdateRoleWithSubsWithTx 트랜잭션 내에서 역할과 역할 서브 타입들을 함께 수정
+func (s *RoleService) UpdateRoleWithSubsWithTx(tx *gorm.DB, role model.RoleMaster, roleTypes []constants.IAMRoleType) (*model.RoleMaster, error) {
+	return s.roleRepository.UpdateRoleWithSubsWithTx(tx, role, roleTypes)
+}
+
+// DeleteRoleSubs 서브 타입을 삭제( master 역할은 Role 삭제에서 처리)
+func (s *RoleService) DeleteRoleSubs(roleID uint, roleType []constants.IAMRoleType) error {
+	return s.roleRepository.DeleteRoleSubs(roleID, roleType)
+}
+
+// DeleteRoleSubsWithTx 트랜잭션 내에서 서브 타입을 삭제
+func (s *RoleService) DeleteRoleSubsWithTx(tx *gorm.DB, roleID uint, roleType []constants.IAMRoleType) error {
+	return s.roleRepository.DeleteRoleSubsWithTx(tx, roleID, roleType)
+}
+
+// DeleteRoleMaster 역할 마스터 삭제
+func (s *RoleService) DeleteRoleMaster(roleID uint) error {
+	return s.roleRepository.DeleteRoleMaster(roleID)
+}
+
+// DeleteRoleWithSubsAndMappings 역할과 관련된 모든 데이터를 트랜잭션으로 삭제
+func (s *RoleService) DeleteRoleWithSubsAndMappings(roleID uint) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		// 1. 역할 서브 타입들 삭제
-		if err := tx.Where("role_id = ?", roleID).Delete(&model.RoleSub{}).Error; err != nil {
+		if err := s.roleRepository.DeleteRoleSubsWithTx(tx, roleID, []constants.IAMRoleType{
+			constants.RoleTypePlatform,
+			constants.RoleTypeWorkspace,
+			constants.RoleTypeCSP,
+		}); err != nil {
 			return fmt.Errorf("역할 서브 타입 삭제 실패: %w", err)
 		}
 
-		// 2. 역할 마스터 삭제
+		// 2. CSP 역할 매핑 삭제
+		if err := s.roleRepository.DeleteRoleCspRoleMappings(roleID); err != nil {
+			return fmt.Errorf("CSP 역할 매핑 삭제 실패: %w", err)
+		}
+
+		// 3. 역할 마스터 삭제
 		if err := tx.Delete(&model.RoleMaster{}, roleID).Error; err != nil {
-			return fmt.Errorf("역할 삭제 실패: %w", err)
+			return fmt.Errorf("역할 마스터 삭제 실패: %w", err)
 		}
 
 		return nil

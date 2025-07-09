@@ -205,3 +205,18 @@ func (r *UserRepository) FindUserRoleInWorkspace(userID, workspaceID uint) (*mod
 	}
 	return &userWorkspaceRole, nil
 }
+
+// CreateUserWorkspaceRole 사용자를 워크스페이스에 추가
+func (r *UserRepository) CreateUserWorkspaceRole(userWorkspaceRole *model.UserWorkspaceRole) error {
+	return r.db.Create(userWorkspaceRole).Error
+}
+
+// DeleteUserWorkspaceRole 워크스페이스에서 사용자 제거
+func (r *UserRepository) DeleteUserWorkspaceRole(workspaceID, userID uint) error {
+	result := r.db.Where("workspace_id = ? AND user_id = ?", workspaceID, userID).
+		Delete(&model.UserWorkspaceRole{})
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete user from workspace: %w", result.Error)
+	}
+	return nil
+}

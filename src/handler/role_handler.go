@@ -106,40 +106,8 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 		})
 	}
 
-	createdRole, err := h.roleService.CreateRoleWithSubs(role, roleSubs)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-
-	// Role과 메뉴 mapping : CreateMenusRolesMapping
-	if len(req.MenuIDs) > 0 {
-		// Platform role인 경우 RoleMenuMapping 사용
-		hasPlatformRole := false
-		for _, roleType := range req.RoleTypes {
-			if roleType == constants.RoleTypePlatform {
-				hasPlatformRole = true
-				break
-			}
-		}
-
-		if hasPlatformRole {
-			// Platform role menu mapping 생성
-			mappings := make([]*model.RoleMenuMapping, 0)
-			for _, menuID := range req.MenuIDs {
-				mapping := &model.RoleMenuMapping{
-					RoleID: createdRole.ID,
-					MenuID: menuID,
-				}
-				mappings = append(mappings, mapping)
-			}
-			if err := h.menuService.CreateRoleMenuMappings(mappings); err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 메뉴 매핑 생성 실패: %v", err)})
-			}
-		}
-	}
-	// Role과 workspace mapping : RoleSub에 workspace 타입이 들어있었으면 생성되어 있을 것임.
-
-	// Role과 csp role mapping
+	// 1. CSP 역할들을 먼저 생성 (외부 API 호출이 필요하므로 트랜잭션 외부에서 처리)
+	createdCspRoles := make([]model.CreateCspRoleRequest, 0)
 	if len(req.CspRoles) > 0 {
 		log.Printf("cspRoles requested: %v", req.CspRoles)
 		for _, cspRole := range req.CspRoles {
@@ -154,24 +122,35 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 			}
 
 			log.Printf("cspRole requested: %v", cspRole)
-			// CSP 역할 생성 또는 업데이트 (매핑도 함께 처리됨)
-			cspRole, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
+			// CSP 역할 생성 또는 업데이트
+			createdCspRole, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 생성/업데이트 실패: %v", err)})
 			}
 
-			// mapping 관계 추가
-			roleMappingRequest := &model.CreateRoleMasterCspRoleMappingRequest{
-				RoleID:      util.UintToString(createdRole.ID),
-				CspRoleID:   util.UintToString(cspRole.ID),
-				AuthMethod:  constants.AuthMethodOIDC,
-				Description: req.Description,
-			}
-
-			if err := h.roleService.CreateRoleCspRoleMapping(roleMappingRequest); err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 매핑 생성 실패: %v", err)})
-			}
+			// 생성된 CSP 역할 정보를 저장
+			createdCspRoles = append(createdCspRoles, model.CreateCspRoleRequest{
+				ID:          util.UintToString(createdCspRole.ID),
+				CspRoleName: createdCspRole.Name,
+				CspType:     createdCspRole.CspType,
+			})
 		}
+	}
+
+	// MenuIDs를 string에서 uint로 변환
+	menuIDs := make([]uint, 0)
+	for _, menuIDStr := range req.MenuIDs {
+		menuID, err := util.StringToUint(menuIDStr)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("잘못된 메뉴 ID 형식: %s", menuIDStr)})
+		}
+		menuIDs = append(menuIDs, menuID)
+	}
+
+	// 2. 역할과 모든 의존성을 트랜잭션으로 함께 생성
+	createdRole, err := h.roleService.CreateRoleWithAllDependencies(role, roleSubs, menuIDs, createdCspRoles, req.Description)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusCreated, createdRole)
@@ -452,7 +431,13 @@ func (h *RoleHandler) DeleteRole(c echo.Context) error {
 		}
 	}
 
-	if err := h.roleService.DeleteRoleWithSubs(roleIdInt); err != nil {
+	if err := h.roleService.DeleteRoleSubs(roleIdInt, []constants.IAMRoleType{constants.RoleTypePlatform, constants.RoleTypeWorkspace, constants.RoleTypeCSP}); err != nil {
+		log.Printf("역할sub 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 삭제 실패: %v", err)})
+	}
+
+	// 역할 삭제
+	if err := h.roleService.DeleteRoleMaster(roleIdInt); err != nil {
 		log.Printf("역할 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 삭제 실패: %v", err)})
 	}
@@ -1244,7 +1229,7 @@ func (h *RoleHandler) DeletePlatformRole(c echo.Context) error {
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "미리 정의된 역할은 삭제할 수 없습니다"})
 	}
 
-	if err := h.roleService.DeleteRoleWithSubs(roleIDInt); err != nil {
+	if err := h.roleService.DeleteRoleSubs(roleIDInt, []constants.IAMRoleType{constants.RoleTypePlatform}); err != nil {
 		log.Printf("platform 역할 삭제 실패 - ID: %d, 에러: %v", roleIDInt, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 삭제 실패: %v", err)})
 	}
@@ -1300,7 +1285,7 @@ func (h *RoleHandler) DeleteWorkspaceRole(c echo.Context) error {
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "미리 정의된 역할은 삭제할 수 없습니다"})
 	}
 
-	if err := h.roleService.DeleteRoleWithSubs(roleIDInt); err != nil {
+	if err := h.roleService.DeleteRoleSubs(roleIDInt, []constants.IAMRoleType{constants.RoleTypeWorkspace}); err != nil {
 		log.Printf("workspace 역할 삭제 실패 - ID: %d, 에러: %v", roleIDInt, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 삭제 실패: %v", err)})
 	}
@@ -1373,7 +1358,7 @@ func (h *RoleHandler) DeleteCspRole(c echo.Context) error {
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "csp 역할 매핑이 있어 삭제 불가"})
 	}
 
-	if err := h.roleService.DeleteRoleWithSubs(roleIDInt); err != nil {
+	if err := h.roleService.DeleteRoleSubs(roleIDInt, []constants.IAMRoleType{constants.RoleTypeCSP}); err != nil {
 		log.Printf("csp 역할 삭제 실패 - ID: %d, 에러: %v", roleIDInt, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 삭제 실패: %v", err)})
 	}
