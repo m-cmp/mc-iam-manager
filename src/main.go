@@ -350,6 +350,7 @@ func main() {
 		users.POST("/list", userHandler.ListUsers, middleware.PlatformRoleMiddleware(middleware.Read))
 		users.POST("", userHandler.CreateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.GET("/id/:userId", userHandler.GetUserByID, middleware.PlatformRoleMiddleware(middleware.Read))
+		users.GET("/kc/:kcUserId", userHandler.GetUserByKcID, middleware.PlatformRoleMiddleware(middleware.Read))
 		users.GET("/name/:username", userHandler.GetUserByUsername, middleware.PlatformRoleMiddleware(middleware.Read))
 		users.PUT("/id/:userId", userHandler.UpdateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
