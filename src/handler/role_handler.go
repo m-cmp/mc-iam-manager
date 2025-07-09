@@ -340,11 +340,18 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 				cspRole.CspRoleName = constants.CspRoleNamePrefix + cspRole.CspRoleName
 			}
 
-			existingCspRole, err := h.cspRoleService.GetCspRoleByName(cspRole.CspRoleName)
+			// CSP 역할 존재 여부 확인
+			exists, err := h.cspRoleService.ExistCspRoleByName(cspRole.CspRoleName)
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 조회 실패: %v", err)})
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 존재 여부 확인 실패: %v", err)})
 			}
-			if existingCspRole != nil {
+
+			if exists {
+				// 기존 CSP 역할이 있으면 ID 가져오기
+				existingCspRole, err := h.cspRoleService.GetCspRoleByName(cspRole.CspRoleName)
+				if err != nil {
+					return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 조회 실패: %v", err)})
+				}
 				cspRole.ID = util.UintToString(existingCspRole.ID)
 			} else {
 				log.Printf("cspRole requested: %v", cspRole)

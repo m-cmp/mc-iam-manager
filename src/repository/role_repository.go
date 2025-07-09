@@ -69,9 +69,26 @@ func (r *RoleRepository) FindRoles(req *model.RoleFilterRequest) ([]*model.RoleM
 
 // GetByID ID로 역할 조회
 func (r *RoleRepository) FindRoleByRoleID(roleId uint, roleType constants.IAMRoleType) (*model.RoleMaster, error) {
-	var role model.RoleMaster
+	// 먼저 존재 여부를 카운트로 확인
+	var count int64
+	countQuery := r.db.Model(&model.RoleMaster{}).Where("mcmp_role_masters.id = ?", roleId)
 
-	// 쿼리 빌더를 사용하여 기본 쿼리 생성
+	// roleType이 비어있지 않다면 조건 추가
+	if roleType != "" {
+		countQuery = countQuery.Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+			Where("mcmp_role_subs.role_type = ?", roleType)
+	}
+
+	if err := countQuery.Count(&count).Error; err != nil {
+		return nil, fmt.Errorf("역할 존재 여부 확인 실패: %w", err)
+	}
+
+	if count == 0 {
+		return nil, nil // 역할이 존재하지 않음
+	}
+
+	// 역할이 존재하면 상세 정보 조회
+	var role model.RoleMaster
 	query := r.db.Where("mcmp_role_masters.id = ?", roleId)
 
 	// roleType이 비어있지 않다면 조건 추가
@@ -86,9 +103,6 @@ func (r *RoleRepository) FindRoleByRoleID(roleId uint, roleType constants.IAMRol
 	}
 
 	if err := query.First(&role).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("역할 조회 실패: %w", err)
 	}
 	return &role, nil
@@ -96,9 +110,26 @@ func (r *RoleRepository) FindRoleByRoleID(roleId uint, roleType constants.IAMRol
 
 // GetByName Name으로 역할 조회
 func (r *RoleRepository) FindRoleByRoleName(roleName string, roleType constants.IAMRoleType) (*model.RoleMaster, error) {
-	var role model.RoleMaster
+	// 먼저 존재 여부를 카운트로 확인
+	var count int64
+	countQuery := r.db.Model(&model.RoleMaster{}).Where("mcmp_role_masters.name = ?", roleName)
 
-	// 쿼리 빌더를 사용하여 기본 쿼리 생성
+	// roleType이 비어있지 않다면 조건 추가
+	if roleType != "" {
+		countQuery = countQuery.Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
+			Where("mcmp_role_subs.role_type = ?", roleType)
+	}
+
+	if err := countQuery.Count(&count).Error; err != nil {
+		return nil, fmt.Errorf("역할 존재 여부 확인 실패: %w", err)
+	}
+
+	if count == 0 {
+		return nil, nil // 역할이 존재하지 않음
+	}
+
+	// 역할이 존재하면 상세 정보 조회
+	var role model.RoleMaster
 	query := r.db.Where("mcmp_role_masters.name = ?", roleName)
 
 	// roleType이 비어있지 않다면 조건 추가
@@ -113,9 +144,6 @@ func (r *RoleRepository) FindRoleByRoleName(roleName string, roleType constants.
 	}
 
 	if err := query.First(&role).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("역할 조회 실패: %w", err)
 	}
 	return &role, nil
