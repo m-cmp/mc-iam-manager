@@ -515,7 +515,7 @@ func (h *UserHandler) ListUserWorkspaces(c echo.Context) error {
 	}
 
 	// Get projects in each workspace
-	var workspacesProjects []*model.WorkspaceWithProjects
+	workspacesProjects := make([]*model.WorkspaceWithProjects, 0)
 	for _, workspace := range workspaces {
 		aWorkspacesProject, err := h.workspaceService.ListWorkspacesProjects(&model.WorkspaceFilterRequest{
 			WorkspaceID: fmt.Sprintf("%d", workspace.ID),
@@ -585,4 +585,102 @@ func (h *UserHandler) ListUserProjectsByWorkspace(c echo.Context) error {
 		return c.JSON(http.StatusOK, workspaces[0])
 	}
 	return c.JSON(http.StatusOK, model.Workspace{})
+}
+
+// 특정 유저에게 할당된 workspace 목록 조회
+// GetUserWorkspacesByUserID godoc
+// @Summary Get user workspaces by user ID
+// @Description Get workspaces for a specific user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param userId path string true "User ID"
+// @Success 200 {array} model.Workspace
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/id/{userId}/workspaces/list [get]
+// @OperationId getUserWorkspacesByUserID
+
+func (h *UserHandler) GetUserWorkspacesByUserID(c echo.Context) error {
+	userId := c.Param("userId")
+
+	WorkspaceFilterRequest := &model.WorkspaceFilterRequest{
+		UserID: userId,
+	}
+
+	// Get user's workspace
+	workspaces, err := h.workspaceService.ListWorkspaces(WorkspaceFilterRequest)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
+	}
+
+	// // Get projects in each workspace
+	// var workspacesProjects []*model.WorkspaceWithProjects
+	// for _, workspace := range workspaces {
+	// 	aWorkspacesProject, err := h.workspaceService.ListWorkspacesProjects(&model.WorkspaceFilterRequest{
+	// 		WorkspaceID: fmt.Sprintf("%d", workspace.ID),
+	// 	})
+	// 	if err != nil {
+	// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
+	// 	}
+	// 	workspace.Projects = aWorkspacesProject
+	// }
+	return c.JSON(http.StatusOK, workspaces)
+}
+
+// 사용자에게 할당된 workspace 와 역할 목록 조회
+func (h *UserHandler) GetUserWorkspaceAndWorkspaceRolesByUserID(c echo.Context) error {
+	userId := c.Param("userId")
+	userIdInt, err := util.StringToUint(userId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 user ID 형식입니다"})
+	}
+
+	// 사용자의 workspace 목록 조회
+	workspaces, err := h.workspaceService.ListWorkspaces(&model.WorkspaceFilterRequest{
+		UserID: userId,
+	})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspaces: %v", err)})
+	}
+
+	// workspaces가 nil이면 빈 배열로 초기화
+	if workspaces == nil {
+		workspaces = make([]*model.Workspace, 0)
+	}
+
+	userWorkspaceRoles := make([]model.UserWorkspaceRole, 0)
+	for _, workspace := range workspaces {
+		// Get user's workspace roles
+		workspaceRoles, err := h.roleService.GetUserWorkspaceRoles(userIdInt, workspace.ID)
+
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
+		}
+		userWorkspaceRoles = append(userWorkspaceRoles, workspaceRoles...)
+	}
+
+	return c.JSON(http.StatusOK, userWorkspaceRoles)
+}
+
+func (h *UserHandler) GetUserWorkspaceAndWorkspaceRolesByUserIDAndWorkspaceID(c echo.Context) error {
+	userId := c.Param("userId")
+	workspaceId := c.Param("workspaceId")
+	userIdInt, err := util.StringToUint(userId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 user ID 형식입니다"})
+	}
+	workspaceIdInt, err := util.StringToUint(workspaceId)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 workspace ID 형식입니다"})
+	}
+
+	workspaceRoles, err := h.roleService.GetUserWorkspaceRoles(userIdInt, workspaceIdInt)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
+	}
+
+	return c.JSON(http.StatusOK, workspaceRoles)
 }

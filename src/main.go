@@ -362,6 +362,10 @@ func main() {
 		users.GET("/workspaces/id/:workspaceId/projects/list", userHandler.ListUserProjectsByWorkspace)
 		users.POST("/workspaces/roles/list", userHandler.ListUserWorkspaceAndWorkspaceRoles)
 
+		users.GET("/id/:userId/workspaces/list", userHandler.GetUserWorkspacesByUserID, middleware.PlatformRoleMiddleware(middleware.Read))
+		users.GET("/id/:userId/workspaces/roles/list", userHandler.GetUserWorkspaceAndWorkspaceRolesByUserID, middleware.PlatformRoleMiddleware(middleware.Read))
+		users.GET("/id/:userId/workspaces/id/:workspaceId/roles/list", userHandler.GetUserWorkspaceAndWorkspaceRolesByUserIDAndWorkspaceID, middleware.PlatformRoleMiddleware(middleware.Read))
+
 	}
 
 	// 메뉴 라우트
