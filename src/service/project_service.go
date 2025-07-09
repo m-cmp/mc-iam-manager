@@ -15,23 +15,23 @@ import (
 	// Import godotenv for loading environment variables
 	"github.com/m-cmp/mc-iam-manager/model" // Import mcmpapi model
 	"github.com/m-cmp/mc-iam-manager/repository"
-	"gorm.io/gorm" // Ensure gorm is imported
+	"gorm.io/gorm"
 )
 
 // ProjectService 프로젝트 관리 서비스
 type ProjectService struct {
+	db             *gorm.DB
 	projectRepo    *repository.ProjectRepository
 	workspaceRepo  *repository.WorkspaceRepository
 	mcmpApiService McmpApiService // Added dependency back
-	db             *gorm.DB       // Add DB field
 }
 
 // NewProjectService 새 ProjectService 인스턴스 생성
 func NewProjectService(db *gorm.DB) *ProjectService {
 	return &ProjectService{
+		db:            db,
 		projectRepo:   repository.NewProjectRepository(db),
 		workspaceRepo: repository.NewWorkspaceRepository(db),
-		db:            db,
 	}
 }
 

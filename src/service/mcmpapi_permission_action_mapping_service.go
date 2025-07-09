@@ -12,7 +12,7 @@ import (
 
 // McmpApiPermissionActionMappingService handles business logic for permission-action mappings.
 type McmpApiPermissionActionMappingService struct {
-	db                          *gorm.DB // Add db field
+	db                          *gorm.DB
 	permissionActionMappingRepo *repository.McmpApiPermissionActionMappingRepository
 }
 
@@ -21,6 +21,7 @@ func NewMcmpApiPermissionActionMappingService(db *gorm.DB) *McmpApiPermissionAct
 
 	repo := repository.NewMcmpApiPermissionActionMappingRepository(db)
 	return &McmpApiPermissionActionMappingService{
+		db:                          db,
 		permissionActionMappingRepo: repo,
 	}
 }

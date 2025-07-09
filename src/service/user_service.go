@@ -21,12 +21,12 @@ import (
 // )
 
 type UserService struct {
+	db                *gorm.DB
 	userRepo          *repository.UserRepository
 	roleRepo          *repository.RoleRepository
 	workspaceRoleRepo *repository.WorkspaceRoleRepository
 	workspaceRepo     *repository.WorkspaceRepository
 	tokenRepo         *repository.TokenRepository
-	db                *gorm.DB // Add DB field for initializing repos
 	// keycloakService   KeycloakService // Removed dependency
 }
 
@@ -43,7 +43,7 @@ func NewUserService(
 	tokenRepo := repository.NewTokenRepository(db)                 // Initialize needed repo
 
 	return &UserService{
-		db:                db, // Store db
+		db:                db,
 		userRepo:          userRepo,
 		roleRepo:          roleRepo,
 		workspaceRepo:     workspaceRepo,

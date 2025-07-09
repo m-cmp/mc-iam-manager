@@ -30,6 +30,7 @@ type CspRoleService struct {
 // NewCspRoleService 새 CspRoleService 인스턴스 생성
 func NewCspRoleService(db *gorm.DB, keycloakService KeycloakService) *CspRoleService {
 	return &CspRoleService{
+		db:                 db,
 		cspRoleRepo:        repository.NewCspRoleRepository(db),
 		tempCredentialRepo: repository.NewTempCredentialRepository(db),
 		keycloakService:    keycloakService,
