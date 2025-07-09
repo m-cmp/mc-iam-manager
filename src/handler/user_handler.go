@@ -92,26 +92,53 @@ func (h *UserHandler) ListUsers(c echo.Context) error {
 	return c.JSON(http.StatusOK, users)
 }
 
+// GetUserByKcID godoc
+// @Summary Get user by KcID
+// @Description Get user details by KcID
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param kcUserId path string true "User KcID"
+// @Success 200 {object} model.User
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/kc/{kcUserId} [get]
+// @OperationId getUserByKcID
+func (h *UserHandler) GetUserByKcID(c echo.Context) error {
+	// Note: Add role check if needed for this endpoint as well
+	kcId := c.Param("kcUserId")                                           // Parameter is Keycloak ID (string)
+	user, err := h.userService.GetUserByKcID(c.Request().Context(), kcId) // Call renamed service method
+	if err != nil {
+		// Consider checking for specific errors (e.g., not found)
+		fmt.Printf("[ERROR] GetUserByKcID: Error fetching user by KcID %s: %v\n", kcId, err)
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자를 찾을 수 없습니다"})
+	}
+	return c.JSON(http.StatusOK, user)
+}
+
 // GetUserByID godoc
 // @Summary Get user by ID
 // @Description Get user details by ID
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param id path string true "User ID"
+// @Param userId path string true "User ID"
 // @Success 200 {object} model.User
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users/{id} [get]
+// @Router /api/users/id/{userId} [get]
 // @OperationId getUserByID
 func (h *UserHandler) GetUserByID(c echo.Context) error {
 	// Note: Add role check if needed for this endpoint as well
-	kcId := c.Param("userId")                                             // Parameter is Keycloak ID (string)
-	user, err := h.userService.GetUserByKcID(c.Request().Context(), kcId) // Call renamed service method
+	userId := c.Param("userId") // Parameter is Keycloak ID (string)
+	userIdInt, err := util.StringToUint(userId)
+
+	user, err := h.userService.GetUserByID(c.Request().Context(), userIdInt)
 	if err != nil {
 		// Consider checking for specific errors (e.g., not found)
-		fmt.Printf("[ERROR] GetUserByID: Error fetching user by KcID %s: %v\n", kcId, err)
+		fmt.Printf("[ERROR] GetUserByID: Error fetching user by Id %s: %v\n", userId, err)
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자를 찾을 수 없습니다"})
 	}
 	return c.JSON(http.StatusOK, user)
