@@ -53,7 +53,8 @@ func (s *RoleService) CreateRoleWithSubs(role *model.RoleMaster, roleSubs []mode
 func (s *RoleService) CreateRoleWithAllDependencies(
 	role *model.RoleMaster,
 	roleSubs []model.RoleSub,
-	menuIDs []uint,
+	//menuIDs []uint,
+	menuIDs []string,
 	cspRoles []model.CreateCspRoleRequest,
 	description string,
 ) (*model.RoleMaster, error) {
@@ -82,7 +83,7 @@ func (s *RoleService) CreateRoleWithAllDependencies(
 				for _, menuID := range menuIDs {
 					mapping := &model.RoleMenuMapping{
 						RoleID: createdRole.ID,
-						MenuID: util.UintToString(menuID),
+						MenuID: menuID,
 					}
 					mappings = append(mappings, mapping)
 				}

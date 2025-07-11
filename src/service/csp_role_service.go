@@ -244,9 +244,9 @@ func (s *CspRoleService) GetCSPRolePermissions(roleID string) ([]string, error) 
 }
 
 // GetRolePolicies 역할의 정책 목록 조회
-func (s *CspRoleService) GetRolePolicies(ctx context.Context, roleName string) (*model.CspRole, error) {
+func (s *CspRoleService) GetRolePolicies(ctx context.Context, roleName string, cspType string) (*model.CspRole, error) {
 	// 1. 역할 존재 여부 확인
-	role, err := s.cspRoleRepo.GetRoleByName(roleName)
+	role, err := s.cspRoleRepo.GetCspRoleByName(roleName, cspType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get role: %w", err)
 	}
@@ -287,20 +287,20 @@ func (s *CspRoleService) DeleteRolePolicy(ctx context.Context, roleName string, 
 // CreateOrUpdateCspRole CSP 역할을 생성하거나 업데이트합니다.
 // ID가 비어있으면 새로 생성하고, ID가 있으면 기존 것을 업데이트합니다.
 func (s *CspRoleService) CreateOrUpdateCspRole(req *model.CreateCspRoleRequest) (*model.CspRole, error) {
+
 	if req.ID == "" {
-		// ID가 비어있으면 새로 생성
+		// ID 가 없더라고 type이 다른 cspRole이 있을 수 있으므로 조회
 
-		// if constants.CSPTypeAWS == constants.CSPType(req.CspType) {
-		// 	//req.RoleName = constants.CspRoleNamePrefix + req.RoleName
+		cspRole, err := s.GetCspRoleByName(req.CspRoleName, req.CspType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get CSP role by name: %w", err)
+		}
+		if cspRole != nil {
+			return cspRole, nil
+		} else {
+			return s.CreateCspRole(req)
+		}
 
-		// 	idpIdentifier := "arn:aws:iam::050864702683:oidc-provider/mciambase.onecloudcon.com/realms/mciam-demo"
-		// 	iamIdentifier := "arn:aws:iam::050864702683:role/" + constants.CspRoleNamePrefix + req.RoleName
-
-		// 	req.IdpIdentifier = idpIdentifier
-		// 	req.IamIdentifier = iamIdentifier
-		// }
-
-		return s.CreateCspRole(req)
 	} else {
 		id, err := util.StringToUint(req.ID)
 		if err != nil {
@@ -342,18 +342,35 @@ func (s *CspRoleService) CreateCspRoles(req *model.CreateCspRolesRequest) ([]*mo
 }
 
 // GetCspRoleByName 이름으로 CSP 역할을 조회합니다.
-func (s *CspRoleService) GetCspRoleByName(roleName string) (*model.CspRole, error) {
-	role, err := s.cspRoleRepo.GetRoleByName(roleName)
+func (s *CspRoleService) GetCspRoleByName(roleName string, cspType string) (*model.CspRole, error) {
+	role, err := s.cspRoleRepo.GetCspRoleByName(roleName, cspType)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, nil // 역할이 존재하지 않음
+			return nil, nil // 역할이 존재하지 않음. 없다고 error는 아님
 		}
 		return nil, fmt.Errorf("failed to get CSP role by name: %w", err)
 	}
 	return role, nil
 }
 
+// 이름으로 cspRole 목록을 조회합니다. 같은이름의 다른 cspType의 cspRole도 조회합니다.
+func (s *CspRoleService) GetCspRolesByName(roleName string, cspType string) ([]*model.CspRole, error) {
+	roles, err := s.cspRoleRepo.GetCspRolesByName(roleName)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // 역할이 존재하지 않음
+		}
+		return nil, fmt.Errorf("failed to get CSP role by name: %w", err)
+	}
+	return roles, nil
+}
+
 // ExistCspRoleByName 이름으로 CSP 역할 존재 여부를 확인합니다 (CspRole 테이블에서)
 func (s *CspRoleService) ExistCspRoleByName(roleName string) (bool, error) {
 	return s.cspRoleRepo.ExistCspRoleByName(roleName)
+}
+
+// ExistCspRoleByNameAndType 이름과 type으로 CSP 역할 존재 여부를 확인합니다 (CspRole 테이블에서)
+func (s *CspRoleService) ExistCspRoleByNameAndType(roleName string, cspType string) (bool, error) {
+	return s.cspRoleRepo.ExistCspRoleByNameAndType(roleName, cspType)
 }
