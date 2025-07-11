@@ -293,7 +293,9 @@ func (s *CspRoleService) CreateOrUpdateCspRole(req *model.CreateCspRoleRequest) 
 
 		cspRole, err := s.GetCspRoleByName(req.CspRoleName, req.CspType)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get CSP role by name: %w", err)
+			if err != gorm.ErrRecordNotFound {
+				return nil, fmt.Errorf("failed to get CSP role by name at CreateOrUpdateCspRole: %w", err)
+			}
 		}
 		if cspRole != nil {
 			return cspRole, nil
@@ -345,9 +347,6 @@ func (s *CspRoleService) CreateCspRoles(req *model.CreateCspRolesRequest) ([]*mo
 func (s *CspRoleService) GetCspRoleByName(roleName string, cspType string) (*model.CspRole, error) {
 	role, err := s.cspRoleRepo.GetCspRoleByName(roleName, cspType)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil // 역할이 존재하지 않음. 없다고 error는 아님
-		}
 		return nil, fmt.Errorf("failed to get CSP role by name: %w", err)
 	}
 	return role, nil
@@ -360,7 +359,7 @@ func (s *CspRoleService) GetCspRolesByName(roleName string, cspType string) ([]*
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil // 역할이 존재하지 않음
 		}
-		return nil, fmt.Errorf("failed to get CSP role by name: %w", err)
+		return nil, fmt.Errorf("failed to get CSP role by name at GetCspRolesByName: %w", err)
 	}
 	return roles, nil
 }

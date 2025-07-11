@@ -599,6 +599,9 @@ func (r *CspRoleRepository) GetRoleByID(cspRoleId uint) (*model.CspRole, error) 
 func (r *CspRoleRepository) GetCspRoleByName(roleName string, cspType string) (*model.CspRole, error) {
 	var role model.CspRole
 	if err := r.db.Where("name = ? AND csp_type = ?", roleName, cspType).First(&role).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil // 역할이 존재하지 않음
+		}
 		return nil, fmt.Errorf("failed to get role: %w", err)
 	}
 	return &role, nil
@@ -608,7 +611,7 @@ func (r *CspRoleRepository) GetCspRoleByName(roleName string, cspType string) (*
 func (r *CspRoleRepository) GetCspRolesByName(roleName string) ([]*model.CspRole, error) {
 	var roles []*model.CspRole
 	if err := r.db.Where("name = ?", roleName).Find(&roles).Error; err != nil {
-		return nil, fmt.Errorf("failed to get role: %w", err)
+		return nil, err
 	}
 	return roles, nil
 }
