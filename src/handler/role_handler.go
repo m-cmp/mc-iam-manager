@@ -137,18 +137,18 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 		}
 	}
 
-	// MenuIDs를 string에서 uint로 변환
-	menuIDs := make([]uint, 0)
-	for _, menuIDStr := range req.MenuIDs {
-		menuID, err := util.StringToUint(menuIDStr)
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("잘못된 메뉴 ID 형식: %s", menuIDStr)})
-		}
-		menuIDs = append(menuIDs, menuID)
-	}
+	// // MenuIDs를 string에서 uint로 변환
+	// menuIDs := make([]uint, 0)
+	// for _, menuIDStr := range req.MenuIDs {
+	// 	menuID, err := util.StringToUint(menuIDStr)
+	// 	if err != nil {
+	// 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("잘못된 메뉴 ID 형식: %s", menuIDStr)})
+	// 	}
+	// 	menuIDs = append(menuIDs, menuID)
+	// }
 
 	// 2. 역할과 모든 의존성을 트랜잭션으로 함께 생성
-	createdRole, err := h.roleService.CreateRoleWithAllDependencies(role, roleSubs, menuIDs, createdCspRoles, req.Description)
+	createdRole, err := h.roleService.CreateRoleWithAllDependencies(role, roleSubs, req.MenuIDs, createdCspRoles, req.Description)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -320,14 +320,14 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 			}
 
 			// CSP 역할 존재 여부 확인
-			exists, err := h.cspRoleService.ExistCspRoleByName(cspRole.CspRoleName)
+			exists, err := h.cspRoleService.ExistCspRoleByNameAndType(cspRole.CspRoleName, cspRole.CspType)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 존재 여부 확인 실패: %v", err)})
 			}
 
 			if exists {
 				// 기존 CSP 역할이 있으면 ID 가져오기
-				existingCspRole, err := h.cspRoleService.GetCspRoleByName(cspRole.CspRoleName)
+				existingCspRole, err := h.cspRoleService.GetCspRoleByName(cspRole.CspRoleName, cspRole.CspType)
 				if err != nil {
 					return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 조회 실패: %v", err)})
 				}

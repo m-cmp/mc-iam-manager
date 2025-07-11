@@ -427,7 +427,7 @@ func (r *CspRoleRepository) CreateCspRoleWithIamClient(req *model.CreateCspRoleR
 			return newRole, nil
 		}
 	} else {
-		return nil, fmt.Errorf("role already exists in database")
+		return nil, fmt.Errorf("csp role already exists in database")
 	}
 }
 
@@ -596,18 +596,35 @@ func (r *CspRoleRepository) GetRoleByID(cspRoleId uint) (*model.CspRole, error) 
 }
 
 // GetRole 역할 정보 조회
-func (r *CspRoleRepository) GetRoleByName(roleName string) (*model.CspRole, error) {
+func (r *CspRoleRepository) GetCspRoleByName(roleName string, cspType string) (*model.CspRole, error) {
 	var role model.CspRole
-	if err := r.db.Where("name = ?", roleName).First(&role).Error; err != nil {
+	if err := r.db.Where("name = ? AND csp_type = ?", roleName, cspType).First(&role).Error; err != nil {
 		return nil, fmt.Errorf("failed to get role: %w", err)
 	}
 	return &role, nil
+}
+
+// GetRole 역할 정보 조회. 같은이름의 역할에 cspType 이 다를 수 있음
+func (r *CspRoleRepository) GetCspRolesByName(roleName string) ([]*model.CspRole, error) {
+	var roles []*model.CspRole
+	if err := r.db.Where("name = ?", roleName).Find(&roles).Error; err != nil {
+		return nil, fmt.Errorf("failed to get role: %w", err)
+	}
+	return roles, nil
 }
 
 // ExistCspRoleByName 이름으로 CSP 역할 존재 여부 확인 (CspRole 테이블에서)
 func (r *CspRoleRepository) ExistCspRoleByName(roleName string) (bool, error) {
 	var count int64
 	if err := r.db.Model(&model.CspRole{}).Where("name = ?", roleName).Count(&count).Error; err != nil {
+		return false, fmt.Errorf("failed to check CSP role existence: %w", err)
+	}
+	return count > 0, nil
+}
+
+func (r *CspRoleRepository) ExistCspRoleByNameAndType(roleName string, cspType string) (bool, error) {
+	var count int64
+	if err := r.db.Model(&model.CspRole{}).Where("name = ? AND csp_type = ?", roleName, cspType).Count(&count).Error; err != nil {
 		return false, fmt.Errorf("failed to check CSP role existence: %w", err)
 	}
 	return count > 0, nil
