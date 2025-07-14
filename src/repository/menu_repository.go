@@ -96,7 +96,7 @@ func (r *MenuRepository) CreateMenu(req *model.CreateMenuRequest) error {
 	if err != nil {
 		return err
 	}
-	menu := model.Menu{
+	menu := &model.Menu{
 		ID:          req.ID,
 		ParentID:    req.ParentID,
 		DisplayName: req.DisplayName,
