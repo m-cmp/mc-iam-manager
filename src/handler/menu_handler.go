@@ -47,7 +47,7 @@ func NewMenuHandler(db *gorm.DB) *MenuHandler {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /users/menus-tree/list [post]
+// @Router /api/users/menus-tree/list [post]
 // @Id listUserMenuTree
 func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 	platformRolesIntf := c.Get("platformRoles")
@@ -305,7 +305,7 @@ func (h *MenuHandler) hasPermission(userRoles []string, requiredRole string) boo
 // @Param menuId path string true "Menu ID"
 // @Success 200 {object} model.Menu
 // @Security BearerAuth
-// @Router /menus/id/{menuId} [post]
+// @Router /api/menus/id/{menuId} [post]
 // @Id getMenuByID
 func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 	id := c.Param("menuId")
