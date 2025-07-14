@@ -245,12 +245,16 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 	}`, req.WorkspaceID, scopes)
 
 	rptOptions := gocloak.RequestingPartyTokenOptions{
-		GrantType:  gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
-		Audience:   gocloak.StringP(config.KC.OIDCClientID),
+		GrantType: gocloak.StringP("urn:ietf:params:oauth:grant-type:uma-ticket"),
+		Audience:  gocloak.StringP(config.KC.OIDCClientName),
+		//Audience:   gocloak.StringP(config.KC.OIDCClientID),
 		ClaimToken: gocloak.StringP(claimToken),
 	}
 	rpt, err := ks.GetRequestingPartyToken(c.Request().Context(), accessToken, rptOptions)
 	if err != nil {
+		//log.Printf("Audience: %v", config.KC.OIDCClientID)
+		log.Printf("Audience: %v", config.KC.OIDCClientName)
+		log.Printf("ClaimToken: %v", claimToken)
 		log.Printf("RPT 발급 실패: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get RPT"})
 	}
