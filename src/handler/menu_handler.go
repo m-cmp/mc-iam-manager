@@ -14,6 +14,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
+	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/service" // Corrected import path
 	"github.com/m-cmp/mc-iam-manager/util"
 
@@ -331,7 +332,7 @@ func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 // @Param menu body model.Menu true "Menu Info"
 // @Success 201 {object} model.Menu
 // @Security BearerAuth
-// @Router /menus [post]
+// @Router /api/menus [post]
 // @Id createMenu
 func (h *MenuHandler) CreateMenu(c echo.Context) error {
 	req := new(model.CreateMenuRequest)
@@ -346,9 +347,13 @@ func (h *MenuHandler) CreateMenu(c echo.Context) error {
 	existingMenu, err := h.menuService.GetMenuByID(&req.ID)
 	if err != nil {
 		c.Logger().Debugf("Failed to check existing menu: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "메뉴 조회 중 오류가 발생했습니다",
-		})
+		if err == repository.ErrMenuNotFound {
+			// 없는 메뉴임.
+		} else {
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "메뉴 조회 중 오류가 발생했습니다",
+			})
+		}
 	}
 
 	if existingMenu != nil {
