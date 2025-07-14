@@ -372,6 +372,7 @@ func main() {
 	menusMng := api.Group("/menus")
 	{
 		menusMng.POST("/list", menuHandler.ListMenus)
+		menusMng.POST("/tree/list", menuHandler.ListMenusTree)
 		menusMng.POST("", menuHandler.CreateMenu, middleware.PlatformRoleMiddleware(middleware.Write))
 		menusMng.PUT("/id/:menuId", menuHandler.UpdateMenu, middleware.PlatformAdminMiddleware)
 		menusMng.DELETE("/id/:menuId", menuHandler.DeleteMenu, middleware.PlatformAdminMiddleware)

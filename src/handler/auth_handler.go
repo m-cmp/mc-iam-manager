@@ -48,14 +48,14 @@ func NewAuthHandler(db *gorm.DB) *AuthHandler {
 }
 
 // Login godoc
-// @Summary Login
-// @Description Authenticate user and get token
+// @Summary User login
+// @Description Authenticate user and issue JWT token.
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param credentials body idp.UserLogin true "Login Credentials"
 // @Router /api/auth/login [post]
-// @OperationId mciamLogin
+// @Id mciamLogin
 func (h *AuthHandler) Login(c echo.Context) error {
 	var userLogin idp.UserLogin
 	if err := c.Bind(&userLogin); err != nil {
@@ -138,28 +138,28 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // }
 
 // Logout godoc
-// @Summary Logout
-// @Description Logout user and invalidate token
+// @Summary Logout user
+// @Description Invalidate the user's refresh token and log out.
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Router /api/auth/logout [post]
-// @OperationId mciamLogout
+// @Id mciamLogout
 func (h *AuthHandler) Logout(c echo.Context) error {
 	// Keycloak에서는 클라이언트 측에서 토큰을 삭제하면 됩니다
 	return c.JSON(http.StatusOK, map[string]string{"message": "로그아웃되었습니다"})
 }
 
 // RefreshToken godoc
-// @Summary Refresh token
-// @Description Get new access token using refresh token
+// @Summary Refresh access token
+// @Description Refresh JWT access token using a valid refresh token.
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Router /api/auth/refresh [post]
-// @OperationId mciamRefreshToken
+// @Id mciamRefreshToken
 func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	refreshToken := c.FormValue("refresh_token")
 	if refreshToken == "" {
@@ -187,8 +187,8 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 // @Success 200 {object} map[string]string "message: Workspace ticket set successfully"
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Security BearerAuth
-// @Router /workspaces/workspace-ticket [post]
-// @OperationId mciamWorkspaceTicket
+// @Router /api/workspaces/workspace-ticket [post]
+// @Id mciamWorkspaceTicket
 func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 	// 1. 기존 액세스 토큰 확인
 	authHeader := c.Request().Header.Get("Authorization")
@@ -259,15 +259,15 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 }
 
 // AuthCerts godoc
-// @Summary Get authentication certificates : MC-IAM-Manager를 사용하기 위해 인증서 정보를 조회하여 대상 프레임워크에서 사용할 수 있도록 함.
-// @Description Get authentication certificates for token validation
+// @Summary Get authentication certificates
+// @Description Retrieve authentication certificates for MC-IAM-Manager to be used in target frameworks for token validation.
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Router /api/auth/certs [get]
-// @OperationId mciamAuthCerts
+// @Id mciamAuthCerts
 func (h *AuthHandler) AuthCerts(c echo.Context) error {
 	cert, err := h.keycloakService.GetCerts(c.Request().Context())
 	if err != nil {
@@ -285,8 +285,8 @@ func (h *AuthHandler) AuthCerts(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Success 200 {object} map[string]interface{} "CSP temporary credential information"
-// @Router /api/auth/temp-credential-csp [get]
-// @OperationId mciamGetTempCredentialCsp
+// @Router /api/auth/temp-credential-csps [get]
+// @Id mciamGetTempCredentialProviders
 func (h *AuthHandler) GetTempCredentialProviders(c echo.Context) error {
 	// TODO : 기준정보로 관리 및 제공필요 : platform이 제공하는 목록과 사용자가 선택한 목록 모두 제공필요
 
