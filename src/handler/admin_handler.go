@@ -46,7 +46,7 @@ func NewAdminHandler(db *gorm.DB) *AdminHandler {
 // @Param request body model.SetupInitialAdminRequest true "Setup Initial Admin Request"
 // @Success 200 {object} model.Response
 // @Router /initial-admin [post]
-// @OperationId setupInitialAdmin
+// @Id setupInitialAdmin
 func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	var req model.SetupInitialAdminRequest
 	if err := c.Bind(&req); err != nil {
@@ -197,7 +197,7 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 // @Failure 400 {object} model.Response
 // @Failure 500 {object} model.Response
 // @Router /setup/check-user-roles [get]
-// @OperationId checkUserRoles
+// @Id checkUserRoles
 func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 	username := c.QueryParam("username")
 	if username == "" {
@@ -221,101 +221,6 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 	})
 }
 
-// ListPlatformRoles godoc
-// @Summary 플랫폼 역할 목록 조회
-// @Description 모든 플랫폼 역할 목록을 조회합니다
-// @Tags admin
-// @Accept json
-// @Produce json
-// @Success 200 {array} model.RoleMaster
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Security BearerAuth
-// @Router /admin/platform-roles/list [post]
-// @OperationId listPlatformRoles
-func (h *AdminHandler) ListPlatformRoles(c echo.Context) error {
-	// Implementation of ListPlatformRoles method
-	return nil // Placeholder return, actual implementation needed
-}
-
-// GetPlatformRoleByID godoc
-// @Summary 플랫폼 역할 ID로 조회
-// @Description 특정 플랫폼 역할을 ID로 조회합니다
-// @Tags admin
-// @Accept json
-// @Produce json
-// @Param id path string true "Platform Role ID"
-// @Success 200 {object} model.RoleMaster
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Failure 404 {object} map[string]string "error: Platform Role not found"
-// @Security BearerAuth
-// @Router /admin/platform-roles/{id} [get]
-// @OperationId getPlatformRoleByID
-func (h *AdminHandler) GetPlatformRoleByID(c echo.Context) error {
-	// Implementation of GetPlatformRoleByID method
-	return nil // Placeholder return, actual implementation needed
-}
-
-// CreatePlatformRole godoc
-// @Summary 새 플랫폼 역할 생성
-// @Description 새로운 플랫폼 역할을 생성합니다
-// @Tags admin
-// @Accept json
-// @Produce json
-// @Param role body model.RoleMaster true "Platform Role Info"
-// @Success 201 {object} model.RoleMaster
-// @Failure 400 {object} map[string]string "error: Invalid request"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Security BearerAuth
-// @Router /admin/platform-roles [post]
-// @OperationId createPlatformRole
-func (h *AdminHandler) CreatePlatformRole(c echo.Context) error {
-	// Implementation of CreatePlatformRole method
-	return nil // Placeholder return, actual implementation needed
-}
-
-// UpdatePlatformRole godoc
-// @Summary 플랫폼 역할 업데이트
-// @Description 플랫폼 역할 정보를 업데이트합니다
-// @Tags admin
-// @Accept json
-// @Produce json
-// @Param id path string true "Platform Role ID"
-// @Param role body model.RoleMaster true "Platform Role Info"
-// @Success 200 {object} model.RoleMaster
-// @Failure 400 {object} map[string]string "error: Invalid request"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Failure 404 {object} map[string]string "error: Platform Role not found"
-// @Security BearerAuth
-// @Router /admin/platform-roles/{id} [put]
-// @OperationId updatePlatformRole
-func (h *AdminHandler) UpdatePlatformRole(c echo.Context) error {
-	// Implementation of UpdatePlatformRole method
-	return nil // Placeholder return, actual implementation needed
-}
-
-// DeletePlatformRole godoc
-// @Summary 플랫폼 역할 삭제
-// @Description 플랫폼 역할을 삭제합니다
-// @Tags admin
-// @Accept json
-// @Produce json
-// @Param id path string true "Platform Role ID"
-// @Success 204 "No Content"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Failure 404 {object} map[string]string "error: Platform Role not found"
-// @Security BearerAuth
-// @Router /admin/platform-roles/{id} [delete]
-// @OperationId deletePlatformRole
-func (h *AdminHandler) DeletePlatformRole(c echo.Context) error {
-	// Implementation of DeletePlatformRole method
-	return nil // Placeholder return, actual implementation needed
-}
-
 // InitializeMenuPermissions godoc
 // @Summary Initialize menu permissions from CSV
 // @Description CSV 파일을 읽어서 메뉴 권한을 초기화합니다
@@ -328,7 +233,7 @@ func (h *AdminHandler) DeletePlatformRole(c echo.Context) error {
 // @Failure 500 {object} model.Response
 // @Security BearerAuth
 // @Router /setup/initial-role-menu-permission [get]
-// @OperationId initializeMenuPermissions
+// @Id initializeMenuPermissions
 func (h *AdminHandler) InitializeMenuPermissions(c echo.Context) error {
 	filePath := c.QueryParam("filePath")
 

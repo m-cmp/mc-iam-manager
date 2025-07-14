@@ -30,8 +30,8 @@ func NewMciamPermissionHandler(db *gorm.DB) *MciamPermissionHandler {
 }
 
 // ListMciamPermissions MC-IAM 권한 목록 조회 - Renamed
-// @Summary List MCIAM permissions
-// @Description Get a list of all MCIAM permissions
+// @Summary List all permissions
+// @Description Retrieve a list of all permissions.
 // @Tags permissions
 // @Accept json
 // @Produce json
@@ -39,7 +39,7 @@ func NewMciamPermissionHandler(db *gorm.DB) *MciamPermissionHandler {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/permissions/mciam/list [post]
-// @OperationId listMciamPermissions
+// @Id listMciamPermissions
 func (h *MciamPermissionHandler) ListMciamPermissions(c echo.Context) error { // Renamed method
 	frameworkID := c.QueryParam("frameworkId")
 	resourceTypeID := c.QueryParam("resourceTypeId")
@@ -53,18 +53,18 @@ func (h *MciamPermissionHandler) ListMciamPermissions(c echo.Context) error { //
 }
 
 // GetByID ID로 권한 조회
-// @Summary Get MCIAM permission by ID
-// @Description Get MCIAM permission details by ID
+// @Summary Get permission by ID
+// @Description Retrieve permission details by permission ID.
 // @Tags permissions
 // @Accept json
 // @Produce json
-// @Param id path string true "Permission ID"
+// @Param permissionId path string true "Permission ID"
 // @Success 200 {object} model.MciamPermission
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/permissions/mciam/id/{id} [get]
-// @OperationId getMciamPermissionByID
+// @Id getMciamPermissionByID
 func (h *MciamPermissionHandler) GetMciamPermissionByID(c echo.Context) error { // Renamed method
 	id := c.Param("id")
 
@@ -87,8 +87,8 @@ func (h *MciamPermissionHandler) GetMciamPermissionByID(c echo.Context) error { 
 }
 
 // Create 권한 생성
-// @Summary Create MCIAM permission
-// @Description Create a new MCIAM permission
+// @Summary Create new permission
+// @Description Create a new permission with the specified information.
 // @Tags permissions
 // @Accept json
 // @Produce json
@@ -98,7 +98,7 @@ func (h *MciamPermissionHandler) GetMciamPermissionByID(c echo.Context) error { 
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/permissions/mciam [post]
-// @OperationId createMciamPermission
+// @Id createMciamPermission
 func (h *MciamPermissionHandler) CreateMciamPermission(c echo.Context) error { // Renamed method
 	var permission model.MciamPermission // Use renamed model
 	if err := c.Bind(&permission); err != nil {
@@ -116,12 +116,12 @@ func (h *MciamPermissionHandler) CreateMciamPermission(c echo.Context) error { /
 }
 
 // Update 권한 수정
-// @Summary Update MCIAM permission
-// @Description Update an existing MCIAM permission
+// @Summary Update permission
+// @Description Update the details of an existing permission.
 // @Tags permissions
 // @Accept json
 // @Produce json
-// @Param id path string true "Permission ID"
+// @Param permissionId path string true "Permission ID"
 // @Param permission body model.MciamPermission true "Permission Info"
 // @Success 200 {object} model.MciamPermission
 // @Failure 400 {object} map[string]string
@@ -129,7 +129,7 @@ func (h *MciamPermissionHandler) CreateMciamPermission(c echo.Context) error { /
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/permissions/mciam/{id} [put]
-// @OperationId updateMciamPermission
+// @Id updateMciamPermission
 func (h *MciamPermissionHandler) UpdateMciamPermission(c echo.Context) error { // Renamed method
 	id := c.Param("id")
 
@@ -171,18 +171,18 @@ func (h *MciamPermissionHandler) UpdateMciamPermission(c echo.Context) error { /
 }
 
 // Delete 권한 삭제
-// @Summary Delete MCIAM permission
-// @Description Delete an existing MCIAM permission
+// @Summary Delete permission
+// @Description Delete a permission by its ID.
 // @Tags permissions
 // @Accept json
 // @Produce json
-// @Param id path string true "Permission ID"
+// @Param permissionId path string true "Permission ID"
 // @Success 204 "No Content"
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/permissions/mciam/{id} [delete]
-// @OperationId deleteMciamPermission
+// @Id deleteMciamPermission
 func (h *MciamPermissionHandler) DeleteMciamPermission(c echo.Context) error { // Renamed method
 	id := c.Param("id")
 

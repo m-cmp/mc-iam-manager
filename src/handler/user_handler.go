@@ -62,16 +62,16 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 }
 
 // ListUsers godoc
-// @Summary List users
-// @Description Get a list of all users
+// @Summary List all users
+// @Description Retrieve a list of all users.
 // @Tags users
 // @Accept json
 // @Produce json
 // @Success 200 {array} model.User
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users [post]
-// @OperationId listUsers
+// @Router /api/users/list [post]
+// @Id listUsers
 func (h *UserHandler) ListUsers(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"} // todo : middleware에서 체크되지 않나?
@@ -104,7 +104,7 @@ func (h *UserHandler) ListUsers(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/kc/{kcUserId} [get]
-// @OperationId getUserByKcID
+// @Id getUserByKcID
 func (h *UserHandler) GetUserByKcID(c echo.Context) error {
 	// Note: Add role check if needed for this endpoint as well
 	kcId := c.Param("kcUserId")                                           // Parameter is Keycloak ID (string)
@@ -119,7 +119,7 @@ func (h *UserHandler) GetUserByKcID(c echo.Context) error {
 
 // GetUserByID godoc
 // @Summary Get user by ID
-// @Description Get user details by ID
+// @Description Retrieve user details by user ID.
 // @Tags users
 // @Accept json
 // @Produce json
@@ -129,7 +129,7 @@ func (h *UserHandler) GetUserByKcID(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/id/{userId} [get]
-// @OperationId getUserByID
+// @Id getUserByID
 func (h *UserHandler) GetUserByID(c echo.Context) error {
 	// Note: Add role check if needed for this endpoint as well
 	userId := c.Param("userId") // Parameter is Keycloak ID (string)
@@ -156,7 +156,7 @@ func (h *UserHandler) GetUserByID(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/name/{username} [get]
-// @OperationId getUserByUsername
+// @Id getUserByUsername
 func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 	// Note: Add role check if needed for this endpoint as well
 	username := c.Param("username")
@@ -168,8 +168,8 @@ func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 }
 
 // CreateUser godoc
-// @Summary Create user
-// @Description Create a new user
+// @Summary Create new user
+// @Description Create a new user with the specified information.
 // @Tags users
 // @Accept json
 // @Produce json
@@ -179,7 +179,7 @@ func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users [post]
-// @OperationId createUser
+// @Id createUser
 func (h *UserHandler) CreateUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -212,7 +212,7 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 
 // UpdateUser godoc
 // @Summary Update user
-// @Description Update an existing user
+// @Description Update the details of an existing user.
 // @Tags users
 // @Accept json
 // @Produce json
@@ -224,7 +224,7 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/{id} [put]
-// @OperationId updateUser
+// @Id updateUser
 func (h *UserHandler) UpdateUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -269,7 +269,7 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 
 // DeleteUser godoc
 // @Summary Delete user
-// @Description Delete an existing user
+// @Description Delete a user by their ID.
 // @Tags users
 // @Accept json
 // @Produce json
@@ -279,7 +279,7 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/{id} [delete]
-// @OperationId deleteUser
+// @Id deleteUser
 func (h *UserHandler) DeleteUser(c echo.Context) error {
 	// --- 역할 검증 (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
@@ -321,7 +321,7 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/id/{userId}/status [post]
-// @OperationId updateUserStatus
+// @Id updateUserStatus
 func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 
 	// --- 역할 검증 (Admin or platformAdmin) ---
@@ -395,7 +395,7 @@ func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/workspaces/roles/list [post]
-// @OperationId listUserWorkspaceAndWorkspaceRoles
+// @Id listUserWorkspaceAndWorkspaceRoles
 func (h *UserHandler) ListUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
 	// // 1. Get user claims from context
 	// claimsIntf := c.Get("token_claims")
@@ -475,7 +475,7 @@ func (h *UserHandler) ListUserWorkspaceAndWorkspaceRoles(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/workspaces/list [post]
-// @OperationId listUserWorkspaces
+// @Id listUserWorkspaces
 func (h *UserHandler) ListUserWorkspaces(c echo.Context) error {
 
 	// 1. Get Keycloak User ID
@@ -539,7 +539,7 @@ func (h *UserHandler) ListUserWorkspaces(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/workspaces/id/{workspaceId}/projects/list [get]
-// @OperationId listUserProjectsByWorkspace
+// @Id listUserProjectsByWorkspace
 func (h *UserHandler) ListUserProjectsByWorkspace(c echo.Context) error {
 	workspaceIdInt, err := util.StringToUint(c.Param("workspaceId"))
 	if err != nil {
@@ -599,7 +599,7 @@ func (h *UserHandler) ListUserProjectsByWorkspace(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/id/{userId}/workspaces/list [get]
-// @OperationId getUserWorkspacesByUserID
+// @Id getUserWorkspacesByUserID
 
 func (h *UserHandler) GetUserWorkspacesByUserID(c echo.Context) error {
 	userId := c.Param("userId")

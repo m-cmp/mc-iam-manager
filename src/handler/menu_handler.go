@@ -37,8 +37,8 @@ func NewMenuHandler(db *gorm.DB) *MenuHandler {
 // Helper function moved to util package
 
 // ListUserMenuTree godoc
-// @Summary 현재 사용자의 메뉴 트리 조회
-// @Description 현재 로그인한 사용자의 Platform Role에 따라 접근 가능한 메뉴 목록을 트리 구조로 조회합니다.
+// @Summary Get current user's menu tree
+// @Description Get the menu tree accessible to the current user's platform role.
 // @Tags menus
 // @Accept json
 // @Produce json
@@ -47,7 +47,7 @@ func NewMenuHandler(db *gorm.DB) *MenuHandler {
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
 // @Router /users/menus-tree/list [post]
-// @OperationId listUserMenuTree
+// @Id listUserMenuTree
 func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 	platformRolesIntf := c.Get("platformRoles")
 	if platformRolesIntf == nil {
@@ -84,14 +84,14 @@ func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 	return c.JSON(http.StatusOK, menuTree)
 }
 
-// @Summary 현재 사용자의 메뉴 목록 조회
-// @Description 현재 로그인한 사용자의 Platform Role에 따라 접근 가능한 메뉴 목록을 조회합니다.
+// @Summary Get current user's menu list
+// @Description Get the menu list accessible to the current user's platform role.
 // @Tags menus
 // @Accept json
 // @Produce json
 // @Success 200 {array} model.Menu
 // @Router /api/users/menus/list [post]
-// @OperationId listUserMenu
+// @Id listUserMenu
 func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 	// platformRolesIntf := c.Get("platformRoles")
 	// if platformRolesIntf == nil {
@@ -152,8 +152,8 @@ func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 }
 
 // ListAllMenusTree godoc
-// @Summary 모든 메뉴 트리 조회 (관리자용)
-// @Description 모든 메뉴 목록을 트리 구조로 조회합니다. 관리자 권한이 필요합니다.
+// @Summary List all menus
+// @Description List all menus as a tree structure. Admin permission required.
 // @Tags menus
 // @Accept json
 // @Produce json
@@ -163,7 +163,7 @@ func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
 // @Router /api/menus/list [post]
-// @OperationId listMenus
+// @Id listMenus
 func (h *MenuHandler) ListMenus(c echo.Context) error {
 	req := &model.MenuFilterRequest{}
 	if err := c.Bind(req); err != nil {
@@ -194,8 +194,8 @@ func (h *MenuHandler) ListMenus(c echo.Context) error {
 	return c.JSON(http.StatusOK, menus)
 }
 
-// @Summary 모든 메뉴 트리 조회 (관리자용)
-// @Description 모든 메뉴 목록을 트리 구조로 조회합니다. 관리자 권한이 필요합니다.
+// @Summary List all menus Tree
+// @Description List all menus as a tree structure. Admin permission required.
 // @Tags menus
 // @Accept json
 // @Produce json
@@ -204,8 +204,8 @@ func (h *MenuHandler) ListMenus(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /api/menus/list [post]
-// @OperationId listMenusTree
+// @Router /api/menus/tree/list [post]
+// @Id listMenusTree
 func (h *MenuHandler) ListMenusTree(c echo.Context) error {
 	// 관리자 전용기능이면 middleware 에서 체크하도록 하자.
 
@@ -296,8 +296,8 @@ func (h *MenuHandler) hasPermission(userRoles []string, requiredRole string) boo
 }
 
 // GetByID godoc
-// @Summary 메뉴 ID로 조회
-// @Description 특정 메뉴를 ID로 조회합니다
+// @Summary Get menu by ID
+// @Description Get menu details by ID
 // @Tags menus
 // @Accept json
 // @Produce json
@@ -305,7 +305,7 @@ func (h *MenuHandler) hasPermission(userRoles []string, requiredRole string) boo
 // @Success 200 {object} model.Menu
 // @Security BearerAuth
 // @Router /menus/id/{menuId} [post]
-// @OperationId getMenuByID
+// @Id getMenuByID
 func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 	id := c.Param("menuId")
 	menu, err := h.menuService.GetMenuByID(&id)
@@ -323,8 +323,8 @@ func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 }
 
 // Create godoc
-// @Summary 새 메뉴 생성
-// @Description 새로운 메뉴를 생성합니다
+// @Summary Create new menu
+// @Description Create a new menu
 // @Tags menus
 // @Accept json
 // @Produce json
@@ -332,7 +332,7 @@ func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 // @Success 201 {object} model.Menu
 // @Security BearerAuth
 // @Router /menus [post]
-// @OperationId createMenu
+// @Id createMenu
 func (h *MenuHandler) CreateMenu(c echo.Context) error {
 	req := new(model.CreateMenuRequest)
 	if err := c.Bind(req); err != nil {
@@ -406,8 +406,8 @@ func (h *MenuHandler) CreateMenu(c echo.Context) error {
 }
 
 // Update godoc
-// @Summary 메뉴 정보 업데이트
-// @Description 메뉴 정보를 업데이트합니다
+// @Summary Update menu information
+// @Description Update menu information
 // @Tags menus
 // @Accept json
 // @Produce json
@@ -416,7 +416,7 @@ func (h *MenuHandler) CreateMenu(c echo.Context) error {
 // @Success 200 {object} model.Menu
 // @Security BearerAuth
 // @Router /menus/id/{menuId} [put]
-// @OperationId updateMenu
+// @Id updateMenu
 func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 	id := c.Param("menuId")
 	var menu model.CreateMenuRequest
@@ -495,8 +495,8 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 }
 
 // Delete godoc
-// @Summary 메뉴 삭제
-// @Description 메뉴를 삭제합니다
+// @Summary Delete menu
+// @Description Delete a menu
 // @Tags menus
 // @Accept json
 // @Produce json
@@ -504,7 +504,7 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 // @Success 204 "No Content"
 // @Security BearerAuth
 // @Router /menus/id/{menuId} [delete]
-// @OperationId deleteMenu
+// @Id deleteMenu
 func (h *MenuHandler) DeleteMenu(c echo.Context) error {
 	id := c.Param("menuId")
 	if err := h.menuService.Delete(id); err != nil {
@@ -516,17 +516,17 @@ func (h *MenuHandler) DeleteMenu(c echo.Context) error {
 }
 
 // RegisterMenusFromYAML godoc
-// @Summary YAML 파일 또는 URL에서 메뉴 등록/업데이트
-// @Description filePath 쿼리 파라미터로 지정된 로컬 YAML 파일 또는 파라미터가 없을 경우 .env 파일의 MCWEBCONSOLE_MENUYAML URL에서 메뉴를 가져와 데이터베이스에 등록/업데이트합니다. URL에서 가져올 경우 asset/menu/menu.yaml에 저장됩니다.
+// @Summary Register/Update menus from YAML file or URL
+// @Description Register or update menus from a local YAML file specified by the filePath query parameter, or from the MCWEBCONSOLE_MENUYAML URL in .env if not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.
 // @Tags menus
 // @Accept json
 // @Produce json
-// @Param filePath query string false "YAML 파일 경로 (선택 사항, 없으면 .env의 URL 또는 기본 로컬 경로 사용)"
+// @Param filePath query string false "YAML file path (optional, uses .env URL or default local path if not provided)"
 // @Success 200 {object} map[string]string "message: Successfully registered menus from YAML"
 // @Failure 500 {object} map[string]string "error: 실패 메시지"
 // @Security BearerAuth
 // @Router /api/menus/setup/initial-menu [post]
-// @OperationId registerMenusFromYAML
+// @Id registerMenusFromYAML
 func (h *MenuHandler) RegisterMenusFromYAML(c echo.Context) error {
 	filePath := c.QueryParam("filePath") // 쿼리 파라미터로 파일 경로 받기 (선택 사항)
 
@@ -542,8 +542,8 @@ func (h *MenuHandler) RegisterMenusFromYAML(c echo.Context) error {
 }
 
 // RegisterMenusFromBody godoc
-// @Summary 요청 본문의 YAML 내용으로 메뉴 등록/업데이트
-// @Description 요청 본문에 포함된 YAML 텍스트를 파싱하여 메뉴를 데이터베이스에 등록하거나 업데이트합니다. Content-Type은 text/plain, text/yaml, application/yaml 등을 권장합니다.
+// @Summary Register/Update menus from YAML in request body
+// @Description Parse YAML text in the request body and register or update menus in the database. Recommended Content-Type: text/plain, text/yaml, application/yaml.
 // @Tags menus
 // @Accept plain
 // @Produce json
@@ -553,7 +553,7 @@ func (h *MenuHandler) RegisterMenusFromYAML(c echo.Context) error {
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
 // @Router /api/menus/setup/initial-menu2 [post]
-// @OperationId registerMenusFromBody
+// @Id registerMenusFromBody
 func (h *MenuHandler) RegisterMenusFromBody(c echo.Context) error {
 	bodyBytes, err := io.ReadAll(c.Request().Body)
 	if err != nil {
@@ -589,8 +589,8 @@ func (h *MenuHandler) RegisterMenusFromBody(c echo.Context) error {
 }
 
 // ListMappedMenusByRole godoc
-// @Summary 플랫폼 역할에 매핑된 메뉴 목록 조회
-// @Description 특정 플랫폼 역할에 매핑된 메뉴 목록을 조회합니다.
+// @Summary List menus mapped to platform role
+// @Description List menus mapped to a specific platform role.
 // @Tags menus
 // @Accept json
 // @Produce json
@@ -601,7 +601,7 @@ func (h *MenuHandler) RegisterMenusFromBody(c echo.Context) error {
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
 // @Router /api/menus/platform-roles/list [post]
-// @OperationId listMappedMenusByRole
+// @Id listMappedMenusByRole
 func (h *MenuHandler) ListMenusRolesMapping(c echo.Context) error {
 	req := &model.MenuMappingFilterRequest{}
 	if err := c.Bind(&req); err != nil {
@@ -623,12 +623,12 @@ func (h *MenuHandler) ListMenusRolesMapping(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param mapping body model.CreateMenuMappingRequest true "Menu Mapping"
-// @Success 201 {object} model.MenuMapping
+// @Success 201 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/menus/platform-roles [post]
-// @OperationId createMenusRolesMapping
+// @Id createMenusRolesMapping
 func (h *MenuHandler) CreateMenusRolesMapping(c echo.Context) error {
 	var req model.CreateMenuMappingRequest
 	if err := c.Bind(&req); err != nil {
@@ -656,8 +656,8 @@ func (h *MenuHandler) CreateMenusRolesMapping(c echo.Context) error {
 }
 
 // DeleteMenuMapping godoc
-// @Summary 플랫폼 역할-메뉴 매핑 삭제
-// @Description 플랫폼 역할과 메뉴 간의 매핑을 삭제합니다.
+// @Summary Delete platform role-menu mapping
+// @Description Delete the mapping between a platform role and a menu.
 // @Tags menus
 // @Accept json
 // @Produce json
@@ -668,7 +668,7 @@ func (h *MenuHandler) CreateMenusRolesMapping(c echo.Context) error {
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
 // @Router /api/menus/platform-roles [delete]
-// @OperationId deleteMenusRolesMapping
+// @Id deleteMenusRolesMapping
 func (h *MenuHandler) DeleteMenusRolesMapping(c echo.Context) error {
 	roleID := c.Param("roleId")
 	menuID := c.Param("menuId")

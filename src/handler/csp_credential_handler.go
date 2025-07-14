@@ -40,7 +40,7 @@ func NewCspCredentialHandler(db *gorm.DB) *CspCredentialHandler {
 // @Produce json
 // @Security BearerAuth
 // @Router /workspaces/temporary-credentials [post]
-// @OperationId mciamGetTemporaryCredentials
+// @Id mciamGetTemporaryCredentials
 func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 	// 1. Get values from context
 
@@ -117,7 +117,7 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 // @Produce json
 // @Security BearerAuth
 // @Router /csp-credentials [get]
-// @OperationId mciamListCredentials
+// @Id mciamListCredentials
 func (h *CspCredentialHandler) ListCredentials(c echo.Context) error {
 	// Implementation of ListCredentials method
 	return nil // Placeholder return, actual implementation needed
@@ -133,7 +133,7 @@ func (h *CspCredentialHandler) ListCredentials(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
 // @Router /csp-credentials/{id} [get]
-// @OperationId mciamGetCredentialByID
+// @Id mciamGetCredentialByID
 func (h *CspCredentialHandler) GetCredentialByID(c echo.Context) error {
 	// Implementation of GetCredentialByID method
 	return nil // Placeholder return, actual implementation needed
@@ -147,7 +147,7 @@ func (h *CspCredentialHandler) GetCredentialByID(c echo.Context) error {
 // @Produce json
 // @Security BearerAuth
 // @Router /csp-credentials [post]
-// @OperationId mciamCreateCredential
+// @Id mciamCreateCredential
 func (h *CspCredentialHandler) CreateCredential(c echo.Context) error {
 	// Implementation of CreateCredential method
 	return nil // Placeholder return, actual implementation needed
@@ -163,7 +163,7 @@ func (h *CspCredentialHandler) CreateCredential(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
 // @Router /csp-credentials/{id} [put]
-// @OperationId mciamUpdateCredential
+// @Id mciamUpdateCredential
 func (h *CspCredentialHandler) UpdateCredential(c echo.Context) error {
 	// Implementation of UpdateCredential method
 	return nil // Placeholder return, actual implementation needed
@@ -182,7 +182,7 @@ func (h *CspCredentialHandler) UpdateCredential(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Credential not found"
 // @Security BearerAuth
 // @Router /csp-credentials/{id} [delete]
-// @OperationId mciamDeleteCredential
+// @Id mciamDeleteCredential
 func (h *CspCredentialHandler) DeleteCredential(c echo.Context) error {
 	// Implementation of DeleteCredential method
 	return nil // Placeholder return, actual implementation needed
