@@ -6,17 +6,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// WorkspaceRoleRepository 워크스페이스 역할 레포지토리
+// WorkspaceRoleRepository workspace role repository
 type WorkspaceRoleRepository struct {
 	db *gorm.DB
 }
 
-// NewWorkspaceRoleRepository 새 WorkspaceRoleRepository 인스턴스 생성
+// NewWorkspaceRoleRepository create new WorkspaceRoleRepository instance
 func NewWorkspaceRoleRepository(db *gorm.DB) *WorkspaceRoleRepository {
 	return &WorkspaceRoleRepository{db: db}
 }
 
-// List 모든 워크스페이스 역할 목록 조회
+// List retrieve all workspace role list
 func (r *WorkspaceRoleRepository) List() ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
@@ -28,7 +28,7 @@ func (r *WorkspaceRoleRepository) List() ([]model.RoleMaster, error) {
 	return roles, nil
 }
 
-// GetByID ID로 워크스페이스 역할 조회
+// GetByID retrieve workspace role by ID
 func (r *WorkspaceRoleRepository) GetByID(id uint) (*model.RoleMaster, error) {
 	var role model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
@@ -40,7 +40,7 @@ func (r *WorkspaceRoleRepository) GetByID(id uint) (*model.RoleMaster, error) {
 	return &role, nil
 }
 
-// Create 새 워크스페이스 역할 생성
+// Create create new workspace role
 func (r *WorkspaceRoleRepository) Create(role *model.RoleMaster) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(role).Error; err != nil {
@@ -54,12 +54,12 @@ func (r *WorkspaceRoleRepository) Create(role *model.RoleMaster) error {
 	})
 }
 
-// Update 워크스페이스 역할 정보 수정
+// Update modify workspace role information
 func (r *WorkspaceRoleRepository) Update(role *model.RoleMaster) error {
 	return r.db.Save(role).Error
 }
 
-// Delete 워크스페이스 역할 삭제
+// Delete delete workspace role
 func (r *WorkspaceRoleRepository) Delete(id uint) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("role_id = ? AND role_type = ?", id, constants.RoleTypeWorkspace).Delete(&model.RoleSub{}).Error; err != nil {
@@ -69,7 +69,7 @@ func (r *WorkspaceRoleRepository) Delete(id uint) error {
 	})
 }
 
-// AssignRole 사용자에게 워크스페이스 역할 할당
+// AssignRole assign workspace role to user
 func (r *WorkspaceRoleRepository) AssignRole(userID, workspaceID, roleID uint) error {
 	userWorkspaceRole := model.UserWorkspaceRole{
 		UserID:      userID,
@@ -79,13 +79,13 @@ func (r *WorkspaceRoleRepository) AssignRole(userID, workspaceID, roleID uint) e
 	return r.db.Create(&userWorkspaceRole).Error
 }
 
-// RemoveRole 사용자의 워크스페이스 역할 제거
+// RemoveRole remove user's workspace role
 func (r *WorkspaceRoleRepository) RemoveRole(userID, workspaceID, roleID uint) error {
 	return r.db.Where("user_id = ? AND workspace_id = ? AND role_id = ?", userID, workspaceID, roleID).
 		Delete(&model.UserWorkspaceRole{}).Error
 }
 
-// GetUserRoles 사용자의 워크스페이스 역할 목록 조회
+// GetUserRoles retrieve user's workspace role list
 func (r *WorkspaceRoleRepository) GetUserRoles(userID, workspaceID uint) ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
@@ -99,7 +99,7 @@ func (r *WorkspaceRoleRepository) GetUserRoles(userID, workspaceID uint) ([]mode
 	return roles, nil
 }
 
-// GetWorkspaceRoles 워크스페이스의 모든 역할 목록 조회
+// GetWorkspaceRoles retrieve all role list of workspace
 func (r *WorkspaceRoleRepository) GetWorkspaceRoles(workspaceID uint) ([]*model.RoleMaster, error) {
 	var roles []*model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
@@ -116,7 +116,7 @@ func (r *WorkspaceRoleRepository) DB() *gorm.DB {
 	return r.db
 }
 
-// ExistsWorkspaceRoleByID ID로 워크스페이스 역할 존재 여부 확인
+// ExistsWorkspaceRoleByID check if workspace role exists by ID
 func (r *WorkspaceRoleRepository) ExistsWorkspaceRoleByID(id uint) (bool, error) {
 	var count int64
 	if err := r.db.Model(&model.RoleMaster{}).Where("id = ?", id).Count(&count).Error; err != nil {

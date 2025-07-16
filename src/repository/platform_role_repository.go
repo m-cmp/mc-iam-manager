@@ -9,17 +9,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// PlatformRoleRepository 플랫폼 역할 레포지토리
+// PlatformRoleRepository platform role repository
 type PlatformRoleRepository struct {
 	db *gorm.DB
 }
 
-// NewPlatformRoleRepository 새 PlatformRoleRepository 인스턴스 생성
+// NewPlatformRoleRepository create new PlatformRoleRepository instance
 func NewPlatformRoleRepository(db *gorm.DB) *PlatformRoleRepository {
 	return &PlatformRoleRepository{db: db}
 }
 
-// List 모든 플랫폼 역할 목록 조회
+// List retrieve all platform role list
 func (r *PlatformRoleRepository) List() ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
@@ -31,7 +31,7 @@ func (r *PlatformRoleRepository) List() ([]model.RoleMaster, error) {
 	return roles, nil
 }
 
-// GetByID ID로 플랫폼 역할 조회
+// GetByID retrieve platform role by ID
 func (r *PlatformRoleRepository) GetByID(id uint) (*model.RoleMaster, error) {
 	var role model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
@@ -43,7 +43,7 @@ func (r *PlatformRoleRepository) GetByID(id uint) (*model.RoleMaster, error) {
 	return &role, nil
 }
 
-// Create 새 플랫폼 역할 생성
+// Create create new platform role
 func (r *PlatformRoleRepository) Create(role *model.RoleMaster) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(role).Error; err != nil {
@@ -57,12 +57,12 @@ func (r *PlatformRoleRepository) Create(role *model.RoleMaster) error {
 	})
 }
 
-// Update 플랫폼 역할 정보 수정
+// Update modify platform role information
 func (r *PlatformRoleRepository) Update(role *model.RoleMaster) error {
 	return r.db.Save(role).Error
 }
 
-// Delete 플랫폼 역할 삭제
+// Delete delete platform role
 func (r *PlatformRoleRepository) Delete(id uint) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("role_id = ? AND role_type = ?", id, constants.RoleTypePlatform).Delete(&model.RoleSub{}).Error; err != nil {
@@ -72,19 +72,19 @@ func (r *PlatformRoleRepository) Delete(id uint) error {
 	})
 }
 
-// roleModelFactories 역할 타입별 사용자-역할 매핑 모델 생성 팩토리 맵
-// 각 역할 타입(platform, workspace)에 대해 해당하는 매핑 모델을 생성하는 함수를 제공
+// roleModelFactories role type-specific user-role mapping model creation factory map
+// Provides functions to create corresponding mapping models for each role type (platform, workspace)
 var roleModelFactories = map[constants.IAMRoleType]func(userID, roleID uint) interface{}{
-	// 플랫폼 역할 타입에 대한 팩토리 함수
-	// UserPlatformRole 모델을 생성하여 반환
+	// Factory function for platform role type
+	// Create and return UserPlatformRole model
 	constants.RoleTypePlatform: func(userID, roleID uint) interface{} {
 		return &model.UserPlatformRole{
 			UserID: userID,
 			RoleID: roleID,
 		}
 	},
-	// 워크스페이스 역할 타입에 대한 팩토리 함수
-	// UserWorkspaceRole 모델을 생성하여 반환
+	// Factory function for workspace role type
+	// Create and return UserWorkspaceRole model
 	constants.RoleTypeWorkspace: func(userID, roleID uint) interface{} {
 		return &model.UserWorkspaceRole{
 			UserID: userID,
@@ -93,7 +93,7 @@ var roleModelFactories = map[constants.IAMRoleType]func(userID, roleID uint) int
 	},
 }
 
-// AssignRole 사용자에게 역할 할당
+// AssignRole assign role to user
 func (r *PlatformRoleRepository) AssignRole(userID, roleID uint, roleType constants.IAMRoleType) error {
 	factory, ok := roleModelFactories[roleType]
 	if !ok {
@@ -103,12 +103,12 @@ func (r *PlatformRoleRepository) AssignRole(userID, roleID uint, roleType consta
 	return r.db.Create(role).Error
 }
 
-// RemoveRole 사용자의 플랫폼 역할 제거
+// RemoveRole remove user's platform role
 func (r *PlatformRoleRepository) RemoveRole(userID, roleID uint) error {
 	return r.db.Where("user_id = ? AND role_id = ?", userID, roleID).Delete(&model.UserPlatformRole{}).Error
 }
 
-// GetUserRoles 사용자의 플랫폼 역할 목록 조회
+// GetUserRoles retrieve user's platform role list
 func (r *PlatformRoleRepository) GetUserRoles(userID uint) ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
 	if err := r.db.Preload("RoleSubs").
@@ -121,7 +121,7 @@ func (r *PlatformRoleRepository) GetUserRoles(userID uint) ([]model.RoleMaster, 
 	return roles, nil
 }
 
-// GetByName 이름으로 플랫폼 역할 조회
+// GetByName retrieve platform role by name
 func (r *PlatformRoleRepository) GetByName(name string) (*model.RoleMaster, error) {
 	var role model.RoleMaster
 	if err := r.db.Preload("RoleSubs").

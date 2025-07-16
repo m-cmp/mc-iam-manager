@@ -13,22 +13,22 @@ var (
 	ErrWorkspaceNotFound = errors.New("workspace not found")
 )
 
-// WorkspaceRepository 워크스페이스 데이터 관리
+// WorkspaceRepository workspace data management
 type WorkspaceRepository struct {
 	db *gorm.DB
 }
 
-// NewWorkspaceRepository 새 WorkspaceRepository 인스턴스 생성
+// NewWorkspaceRepository create new WorkspaceRepository instance
 func NewWorkspaceRepository(db *gorm.DB) *WorkspaceRepository {
 	return &WorkspaceRepository{db: db}
 }
 
-// Create 워크스페이스 생성
+// Create workspace
 func (r *WorkspaceRepository) CreateWorkspace(workspace *model.Workspace) error {
 	return r.db.Create(workspace).Error
 }
 
-// Update 워크스페이스 정보 부분 업데이트
+// Update partial workspace information update
 func (r *WorkspaceRepository) UpdateWorkspace(id uint, updates map[string]interface{}) error {
 	if len(updates) == 0 {
 		return errors.New("no fields provided for update")
@@ -43,7 +43,7 @@ func (r *WorkspaceRepository) UpdateWorkspace(id uint, updates map[string]interf
 	return nil
 }
 
-// Delete 워크스페이스 삭제
+// Delete workspace
 func (r *WorkspaceRepository) DeleteWorkspace(id uint) error {
 	// GORM will automatically handle deleting associations in the join table
 	// due to the ON DELETE CASCADE constraint in the DB schema.
@@ -57,12 +57,12 @@ func (r *WorkspaceRepository) DeleteWorkspace(id uint) error {
 	return nil
 }
 
-// Find 모든 워크스페이스를 조회합니다.
+// Find retrieve all workspaces
 func (r *WorkspaceRepository) FindWorkspaces(req *model.WorkspaceFilterRequest) ([]*model.Workspace, error) {
 	var workspaces []*model.Workspace
 
-	// filter 조건이 있으면 조건에 맞는 워크스페이스 조회
-	// 쿼리 빌더를 사용하여 기본 쿼리 생성
+	// If filter conditions exist, retrieve workspaces that match the conditions
+	// Use query builder to create basic query
 	query := r.db.Model(&model.Workspace{})
 	log.Printf("req", req)
 
@@ -78,7 +78,7 @@ func (r *WorkspaceRepository) FindWorkspaces(req *model.WorkspaceFilterRequest) 
 		query = query.Where("name = ?", req.WorkspaceName)
 	}
 
-	// ProjectID로 필터링
+	// Filter by ProjectID
 	if req.ProjectID != "" {
 		projectIdInt, err := util.StringToUint(req.ProjectID)
 		if err != nil {
@@ -88,7 +88,7 @@ func (r *WorkspaceRepository) FindWorkspaces(req *model.WorkspaceFilterRequest) 
 			Where("mcmp_workspace_projects.project_id = ?", projectIdInt)
 	}
 
-	// UserID로 필터링
+	// Filter by UserID
 	if req.UserID != "" {
 		userIdInt, err := util.StringToUint(req.UserID)
 		if err != nil {
@@ -104,7 +104,7 @@ func (r *WorkspaceRepository) FindWorkspaces(req *model.WorkspaceFilterRequest) 
 	return workspaces, nil
 }
 
-// FindByID 워크스페이스를 ID로 조회. 단건조회
+// FindByID retrieve workspace by ID. Single record query
 func (r *WorkspaceRepository) FindWorkspaceByID(workspaceId uint) (*model.Workspace, error) {
 	var workspace model.Workspace
 	if err := r.db.First(&workspace, workspaceId).Error; err != nil {
@@ -116,7 +116,7 @@ func (r *WorkspaceRepository) FindWorkspaceByID(workspaceId uint) (*model.Worksp
 	return &workspace, nil
 }
 
-// FindWorkspaceByName 이름으로 워크스페이스 조회 (프로젝트 정보 포함)
+// FindWorkspaceByName retrieve workspace by name (including project information)
 func (r *WorkspaceRepository) FindWorkspaceByName(workspaceName string) (*model.Workspace, error) {
 	var workspace *model.Workspace
 	// Preload Projects and find by name
@@ -129,14 +129,14 @@ func (r *WorkspaceRepository) FindWorkspaceByName(workspaceName string) (*model.
 	return workspace, nil
 }
 
-// FindWorkspacesProjects 모든 워크스페이스 조회 (프로젝트 정보 포함)
-// WorkspaceID로 필터링할 경우 단건만 반환, 그 외의 경우 여러 건 반환
+// FindWorkspacesProjects retrieve all workspaces (including project information)
+// If filtered by WorkspaceID, returns single record, otherwise returns multiple records
 func (r *WorkspaceRepository) FindWorkspacesProjects(req *model.WorkspaceFilterRequest) ([]*model.WorkspaceWithProjects, error) {
 	var workspacesProjects []*model.WorkspaceWithProjects
 	query := r.db.Model(&model.WorkspaceWithProjects{}).
 		Preload("Projects")
 
-	// WorkspaceID로 필터링하는 경우 단건 조회
+	// Single record query when filtering by WorkspaceID
 	if req.WorkspaceID != "" {
 		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)
 		if err != nil {
@@ -145,7 +145,7 @@ func (r *WorkspaceRepository) FindWorkspacesProjects(req *model.WorkspaceFilterR
 		var workspace model.WorkspaceWithProjects
 		if err := query.Where("id = ?", workspaceIdInt).First(&workspace).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return []*model.WorkspaceWithProjects{}, nil // 빈 배열 반환
+				return []*model.WorkspaceWithProjects{}, nil // Return empty array
 			}
 			return nil, err
 		}
@@ -167,7 +167,7 @@ func (r *WorkspaceRepository) FindWorkspacesProjects(req *model.WorkspaceFilterR
 	return workspacesProjects, nil
 }
 
-// FindWorkspaceProjectsByWorkspaceID ID로 워크스페이스 조회 (프로젝트 정보 포함)
+// FindWorkspaceProjectsByWorkspaceID retrieve workspace by ID (including project information)
 func (r *WorkspaceRepository) FindWorkspaceProjectsByWorkspaceID(id uint) (*model.WorkspaceWithProjects, error) {
 	var workspaceProjects model.WorkspaceWithProjects
 	// Preload Projects to fetch associated projects using many2many relationship
@@ -180,14 +180,14 @@ func (r *WorkspaceRepository) FindWorkspaceProjectsByWorkspaceID(id uint) (*mode
 	return &workspaceProjects, nil
 }
 
-// AddProjectAssociation 워크스페이스에 프로젝트 연결 추가
+// AddProjectAssociation add project association to workspace
 func (r *WorkspaceRepository) AddProjectAssociation(workspaceID, projectID uint) error {
 	workspaceProject := &model.WorkspaceProject{
 		WorkspaceID: workspaceID,
 		ProjectID:   projectID,
 	}
 
-	// 기본 workspace에 저장되어 있던 project면 기본 workspace에서 뺀다.
+	// If project was stored in default workspace, remove it from default workspace
 	if workspaceID != 1 {
 		result := r.db.Where("workspace_id = ? AND project_id = ?", 1, projectID).
 			Delete(&model.WorkspaceProject{})
@@ -196,7 +196,7 @@ func (r *WorkspaceRepository) AddProjectAssociation(workspaceID, projectID uint)
 		}
 	}
 
-	// mcmp_workspace_projects 테이블에 직접 저장
+	// Save directly to mcmp_workspace_projects table
 	err := r.db.Save(workspaceProject).Error
 	if err != nil {
 
@@ -205,11 +205,11 @@ func (r *WorkspaceRepository) AddProjectAssociation(workspaceID, projectID uint)
 	return nil
 }
 
-// RemoveProjectAssociation 워크스페이스에서 프로젝트 연결 제거
+// RemoveProjectAssociation remove project association from workspace
 func (r *WorkspaceRepository) RemoveProjectAssociation(workspaceID, projectID uint) error {
-	// 기본 workspace에서는 제거가 불가하며 타 워크스페이스에서 연결 제거 시 기본 workspace로 할당
+	// Cannot remove from default workspace, and when removing connection from other workspaces, assign to default workspace
 
-	// mcmp_workspace_projects 테이블에서 직접 삭제
+	// Delete directly from mcmp_workspace_projects table
 	result := r.db.Where("workspace_id = ? AND project_id = ?", workspaceID, projectID).
 		Delete(&model.WorkspaceProject{})
 
@@ -218,7 +218,7 @@ func (r *WorkspaceRepository) RemoveProjectAssociation(workspaceID, projectID ui
 	}
 
 	workspaceProject := &model.WorkspaceProject{
-		WorkspaceID: 1, // 기본 workspace ID
+		WorkspaceID: 1, // Default workspace ID
 		ProjectID:   projectID,
 	}
 
@@ -236,11 +236,11 @@ func (r *WorkspaceRepository) RemoveProjectAssociation(workspaceID, projectID ui
 	// 	return result.Error
 	// }
 
-	// 삭제된 레코드가 없어도 에러로 처리하지 않음 (이미 관계가 없었을 수 있음)
+	// Do not treat as error even if no records were deleted (relationship may not have existed)
 	return nil
 }
 
-// FindProjectsByWorkspaceID 특정 워크스페이스에 연결된 프로젝트 목록 조회 ( Project 목록만 return)
+// FindProjectsByWorkspaceID retrieve project list connected to specific workspace (returns only Project list)
 func (r *WorkspaceRepository) FindProjectsByWorkspaceID(workspaceID uint) ([]*model.Project, error) {
 	workspace := &model.Workspace{ID: workspaceID}
 	var projects []*model.Project
