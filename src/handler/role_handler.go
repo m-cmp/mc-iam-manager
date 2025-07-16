@@ -15,7 +15,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// RoleHandler 역할 관리 핸들러
+// RoleHandler role management handler
 type RoleHandler struct {
 	roleService     *service.RoleService
 	userService     *service.UserService
@@ -24,7 +24,7 @@ type RoleHandler struct {
 	cspRoleService  *service.CspRoleService
 }
 
-// NewRoleHandler 새 RoleHandler 인스턴스 생성
+// NewRoleHandler create new RoleHandler instance
 func NewRoleHandler(db *gorm.DB) *RoleHandler {
 	roleService := service.NewRoleService(db)
 	userService := service.NewUserService(db)
@@ -53,15 +53,15 @@ func NewRoleHandler(db *gorm.DB) *RoleHandler {
 func (h *RoleHandler) ListRoles(c echo.Context) error {
 	var req model.RoleFilterRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 	roles, err := h.roleService.ListRoles(&req)
 	if err != nil {
-		log.Printf("역할 목록 조회 실패: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 목록 조회 실패: %v", err)})
+		log.Printf("Failed to retrieve role list: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve role list: %v", err)})
 	}
 
-	log.Printf("역할 목록 조회 성공 - 조회된 역할 수: %d", len(roles))
+	log.Printf("Successfully retrieved role list - number of roles: %d", len(roles))
 	return c.JSON(http.StatusOK, roles)
 }
 
@@ -80,19 +80,19 @@ func (h *RoleHandler) ListRoles(c echo.Context) error {
 func (h *RoleHandler) CreateRole(c echo.Context) error {
 	var req model.CreateRoleRequest
 	if err := c.Bind(&req); err != nil {
-		log.Printf("역할 생성 요청 바인딩 실패: %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+		log.Printf("Failed to bind role creation request: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 
-	log.Printf("역할 생성 요청 - 이름: %s, 설명: %s, 부모ID: %d, 역할타입: %v",
+	log.Printf("Role creation request - name: %s, description: %s, parentID: %d, roleTypes: %v",
 		req.Name, req.Description, req.ParentID, req.RoleTypes)
 
-	// 입력값 검증
+	// Input validation
 	if err := c.Validate(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	// RoleMaster 생성
+	// Create RoleMaster
 	role := &model.RoleMaster{
 		Name:        req.Name,
 		Description: req.Description,
@@ -106,14 +106,14 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 		})
 	}
 
-	// 1. CSP 역할들을 먼저 생성 (외부 API 호출이 필요하므로 트랜잭션 외부에서 처리)
+	// 1. Create CSP roles first (external API calls required, so handle outside transaction)
 	createdCspRoles := make([]model.CreateCspRoleRequest, 0)
 	if len(req.CspRoles) > 0 {
 		log.Printf("cspRoles requested: %v", req.CspRoles)
 		for _, cspRole := range req.CspRoles {
-			// TODO: CSPRoleName 로직을 function으로 빼자
+			// TODO: Extract CSPRoleName logic to a function
 			if cspRole.CspRoleName == "" {
-				cspRoleName := constants.CspRoleNamePrefix + req.Name // roleName 에 prefix를 붙여서 cspRoleName 생성
+				cspRoleName := constants.CspRoleNamePrefix + req.Name // Create cspRoleName by adding prefix to roleName
 				cspRole.CspRoleName = cspRoleName
 			}
 
@@ -122,13 +122,13 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 			}
 
 			log.Printf("cspRole requested: %v", cspRole)
-			// CSP 역할 생성 또는 업데이트
+			// Create or update CSP role
 			createdCspRole, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 생성/업데이트 실패: %v", err)})
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to create/update CSP role: %v", err)})
 			}
 
-			// 생성된 CSP 역할 정보를 저장
+			// Store created CSP role information
 			createdCspRoles = append(createdCspRoles, model.CreateCspRoleRequest{
 				ID:          util.UintToString(createdCspRole.ID),
 				CspRoleName: createdCspRole.Name,
@@ -137,17 +137,17 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 		}
 	}
 
-	// // MenuIDs를 string에서 uint로 변환
+	// // Convert MenuIDs from string to uint
 	// menuIDs := make([]uint, 0)
 	// for _, menuIDStr := range req.MenuIDs {
 	// 	menuID, err := util.StringToUint(menuIDStr)
 	// 	if err != nil {
-	// 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("잘못된 메뉴 ID 형식: %s", menuIDStr)})
+	// 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Invalid menu ID format: %s", menuIDStr)})
 	// 	}
 	// 	menuIDs = append(menuIDs, menuID)
 	// }
 
-	// 2. 역할과 모든 의존성을 트랜잭션으로 함께 생성
+	// 2. Create role and all dependencies together in transaction
 	createdRole, err := h.roleService.CreateRoleWithAllDependencies(role, roleSubs, req.MenuIDs, createdCspRoles, req.Description)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -171,28 +171,28 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 func (h *RoleHandler) GetRoleByRoleID(c echo.Context) error {
 	roleTypeStr := c.QueryParam("roleType")
 	roleType := constants.IAMRoleType(roleTypeStr)
-	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
+	log.Printf("Role list retrieval request - type: %s", roleType)
 
 	id, err := strconv.ParseUint(c.Param("roleId"), 10, 32)
 	if err != nil {
-		log.Printf("잘못된 역할 ID 형식: %s", c.Param("roleId"))
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 roleId ID 형식입니다"})
+		log.Printf("Invalid role ID format: %s", c.Param("roleId"))
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid roleId ID format"})
 	}
 
-	log.Printf("역할 조회 요청 - ID: %d", id)
+	log.Printf("Role retrieval request - ID: %d", id)
 
 	role, err := h.roleService.GetRoleByID(uint(id), roleType)
 	if err != nil {
-		log.Printf("역할 조회 실패 - ID: %d, 에러: %v", id, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 조회 실패: %v", err)})
+		log.Printf("Failed to retrieve role - ID: %d, error: %v", id, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve role: %v", err)})
 	}
 
 	if role == nil {
-		log.Printf("역할을 찾을 수 없음 - ID: %d", id)
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "해당 ID의 역할을 찾을 수 없습니다"})
+		log.Printf("Role not found - ID: %d", id)
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Role with the specified ID not found"})
 	}
 
-	log.Printf("역할 조회 성공 - ID: %d", id)
+	log.Printf("Successfully retrieved role - ID: %d", id)
 	return c.JSON(http.StatusOK, role)
 }
 
@@ -211,19 +211,19 @@ func (h *RoleHandler) GetRoleByRoleID(c echo.Context) error {
 func (h *RoleHandler) GetRoleByRoleName(c echo.Context) error {
 	roleTypeStr := c.QueryParam("roleType")
 	roleType := constants.IAMRoleType(roleTypeStr)
-	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
+	log.Printf("Role list retrieval request - type: %s", roleType)
 
 	roleName := c.Param("roleName")
 
 	role, err := h.roleService.GetRoleByName(roleName, roleType)
 	if err != nil {
-		log.Printf("역할 조회 실패 - Name: %s, 에러: %v", roleName, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 조회 실패: %v", err)})
+		log.Printf("Failed to retrieve role - Name: %s, error: %v", roleName, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve role: %v", err)})
 	}
 
 	if role == nil {
-		log.Printf("역할을 찾을 수 없음 - ID: %v", roleName)
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "해당 ID의 역할을 찾을 수 없습니다"})
+		log.Printf("Role not found - ID: %v", roleName)
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Role with the specified ID not found"})
 	}
 
 	return c.JSON(http.StatusOK, role)
@@ -248,22 +248,22 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 
 	roleIdInt, err := util.StringToUint(roleId)
 	if err != nil {
-		log.Printf("역할 ID 변환 오류: %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 ID 형식입니다"})
+		log.Printf("Role ID conversion error: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid role ID format"})
 	}
 
 	var req model.CreateRoleRequest
 	if err := c.Bind(&req); err != nil {
-		log.Printf("역할 수정 요청 바인딩 실패 - ID: %d, 에러: %v", roleIdInt, err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+		log.Printf("Failed to bind role update request - ID: %d, error: %v", roleIdInt, err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 
-	log.Printf("역할 수정 요청 - ID: %d, 이름: %s, 설명: %s, 부모ID: %d, 역할타입: %v",
+	log.Printf("Role update request - ID: %d, name: %s, description: %s, parentID: %d, roleTypes: %v",
 		roleIdInt, req.Name, req.Description, req.ParentID, req.RoleTypes)
 
 	if err := c.Validate(&req); err != nil {
-		log.Printf("역할 수정 입력값 검증 실패 - ID: %d, 에러: %v", roleIdInt, err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("입력값 검증 실패: %v", err)})
+		log.Printf("Role update input validation failed - ID: %d, error: %v", roleIdInt, err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
 	}
 
 	role := model.RoleMaster{
@@ -275,17 +275,17 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 
 	updatedRole, err := h.roleService.UpdateRoleWithSubs(role, req.RoleTypes)
 	if err != nil {
-		log.Printf("역할 수정 실패 - ID: %d, 에러: %v", roleIdInt, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 수정 실패: %v", err)})
+		log.Printf("Failed to update role - ID: %d, error: %v", roleIdInt, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to update role: %v", err)})
 	}
 
 	if len(req.MenuIDs) > 0 {
-		// 기존 매핑 삭제
+		// Delete existing mappings
 		if err := h.menuService.DeleteRoleMenuMappingsByRoleID(roleIdInt); err != nil {
-			log.Printf("역할 메뉴 매핑 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 메뉴 매핑 삭제 실패: %v", err)})
+			log.Printf("Failed to delete role menu mappings - ID: %d, error: %v", roleIdInt, err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to delete role menu mappings: %v", err)})
 		}
-		// 새로운 매핑 생성
+		// Create new mappings
 		mappings := make([]*model.RoleMenuMapping, 0)
 		for _, menuID := range req.MenuIDs {
 			mapping := &model.RoleMenuMapping{
@@ -295,23 +295,23 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 			mappings = append(mappings, mapping)
 		}
 		if err := h.menuService.CreateRoleMenuMappings(mappings); err != nil {
-			log.Printf("역할 메뉴 매핑 생성 실패 - ID: %d, 에러: %v", roleIdInt, err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 메뉴 매핑 생성 실패: %v", err)})
+			log.Printf("Failed to create role menu mappings - ID: %d, error: %v", roleIdInt, err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to create role menu mappings: %v", err)})
 		}
 	}
 
-	// TODO : createRole에도 동일한 로직이 있음. 중복 코드 제거 필요.
+	// TODO : Same logic exists in createRole. Remove duplicate code.
 	if len(req.CspRoles) > 0 {
-		// 기존 매핑 삭제
+		// Delete existing mappings
 		if err := h.roleService.DeleteRoleCspRoleMappingsByRoleId(roleIdInt); err != nil {
-			log.Printf("역할 csp 매핑 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 csp 매핑 삭제 실패: %v", err)})
+			log.Printf("Failed to delete role csp mappings - ID: %d, error: %v", roleIdInt, err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to delete role csp mappings: %v", err)})
 		}
 
 		for _, cspRole := range req.CspRoles {
-			// csp role이 있으면 쓰고 없으면 생성한다.
+			// Use existing csp role if available, otherwise create new one
 			if cspRole.CspRoleName == "" {
-				cspRoleName := constants.CspRoleNamePrefix + req.Name // roleName 에 prefix를 붙여서 cspRoleName 생성
+				cspRoleName := constants.CspRoleNamePrefix + req.Name // Create cspRoleName by adding prefix to roleName
 				cspRole.CspRoleName = cspRoleName
 			}
 
@@ -319,30 +319,30 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 				cspRole.CspRoleName = constants.CspRoleNamePrefix + cspRole.CspRoleName
 			}
 
-			// CSP 역할 존재 여부 확인
+			// Check if CSP role exists
 			exists, err := h.cspRoleService.ExistCspRoleByNameAndType(cspRole.CspRoleName, cspRole.CspType)
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 존재 여부 확인 실패: %v", err)})
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to check CSP role existence: %v", err)})
 			}
 
 			if exists {
-				// 기존 CSP 역할이 있으면 ID 가져오기
+				// Get ID if existing CSP role exists
 				existingCspRole, err := h.cspRoleService.GetCspRoleByName(cspRole.CspRoleName, cspRole.CspType)
 				if err != nil {
-					return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 조회 실패: %v", err)})
+					return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve CSP role: %v", err)})
 				}
 				cspRole.ID = util.UintToString(existingCspRole.ID)
 			} else {
 				log.Printf("cspRole requested: %v", cspRole)
-				// CSP 역할 생성 또는 업데이트 (매핑도 함께 처리됨)
+				// Create or update CSP role (mapping is handled together)
 				newCspRole, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
 				if err != nil {
-					return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 업데이트 실패: %v", err)})
+					return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to update CSP role: %v", err)})
 				}
 				cspRole.ID = util.UintToString(newCspRole.ID)
 			}
 
-			// 새로운 매핑 생성
+			// Create new mapping
 			roleCspRoleMappingRequest := &model.CreateRoleMasterCspRoleMappingRequest{
 				RoleID:      roleId,
 				CspRoleID:   cspRole.ID,
@@ -352,16 +352,16 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 
 			err = h.roleService.AddCspRolesMapping(roleCspRoleMappingRequest)
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 할당 실패: %v", err)})
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to assign role: %v", err)})
 			}
 		}
 		// if err := h.roleService.UpdateRoleCspRoleMappings(updatedRole.ID, req.CspRoles); err != nil {
-		// 	log.Printf("역할 csp 매핑 수정 실패 - ID: %d, 에러: %v", id, err)
-		// 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 csp 매핑 수정 실패: %v", err)})
+		// 	log.Printf("Failed to update role csp mappings - ID: %d, error: %v", id, err)
+		// 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to update role csp mappings: %v", err)})
 		// }
 	}
 
-	log.Printf("역할 수정 성공 - ID: %d", roleIdInt)
+	log.Printf("Successfully updated role - ID: %d", roleIdInt)
 	return c.JSON(http.StatusOK, updatedRole)
 }
 
@@ -380,71 +380,71 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 func (h *RoleHandler) DeleteRole(c echo.Context) error {
 	roleIdInt, err := util.StringToUint(c.Param("roleId"))
 	if err != nil {
-		log.Printf("잘못된 역할 ID 형식: %s", c.Param("id"))
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 Role ID 형식입니다"})
+		log.Printf("Invalid role ID format: %s", c.Param("id"))
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid Role ID format"})
 	}
-	log.Printf("역할 삭제 요청 - ID: %d", roleIdInt)
+	log.Printf("Role deletion request - ID: %d", roleIdInt)
 	var req model.AssignRoleRequest
 	if err := c.Bind(&req); err != nil {
-		log.Printf("역할 삭제 요청 바인딩 실패: %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+		log.Printf("Failed to bind role deletion request: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 
 	reqRoleType := constants.IAMRoleType(req.RoleType)
-	// 역할 조회
+	// Retrieve role
 	role, err := h.roleService.GetRoleByID(roleIdInt, reqRoleType)
 	if err != nil {
-		log.Printf("역할 조회 실패 - ID: %d, 에러: %v", roleIdInt, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 조회 실패: %v", err)})
+		log.Printf("Failed to retrieve role - ID: %d, error: %v", roleIdInt, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve role: %v", err)})
 	}
 
 	if role == nil {
-		log.Printf("역할을 찾을 수 없음 - ID: %d", roleIdInt)
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "해당 ID의 역할을 찾을 수 없습니다"})
+		log.Printf("Role not found - ID: %d", roleIdInt)
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Role with the specified ID not found"})
 	}
 
-	// Predefined 역할은 삭제 불가
+	// Predefined roles cannot be deleted
 	if role.Predefined {
-		log.Printf("미리 정의된 역할 삭제 시도 - ID: %d", roleIdInt)
-		return c.JSON(http.StatusForbidden, map[string]string{"error": "미리 정의된 역할은 삭제할 수 없습니다"})
+		log.Printf("Attempted to delete predefined role - ID: %d", roleIdInt)
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "Predefined roles cannot be deleted"})
 	}
 
-	// 해당 역할이 할당된 사용자 조회 -> 있으면 삭제 불가
-	// TODO : 만들자.
+	// Check if users are assigned to this role -> if yes, cannot delete
+	// TODO : Implement this.
 
 	roleSubs := role.RoleSubs
 	for _, roleSub := range roleSubs {
-		// role-platform mapping 삭제
+		// Delete role-platform mapping
 		if roleSub.RoleType == constants.RoleTypePlatform {
 			if err := h.menuService.DeleteRoleMenuMappingsByRoleID(roleIdInt); err != nil {
-				log.Printf("역할 메뉴 매핑 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
+				log.Printf("Failed to delete role menu mappings - ID: %d, error: %v", roleIdInt, err)
 			}
 		}
 
-		// role-workspace mapping 삭제는 master-sub 삭제에서 처리 됨.
+		// role-workspace mapping deletion is handled in master-sub deletion.
 
-		// role-csp mapping 삭제
+		// Delete role-csp mapping
 		if roleSub.RoleType == constants.RoleTypeCSP {
 			if err := h.roleService.DeleteRoleCspRoleMappingsByRoleId(roleIdInt); err != nil {
-				log.Printf("역할 csp 매핑 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
+				log.Printf("Failed to delete role csp mappings - ID: %d, error: %v", roleIdInt, err)
 			}
 		}
 	}
 
 	if err := h.roleService.DeleteRoleSubs(roleIdInt, []constants.IAMRoleType{constants.RoleTypePlatform, constants.RoleTypeWorkspace, constants.RoleTypeCSP}); err != nil {
-		log.Printf("역할sub 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 삭제 실패: %v", err)})
+		log.Printf("Failed to delete role subs - ID: %d, error: %v", roleIdInt, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to delete role: %v", err)})
 	}
 
-	// 역할 삭제
+	// Delete role
 	if err := h.roleService.DeleteRoleMaster(roleIdInt); err != nil {
-		log.Printf("역할 삭제 실패 - ID: %d, 에러: %v", roleIdInt, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 삭제 실패: %v", err)})
+		log.Printf("Failed to delete role - ID: %d, error: %v", roleIdInt, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to delete role: %v", err)})
 	}
 
-	log.Printf("역할 삭제 성공 - ID: %d", roleIdInt)
+	log.Printf("Successfully deleted role - ID: %d", roleIdInt)
 	//return c.NoContent(http.StatusNoContent)
-	return c.JSON(http.StatusOK, map[string]string{"message": "역할 삭제 성공"})
+	return c.JSON(http.StatusOK, map[string]string{"message": "Role deleted successfully"})
 }
 
 // @Summary Assign role
@@ -462,76 +462,76 @@ func (h *RoleHandler) DeleteRole(c echo.Context) error {
 func (h *RoleHandler) AssignRole(c echo.Context) error {
 	var req model.AssignRoleRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 	reqRoleType := constants.IAMRoleType(req.RoleType)
 
-	// 요청 객체 내용 로깅
+	// Log request object contents
 	log.Printf("[DEBUG] AssignRole Request: UserID=%s, Username=%s, RoleID=%s, RoleName=%s, RoleType=%s, WorkspaceID=%s",
 		req.UserID, req.Username, req.RoleID, req.RoleName, reqRoleType, req.WorkspaceID)
 
-	// 요청 유효성 검사
+	// Request validation
 	if req.RoleID == "" && req.RoleName == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "역할 ID 또는 역할명은 필수입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Role ID or role name is required"})
 	}
 	if req.UserID == "" && req.Username == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID 또는 사용자명은 필수입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "User ID or username is required"})
 	}
 
-	log.Printf("역할 할당 요청 - 사용자ID: %d, 사용자명: %s, 역할ID: %d, 역할타입: %s, 워크스페이스ID: %d",
+	log.Printf("Role assignment request - UserID: %d, Username: %s, RoleID: %d, RoleType: %s, WorkspaceID: %d",
 		req.UserID, req.Username, req.RoleID, reqRoleType, req.WorkspaceID)
 
 	if err := c.Validate(&req); err != nil {
-		log.Printf("역할 할당 입력값 검증 실패: %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("입력값 검증 실패: %v", err)})
+		log.Printf("Role assignment input validation failed: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
 	}
 
-	// 사용자 ID 처리
+	// Process user ID
 	var userID uint
 	var err error
 	if req.UserID != "" {
 		userID, err = util.StringToUint(req.UserID)
 		if err != nil {
-			log.Printf("사용자 ID 변환 오류: %v", err)
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 사용자 ID 형식입니다"})
+			log.Printf("User ID conversion error: %v", err)
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID format"})
 		}
 	} else if req.Username != "" {
-		// username으로 사용자 조회
+		// Retrieve user by username
 		user, err := h.userService.GetUserByUsername(c.Request().Context(), req.Username)
 		if err != nil {
-			log.Printf("사용자 조회 실패 - 사용자명: %s, 에러: %v", req.Username, err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("사용자 조회 실패: %v", err)})
+			log.Printf("Failed to retrieve user - username: %s, error: %v", req.Username, err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve user: %v", err)})
 		}
 		if user == nil {
-			log.Printf("사용자를 찾을 수 없음 - 사용자명: %s", req.Username)
-			return c.JSON(http.StatusNotFound, map[string]string{"error": "해당 사용자명의 사용자를 찾을 수 없습니다"})
+			log.Printf("User not found - username: %s", req.Username)
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "User with the specified username not found"})
 		}
 		userID = user.ID
 	} else {
-		log.Printf("사용자 식별자 누락 - UserID: %d, Username: %s", req.UserID, req.Username)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID 또는 사용자명이 필요합니다"})
+		log.Printf("User identifier missing - UserID: %d, Username: %s", req.UserID, req.Username)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "User ID or username is required"})
 	}
 
 	var roleID uint
 	if req.RoleID != "" {
 		roleID, err = util.StringToUint(req.RoleID)
 		if err != nil {
-			log.Printf("역할 ID 변환 오류: %v", err)
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 ID 형식입니다"})
+			log.Printf("Role ID conversion error: %v", err)
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid role ID format"})
 		}
 	}
-	// 역할이 존재하는지 확인
+	// Check if role exists
 	role, err := h.roleService.GetRoleByID(roleID, reqRoleType)
 	if err != nil {
-		log.Printf("역할 조회 실패 - 역할ID: %d, 에러: %v", req.RoleID, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 조회 실패: %v", err)})
+		log.Printf("Failed to retrieve role - roleID: %d, error: %v", req.RoleID, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve role: %v", err)})
 	}
 	if role == nil {
-		log.Printf("역할을 찾을 수 없음 - 역할ID: %d", req.RoleID)
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "해당 ID의 역할을 찾을 수 없습니다"})
+		log.Printf("Role not found - roleID: %d", req.RoleID)
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Role with the specified ID not found"})
 	}
 
-	// 역할 타입이 지원되는지 확인
+	// Check if role type is supported
 	var hasRoleType bool
 	for _, sub := range role.RoleSubs {
 		if sub.RoleType == reqRoleType {
@@ -540,39 +540,39 @@ func (h *RoleHandler) AssignRole(c echo.Context) error {
 		}
 	}
 	if !hasRoleType {
-		log.Printf("지원하지 않는 역할 타입 - 역할ID: %d, 요청된 타입: %s", req.RoleID, reqRoleType)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("해당 역할은 %s 타입을 지원하지 않습니다", reqRoleType)})
+		log.Printf("Unsupported role type - roleID: %d, requested type: %s", req.RoleID, reqRoleType)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("This role does not support %s type", reqRoleType)})
 	}
 
 	var workspaceID uint
 	if req.WorkspaceID != "" {
 		workspaceID, err = util.StringToUint(req.WorkspaceID)
 		if err != nil {
-			log.Printf("워크스페이스 ID 변환 오류: %v", err)
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
+			log.Printf("Workspace ID conversion error: %v", err)
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid workspace ID format"})
 		}
 	}
 
-	// 역할 할당
+	// Assign role
 	if reqRoleType == constants.RoleTypePlatform {
 		if err := h.roleService.AssignPlatformRole(userID, roleID); err != nil {
-			log.Printf("플랫폼 역할 할당 실패 - 사용자ID: %d, 역할ID: %d, 에러: %v", userID, req.RoleID, err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("플랫폼 역할 할당 실패: %v", err)})
+			log.Printf("Failed to assign platform role - userID: %d, roleID: %d, error: %v", userID, req.RoleID, err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to assign platform role: %v", err)})
 		}
 	} else if reqRoleType == constants.RoleTypeWorkspace {
 		if workspaceID == 0 {
-			log.Printf("워크스페이스 ID 누락 - 사용자ID: %d, 역할ID: %d", userID, req.RoleID)
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "워크스페이스 ID가 필요합니다"})
+			log.Printf("Workspace ID missing - userID: %d, roleID: %d", userID, req.RoleID)
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Workspace ID is required"})
 		}
 		if err := h.roleService.AssignWorkspaceRole(userID, workspaceID, roleID); err != nil {
-			log.Printf("워크스페이스 역할 할당 실패 - 사용자ID: %d, 워크스페이스ID: %d, 역할ID: %d, 에러: %v",
+			log.Printf("Failed to assign workspace role - userID: %d, workspaceID: %d, roleID: %d, error: %v",
 				userID, workspaceID, req.RoleID, err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 역할 할당 실패: %v", err)})
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to assign workspace role: %v", err)})
 		}
 	}
 
-	log.Printf("역할 할당 성공 - 사용자ID: %d, 역할ID: %d, 역할타입: %s", userID, req.RoleID, reqRoleType)
-	return c.JSON(http.StatusOK, map[string]string{"message": fmt.Sprintf("%s 역할이 성공적으로 할당되었습니다", reqRoleType)})
+	log.Printf("Successfully assigned role - userID: %d, roleID: %d, roleType: %s", userID, req.RoleID, reqRoleType)
+	return c.JSON(http.StatusOK, map[string]string{"message": fmt.Sprintf("%s role assigned successfully", reqRoleType)})
 }
 
 // @Summary Remove role
@@ -720,21 +720,21 @@ func (h *RoleHandler) ListWorkspaceRoles(c echo.Context) error {
 	var req model.RoleFilterRequest
 	if err := c.Bind(&req); err != nil {
 		log.Printf("Error ListWorkspaceRoles : %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 
-	// workspace 역할만 조회
+	// Only query workspace roles
 	if req.RoleTypes == nil {
 		req.RoleTypes = []constants.IAMRoleType{constants.RoleTypeWorkspace}
 	}
 	log.Printf("req ListWorkspaceRoles : %v", req)
 	roles, err := h.roleService.ListWorkspaceRoles(&req)
 	if err != nil {
-		log.Printf("역할 목록 조회 실패: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 목록 조회 실패: %v", err)})
+		log.Printf("Failed to retrieve role list: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve role list: %v", err)})
 	}
 
-	log.Printf("역할 목록 조회 성공 - 조회된 역할 수: %d", len(roles))
+	log.Printf("Successfully retrieved role list - number of roles: %d", len(roles))
 	return c.JSON(http.StatusOK, roles)
 }
 
@@ -752,21 +752,21 @@ func (h *RoleHandler) ListCSPRoles(c echo.Context) error {
 	var req model.RoleFilterRequest
 	if err := c.Bind(&req); err != nil {
 		log.Printf("Error ListCspRoles : %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 
-	// csp 역할만 조회
+	// Only query CSP roles
 	if req.RoleTypes == nil {
 		req.RoleTypes = []constants.IAMRoleType{constants.RoleTypeCSP}
 	}
 
 	roles, err := h.roleService.ListRoles(&req)
 	if err != nil {
-		log.Printf("역할 목록 조회 실패: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 목록 조회 실패: %v", err)})
+		log.Printf("Failed to retrieve role list: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve role list: %v", err)})
 	}
 
-	log.Printf("역할 목록 조회 성공 - 조회된 역할 수: %d", len(roles))
+	log.Printf("Successfully retrieved role list - number of roles: %d", len(roles))
 	return c.JSON(http.StatusOK, roles)
 }
 
@@ -785,27 +785,27 @@ func (h *RoleHandler) ListCSPRoles(c echo.Context) error {
 func (h *RoleHandler) CreatePlatformRole(c echo.Context) error {
 	var req model.CreateRoleRequest
 	if err := c.Bind(&req); err != nil {
-		log.Printf("역할 생성 요청 바인딩 실패: %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+		log.Printf("Failed to bind role creation request: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 
-	log.Printf("역할 생성 요청 - 이름: %s, 설명: %s, 부모ID: %d, 역할타입: %v",
+	log.Printf("Role creation request - name: %s, description: %s, parentID: %d, roleTypes: %v",
 		req.Name, req.Description, req.ParentID, req.RoleTypes)
 
-	// 입력값 검증
+	// Input validation
 	if err := c.Validate(&req); err != nil {
-		log.Printf("역할 생성 입력값 검증 실패: %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("입력값 검증 실패: %v", err)})
+		log.Printf("Role creation input validation failed: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
 	}
 
-	// RoleMaster 생성
+	// Create RoleMaster
 	role := &model.RoleMaster{
 		Name:        req.Name,
 		Description: req.Description,
 		Predefined:  false,
 	}
 
-	// RoleSubs 생성
+	// Create RoleSubs
 	roleSubs := make([]model.RoleSub, len(req.RoleTypes))
 	for _, roleType := range req.RoleTypes {
 		log.Printf("roleType: %s", roleType)
@@ -815,7 +815,7 @@ func (h *RoleHandler) CreatePlatformRole(c echo.Context) error {
 		})
 	}
 
-	// 역할과 서브 타입 생성
+	// Create role and subtypes
 	createdRole, err := h.roleService.CreateRoleWithSubs(role, roleSubs)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -839,27 +839,27 @@ func (h *RoleHandler) CreatePlatformRole(c echo.Context) error {
 func (h *RoleHandler) CreateWorkspaceRole(c echo.Context) error {
 	var req model.CreateRoleRequest
 	if err := c.Bind(&req); err != nil {
-		log.Printf("역할 생성 요청 바인딩 실패: %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+		log.Printf("Failed to bind role creation request: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 
-	log.Printf("역할 생성 요청 - 이름: %s, 설명: %s, 부모ID: %d, 역할타입: %v",
+	log.Printf("Role creation request - name: %s, description: %s, parentID: %d, roleTypes: %v",
 		req.Name, req.Description, req.ParentID, req.RoleTypes)
 
-	// 입력값 검증
+	// Input validation
 	if err := c.Validate(&req); err != nil {
-		log.Printf("역할 생성 입력값 검증 실패: %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("입력값 검증 실패: %v", err)})
+		log.Printf("Role creation input validation failed: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
 	}
 
-	// RoleMaster 생성
+	// Create RoleMaster
 	role := &model.RoleMaster{
 		Name:        req.Name,
 		Description: req.Description,
 		Predefined:  false,
 	}
 
-	// RoleSubs 생성
+	// Create RoleSubs
 	roleSubs := make([]model.RoleSub, len(req.RoleTypes))
 	for i, roleType := range req.RoleTypes {
 		log.Printf("roleType: %s", roleType)
@@ -869,13 +869,13 @@ func (h *RoleHandler) CreateWorkspaceRole(c echo.Context) error {
 		}
 	}
 
-	// 역할과 서브 타입 생성
+	// Create role and subtypes
 	createdRole, err := h.roleService.CreateRoleWithSubs(role, roleSubs)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	log.Printf("역할 생성 성공 - ID: %d", createdRole.ID)
+	log.Printf("Role creation successful - ID: %d", createdRole.ID)
 	return c.JSON(http.StatusCreated, createdRole)
 }
 
@@ -926,28 +926,28 @@ func (h *RoleHandler) CreateCspRole(c echo.Context) error {
 // @Id getPlatformRoleByID
 func (h *RoleHandler) GetPlatformRoleByID(c echo.Context) error {
 	roleType := constants.RoleTypePlatform
-	log.Printf("역할 목록 조회 요청 - 타입: %s", roleType)
+	log.Printf("Role list retrieval request - type: %s", roleType)
 
 	roleIDInt, err := util.StringToUint(c.Param("roleId"))
 	if err != nil {
-		log.Printf("잘못된 역할 ID 형식: %s", c.Param("roleId"))
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 Platform Role ID 형식입니다"})
+		log.Printf("Invalid role ID format: %s", c.Param("roleId"))
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid Platform Role ID format"})
 	}
 
-	log.Printf("역할 조회 요청 - ID: %d", roleIDInt)
+	log.Printf("Role retrieval request - ID: %d", roleIDInt)
 
 	role, err := h.roleService.GetRoleByID(roleIDInt, roleType)
 	if err != nil {
-		log.Printf("역할 조회 실패 - ID: %d, 에러: %v", roleIDInt, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 조회 실패: %v", err)})
+		log.Printf("Failed to retrieve role - ID: %d, error: %v", roleIDInt, err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve role: %v", err)})
 	}
 
 	if role == nil {
-		log.Printf("역할을 찾을 수 없음 - ID: %d", roleIDInt)
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "해당 ID의 역할을 찾을 수 없습니다"})
+		log.Printf("Role not found - ID: %d", roleIDInt)
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Role with the specified ID not found"})
 	}
 
-	log.Printf("역할 조회 성공 - ID: %d", roleIDInt)
+	log.Printf("Successfully retrieved role - ID: %d", roleIDInt)
 	return c.JSON(http.StatusOK, role)
 }
 
@@ -1738,7 +1738,7 @@ func (h *RoleHandler) RemoveWorkspaceRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/roles/assign/csp-roles [post]
+// @Router /api/roles/csp-roles [post]
 // @Id addCspRoleMappings
 func (h *RoleHandler) AddCspRoleMappings(c echo.Context) error {
 	var req model.CreateRoleMasterCspRoleMappingRequest
@@ -1747,8 +1747,7 @@ func (h *RoleHandler) AddCspRoleMappings(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
 
-	log.Printf("Master 역할-CSP 역할 매핑 생성 요청 - 역할 ID: %s, CSP 역할 ID: %s",
-		req.RoleID, req.CspRoleID)
+	log.Printf("Master 역할-CSP 역할 매핑 생성 요청 - 역할 ID: %s, CSP 역할 ID: %s", req.RoleID, req.CspRoleID)
 
 	// 입력값 검증
 	if err := c.Validate(&req); err != nil {
@@ -1757,7 +1756,8 @@ func (h *RoleHandler) AddCspRoleMappings(c echo.Context) error {
 	}
 
 	// 문자열 ID를 uint로 변환
-	roleID, err := util.StringToUint(req.RoleID)
+	roleID := req.RoleID
+	roleIDInt, err := util.StringToUint(roleID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 역할 ID 형식입니다"})
 	}
@@ -1779,17 +1779,18 @@ func (h *RoleHandler) AddCspRoleMappings(c echo.Context) error {
 	}
 
 	// 해당 역할이 할당 되어 있는지 확인
-	isAssigned, err := h.roleService.IsAssignedRole(roleID, cspRoleIDInt, constants.RoleTypeCSP)
+	isAssigned, err := h.roleService.IsAssignedRole(0, roleIDInt, constants.RoleTypeCSP)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 할당 확인 실패: %v", err)})
 	}
 	if !isAssigned {
+		log.Printf("역할 할당 안됨 %v", isAssigned)
 		// csp 역할 추가
 		newCspRole := &model.RoleSub{
-			RoleID:   roleID,
+			RoleID:   roleIDInt,
 			RoleType: constants.RoleTypeCSP,
 		}
-		err := h.roleService.AddRoleSub(roleID, newCspRole)
+		err := h.roleService.AddRoleSub(roleIDInt, newCspRole)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 추가 실패: %v", err)})
 		}
@@ -2123,7 +2124,7 @@ func (h *RoleHandler) ListRoleMasterMappingsByCspRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/roles/mapping/role/id/:roleId [get]
+// @Router /api/roles/mappings/role/id/:roleId [get]
 // @Id getRoleMasterMappings
 func (h *RoleHandler) GetRoleMasterMappings(c echo.Context) error {
 	roleID := c.Param("roleId")

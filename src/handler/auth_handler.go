@@ -27,7 +27,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// 사용자 인증관련 기능들을 정의함.
+// Define user authentication related functions.
 
 type AuthHandler struct {
 	userService     *service.UserService
@@ -59,12 +59,12 @@ func NewAuthHandler(db *gorm.DB) *AuthHandler {
 func (h *AuthHandler) Login(c echo.Context) error {
 	var userLogin idp.UserLogin
 	if err := c.Bind(&userLogin); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 
 	// Use Id field instead of Username
 	if userLogin.Id == "" || userLogin.Password == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID와 비밀번호를 입력해주세요"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Please enter user ID and password"})
 	}
 
 	ctx := c.Request().Context()
@@ -74,13 +74,13 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	token, err := ks.Login(ctx, userLogin.Id, userLogin.Password)
 	if err != nil {
 		// Differentiate between invalid credentials and other errors if possible
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": fmt.Sprintf("Keycloak 인증 실패: %v", err)})
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": fmt.Sprintf("Keycloak authentication failed: %v", err)})
 	}
 
 	// 2. Get User ID (sub) from Access Token using a temporary KeycloakService instance
 	userID, err := ks.GetUserIDFromToken(ctx, token)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("토큰에서 사용자 ID 추출 실패: %v", err)})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to extract user ID from token: %v", err)})
 	}
 
 	// Old claims logic removed
@@ -90,12 +90,12 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	if err != nil {
 		// Handle not found vs other errors
 		if errors.Is(err, repository.ErrUserNotFound) {
-			return c.JSON(http.StatusForbidden, map[string]string{"error": "Keycloak 사용자 정보를 찾을 수 없습니다 (계정 동기화 문제 가능성)"})
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "Keycloak user information not found (possible account synchronization issue)"})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Keycloak 사용자 정보 조회 실패: %v", err)})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve Keycloak user information: %v", err)})
 	}
 	if kcUser == nil || kcUser.Enabled == nil || !*kcUser.Enabled {
-		return c.JSON(http.StatusForbidden, map[string]string{"error": "계정이 비활성화되었거나 승인 대기 중입니다"})
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "Account is disabled or pending approval"})
 	}
 
 	// 4. Sync user with local DB (Create if not exists)
@@ -103,7 +103,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	if err != nil {
 		// Log the error but allow login if Keycloak auth succeeded
 		fmt.Printf("Warning: Failed to sync user %s with local DB: %v\n", userID, err)
-		// return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("로컬 DB 동기화 실패: %v", err)})
+		// return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Local DB synchronization failed: %v", err)})
 	}
 
 	// 5. Return Keycloak token
@@ -111,10 +111,10 @@ func (h *AuthHandler) Login(c echo.Context) error {
 }
 
 // Callback godoc
-// @Summary OIDC 콜백
-// @Description OIDC 인증 후 콜백을 처리합니다
-// @Param code query string true "인증 코드"
-// @Param state query string true "상태"
+// @Summary OIDC callback
+// @Description Process callback after OIDC authentication
+// @Param code query string true "Authentication code"
+// @Param state query string true "State"
 // @Success 200 {object} map[string]interface{}
 // @Router /auth/callback [get]
 // func (h *AuthHandler) Callback(c echo.Context) error {
@@ -123,14 +123,14 @@ func (h *AuthHandler) Login(c echo.Context) error {
 
 // 	if state != "state" {
 // 		return c.JSON(http.StatusBadRequest, map[string]string{
-// 			"error": "잘못된 상태값",
+// 			"error": "Invalid state value",
 // 		})
 // 	}
 
 // 	token, err := h.config.Exchange(c.Request().Context(), code)
 // 	if err != nil {
 // 		return c.JSON(http.StatusInternalServerError, map[string]string{
-// 			"error": "토큰 교환 실패",
+// 			"error": "Token exchange failed",
 // 		})
 // 	}
 
@@ -148,8 +148,8 @@ func (h *AuthHandler) Login(c echo.Context) error {
 // @Router /api/auth/logout [post]
 // @Id mciamLogout
 func (h *AuthHandler) Logout(c echo.Context) error {
-	// Keycloak에서는 클라이언트 측에서 토큰을 삭제하면 됩니다
-	return c.JSON(http.StatusOK, map[string]string{"message": "로그아웃되었습니다"})
+	// In Keycloak, tokens can be deleted on the client side
+	return c.JSON(http.StatusOK, map[string]string{"message": "Logged out successfully"})
 }
 
 // RefreshToken godoc
@@ -163,7 +163,7 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	refreshToken := c.FormValue("refresh_token")
 	if refreshToken == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "리프레시 토큰이 필요합니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Refresh token is required"})
 	}
 
 	ctx := c.Request().Context() // Get context from request
@@ -172,15 +172,15 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	ks := service.NewKeycloakService()
 	newToken, err := ks.RefreshToken(ctx, refreshToken)
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": fmt.Sprintf("토큰 갱신 실패: %v", err)})
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": fmt.Sprintf("Token refresh failed: %v", err)})
 	}
 
 	return c.JSON(http.StatusOK, newToken)
 }
 
 // WorkspaceTicket godoc
-// @Summary 워크스페이스 티켓 설정
-// @Description 워크스페이스 티켓 설정
+// @Summary Set workspace ticket
+// @Description Set workspace ticket
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -190,48 +190,48 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 // @Router /api/workspaces/workspace-ticket [post]
 // @Id mciamWorkspaceTicket
 func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
-	// 1. 기존 액세스 토큰 확인
+	// 1. Check existing access token
 	authHeader := c.Request().Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Authorization header is missing or invalid"})
 	}
 	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
 
-	// 2. 요청 바인딩
+	// 2. Request binding
 	var req model.WorkspaceTicketRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body: " + err.Error()})
 	}
 
-	// 3. 워크스페이스 ID 유효성 검사
+	// 3. Validate workspace ID
 	if _, err := strconv.ParseUint(req.WorkspaceID, 10, 32); err != nil {
-		log.Printf("워크스페이스 ID 형식 오류: %v", err)
+		log.Printf("Workspace ID format error: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid workspace ID"})
 	}
 
-	// 4. 사용자의 워크스페이스 역할 확인
+	// 4. Check user's workspace role
 	userID, err := h.userService.GetUserIDByKcID(c.Request().Context(), c.Get("kcUserId").(string))
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
 	}
 
-	// 5. 워크스페이스 권한 조회
+	// 5. Get workspace permissions
 	workspaceRoles, err := h.roleService.GetUserWorkspaceRoles(userID, 0)
 	if err != nil {
-		log.Printf("워크스페이스 권한 조회 실패: %v", err)
+		log.Printf("Failed to get workspace permissions: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get workspace permissions"})
 	}
 
-	// 권한을 scope 형식으로 변환
+	// Convert permissions to scope format
 	scopes := make([]string, 0)
 	for _, role := range workspaceRoles {
 		scopes = append(scopes, fmt.Sprintf("workspace:%s", role))
 	}
 
-	// 6. KeycloakService를 사용하여 RPT 발급
+	// 6. Use KeycloakService to issue RPT
 	ks := service.NewKeycloakService()
 
-	// authorization.permissions 형식으로 클레임 토큰 생성
+	// Create claim token in authorization.permissions format
 	claimToken := fmt.Sprintf(`{
 		"authorization": {
 			"permissions": [
@@ -255,7 +255,7 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 		//log.Printf("Audience: %v", config.KC.OIDCClientID)
 		log.Printf("Audience: %v", config.KC.OIDCClientName)
 		log.Printf("ClaimToken: %v", claimToken)
-		log.Printf("RPT 발급 실패: %v", err)
+		log.Printf("Failed to issue RPT: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get RPT"})
 	}
 
@@ -292,9 +292,9 @@ func (h *AuthHandler) AuthCerts(c echo.Context) error {
 // @Router /api/auth/temp-credential-csps [get]
 // @Id mciamGetTempCredentialProviders
 func (h *AuthHandler) GetTempCredentialProviders(c echo.Context) error {
-	// TODO : 기준정보로 관리 및 제공필요 : platform이 제공하는 목록과 사용자가 선택한 목록 모두 제공필요
+	// TODO : Need to manage and provide as reference data: need to provide both platform-provided list and user-selected list
 
-	// CSP별 임시 자격 증명 제공 방식 정보
+	// CSP temporary credential provision method information
 	cspInfo := []map[string]interface{}{
 		{
 			"provider": "aws",

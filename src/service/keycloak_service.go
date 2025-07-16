@@ -1158,6 +1158,7 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 
 	// KeycloakConfig에서 OIDC 클라이언트 ID와 시크릿 가져오기
 	clientID := config.KC.OIDCClientID
+	clientName := config.KC.OIDCClientName
 	clientSecret := config.KC.OIDCClientSecret
 
 	if clientID == "" || clientSecret == "" {
@@ -1165,11 +1166,13 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 	}
 
 	log.Printf("[DEBUG] Impersonation clientID: %s", clientID)
+	log.Printf("[DEBUG] Impersonation clientName: %s", clientName)
 	log.Printf("[DEBUG] Impersonation clientSecret: %s", clientSecret)
 	log.Printf("[DEBUG] Impersonation realm: %s", config.KC.Realm)
 
 	// 서비스 계정으로 로그인
-	token, err := config.KC.Client.LoginClient(ctx, clientID, clientSecret, config.KC.Realm)
+	//token, err := config.KC.Client.LoginClient(ctx, clientID, clientSecret, config.KC.Realm)
+	token, err := config.KC.Client.LoginClient(ctx, clientName, clientSecret, config.KC.Realm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to login with service account: %w", err)
 	}

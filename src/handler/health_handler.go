@@ -11,12 +11,12 @@ import (
 	// Import gorm
 )
 
-// HealthHandler 헬스 체크 핸들러
+// HealthHandler health check handler
 type HealthHandler struct {
 	keycloakService service.KeycloakService
 }
 
-// NewHealthHandler 새 HealthHandler 인스턴스 생성
+// NewHealthHandler create new HealthHandler instance
 func NewHealthHandler() *HealthHandler {
 	return &HealthHandler{
 		keycloakService: service.NewKeycloakService(),
@@ -35,7 +35,7 @@ func NewHealthHandler() *HealthHandler {
 func (h *HealthHandler) CheckHealth(c echo.Context) error {
 	status := c.QueryParam("status")
 	if status == "detail" {
-		// Keycloak 연결 확인
+		// Check Keycloak connection
 		ctx := context.Background()
 		realmExists, err := h.keycloakService.CheckRealm(ctx)
 		if err != nil {
@@ -51,7 +51,7 @@ func (h *HealthHandler) CheckHealth(c echo.Context) error {
 			})
 		}
 
-		// 클라이언트 확인
+		// Check client
 		clientExists, err := h.keycloakService.CheckClient(ctx)
 		if err != nil {
 			return c.JSON(http.StatusServiceUnavailable, map[string]string{

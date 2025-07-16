@@ -687,7 +687,7 @@ func (r *RoleRepository) IsAssignedRole(userID uint, roleID uint, roleType const
 	if result.Error != nil {
 		return false, fmt.Errorf("역할 할당 확인 중 오류 발생: %v", result.Error)
 	}
-
+	log.Printf("역할 존재여부 %v, %v", count, (count > 0))
 	return count > 0, nil
 }
 

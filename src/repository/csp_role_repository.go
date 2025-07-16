@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/iam/types"
 	"github.com/google/uuid"
+	mciamConfig "github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/csp"
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -174,8 +175,9 @@ func getRoleManagerAssumeRolePolicyDocument(role *model.CspRole) (string, error)
 	}
 
 	values := PolicyValues{
-		AccountID:        "050864702683",
-		KeycloakHostname: "mciam.onecloudcon.com",
+		AccountID: "050864702683",
+		//KeycloakHostname: "mciam.onecloudcon.com",
+		KeycloakHostname: mciamConfig.KC.Host,
 		//Subject:          "user@example.com",
 		Audience: oidcClientID, // 하드코딩된 값 대신 환경 변수 사용
 	}
