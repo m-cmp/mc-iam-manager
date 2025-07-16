@@ -127,21 +127,53 @@ func GetAfterDelimiter(s, delimiter string) string {
 // LoadEnvFiles loads .env files from multiple locations for compatibility
 // between local development and Docker environments
 func LoadEnvFiles() {
+	// Get current working directory
+	currentDir, err := os.Getwd()
+	if err != nil {
+		log.Printf("Warning: Failed to get current working directory: %v", err)
+		currentDir = "."
+	}
+
 	// Try loading from parent directory (for local development from src/)
 	envPath := filepath.Join("..", ".env")
-	if err := godotenv.Load(envPath); err != nil {
-		log.Printf("Warning: .env 파일을 상위 디렉토리에서 로드하는데 실패했습니다: %v", err)
+	if err := godotenv.Load(envPath); err == nil {
+		log.Printf("✅ .env 파일을 상위 디렉토리에서 로드했습니다: %s", envPath)
+		return
+	} else {
+		log.Printf("❌ .env 파일을 상위 디렉토리에서 로드하는데 실패했습니다: %s - %v", envPath, err)
 	}
 
 	// Try loading from current directory (for Docker compatibility)
-	if err := godotenv.Load(".env"); err != nil {
-		log.Printf("Warning: .env 파일을 현재 디렉토리에서 로드하는데 실패했습니다: %v", err)
+	if err := godotenv.Load(".env"); err == nil {
+		log.Printf("✅ .env 파일을 현재 디렉토리에서 로드했습니다: .env")
+		return
+	} else {
+		log.Printf("❌ .env 파일을 현재 디렉토리에서 로드하는데 실패했습니다: .env - %v", err)
+	}
+
+	// Try loading from project root (for local development)
+	// If we're in src directory, go up one level
+	if strings.HasSuffix(currentDir, "src") {
+		projectRoot := filepath.Join(currentDir, "..")
+		rootEnvPath := filepath.Join(projectRoot, ".env")
+		if err := godotenv.Load(rootEnvPath); err == nil {
+			log.Printf("✅ .env 파일을 프로젝트 루트에서 로드했습니다: %s", rootEnvPath)
+			return
+		} else {
+			log.Printf("❌ .env 파일을 프로젝트 루트에서 로드하는데 실패했습니다: %s - %v", rootEnvPath, err)
+		}
 	}
 
 	// Try loading from root directory (for Docker when .env is copied to /)
-	if err := godotenv.Load("/.env"); err != nil {
-		log.Printf("Warning: .env 파일을 루트 디렉토리에서 로드하는데 실패했습니다: %v", err)
+	if err := godotenv.Load("/.env"); err == nil {
+		log.Printf("✅ .env 파일을 루트 디렉토리에서 로드했습니다: /.env")
+		return
+	} else {
+		log.Printf("❌ .env 파일을 루트 디렉토리에서 로드하는데 실패했습니다: /.env - %v", err)
 	}
+
+	// If we reach here, no .env file was found
+	log.Printf("⚠️  .env 파일을 찾을 수 없습니다. 환경 변수를 직접 설정하거나 .env 파일을 생성해주세요.")
 }
 
 // GetAssetPath returns the appropriate asset path based on the execution environment

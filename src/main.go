@@ -307,41 +307,6 @@ func main() {
 
 		roles.POST("/mappings/workspace-roles/users/list", roleHandler.ListUsersByWorkspaceRole)
 		roles.POST("/mappings/csp-roles/list", roleHandler.ListRoleMasterMappingsByCspRole)
-
-		//old begin
-		// roles.GET("/csp-roles/all", cspRoleHandler.GetAllCSPRoles)
-		// roles.GET("/csp-roles", cspRoleHandler.GetMciamCSPRoles)
-		// roles.POST("/csp-roles", cspRoleHandler.CreateCSPRole)
-		// roles.PUT("/csp-roles/:cspRoleId", cspRoleHandler.UpdateCSPRole)
-		// roles.DELETE("/csp-roles/:cspRoleId", cspRoleHandler.DeleteCSPRole)
-		// roles.POST("/:cspRoleId/permissions", cspRoleHandler.AddPermissionsToCSPRole)
-		// roles.DELETE("/:cspRoleId/permissions", cspRoleHandler.RemovePermissionsFromCSPRole)
-		// roles.GET("/:cspRoleId/permissions", cspRoleHandler.GetCSPRolePermissions)
-
-		// // 정책 관리 엔드포인트 추가
-		// roles.GET("/csp-roles/:roleName/policies", cspRoleHandler.GetRolePolicies)
-		// roles.GET("/csp-roles/:roleName/policies/:policyName", cspRoleHandler.GetRolePolicy)
-		// roles.PUT("/csp-roles/:roleName/policies/:policyName", cspRoleHandler.PutRolePolicy)
-		// roles.DELETE("/csp-roles/:roleName/policies/:policyName", cspRoleHandler.DeleteRolePolicy)
-		//old end
-
-		// TODO : csp role 에 permission 관리
-		// roles.POST("/csp-roles/id/:roleId/permissions", roleHandler.AddPermissionsToCspRole)
-		// roles.DELETE("/csp-roles/id/:roleId/permissions", roleHandler.RemovePermissionsFromCspRole)
-		// roles.GET("/csp-roles/id/:roleId/permissions", roleHandler.GetCspRolePermissions)
-
-		// workspace role 과 csp role 매핑 관리
-		// 워크스페이스 역할 - CSP 역할 매핑 라우트
-		// workspaceRoles := api.Group("/workspace-roles")
-		// {
-		// }
-		// workspaceRoles.GET("/:workspaceRoleId/csp-roles", cspMappingHandler.GetWorkspaceRoleCspRoleMappings)
-		// workspaceRoles.POST("/:workspaceRoleId/csp-roles", cspMappingHandler.CreateWorkspaceRoleCspRoleMapping)
-		// workspaceRoles.DELETE("/:workspaceRoleId/csp-roles/:cspType/:cspRoleId", cspMappingHandler.DeleteWorkspaceRoleCspRoleMapping)
-
-		// roles.GET("/:workspaceRoleId/csp-roles", cspMappingHandler.GetWorkspaceRoleCspRoleMappings)
-		// roles.POST("/:workspaceRoleId/csp-roles", cspMappingHandler.CreateWorkspaceRoleCspRoleMapping)
-		// roles.DELETE("/:workspaceRoleId/csp-roles/:cspType/:cspRoleId", cspMappingHandler.DeleteWorkspaceRoleCspRoleMapping)
 	}
 
 	// 사용자 라우트
@@ -385,23 +350,6 @@ func main() {
 		menusMng.POST("/platform-roles", menuHandler.CreateMenusRolesMapping, middleware.PlatformAdminMiddleware)
 		menusMng.DELETE("/platform-roles", menuHandler.DeleteMenusRolesMapping, middleware.PlatformAdminMiddleware)
 	}
-
-	// // 관리자 전용 라우트
-	// admin := api.Group("/admin", middleware.PlatformAdminMiddleware)
-	// {
-	// 	admin.GET("/workspaces", workspaceHandler.GetWorkspaces)
-	// 	admin.POST("/createWorkspace", workspaceHandler.CreateWorkspace)
-	// 	admin.PUT("/workspaces/:id", workspaceHandler.UpdateWorkspace)
-	// 	admin.DELETE("/workspaces/:id", workspaceHandler.DeleteWorkspace)
-
-	// 	admin.GET("/projects", projectHandler.ListProjects)
-	// 	admin.GET("/projects/:id", projectHandler.GetProjectByID)
-	// 	admin.POST("/createProject", projectHandler.CreateProject)
-	// 	admin.PUT("/projects/:id", projectHandler.UpdateProject)
-	// 	admin.DELETE("/projects/:id", projectHandler.DeleteProject)
-
-	// 	admin.POST("/mcmp-api/list", mcmpApiHandler.ListServicesAndActions)
-	// }
 
 	// 리소스 타입 라우트 ( platformResource=menu,api , cloudResource=vm,nlb,k8s ...)
 	resourceTypes := api.Group("/resource-types")
