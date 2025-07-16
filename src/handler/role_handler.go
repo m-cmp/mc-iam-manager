@@ -1141,6 +1141,7 @@ func (h *RoleHandler) GetCspRoleByName(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/roles/csp-roles/id/{roleId} [put]
+// @Id updateCspRole
 func (h *RoleHandler) UpdateCspRole(c echo.Context) error {
 	roleType := constants.RoleTypeCSP
 
