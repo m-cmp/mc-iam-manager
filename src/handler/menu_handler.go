@@ -78,7 +78,7 @@ func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 	menuTree, err := h.menuService.BuildUserMenuTree(c.Request().Context(), platformRoleNames)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": fmt.Sprintf("메뉴 트리 조회 실패: %v", err),
+			"error": fmt.Sprintf("Failed to retrieve menu tree: %v", err),
 		})
 	}
 
@@ -127,10 +127,10 @@ func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 	c.Logger().Debug("ListUserMenu: platformRoles %s", c.Get("platformRoles"))
 	userPlatformRoles, ok := c.Get("platformRoles").([]string)
 	if !ok {
-		return echo.NewHTTPError(http.StatusUnauthorized, "플랫폼 역할을 가져올 수 없습니다")
+		return echo.NewHTTPError(http.StatusUnauthorized, "Unable to retrieve platform roles")
 	}
 	c.Logger().Debug("getMenus: userPlatformRoles %s", userPlatformRoles)
-	// platformRole은 string이므로 db에서 id를 조회
+	// platformRole is string, so query id from db
 	platformRoleIDs := make([]string, 0, len(userPlatformRoles))
 	for _, roleName := range userPlatformRoles {
 		role, err := h.roleService.GetRoleByName(roleName, constants.RoleTypePlatform)
@@ -144,7 +144,7 @@ func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 	menuList, err := h.menuService.MenuList(req)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": fmt.Sprintf("사용자 메뉴 조회 실패: %v", err),
+			"error": fmt.Sprintf("Failed to retrieve user menu: %v", err),
 		})
 	}
 
@@ -170,28 +170,28 @@ func (h *MenuHandler) ListMenus(c echo.Context) error {
 	if err := c.Bind(req); err != nil {
 		c.Logger().Debug("ListMenus err %s", err)
 	}
-	// 3. 메뉴 트리 조회
+	// 3. Retrieve menu tree
 	menus, err := h.menuService.ListAllMenus(req)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get menu list")
 	}
 
-	// 메뉴가 없는 경우
+	// If no menus exist
 	if len(menus) == 0 {
 		return c.JSON(http.StatusOK, map[string]interface{}{
-			"message": "메뉴가 없습니다. 메뉴를 등록하세요.",
+			"message": "No menus exist. Please register menus.",
 			"menus":   []interface{}{},
 		})
 	}
 
-	// // 4. platformAdmin이 아닌 경우 권한에 따라 메뉴 필터링
+	// // 4. If not platformAdmin, filter menus by permissions
 	// if !isPlatformAdmin {
-	// 	// 권한에 따라 메뉴 필터링
+	// 	// Filter menus by permissions
 	// 	filteredMenus := h.filterMenusByPermission(menus, userRoles)
 	// 	return c.JSON(http.StatusOK, filteredMenus)
 	// }
 
-	// platformAdmin인 경우 모든 메뉴 반환
+	// Return all menus for platformAdmin
 	return c.JSON(http.StatusOK, menus)
 }
 
@@ -208,9 +208,9 @@ func (h *MenuHandler) ListMenus(c echo.Context) error {
 // @Router /api/menus/tree/list [post]
 // @Id listMenusTree
 func (h *MenuHandler) ListMenusTree(c echo.Context) error {
-	// 관리자 전용기능이면 middleware 에서 체크하도록 하자.
+	// If this is an admin-only function, let middleware handle the check.
 
-	// // 1. 컨텍스트에서 platformRoles 가져오기
+	// // 1. Get platformRoles from context
 	// platformRolesInterface := c.Get("platformRoles")
 	// if platformRolesInterface == nil {
 	// 	c.Logger().Debug("GetAllMenusTree: platformRoles not found in context")
@@ -225,7 +225,7 @@ func (h *MenuHandler) ListMenusTree(c echo.Context) error {
 
 	// c.Logger().Debugf("GetAllMenusTree: Found platformRoles in context: %v", userRoles)
 
-	// // 2. platformAdmin 역할 확인
+	// // 2. Check platformAdmin role
 	// isPlatformAdmin := false
 	// for _, role := range userRoles {
 	// 	if role == "platformAdmin" {
@@ -234,7 +234,7 @@ func (h *MenuHandler) ListMenusTree(c echo.Context) error {
 	// 	}
 	// }
 
-	// 3. 메뉴 트리 조회
+	// 3. Retrieve menu tree
 	req := &model.MenuFilterRequest{}
 	if err := c.Bind(req); err != nil {
 		c.Logger().Debug("ListMenusTree err %s", err)
@@ -244,33 +244,33 @@ func (h *MenuHandler) ListMenusTree(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get menu tree")
 	}
 
-	// 메뉴가 없는 경우
+	// If no menus exist
 	if len(menus) == 0 {
 		return c.JSON(http.StatusOK, map[string]interface{}{
-			"message": "메뉴가 없습니다. 메뉴를 등록하세요.",
+			"message": "No menus exist. Please register menus.",
 			"menus":   []interface{}{},
 		})
 	}
 
-	// // 4. platformAdmin이 아닌 경우 권한에 따라 메뉴 필터링
+	// // 4. If not platformAdmin, filter menus by permissions
 	// if !isPlatformAdmin {
-	// 	// 권한에 따라 메뉴 필터링
+	// 	// Filter menus by permissions
 	// 	filteredMenus := h.filterMenusByPermission(menus, userRoles)
 	// 	return c.JSON(http.StatusOK, filteredMenus)
 	// }
 
-	// platformAdmin인 경우 모든 메뉴 반환
+	// Return all menus for platformAdmin
 	return c.JSON(http.StatusOK, menus)
 }
 
-// filterMenusByPermission 사용자의 역할에 따라 메뉴를 필터링합니다.
+// filterMenusByPermission filters menus based on user roles.
 func (h *MenuHandler) filterMenusByPermission(menus []*model.MenuTreeNode, userRoles []string) []*model.MenuTreeNode {
 	var filteredMenus []*model.MenuTreeNode
 
 	for _, menu := range menus {
-		// 메뉴의 권한이 없거나 사용자가 해당 권한을 가지고 있는 경우
+		// If menu has no permission requirement or user has the required permission
 		if menu.ResType == "" || h.hasPermission(userRoles, menu.ResType) {
-			// 하위 메뉴가 있는 경우 재귀적으로 필터링
+			// If submenus exist, filter recursively
 			if len(menu.Children) > 0 {
 				menu.Children = h.filterMenusByPermission(menu.Children, userRoles)
 			}
@@ -281,14 +281,14 @@ func (h *MenuHandler) filterMenusByPermission(menus []*model.MenuTreeNode, userR
 	return filteredMenus
 }
 
-// hasPermission 사용자가 특정 권한을 가지고 있는지 확인합니다.
+// hasPermission checks if user has specific permission.
 func (h *MenuHandler) hasPermission(userRoles []string, requiredRole string) bool {
 	for _, role := range userRoles {
-		// platformAdmin은 모든 권한을 가짐
+		// platformAdmin has all permissions
 		if role == "platformAdmin" {
 			return true
 		}
-		// 역할이 권한과 일치하는 경우
+		// If role matches the required permission
 		if role == requiredRole {
 			return true
 		}
@@ -312,12 +312,12 @@ func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 	menu, err := h.menuService.GetMenuByID(&id)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "메뉴를 찾는데 실패했습니다",
+			"error": "Failed to find menu",
 		})
 	}
 	if menu == nil {
 		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": "메뉴를 찾을 수 없습니다",
+			"error": "Menu not found",
 		})
 	}
 	return c.JSON(http.StatusOK, menu)
@@ -339,7 +339,7 @@ func (h *MenuHandler) CreateMenu(c echo.Context) error {
 	if err := c.Bind(req); err != nil {
 		c.Logger().Debugf("CreateMenu err %s", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "잘못된 요청 형식입니다",
+			"error": "Invalid request format",
 		})
 	}
 
@@ -348,17 +348,17 @@ func (h *MenuHandler) CreateMenu(c echo.Context) error {
 	if err != nil {
 		c.Logger().Debugf("Failed to check existing menu: %v", err)
 		if err == repository.ErrMenuNotFound {
-			// 없는 메뉴임.
+			// Menu doesn't exist.
 		} else {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "메뉴 조회 중 오류가 발생했습니다",
+				"error": "Error occurred while retrieving menu",
 			})
 		}
 	}
 
 	if existingMenu != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "이미 있는 메뉴입니다",
+			"error": "Menu already exists",
 		})
 		// // 기존 메뉴가 있으면 업데이트
 		// updates := map[string]interface{}{

@@ -14,13 +14,13 @@ import (
 	"gorm.io/gorm" // Import gorm
 )
 
-// MciamPermissionHandler MC-IAM 권한 관리 핸들러 - Renamed
+// MciamPermissionHandler MC-IAM permission management handler - Renamed
 type MciamPermissionHandler struct {
 	permissionService *service.MciamPermissionService // Use renamed service type
 	// db *gorm.DB // Not needed directly in handler
 }
 
-// NewMciamPermissionHandler MC-IAM 권한 관리 핸들러 생성 - Renamed
+// NewMciamPermissionHandler create MC-IAM permission management handler - Renamed
 func NewMciamPermissionHandler(db *gorm.DB) *MciamPermissionHandler {
 	// Initialize service internally
 	permissionService := service.NewMciamPermissionService(db) // Use renamed constructor
@@ -29,7 +29,7 @@ func NewMciamPermissionHandler(db *gorm.DB) *MciamPermissionHandler {
 	}
 }
 
-// ListMciamPermissions MC-IAM 권한 목록 조회 - Renamed
+// ListMciamPermissions retrieve MC-IAM permission list - Renamed
 // @Summary List all permissions
 // @Description Retrieve a list of all permissions.
 // @Tags permissions
@@ -46,13 +46,13 @@ func (h *MciamPermissionHandler) ListMciamPermissions(c echo.Context) error { //
 	permissions, err := h.permissionService.ListMcIamPermissions(c.Request().Context(), frameworkID, resourceTypeID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "권한 목록을 가져오는데 실패했습니다",
+			"error": "Failed to retrieve permission list",
 		})
 	}
 	return c.JSON(http.StatusOK, permissions) // Return permissions variable
 }
 
-// GetByID ID로 권한 조회
+// GetByID retrieve permission by ID
 // @Summary Get permission by ID
 // @Description Retrieve permission details by permission ID.
 // @Tags permissions
@@ -75,18 +75,18 @@ func (h *MciamPermissionHandler) GetMciamPermissionByID(c echo.Context) error { 
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "권한을 가져오는데 실패했습니다",
+			"error": "Failed to retrieve permission",
 		})
 	}
 	if permission == nil {
 		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": "권한을 찾을 수 없습니다",
+			"error": "Permission not found",
 		})
 	}
 	return c.JSON(http.StatusOK, permission)
 }
 
-// Create 권한 생성
+// Create create permission
 // @Summary Create new permission
 // @Description Create a new permission with the specified information.
 // @Tags permissions
@@ -103,19 +103,19 @@ func (h *MciamPermissionHandler) CreateMciamPermission(c echo.Context) error { /
 	var permission model.MciamPermission // Use renamed model
 	if err := c.Bind(&permission); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "잘못된 요청입니다",
+			"error": "Invalid request",
 		})
 	}
 
 	if err := h.permissionService.CreateMcIamPermission(c.Request().Context(), &permission); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "권한 생성에 실패했습니다",
+			"error": "Failed to create permission",
 		})
 	}
 	return c.JSON(http.StatusCreated, permission)
 }
 
-// Update 권한 수정
+// Update update permission
 // @Summary Update permission
 // @Description Update the details of an existing permission.
 // @Tags permissions
@@ -135,7 +135,7 @@ func (h *MciamPermissionHandler) UpdateMciamPermission(c echo.Context) error { /
 
 	updates := make(map[string]interface{})
 	if err := c.Bind(&updates); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다: " + err.Error()})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format: " + err.Error()})
 	}
 
 	// Allow updating only specific fields (e.g., name, description)
@@ -149,7 +149,7 @@ func (h *MciamPermissionHandler) UpdateMciamPermission(c echo.Context) error { /
 	// Add other updatable fields if necessary
 
 	if len(allowedUpdates) == 0 {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "업데이트할 필드(name, description)가 없습니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "No fields to update (name, description)"})
 	}
 
 	if err := h.permissionService.UpdateMcIamPermission(c.Request().Context(), id, allowedUpdates); err != nil {
@@ -157,7 +157,7 @@ func (h *MciamPermissionHandler) UpdateMciamPermission(c echo.Context) error { /
 		if err == repository.ErrPermissionNotFound { // Assuming repo returns this error
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "권한 수정에 실패했습니다: " + err.Error()})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update permission: " + err.Error()})
 	}
 
 	// Fetch and return the updated permission
@@ -170,7 +170,7 @@ func (h *MciamPermissionHandler) UpdateMciamPermission(c echo.Context) error { /
 	return c.JSON(http.StatusOK, updatedPermission)
 }
 
-// Delete 권한 삭제
+// Delete delete permission
 // @Summary Delete permission
 // @Description Delete a permission by its ID.
 // @Tags permissions
@@ -191,13 +191,13 @@ func (h *MciamPermissionHandler) DeleteMciamPermission(c echo.Context) error { /
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "권한 삭제에 실패했습니다",
+			"error": "Failed to delete permission",
 		})
 	}
 	return c.NoContent(http.StatusNoContent)
 }
 
-// AssignRolePermission 역할에 권한 할당
+// AssignRolePermission assign permission to role
 // @Summary 역할에 MC-IAM 권한 할당 - Renamed
 // @Description 역할에 MC-IAM 권한을 할당합니다.
 // @Tags roles, mciam-permissions

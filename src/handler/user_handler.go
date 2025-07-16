@@ -37,7 +37,7 @@ func checkRoleFromContext(c echo.Context, requiredRoles []string) bool {
 	return false
 }
 
-// 사용자 관리 기능들을 정의함.
+// Define user management functions.
 
 // --- User Handler ---
 
@@ -73,20 +73,20 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 // @Router /api/users/list [post]
 // @Id listUsers
 func (h *UserHandler) ListUsers(c echo.Context) error {
-	// --- 역할 검증 (Admin or platformAdmin) ---
-	requiredRoles := []string{"admin", "platformAdmin"} // todo : middleware에서 체크되지 않나?
+	// --- Role validation (Admin or platformAdmin) ---
+	requiredRoles := []string{"admin", "platformAdmin"} // todo : shouldn't this be checked in middleware?
 	// Use the helper function that reads roles from context
 	if !checkRoleFromContext(c, requiredRoles) {
 		fmt.Printf("[INFO] ListUsers: Permission denied. User does not have required roles: %v\n", requiredRoles)
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Required role not found"})
 	}
 	fmt.Printf("[DEBUG] ListUsers: Permission granted.\n")
-	// --- 역할 검증 끝 ---
+	// --- Role validation end ---
 
 	users, err := h.userService.ListUsers(c.Request().Context())
 	if err != nil {
 		fmt.Printf("[ERROR] ListUsers: Error from userService.ListUsers: %v\n", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "사용자 목록을 가져오는데 실패했습니다"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to retrieve user list"})
 	}
 
 	return c.JSON(http.StatusOK, users)
@@ -112,7 +112,7 @@ func (h *UserHandler) GetUserByKcID(c echo.Context) error {
 	if err != nil {
 		// Consider checking for specific errors (e.g., not found)
 		fmt.Printf("[ERROR] GetUserByKcID: Error fetching user by KcID %s: %v\n", kcId, err)
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자를 찾을 수 없습니다"})
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
 	}
 	return c.JSON(http.StatusOK, user)
 }
@@ -139,7 +139,7 @@ func (h *UserHandler) GetUserByID(c echo.Context) error {
 	if err != nil {
 		// Consider checking for specific errors (e.g., not found)
 		fmt.Printf("[ERROR] GetUserByID: Error fetching user by Id %s: %v\n", userId, err)
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자를 찾을 수 없습니다"})
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
 	}
 	return c.JSON(http.StatusOK, user)
 }
@@ -162,7 +162,7 @@ func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 	username := c.Param("username")
 	user, err := h.userService.GetUserByUsername(c.Request().Context(), username)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자를 찾을 수 없습니다"})
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
 	}
 	return c.JSON(http.StatusOK, user)
 }
@@ -181,18 +181,18 @@ func (h *UserHandler) GetUserByUsername(c echo.Context) error {
 // @Router /api/users [post]
 // @Id createUser
 func (h *UserHandler) CreateUser(c echo.Context) error {
-	// --- 역할 검증 (Admin or platformAdmin) ---
+	// --- Role validation (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
 	if !checkRoleFromContext(c, requiredRoles) {
 		fmt.Printf("[INFO] CreateUser: Permission denied. User does not have required roles: %v\n", requiredRoles)
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Administrator access required"})
 	}
 	fmt.Printf("[DEBUG] CreateUser: Permission granted.\n")
-	// --- 역할 검증 끝 ---
+	// --- Role validation end ---
 
 	var user model.User
 	if err := c.Bind(&user); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 
 	// Password is handled by Keycloak, not directly in this model/handler typically.
@@ -201,7 +201,7 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 	if err != nil {
 		fmt.Printf("[ERROR] CreateUser: Error from userService.CreateUser: %v\n", err)
 		// Provide more specific error if possible (e.g., user exists)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "사용자 생성에 실패했습니다"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
 	}
 
 	// Return the user data from the request body as confirmation,
@@ -226,24 +226,24 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 // @Router /api/users/{id} [put]
 // @Id updateUser
 func (h *UserHandler) UpdateUser(c echo.Context) error {
-	// --- 역할 검증 (Admin or platformAdmin) ---
+	// --- Role validation (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
 	if !checkRoleFromContext(c, requiredRoles) {
 		fmt.Printf("[INFO] UpdateUser: Permission denied. User does not have required roles: %v\n", requiredRoles)
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Administrator access required"})
 	}
 	fmt.Printf("[DEBUG] UpdateUser: Permission granted.\n")
-	// --- 역할 검증 끝 ---
+	// --- Role validation end ---
 
 	// Parse DB ID (uint) from path parameter
 	userIDInt, err := util.StringToUint(c.Param("userId"))
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 user ID 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID format"})
 	}
 
 	var user model.User
 	if err := c.Bind(&user); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 본문입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
 
 	user.ID = userIDInt // Set the DB ID from the path parameter
@@ -254,7 +254,7 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 		fmt.Printf("[ERROR] UpdateUser: Error from userService.UpdateUser for DB ID %d: %v\n", userIDInt, err)
 		// Handle potential "not found" errors from service/repo if needed
 		// Consider returning 404 if user with dbId not found
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "사용자 수정에 실패했습니다"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update user"})
 	}
 
 	// Update successful, fetch the updated user to return it (using KcId, need to get it first)
@@ -281,19 +281,19 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 // @Router /api/users/{id} [delete]
 // @Id deleteUser
 func (h *UserHandler) DeleteUser(c echo.Context) error {
-	// --- 역할 검증 (Admin or platformAdmin) ---
+	// --- Role validation (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
 	if !checkRoleFromContext(c, requiredRoles) {
 		fmt.Printf("[INFO] DeleteUser: Permission denied. User does not have required roles: %v\n", requiredRoles)
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Administrator access required"})
 	}
 	fmt.Printf("[DEBUG] DeleteUser: Permission granted.\n")
-	// --- 역할 검증 끝 ---
+	// --- Role validation end ---
 
 	// Parse DB ID (uint) from path parameter
 	userIDInt, err := util.StringToUint(c.Param("userId"))
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 user ID 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID format"})
 	}
 
 	// Call service method with DB ID
@@ -301,7 +301,7 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
 	if err != nil {
 		fmt.Printf("[ERROR] DeleteUser: Error from userService.DeleteUser for DB ID %d: %v\n", userIDInt, err)
 		// Consider returning 404 if user with dbId not found
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "사용자 삭제에 실패했습니다"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete user"})
 	}
 
 	return c.NoContent(http.StatusNoContent)
@@ -324,31 +324,31 @@ func (h *UserHandler) DeleteUser(c echo.Context) error {
 // @Id updateUserStatus
 func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 
-	// --- 역할 검증 (Admin or platformAdmin) ---
+	// --- Role validation (Admin or platformAdmin) ---
 	requiredRoles := []string{"admin", "platformAdmin"}
 	if !checkRoleFromContext(c, requiredRoles) {
 		fmt.Printf("[INFO] ApproveUser: Permission denied. User does not have required roles: %v\n", requiredRoles)
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Administrator access required"})
 	}
 	fmt.Printf("[DEBUG] ApproveUser: Permission granted.\n")
-	// --- 역할 검증 끝 ---
+	// --- Role validation end ---
 	userIDInt, err := util.StringToUint(c.Param("userId"))
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 user ID 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID format"})
 	}
 	// kcUserID := c.Param("id")
 	// if kcUserID == "" {
-	// 	return c.JSON(http.StatusBadRequest, map[string]string{"error": "사용자 ID가 필요합니다"})
+	// 	return c.JSON(http.StatusBadRequest, map[string]string{"error": "User ID is required"})
 	// }
 
 	var updateUser model.UserStatusRequest
 	if err := c.Bind(&updateUser); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 본문입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
 
 	user, err := h.userService.GetUserByID(c.Request().Context(), userIDInt)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "사용자를 찾을 수 없습니다"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "User not found"})
 	}
 
 	if updateUser.Status == "approved" {
@@ -357,18 +357,18 @@ func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 		if err != nil {
 			fmt.Printf("[ERROR] ApproveUser: Error from userService.ApproveUser: %v\n", err)
 			// Handle specific errors from service if needed (e.g., user not found in Keycloak)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("사용자 승인 실패: %v", err)})
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to approve user: %v", err)})
 		}
 	}
 
-	// TODO : 사용자 활성화 및 비활성화 기능 추가
+	// TODO : Add user activation and deactivation functionality
 	// if updateUser.Status == "active" {
 
 	// 	err := h.userService.ApproveUser(c.Request().Context(), user.KcId) // Assign error to a new variable 'err'
 	// 	if err != nil {
 	// 		fmt.Printf("[ERROR] ApproveUser: Error from userService.ApproveUser: %v\n", err)
 	// 		// Handle specific errors from service if needed (e.g., user not found in Keycloak)
-	// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("사용자 승인 실패: %v", err)})
+	// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to approve user: %v", err)})
 	// 	}
 	// }
 
@@ -378,7 +378,7 @@ func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 	// 	if err != nil {
 	// 		fmt.Printf("[ERROR] ApproveUser: Error from userService.ApproveUser: %v\n", err)
 	// 		// Handle specific errors from service if needed (e.g., user not found in Keycloak)
-	// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("사용자 승인 실패: %v", err)})
+	// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to approve user: %v", err)})
 	// 	}
 	// }
 
@@ -543,7 +543,7 @@ func (h *UserHandler) ListUserWorkspaces(c echo.Context) error {
 func (h *UserHandler) ListUserProjectsByWorkspace(c echo.Context) error {
 	workspaceIdInt, err := util.StringToUint(c.Param("workspaceId"))
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 workspace ID 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid workspace ID format"})
 	}
 
 	// 1. Get Keycloak User ID
@@ -587,7 +587,7 @@ func (h *UserHandler) ListUserProjectsByWorkspace(c echo.Context) error {
 	return c.JSON(http.StatusOK, model.Workspace{})
 }
 
-// 특정 유저에게 할당된 workspace 목록 조회
+// Retrieve workspace list assigned to specific user
 // GetUserWorkspacesByUserID godoc
 // @Summary Get user workspaces by user ID
 // @Description Get workspaces for a specific user
@@ -629,15 +629,15 @@ func (h *UserHandler) GetUserWorkspacesByUserID(c echo.Context) error {
 	return c.JSON(http.StatusOK, workspaces)
 }
 
-// 사용자에게 할당된 workspace 와 역할 목록 조회
+// Retrieve workspace and role list assigned to user
 func (h *UserHandler) GetUserWorkspaceAndWorkspaceRolesByUserID(c echo.Context) error {
 	userId := c.Param("userId")
 	userIdInt, err := util.StringToUint(userId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 user ID 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID format"})
 	}
 
-	// 사용자의 workspace 목록 조회
+	// Retrieve user's workspace list
 	workspaces, err := h.workspaceService.ListWorkspaces(&model.WorkspaceFilterRequest{
 		UserID: userId,
 	})
@@ -645,7 +645,7 @@ func (h *UserHandler) GetUserWorkspaceAndWorkspaceRolesByUserID(c echo.Context) 
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspaces: %v", err)})
 	}
 
-	// workspaces가 nil이면 빈 배열로 초기화
+	// Initialize as empty array if workspaces is nil
 	if workspaces == nil {
 		workspaces = make([]*model.Workspace, 0)
 	}
@@ -669,11 +669,11 @@ func (h *UserHandler) GetUserWorkspaceAndWorkspaceRolesByUserIDAndWorkspaceID(c 
 	workspaceId := c.Param("workspaceId")
 	userIdInt, err := util.StringToUint(userId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 user ID 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID format"})
 	}
 	workspaceIdInt, err := util.StringToUint(workspaceId)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 workspace ID 형식입니다"})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid workspace ID format"})
 	}
 
 	workspaceRoles, err := h.roleService.GetUserWorkspaceRoles(userIdInt, workspaceIdInt)
