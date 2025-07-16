@@ -600,7 +600,6 @@ func (h *UserHandler) ListUserProjectsByWorkspace(c echo.Context) error {
 // @Security BearerAuth
 // @Router /api/users/id/{userId}/workspaces/list [get]
 // @Id getUserWorkspacesByUserID
-
 func (h *UserHandler) GetUserWorkspacesByUserID(c echo.Context) error {
 	userId := c.Param("userId")
 
@@ -630,6 +629,17 @@ func (h *UserHandler) GetUserWorkspacesByUserID(c echo.Context) error {
 }
 
 // Retrieve workspace and role list assigned to user
+// @Summary Get user workspace and workspace roles by user ID
+// @Description Get workspaces and roles for a specific user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param userId path string true "User ID"
+// @Success 200 {array} model.UserWorkspaceRole
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/id/{userId}/workspaces/roles/list [get]
+// @Id getUserWorkspaceAndWorkspaceRolesByUserID
 func (h *UserHandler) GetUserWorkspaceAndWorkspaceRolesByUserID(c echo.Context) error {
 	userId := c.Param("userId")
 	userIdInt, err := util.StringToUint(userId)
@@ -664,6 +674,18 @@ func (h *UserHandler) GetUserWorkspaceAndWorkspaceRolesByUserID(c echo.Context) 
 	return c.JSON(http.StatusOK, userWorkspaceRoles)
 }
 
+// @Summary Get user workspace and workspace roles by user ID and workspace ID
+// @Description Get workspaces and roles for a specific user and workspace
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param userId path string true "User ID"
+// @Param workspaceId path string true "Workspace ID"
+// @Success 200 {array} model.UserWorkspaceRole
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/id/{userId}/workspaces/id/{workspaceId}/roles/list [get]
+// @Id getUserWorkspaceAndWorkspaceRolesByUserIDAndWorkspaceID
 func (h *UserHandler) GetUserWorkspaceAndWorkspaceRolesByUserIDAndWorkspaceID(c echo.Context) error {
 	userId := c.Param("userId")
 	workspaceId := c.Param("workspaceId")

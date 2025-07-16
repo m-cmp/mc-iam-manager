@@ -420,7 +420,7 @@ func (h *MenuHandler) CreateMenu(c echo.Context) error {
 // @Param menu body model.Menu true "Menu Info"
 // @Success 200 {object} model.Menu
 // @Security BearerAuth
-// @Router /menus/id/{menuId} [put]
+// @Router /api/menus/id/{menuId} [put]
 // @Id updateMenu
 func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 	id := c.Param("menuId")
@@ -508,7 +508,7 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 // @Param id path string true "Menu ID"
 // @Success 204 "No Content"
 // @Security BearerAuth
-// @Router /menus/id/{menuId} [delete]
+// @Router /api/menus/id/{menuId} [delete]
 // @Id deleteMenu
 func (h *MenuHandler) DeleteMenu(c echo.Context) error {
 	id := c.Param("menuId")
@@ -697,7 +697,16 @@ func (h *MenuHandler) DeleteMenusRolesMapping(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "Menu mapping deleted successfully"})
 }
 
-// GetUserMenuTree 사용자의 플랫폼 역할에 따른 메뉴 트리 조회
+// @Summary Get user menu tree by platform roles
+// @Description Get menu tree based on user's platform roles
+// @Tags menus
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.MenuTreeNode
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/menus/user-menu-tree [get]
+// @Id getUserMenuTree
 func (h *MenuHandler) GetUserMenuTree(c echo.Context) error {
 	// Get platform roles from context (set by auth middleware)
 	platformRoles := c.Get("platform_roles").([]string)

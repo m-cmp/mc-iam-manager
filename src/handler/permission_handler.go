@@ -207,7 +207,8 @@ func (h *MciamPermissionHandler) DeleteMciamPermission(c echo.Context) error { /
 // @Param roleId path int true "역할 ID"
 // @Param permissionId path string true "MC-IAM 권한 ID"
 // @Success 204 "No Content"
-// @Router /roles/{roleType}/{roleId}/mciam-permissions/{permissionId} [post] // Updated route
+// @Router /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId} [post] // Updated route
+// @Id assignMciamPermissionToRole
 func (h *MciamPermissionHandler) AssignMciamPermissionToRole(c echo.Context) error { // Renamed method
 	roleTypeStr := c.Param("roleType")
 	roleType := constants.IAMRoleType(roleTypeStr)
@@ -245,7 +246,8 @@ func (h *MciamPermissionHandler) AssignMciamPermissionToRole(c echo.Context) err
 // @Param roleId path int true "역할 ID"
 // @Param permissionId path string true "MC-IAM 권한 ID"
 // @Success 204 "No Content"
-// @Router /roles/{roleType}/{roleId}/mciam-permissions/{permissionId} [delete] // Updated route
+// @Router /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId} [delete]
+// @Id removeMciamPermissionFromRole
 func (h *MciamPermissionHandler) RemoveMciamPermissionFromRole(c echo.Context) error { // Renamed method
 	roleTypeStr := c.Param("roleType")
 	roleType := constants.IAMRoleType(roleTypeStr)
@@ -281,7 +283,8 @@ func (h *MciamPermissionHandler) RemoveMciamPermissionFromRole(c echo.Context) e
 // @Param roleType path string true "역할 타입 ('platform' or 'workspace')"
 // @Param roleId path int true "역할 ID"
 // @Success 200 {array} string "권한 ID 목록"
-// @Router /roles/{roleType}/{roleId}/mciam-permissions [get] // Updated route
+// @Router /api/roles/{roleType}/{roleId}/mciam-permissions [get]
+// @Id getRoleMciamPermissions
 func (h *MciamPermissionHandler) GetRoleMciamPermissions(c echo.Context) error { // Renamed method
 	roleTypeStr := c.Param("roleType")
 	roleType := constants.IAMRoleType(roleTypeStr)

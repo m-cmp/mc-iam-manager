@@ -38,7 +38,7 @@ func NewMcmpApiHandler(db *gorm.DB) *McmpApiHandler { // Accept db, remove servi
 // @Produce json
 // @Success 200 {object} map[string]string "message: Successfully triggered MCMP API sync"
 // @Failure 500 {object} map[string]string "message: Failed to trigger MCMP API sync"
-// @Router /mcmp-apis/syncMcmpAPIs [post]
+// @Router /api/mcmp-apis/syncMcmpAPIs [post]
 // @Security BearerAuth
 // @Id syncMcmpAPIs
 func (h *McmpApiHandler) SyncMcmpAPIs(c echo.Context) error {
@@ -63,7 +63,7 @@ func (h *McmpApiHandler) SyncMcmpAPIs(c echo.Context) error {
 // @Failure 400 {object} map[string]string "error: Invalid service name or version"
 // @Failure 404 {object} map[string]string "error: Service or version not found"
 // @Failure 500 {object} map[string]string "error: Failed to set active version"
-// @Router /mcmp-apis/name/{serviceName}/versions/{version}/activate [put]
+// @Router /api/mcmp-apis/name/{serviceName}/versions/{version}/activate [put]
 // @Security BearerAuth
 // @Id setActiveVersion
 func (h *McmpApiHandler) SetActiveVersion(c echo.Context) error {
@@ -101,7 +101,7 @@ func (h *McmpApiHandler) SetActiveVersion(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Service or action not found"
 // @Failure 500 {object} map[string]string "error: Internal server error or failed to call external API"
 // @Failure 503 {object} map[string]string "error: External API unavailable"
-// @Router /mcmp-apis/mcmpApiCall [post]
+// @Router /api/mcmp-apis/mcmpApiCall [post]
 // @Security BearerAuth
 // @Id mcmpApiCall
 func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
@@ -225,7 +225,7 @@ func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
 // @Failure 500 {object} map[string]string "message: Failed to retrieve API definitions"
 // @Param serviceName query string false "Filter by service name"
 // @Param actionName query string false "Filter by action name (operationId)"
-// @Router /mcmp-apis/list [post]
+// @Router /api/mcmp-apis/list [post]
 // @Security BearerAuth
 // @Id listServicesAndActions
 func (h *McmpApiHandler) ListServicesAndActions(c echo.Context) error {
@@ -257,7 +257,7 @@ func (h *McmpApiHandler) ListServicesAndActions(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: Service or Action Not Found"
 // @Failure 500 {object} map[string]string "error: Internal Server Error"
 // @Failure 503 {object} map[string]string "error: External API Service Unavailable"
-// @Router /mcmp-apis/test/mc-infra-manager/getallns [get]
+// @Router /api/mcmp-apis/test/mc-infra-manager/getallns [get]
 // @Security BearerAuth
 // @Id testCallGetAllNs
 func (h *McmpApiHandler) TestCallGetAllNs(c echo.Context) error {
@@ -312,7 +312,7 @@ func (h *McmpApiHandler) TestCallGetAllNs(c echo.Context) error {
 // @Failure 400 {object} map[string]string "error: Invalid service name or request body"
 // @Failure 404 {object} map[string]string "error: Service not found"
 // @Failure 500 {object} map[string]string "error: Failed to update service"
-// @Router /mcmp-apis/name/{serviceName} [put]
+// @Router /api/mcmp-apis/name/{serviceName} [put]
 // @Id UpdateFrameworkService
 // @Security BearerAuth
 func (h *McmpApiHandler) UpdateFrameworkService(c echo.Context) error {
@@ -358,7 +358,7 @@ func (h *McmpApiHandler) UpdateFrameworkService(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /mcmp-apis [get]
+// @Router /api/mcmp-apis [get]
 
 // GetMCMPAPIByID godoc
 // @Summary MCMP API ID로 조회
@@ -372,7 +372,7 @@ func (h *McmpApiHandler) UpdateFrameworkService(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: API not found"
 // @Security BearerAuth
-// @Router /mcmp-apis/{id} [get]
+// @Router /api/mcmp-apis/{id} [get]
 
 // CreateMCMPAPI godoc
 // @Summary 새 MCMP API 생성
@@ -386,7 +386,7 @@ func (h *McmpApiHandler) UpdateFrameworkService(c echo.Context) error {
 // @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Security BearerAuth
-// @Router /mcmp-apis [post]
+// @Router /api/mcmp-apis [post]
 
 // UpdateMCMPAPI godoc
 // @Summary MCMP API 업데이트
@@ -402,7 +402,7 @@ func (h *McmpApiHandler) UpdateFrameworkService(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: API not found"
 // @Security BearerAuth
-// @Router /mcmp-apis/{id} [put]
+// @Router /api/mcmp-apis/{id} [put]
 
 // DeleteMCMPAPI godoc
 // @Summary MCMP API 삭제
@@ -416,7 +416,7 @@ func (h *McmpApiHandler) UpdateFrameworkService(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: API not found"
 // @Security BearerAuth
-// @Router /mcmp-apis/{id} [delete]
+// @Router /api/mcmp-apis/{id} [delete]
 
 // @Summary List services and actions
 // @Description Get a list of all MCMP services and their actions

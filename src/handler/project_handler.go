@@ -240,7 +240,7 @@ func (h *ProjectHandler) DeleteProject(c echo.Context) error {
 // @Success 200 {object} map[string]string "message: Project synchronization successful"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류 또는 동기화 실패"
 // @Security BearerAuth
-// @Router /setup/sync-projects [post]
+// @Router /api/setup/sync-projects [post]
 // @Id syncProjects
 func (h *ProjectHandler) SyncProjects(c echo.Context) error {
 	log.Println("Received request to sync projects with mc-infra-manager")
@@ -265,7 +265,7 @@ func (h *ProjectHandler) SyncProjects(c echo.Context) error {
 // @Failure 404 {object} map[string]string "error: 프로젝트 또는 워크스페이스를 찾을 수 없습니다"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /projects/{id}/workspaces/{workspaceId} [post]
+// @Router /api/projects/{id}/workspaces/{workspaceId} [post]
 // @Id addWorkspaceToProject
 func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 	var req model.WorkspaceProjectMappingRequest

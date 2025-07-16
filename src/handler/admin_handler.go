@@ -45,7 +45,7 @@ func NewAdminHandler(db *gorm.DB) *AdminHandler {
 // @Produce json
 // @Param request body model.SetupInitialAdminRequest true "Setup Initial Admin Request"
 // @Success 200 {object} model.Response
-// @Router /initial-admin [post]
+// @Router /api/initial-admin [post]
 // @Id setupInitialAdmin
 func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	var req model.SetupInitialAdminRequest
@@ -196,7 +196,7 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 // @Success 200 {object} model.Response
 // @Failure 400 {object} model.Response
 // @Failure 500 {object} model.Response
-// @Router /setup/check-user-roles [get]
+// @Router /api/setup/check-user-roles [get]
 // @Id checkUserRoles
 func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 	username := c.QueryParam("username")
@@ -232,7 +232,7 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 // @Failure 400 {object} model.Response
 // @Failure 500 {object} model.Response
 // @Security BearerAuth
-// @Router /setup/initial-role-menu-permission [get]
+// @Router /api/setup/initial-role-menu-permission [get]
 // @Id initializeMenuPermissions
 func (h *AdminHandler) InitializeMenuPermissions(c echo.Context) error {
 	filePath := c.QueryParam("filePath")
