@@ -137,6 +137,11 @@ func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
 		}
+		// Check if role is nil before accessing its ID
+		if role == nil {
+			c.Logger().Debug("Role not found for roleName: %s", roleName)
+			continue // Skip this role and continue with others
+		}
 		platformRoleIDs = append(platformRoleIDs, strconv.FormatUint(uint64(role.ID), 10))
 	}
 	req.RoleIDs = platformRoleIDs
