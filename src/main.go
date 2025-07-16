@@ -216,8 +216,8 @@ func main() {
 		workspaces.POST("", workspaceHandler.CreateWorkspace)
 		workspaces.GET("/id/:workspaceId", workspaceHandler.GetWorkspaceByID)
 		workspaces.GET("/name/:workspaceName", workspaceHandler.GetWorkspaceByName)
-		workspaces.PUT("/id/:workspaceId", workspaceHandler.UpdateWorkspace, middleware.WorkspaceRoleMiddleware(db))
-		workspaces.DELETE("/id/:workspaceId", workspaceHandler.DeleteWorkspace, middleware.WorkspaceRoleMiddleware(db))
+		workspaces.PUT("/id/:workspaceId", workspaceHandler.UpdateWorkspace, middleware.PlatformRoleMiddleware(middleware.Write))
+		workspaces.DELETE("/id/:workspaceId", workspaceHandler.DeleteWorkspace, middleware.PlatformRoleMiddleware(middleware.Write))
 
 		workspaces.POST("/workspace-ticket", authHandler.WorkspaceTicket) // 1개 워크스페이스에 대한 티켓 설정
 		workspaces.POST("/temporary-credentials", cspCredentialHandler.GetTemporaryCredentials)
@@ -227,7 +227,7 @@ func main() {
 
 		workspaces.POST("/projects/list", workspaceHandler.ListWorkspaceProjects)
 		workspaces.GET("/id/:workspaceId/projects/list", workspaceHandler.GetWorkspaceProjectsByWorkspaceId)
-		//workspaces.POST("/id/:workspaceId/users", workspaceHandler.ListWorkspace)                                                    // TODO ListAllWorkspaceUsersAndRoles으로 대체 또는 통합 가능하지 않나?
+		workspaces.POST("/id/:workspaceId/users/list", workspaceHandler.ListUsersAndRolesByWorkspaces)                                              // TODO ListAllWorkspaceUsersAndRoles으로 대체 또는 통합 가능하지 않나?
 		workspaces.GET("/id/:workspaceId/users/id/:userId", roleHandler.GetUserWorkspaceRoles, middleware.PlatformRoleMiddleware(middleware.Write)) // 특정 사용자에게 할당된 워크스페이스 역할 조회 ( 관리자가 사용자의 workspace role 조회) --> get을 post로 바꿀까?
 
 		workspaces.POST("/assign/projects", workspaceHandler.AddProjectToWorkspace, middleware.PlatformAdminMiddleware)
@@ -372,8 +372,9 @@ func main() {
 	menusMng := api.Group("/menus")
 	{
 		menusMng.POST("/list", menuHandler.ListMenus)
-		menusMng.POST("/tree/list", menuHandler.ListMenusTree)
+		menusMng.POST("/menus-tree/list", menuHandler.ListMenusTree)
 		menusMng.POST("", menuHandler.CreateMenu, middleware.PlatformRoleMiddleware(middleware.Write))
+		menusMng.GET("/id/:menuId", menuHandler.GetMenuByID)
 		menusMng.PUT("/id/:menuId", menuHandler.UpdateMenu, middleware.PlatformAdminMiddleware)
 		menusMng.DELETE("/id/:menuId", menuHandler.DeleteMenu, middleware.PlatformAdminMiddleware)
 

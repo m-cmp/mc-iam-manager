@@ -15,17 +15,17 @@ var (
 	ErrPermissionAlreadyExists = errors.New("permission with this id already exists")
 )
 
-// MciamPermissionRepository MC-IAM 권한 데이터 관리 - Renamed
+// MciamPermissionRepository MC-IAM permission data management - Renamed
 type MciamPermissionRepository struct {
 	db *gorm.DB
 }
 
-// NewMciamPermissionRepository 새 MciamPermissionRepository 인스턴스 생성 - Renamed
+// NewMciamPermissionRepository create new MciamPermissionRepository instance - Renamed
 func NewMciamPermissionRepository(db *gorm.DB) *MciamPermissionRepository {
 	return &MciamPermissionRepository{db: db}
 }
 
-// Create MC-IAM 권한 생성 - Renamed
+// Create MC-IAM permission creation - Renamed
 func (r *MciamPermissionRepository) Create(permission *model.MciamPermission) error {
 	// Check if already exists
 	var existing model.MciamPermission
@@ -38,7 +38,7 @@ func (r *MciamPermissionRepository) Create(permission *model.MciamPermission) er
 	return r.db.Create(permission).Error
 }
 
-// List MC-IAM 권한 목록 조회 - Renamed
+// List MC-IAM permission list retrieval - Renamed
 func (r *MciamPermissionRepository) ListMcIamPermissions(frameworkID, resourceTypeID string) ([]model.MciamPermission, error) {
 	var permissions []model.MciamPermission
 	query := r.db
@@ -54,7 +54,7 @@ func (r *MciamPermissionRepository) ListMcIamPermissions(frameworkID, resourceTy
 	return permissions, nil
 }
 
-// GetByID ID로 MC-IAM 권한 조회 - Renamed
+// GetByID retrieve MC-IAM permission by ID - Renamed
 func (r *MciamPermissionRepository) GetByID(id string) (*model.MciamPermission, error) {
 	var permission model.MciamPermission
 	if err := r.db.Where("id = ?", id).First(&permission).Error; err != nil {
@@ -66,7 +66,7 @@ func (r *MciamPermissionRepository) GetByID(id string) (*model.MciamPermission, 
 	return &permission, nil
 }
 
-// Update MC-IAM 권한 정보 부분 업데이트 - Renamed
+// Update partial MC-IAM permission information update - Renamed
 func (r *MciamPermissionRepository) UpdateMcIamPermission(id string, updates map[string]interface{}) error {
 	if len(updates) == 0 {
 		return errors.New("no fields provided for update")
@@ -88,7 +88,7 @@ func (r *MciamPermissionRepository) UpdateMcIamPermission(id string, updates map
 	return nil
 }
 
-// Delete MC-IAM 권한 삭제 - Renamed
+// Delete MC-IAM permission deletion - Renamed
 func (r *MciamPermissionRepository) DeleteMcIamPermission(id string) error {
 	result := r.db.Where("id = ?", id).Delete(&model.MciamPermission{})
 	if result.Error != nil {
@@ -103,7 +103,7 @@ func (r *MciamPermissionRepository) DeleteMcIamPermission(id string) error {
 
 // --- Role MC-IAM Permission Mappings ---
 
-// AssignMciamPermissionToRole 역할에 MC-IAM 권한 할당 - Renamed
+// AssignMciamPermissionToRole assign MC-IAM permission to role - Renamed
 func (r *MciamPermissionRepository) AssignMciamPermissionToRole(roleType constants.IAMRoleType, roleID uint, permissionID string) error {
 	// Check if permission exists
 	if _, err := r.GetByID(permissionID); err != nil {
@@ -119,7 +119,7 @@ func (r *MciamPermissionRepository) AssignMciamPermissionToRole(roleType constan
 	return r.db.Create(&mapping).Error // Simple create for now
 }
 
-// RemoveMciamPermissionFromRole 역할에서 MC-IAM 권한 제거 - Renamed
+// RemoveMciamPermissionFromRole remove MC-IAM permission from role - Renamed
 func (r *MciamPermissionRepository) RemoveMciamPermissionFromRole(roleType constants.IAMRoleType, roleID uint, permissionID string) error {
 	result := r.db.Where("role_type = ? AND role_id = ? AND permission_id = ?", roleType, roleID, permissionID).Delete(&model.MciamRoleMciamPermission{}) // Use new model name and column name
 	if result.Error != nil {
@@ -132,11 +132,11 @@ func (r *MciamPermissionRepository) RemoveMciamPermissionFromRole(roleType const
 	return nil
 }
 
-// GetPlatformRolePermissions 플랫폼 역할이 가진 모든 MC-IAM 권한 ID 조회
+// GetPlatformRolePermissions retrieve all MC-IAM permission IDs that platform role has
 func (r *MciamPermissionRepository) GetPlatformRolePermissions(platformRole string) ([]string, error) {
 	log.Printf("GetPlatformRolePermissions platformRole: %s", platformRole)
 
-	// 먼저 platform role의 ID를 조회
+	// First retrieve platform role ID
 	var platformRoleID uint
 	err := r.db.Model(&model.RoleMaster{}).
 		Joins("JOIN mcmp_role_subs ON mcmp_role_masters.id = mcmp_role_subs.role_id").
@@ -156,7 +156,7 @@ func (r *MciamPermissionRepository) GetPlatformRolePermissions(platformRole stri
 	return permissionIDs, nil
 }
 
-// GetRoleMciamPermissions 워크스페이스 역할이 가진 모든 MC-IAM 권한 ID 조회
+// GetRoleMciamPermissions retrieve all MC-IAM permission IDs that workspace role has
 func (r *MciamPermissionRepository) GetRoleMciamPermissions(roleType constants.IAMRoleType, workspaceRoleID uint) ([]string, error) {
 	log.Printf("GetRoleMciamPermissions roleType: %s RoleID: %d", roleType, workspaceRoleID)
 
@@ -170,7 +170,7 @@ func (r *MciamPermissionRepository) GetRoleMciamPermissions(roleType constants.I
 	return permissionIDs, nil
 }
 
-// CheckRoleMciamPermission 역할이 특정 MC-IAM 권한을 가지고 있는지 확인 - Renamed
+// CheckRoleMciamPermission check if role has specific MC-IAM permission - Renamed
 func (r *MciamPermissionRepository) CheckRoleMciamPermission(roleType constants.IAMRoleType, roleID uint, permissionID string) (bool, error) {
 	var count int64
 	err := r.db.Model(&model.MciamRoleMciamPermission{}). // Use new model name

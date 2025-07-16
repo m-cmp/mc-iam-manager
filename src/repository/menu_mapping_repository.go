@@ -6,17 +6,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// MenuMappingRepository 메뉴 매핑 데이터 관리
+// MenuMappingRepository menu mapping data management
 type MenuMappingRepository struct {
 	db *gorm.DB
 }
 
-// NewMenuMappingRepository 새 MenuMappingRepository 인스턴스 생성
+// NewMenuMappingRepository create new MenuMappingRepository instance
 func NewMenuMappingRepository(db *gorm.DB) *MenuMappingRepository {
 	return &MenuMappingRepository{db: db}
 }
 
-// GetMappedMenuIDs 역할에 매핑된 메뉴 ID 목록 조회
+// GetMappedMenuIDs retrieve menu ID list mapped to role
 func (r *MenuMappingRepository) GetMappedMenuIDs(roleID uint) ([]string, error) {
 	var menuIDs []string
 	query := r.db.Model(&model.RoleMenuMapping{}).
@@ -28,11 +28,11 @@ func (r *MenuMappingRepository) GetMappedMenuIDs(roleID uint) ([]string, error) 
 	return menuIDs, nil
 }
 
-// FindMappedMenusWithParents 역할에 매핑된 메뉴와 그 상위 메뉴들을 포함한 메뉴 트리 조회
+// FindMappedMenusWithParents retrieve menu tree including menus mapped to role and their parent menus
 func (r *MenuMappingRepository) FindMappedMenusWithParents(req *model.MenuMappingFilterRequest) ([]*model.Menu, error) {
 	var menus []*model.Menu
 
-	// 1. 매핑된 메뉴 ID 목록 조회
+	// 1. Retrieve mapped menu ID list
 	var mappedMenuIDs []string
 	query := r.db.Model(&model.RoleMenuMapping{}).
 		Where("role_id in ?", req.RoleIDs).
@@ -41,7 +41,7 @@ func (r *MenuMappingRepository) FindMappedMenusWithParents(req *model.MenuMappin
 		return nil, err
 	}
 
-	// 2. 매핑된 메뉴와 그 상위 메뉴들을 재귀적으로 조회
+	// 2. Recursively retrieve mapped menus and their parent menus
 	query = r.db.Where("id IN ? OR parent_id IN (SELECT parent_id FROM mcmp_menu WHERE id IN ?)", mappedMenuIDs, mappedMenuIDs).
 		Find(&menus)
 	if err := query.Error; err != nil {
@@ -51,11 +51,11 @@ func (r *MenuMappingRepository) FindMappedMenusWithParents(req *model.MenuMappin
 	return menus, nil
 }
 
-// 해당 role에 매핑된 메뉴 목록 조회
+// Retrieve menu list mapped to the role
 func (r *MenuMappingRepository) FindMappedMenus(roleID uint) ([]*model.Menu, error) {
 	var menus []*model.Menu
 
-	// 1. 매핑된 메뉴 ID 목록 조회
+	// 1. Retrieve mapped menu ID list
 	var mappedMenuIDs []string
 	query := r.db.Model(&model.RoleMenuMapping{}).
 		Where("role_id = ?", roleID).
