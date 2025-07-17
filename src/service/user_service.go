@@ -121,7 +121,7 @@ func (s *UserService) SyncUser(ctx context.Context, kcUserID string) (*model.Use
 
 func (s *UserService) SetupInitialAdmin(ctx context.Context, user *model.User, adminToken *gocloak.JWT) (string, error) {
 	ks := NewKeycloakService() // Create KeycloakService instance when needed
-	kcId, err := ks.SetupInitialAdmin(ctx, adminToken)
+	kcId, err := ks.SetupInitialKeycloakAdmin(ctx, adminToken)
 	if err != nil {
 		return kcId, err // Propagate error (e.g., user exists)
 	}
