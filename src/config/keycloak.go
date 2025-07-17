@@ -173,7 +173,7 @@ func (kc *KeycloakConfig) LoginAdmin(ctx context.Context) (*gocloak.JWT, error) 
 	log.Printf("[DEBUG] - Host: %s", kc.Host)
 	log.Printf("[DEBUG] - Realm: %s", kc.Realm)
 	log.Printf("[DEBUG] - Admin Username: %s", adminUsername)
-	log.Printf("[DEBUG] - Admin Password: %s", adminPassword)
+	// log.Printf("[DEBUG] - Admin Password: %s", adminPassword)
 
 	if adminUsername == "" || adminPassword == "" {
 		return nil, fmt.Errorf("KEYCLOAK_ADMIN or KEYCLOAK_ADMIN_PASSWORD not set")
@@ -277,7 +277,7 @@ func (kc *KeycloakConfig) GetAdminToken(ctx context.Context) (*gocloak.JWT, erro
 	log.Printf("[DEBUG] - Host: %s", kc.Host)
 	log.Printf("[DEBUG] - Realm: %s", kc.Realm)
 	log.Printf("[DEBUG] - Admin Username: %s", adminUsername)
-	log.Printf("[DEBUG] - Admin Password: %s", adminPassword)
+	// log.Printf("[DEBUG] - Admin Password: %s", adminPassword)
 
 	token, err := kc.Client.LoginAdmin(ctx, adminUsername, adminPassword, "master")
 	if err != nil {

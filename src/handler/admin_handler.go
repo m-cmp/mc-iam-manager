@@ -83,7 +83,7 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	}
 
 	log.Printf("[DEBUG] Setting Platform Admin") // KC에 user, realm, client 생성
-	kcUserId, err := h.keycloakService.SetupInitialAdmin(c.Request().Context(), adminToken)
+	kcUserId, err := h.keycloakService.SetupInitialKeycloakAdmin(c.Request().Context(), adminToken)
 	if err != nil {
 		log.Printf("[ERROR] Failed to setup initial admin: %v", err)
 		return c.JSON(http.StatusInternalServerError, model.Response{
@@ -96,7 +96,7 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	platformAdminFirstName := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_FIRSTNAME")
 	platformAdminLastName := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_LASTNAME")
 
-	// 2. 유저 동기화 : keycloak에 먼저 만들었으므로 동기화 해준다.
+	// 2. 유저 동기화 : keycloak에 먼저 만들었으므로 DB에 동기화 해준다.
 	err = h.userService.SyncUserByKeycloak(c.Request().Context(), &model.User{
 		Username:  platformAdminID,
 		Email:     req.Email,

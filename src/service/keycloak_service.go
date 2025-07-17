@@ -48,8 +48,8 @@ type KeycloakService interface {
 	GetRequestingPartyToken(ctx context.Context, accessToken string, options gocloak.RequestingPartyTokenOptions) (*gocloak.JWT, error)
 	// Method to validate token and get claims
 	ValidateTokenAndGetClaims(ctx context.Context, token string) (*jwt.MapClaims, error)
-	// SetupInitialAdmin creates the initial platform admin user and sets up necessary permissions
-	SetupInitialAdmin(ctx context.Context, adminToken *gocloak.JWT) (string, error)
+	// SetupInitialKeycloakAdmin creates the initial platform admin user and sets up necessary permissions
+	SetupInitialKeycloakAdmin(ctx context.Context, adminToken *gocloak.JWT) (string, error)
 	// CheckUserRoles checks and logs all roles assigned to a user
 	CheckUserRoles(ctx context.Context, username string) error
 	// GetUserPermissions gets all permissions for the given roles
@@ -691,7 +691,7 @@ func (s *keycloakService) RemoveUserFromGroup(ctx context.Context, kcUserId, gro
 // 4. KC User 생성 for platformAdmin at .env defined user info
 // 5. Releam Role 생성 : platformAdmin by default
 // 6. KC Role 할당 : platformAdmin to user
-func (s *keycloakService) SetupInitialAdmin(ctx context.Context, adminToken *gocloak.JWT) (string, error) {
+func (s *keycloakService) SetupInitialKeycloakAdmin(ctx context.Context, adminToken *gocloak.JWT) (string, error) {
 	if config.KC == nil || config.KC.Client == nil {
 		return "", fmt.Errorf("keycloak configuration not initialized")
 	}
