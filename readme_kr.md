@@ -27,10 +27,11 @@
 
 ### 필수 조건
 - 외부 접근이 가능한 Ubuntu (22.04 테스트 완료) (https-443, http-80, ssh-ANY)
-- docker 및 docker-compose
-- 도메인
-- SSL을 등록하기 위한 이메일
+- docker(24+) 및 docker-compose(v2)
+- 도메인 이름 (예: megazone.com)
+- SSL을 등록하기 위한 이메일 주소
 - https 설정 : nginx + keycloak + certbot 설정은 별도 문서 참조
+- database : postgres 등 
 
 
 ### 1단계 : 소스 복사
@@ -40,43 +41,138 @@ git clone <https://github.com/m-cmp/mc-iam-manager> <YourFolderName>
 ```
 
 ### 2단계 : 환경 설정
-  .env 파일에 설정값을 반영
+  .env_sample 파일을 참조하여 .env 생성 및 파일에 설정값을 반영
 
-```bash
-cp .env_sample .env
+  ```bash
+  cp .env_sample .env
+  ```
 
-```
+#### 환경 변수 편집
+  ```bash
+  nano .env
+  ```
+
+  주요 설정 항목:
+  - `DOMAIN_NAME`: 도메인 이름 (예: mciam.megazone.com)
+  - `EMAIL`: SSL 인증서 발급용 이메일
+  - `MCIAMMANAGER_PORT`: 애플리케이션 포트 (기본값: 3000)
+  - `KEYCLOAK_ADMIN`: Keycloak 관리자 계정
+  - `KEYCLOAK_ADMIN_PASSWORD`: Keycloak 관리자 비밀번호
+
+#### SSL 인증서 발급(필요시)
+  # SSL 인증서 발급  
+  ```bash  
+  sudo docker compose -f docker-compose.cert.yaml up
+  ```
+
+  ** 인증서 갱신 : Let's Encrypt 인증서는 90일마다 갱신이 필요합니다.
+  ```bash
+  # 수동 갱신
+  sudo docker compose -f docker-compose.cert.yaml run --rm mcmp-certbot renew
+
+  # 자동 갱신 설정 (cron)
+  0 12 * * * /usr/bin/docker compose -f /path/to/docker-compose.cert.yaml run --rm mcmp-certbot renew
+  ```
+
+  성공적인 인증서 발급 시 다음과 같은 메시지가 표시됩니다:
+  ```
+  mcmp-certbot  | Requesting a certificate for [도메인 이름]
+  mcmp-certbot  | Successfully received certificate.
+  mcmp-certbot  | Certificate is saved at: /etc/letsencrypt/live/[도메인 이름]/fullchain.pem
+  mcmp-certbot  | Key is saved at: /etc/letsencrypt/live/[도메인 이름]/privkey.pem
+  mcmp-certbot  | This certificate expires on 2025-10-20.
+  ```
+
+#### Nginx 설정 생성
+  환경 변수를 기반으로 Nginx 설정 파일을 생성합니다.
+  # Nginx 설정 스크립트 실행
+  ```bash
+  ./asset/setup/0_preset_create_nginx_conf.sh
+  ```
+
+  생성된 파일: `dockerfiles/nginx/nginx.conf`
+
 
 ### 3단계 : MC-IAM-MANAGER Init Setup 
   build 후 /readyz 호출로 가동 확인
-```bash
-docker compose up --build -d
+  # 전체 시스템 배포( mc-iam-manager + nginx + postgres + keycloak)
+  ```bash
+  sudo docker compose -f docker-compose.all.yaml up -d
+
+  # MC-IAM-MANAGER만 배포 
+  ```bash
+  sudo docker compose -f docker-compose.standalone.yaml up -d
+  ```
 
 
-#### docker 실행 docker-compose
-  https 설정이 되어 있고 keycloak과 postgres접속이 가능한 상태에서 iam-manager 설정을 진행한다.
-  
-```bash
-sudo docker-compose up --build -d
-```
+  # MC-IAM-MANAGER만 소스로 실행하는 경우( nginx + postgres + keyclok이 이미 가동중 )
+  ```bash
+  cd ./src
+  go run main.go
+  ```
 
-#### source 실행
-```bash
-go run main.go 
-```
 
 #### 가동 확인
 curl https://<your domain or localhost>:<port>/readyz
 ```
 
+#### 서비스 구성
+- **Nginx**: 리버스 프록시, SSL 종료, 정적 파일 서빙
+- **IAM Manager**: 메인 애플리케이션 (Echo Framework)
+- **Keycloak**: 인증 및 권한 관리
+- **PostgreSQL**: 데이터베이스
+- **Certbot**: SSL 인증서 자동 발급/갱신
+```
+Internet
+    |
+    v
+[Nginx Reverse Proxy] (Port 80/443)
+    |
+    +---> [IAM Manager] (Port 3000)
+    |
+    +---> [Keycloak] (Port 8080)
+    |
+    +---> [PostgreSQL] (Port 5432)
+```
+
+#### 로그 확인
+
+  ```bash
+  # 특정 서비스 로그 확인
+  sudo docker compose -f docker-compose.all.yaml logs [service-name]
+
+  # 실시간 로그 모니터링
+  sudo docker compose -f docker-compose.all.yaml logs -f [service-name]
+  ```
+
+#### 백업
+  ```bash
+  # PostgreSQL 데이터 백업
+  sudo docker exec mciam-postgres pg_dump -U iammanager iammanagerdb > backup.sql
+
+  # Keycloak 데이터 백업
+  sudo tar -czf keycloak-backup.tar.gz dockercontainer-volume/keycloak/
+  ```
+
+#### 업데이트
+  ```bash
+  # 이미지 업데이트
+  sudo docker compose -f docker-compose.all.yaml pull
+  sudo docker compose -f docker-compose.all.yaml up -d
+  ```
+
+#### API 문서
+  swagger 문서 생성 : src 폴더에서 
+  ```bash
+  swag init -g src/main.go -o src/docs
+  ```
+
+
 ### 4단계 : 환경설정  
-  . keycloak 관리자 생성 및 설정
-    * 주의 : keycloak을 별도로 띄우는 경우 관리자 정보를 .env에 있는 정보와 일치시켜야 한다.
-  . keycloak 관리자로 realm 생성, client 생성, 기본 role 생성(.env에 정의된 값 사용)
-    (해당 작업은 keycloak의 console에 접속하여 작업해도 무방하다.)
-
-  /asset/setup/0setup.sh 를 실행하고 순서대로 작업한다. 단. 1번의 PlatformAdmin Login으로 access_token 발행이 되어야 한다.
-
+  ** 환경설정 파일(.env)의 정보 기반으로 platform 설정
+  
+  /asset/setup/1setup.sh 를 실행하고 순서대로 작업한다.
+    
     1. Init Platform And PlatformAdmin
       . Keycloak 에 Realm 생성
       . Keycloak 에 Client 생성
@@ -162,8 +258,9 @@ curl https://<your domain or localhost>:<port>/readyz
 
 swagger docs
 
-https://m-cmp.github.io/mc-iam-manager/
+  https://m-cmp.github.io/mc-iam-manager/
 
+  
 ---
 
 
