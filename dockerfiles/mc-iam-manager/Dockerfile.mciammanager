@@ -1,0 +1,46 @@
+# --- Build Stage ---
+FROM golang:1.23.1-alpine AS builder
+# Updated Go version to match go.mod (1.23.1)
+
+# Install build dependencies if any (e.g., git for private modules)
+RUN apk add --no-cache git
+
+WORKDIR /app
+
+# Copy go module files from src directory relative to project root (build context)
+COPY src/go.mod src/go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy the contents of the src directory
+COPY src/ ./
+
+# Copy asset directory from project root
+COPY asset ./asset
+
+# Build the application statically
+# Output binary to /mc-iam-manager
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /mc-iam-manager ./main.go
+
+# --- Runtime Stage ---
+FROM alpine:latest
+
+WORKDIR /app
+
+# Copy the built binary from the builder stage
+COPY --from=builder /mc-iam-manager /app/mc-iam-manager
+
+# Copy necessary assets from the builder stage
+COPY --from=builder /app/asset ./asset
+
+# Copy .env file to multiple locations for compatibility with the application's .env loading logic
+COPY .env /app/.env
+COPY .env /.env
+
+# Expose the application port (adjust if different)
+EXPOSE 8082
+
+# Command to run the application
+# The application reads .env from multiple locations for compatibility
+CMD ["./mc-iam-manager"]

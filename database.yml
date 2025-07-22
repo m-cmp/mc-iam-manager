@@ -1,6 +1,0 @@
----
-standalone:
-  url: {{envOr "DATABASE_URL" "postgres://postgres:postgres@db:5432/mc_iam_manager_development?sslmode=disable"}}
-
-docker:
-  url: {{envOr "DATABASE_URL" "postgres://postgres:postgres@db:5432/mc_iam_manager_development?sslmode=disable"}}

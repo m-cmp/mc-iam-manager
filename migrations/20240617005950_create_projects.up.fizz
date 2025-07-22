@@ -1,9 +1,0 @@
-create_table("projects") {
-	t.Column("id", "uuid", {primary: true})
-	t.Column("ns_id", "text", {})
-	t.Column("name", "text", {})
-	t.Column("description", "text", {null: true})
-	t.Timestamps()
-}
-
-add_index("projects", "ns_id", {"unique": true, "null": false})
