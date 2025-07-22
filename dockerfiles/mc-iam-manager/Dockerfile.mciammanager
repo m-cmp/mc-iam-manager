@@ -1,9 +1,9 @@
 # --- Build Stage ---
-FROM golang:1.23-alpine AS builder
-# Updated Go version to 1.23
+FROM golang:1.23.1-alpine AS builder
+# Updated Go version to match go.mod (1.23.1)
 
 # Install build dependencies if any (e.g., git for private modules)
-# RUN apk add --no-cache git
+RUN apk add --no-cache git
 
 WORKDIR /app
 
@@ -13,8 +13,10 @@ COPY src/go.mod src/go.sum ./
 # Download dependencies
 RUN go mod download
 
-# Copy the contents of the src directory and the asset directory
+# Copy the contents of the src directory
 COPY src/ ./
+
+# Copy asset directory from project root
 COPY asset ./asset
 
 # Build the application statically
@@ -32,12 +34,13 @@ COPY --from=builder /mc-iam-manager /app/mc-iam-manager
 # Copy necessary assets from the builder stage
 COPY --from=builder /app/asset ./asset
 
-# Copy .env file to the root directory inside the container, so "../.env" resolves from "/app"
+# Copy .env file to multiple locations for compatibility with the application's .env loading logic
+COPY .env /app/.env
 COPY .env /.env
 
 # Expose the application port (adjust if different)
 EXPOSE 8082
 
 # Command to run the application
-# The application reads .env from the current directory (WORKDIR) if it exists
+# The application reads .env from multiple locations for compatibility
 CMD ["./mc-iam-manager"]

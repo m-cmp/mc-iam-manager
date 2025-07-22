@@ -26,10 +26,11 @@
 
 
 ### 필수 조건
-
 - 외부 접근이 가능한 Ubuntu (22.04 테스트 완료) (https-443, http-80, ssh-ANY)
 - docker 및 docker-compose
-- 도메인 (Keycloak 및 IDP 설정 용 ) 및 certbot으로 SSL을 등록하기 위한 이메일
+- 도메인
+- SSL을 등록하기 위한 이메일
+- https 설정 : nginx + keycloak + certbot 설정은 별도 문서 참조
 
 
 ### 1단계 : 소스 복사
@@ -39,6 +40,7 @@ git clone <https://github.com/m-cmp/mc-iam-manager> <YourFolderName>
 ```
 
 ### 2단계 : 환경 설정
+  .env 파일에 설정값을 반영
 
 ```bash
 cp .env_sample .env
@@ -46,22 +48,14 @@ cp .env_sample .env
 ```
 
 ### 3단계 : MC-IAM-MANAGER Init Setup 
-#### DB table 생성 및 초기 data
-
+  build 후 /readyz 호출로 가동 확인
 ```bash
-./asset/sql/mcmp_table.sql, ./asset/sql/mcmp_init_data.sql
+docker compose up --build -d
 
-platformRole, workspaceRole
-
-```
-
-#### 4단계 : Keycloak 환경설정
-    realm 생성, client 생성, Role 추가 등 
-     .env 에 정의된 값으로 mcmp-ream-import.json 을 생성하고 keycloak에서 import 한다.
-
-### Step four: Excute
 
 #### docker 실행 docker-compose
+  https 설정이 되어 있고 keycloak과 postgres접속이 가능한 상태에서 iam-manager 설정을 진행한다.
+  
 ```bash
 sudo docker-compose up --build -d
 ```
@@ -71,40 +65,58 @@ sudo docker-compose up --build -d
 go run main.go 
 ```
 
-### Step final: Check Readyzenpoint
-
-```bash
-$ curl https://<yourdomain.com>:5000/readyz
-# {"ststus":"ok"}
+#### 가동 확인
+curl https://<your domain or localhost>:<port>/readyz
 ```
 
-If `{"stststus":"ok"}` is received from the endpoint, it means that the service is being deployed normally.
+### 4단계 : 환경설정  
+  . keycloak 관리자 생성 및 설정
+    * 주의 : keycloak을 별도로 띄우는 경우 관리자 정보를 .env에 있는 정보와 일치시켜야 한다.
+  . keycloak 관리자로 realm 생성, client 생성, 기본 role 생성(.env에 정의된 값 사용)
+    (해당 작업은 keycloak의 console에 접속하여 작업해도 무방하다.)
 
-#### 5단계 : 사용설정
+  /asset/setup/0setup.sh 를 실행하고 순서대로 작업한다. 단. 1번의 PlatformAdmin Login으로 access_token 발행이 되어야 한다.
+
+    1. Init Platform And PlatformAdmin
+      . Keycloak 에 Realm 생성
+      . Keycloak 에 Client 생성
+      . Keycloak 에 Predefined Role 생성
+      . DB에 Predefined Role 등록
+      . 기본 workspace 생성
+      . 메뉴 등록 (기본 yaml파일일)
+      . 메뉴와 기본 역할 매핑
+      . Keycloak 에 PlatformAdmin User 생성
+      . DB에 PlatformAdmin User 등록
+    2. PlatformAdmin Login
+      . 다음 script들을 실행시키기 위해 access_token 발급
+    3. (optional) Init Predefined Role Data : 1에서 진행함. 추가 role이 필요한 경우 실행
+    4. (optional) Init Menu Data : 1에서 진행함. 추가 메뉴가 필요한 경우 실행
+    5. Init API Resource Data
+      . menu의 접근 권한 로드 ( /asset/menu/permission.csv 기준.)
+    6. Init Cloud Resource Data
+    7. Map API-Cloud Resources
+    8. Init CSP Roles
+      . 현재 버전에서는 IAM-Role과 CSP의 Role의 생성후 임시자격증명을 위한 설정은 해당 CSP Console에서 직접 작업한다.
+    9. Map Master Role-CSP Roles
+    
+
+### 4단계 : CSP IDP 설정
+  . csp console에 접속( ex. aws console 접속 )
+    . iam 메뉴에 idp 설정 추가
+    . iam role 추가 : cspRole과 1:1로 매칭되며 prefix로 mciam_을 가짐. 
+        predefined된 mc-iam-manager의 역할을 추가하여 연결한다. 
+        참고. aws에서 역할 추가시 webIdentity role로 추가.
+    . iam role의 권한 추가
+        해당 역할이 할 수 있는 권한 추가( ex. EC2ReadOnly 등)
+    . iam role의 trust relation 설정에 keycloak client를 audience로 추가.
+
+
 # 환영합니다: 이제 MC-IAM-MANAGER를 사용할 수 있습니다.
-  관리자 설정은 keycloak에 직접 로그인하여 추가해야합니다.( realm_export.json 을 이용하여 설정을 가져올 수도 있습니다.)
-    . 사전설정 : public domain<KEYCLOAK_HOST>, https통신 설정정
-    . keycloak admin colsole에 접속
-      . realm 추가 : .env를 참고하여 <KEYCLOAK_REALM>
-      . client 추가 : .env를 참고 <KEYCLOAK_CLIENT>. 생성 후 client secret를 .env에 복사한다.
-      . realm role 추가 : .env를 참고 <PREDEFINED_ROLE>
-      . user 추가 : .env를 참고 <MCIAMMANAGER_PLATFORMADMIN_ID>
-      . user-role 매핑 : platformAdmin role to user
-      . (client > authorization > resource : menu )
-      . client 추가 : .env를 참고 <KEYCLOAK_OIDC_CLIENT>
+  다음 작업으로는 사용자 추가 및 역할 설정입니다.
+  . user 추가
+  . user-role 매핑
+  . (options) user에게 workspace 공유
 
-    . csp console에 접속
-      . iam 메뉴에 idp 설정 추가
-      . iam role 추가 : workspaceRole과 1:1로 매칭되며 prefix로 MCMP_를 가짐. webIdentity role로 추가.
-      . iam role의 권한 추가
-      . iam role의 trust relation 설정에 keycloak client를 audience로 추가.
-            
-
-이 섹션에서는 platformAdmin이 작업할 프로세스를 간단하게 하는 스크립트를 설명합니다.
-
-- 0setup.sh
---------------------
-    0. exit
     
     1. platformAdmin login
       POST /api/auth/login  { "id": <MCIAMMANAGER_PLATFORMADMIN_ID>, "password": <MCIAMMANAGER_PLATFORMADMIN_PASSWORD> }
@@ -147,100 +159,6 @@ If `{"stststus":"ok"}` is received from the endpoint, it means that the service 
         workspace role이 csp에 mcmp_<workspace-role> 형태로 생성 : platformAdmin 최초생성
 
 
----------- TODO ------------------
-done) platformRole 등록 : predefined .env    
-done) workspaceRole 등록 : predefined .env ( platformRole과 최초 동일)
-cspRole 등록 : workspaceRole과 1:1로 생성. 대상 csp의 iam에 1:1로 role 매핑
-platformResource 등록 : menu
-workspaceResource 등록 : vm, k8s
-platformResource 등록 : api
-workspaceResource-platformResource 매핑 : vm.read, vm.write, vm.manage 등에 각 api 매핑
-
-- 1 regist.sh
-menu등록 : yaml에서 db로, db에서 keycloak로(?)
-workspace 등록 : 기본 workspace 등록 
-project 등록 : mc-infra-manager 와 동기화
-workspace-project 매핑 : 기본 workspace에 모든 project mapping
-
-- 2. usecase.sh
-유즈케이스
-사용자 추가(testadmin, testviewer)
-사용자의 플랫폼 롤 지정( 관리자, 뷰어  )
-사용자의 workspace 및 workspace role 지정( testadmin에 workspace 할당 및 admin role 할당, testviewer에 workspace 할당 및 viewer role 할당)
-
-메뉴 추가
- - admin, viewer 추가 => 실패
- - platformAdmin 추가 => 성공
-workspace 추가
- - admin, viewer 추가 => 실패
- - platformAdmin 추가 => 성공
-project 등록 
- - viewer 추가 => 실패
- - admin 추가 => 성공
-사용자에게 할당
- - 추가한 workspace에 testadmin을  admin으로 추가
- - 추가한 workspace에 testviewer를 viewer로 추가
-
-
-## vm setup
- - 인증서 발급
-    ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
-    -> 파일위치 .ssh/id_rsa
-    -> pw : megazone
- - 
-  
-
-
-- init.sh
-    
-    
-    --------------------
-    select Number : 
-    ```
-    
-    Running this script allows you to view the menu above, using the information defined in .env to perform tasks according to the numbers you enter.
-    
-    However, the first priority is to log in by entering the user's information that you entered. If you run number 1 and run numbers 2 to 6, you will be able to use MC-WEB-CONSOLE.
-    
-- initauto.sh
-    
-    ```
-    # ./scripts/init/initauto.sh
-    ./initauto.sh
-    ```
-    
-    This script automatically performs all procedures based on the user defined in the environment variables, but it cannot define detailed role-specific menus, and it is automatically imported to the version listed in GitHub.
-    
-    The CSV files uploaded to GitHub are as follows. You can modify and reflect the corresponding permission file set (CSV) directly through init.sh .
-    
-    ```bash
-    framework,resource,adminPolicy,billadminPolicy,billviewerPolicy,operatorPolicy,viewerPolicy
-    mc-web-console,settingsmenu,TRUE,,,TRUE,TRUE
-    mc-web-console,accountnaccessmenu,TRUE,,,,
-    mc-web-console,organizationsmenu,TRUE,,,,
-    mc-web-console,companyinfomenu,TRUE,,,,
-    mc-web-console,usersmenu,TRUE,,,,
-    mc-web-console,approvalsmenu,TRUE,,,,
-    mc-web-console,accesscontrolsmenu,TRUE,,,,
-    mc-web-console,environmentmenu,TRUE,,,TRUE,TRUE
-    mc-web-console,cloudspsmenu,TRUE,,,TRUE,
-    mc-web-console,cloudoverviewmenu,TRUE,,,TRUE,
-    mc-web-console,regionsmenu,TRUE,,,TRUE,
-    ....
-    
-    ```
-    
-    If you want more detailed settings, we recommend init.sh .
-    
-- add_demo_user.sh
-    
-    ```
-    # ./scripts/init/add_demo_user.sh
-    ./add_demo_user.sh
-    ```
-    
-    This script registers the demo user defined in ./scripts/init/add_demo_user.json. The process of registering is very simple and you can automatically activate the registered user. Use MC-WEB-CONSOLE for role setup and workspace interworking.
-    
 
 swagger docs
 

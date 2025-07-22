@@ -50,15 +50,13 @@ func (r *mcmpApiRepository) GetServiceByNameAndVersion(name, version string) (*m
 	var service mcmpapi.McmpApiService
 	query := r.db.Where("name = ? AND version = ?", name, version).First(&service)
 	if err := query.Error; err != nil {
-		// Return error directly (including gorm.ErrRecordNotFound)
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("GetServiceByNameAndVersion SQL Query (ERROR): %s", sql)
+		log.Printf("GetServiceByNameAndVersion SQL Args (ERROR): %v", args)
 		return nil, err
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("GetServiceByNameAndVersion SQL Query: %s", sql)
-	log.Printf("GetServiceByNameAndVersion SQL Args: %v", args)
 
 	return &service, nil
 }
@@ -67,15 +65,14 @@ func (r *mcmpApiRepository) GetServiceByNameAndVersion(name, version string) (*m
 func (r *mcmpApiRepository) CreateService(tx *gorm.DB, service *mcmpapi.McmpApiService) error {
 	query := tx.Create(service)
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("CreateService SQL Query (ERROR): %s", sql)
+		log.Printf("CreateService SQL Args (ERROR): %v", args)
 		log.Printf("Error creating service %s (Version: %s) in transaction: %v", service.Name, service.Version, err)
 		return err
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("CreateService SQL Query: %s", sql)
-	log.Printf("CreateService SQL Args: %v", args)
 
 	return nil
 }
@@ -86,16 +83,14 @@ func (r *mcmpApiRepository) CreateAction(tx *gorm.DB, action *mcmpapi.McmpApiAct
 	// For now, assume Create is sufficient as it's called only when a new service version is created.
 	query := tx.Create(action)
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("CreateAction SQL Query (ERROR): %s", sql)
+		log.Printf("CreateAction SQL Args (ERROR): %v", args)
 		log.Printf("Error creating action %s for service %s in transaction: %v", action.ActionName, action.ServiceName, err)
 		return err
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("CreateAction SQL Query: %s", sql)
-	log.Printf("CreateAction SQL Args: %v", args)
-	log.Printf("CreateAction Created ID: %d", action.ID)
 
 	return nil
 }
@@ -154,28 +149,25 @@ func (r *mcmpApiRepository) GetAllAPIDefinitions(serviceNameFilter, actionNameFi
 
 	// Fetch services (potentially filtered)
 	if err := serviceQuery.Find(&dbServices).Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := serviceQuery.Statement.SQL.String()
+		args := serviceQuery.Statement.Vars
+		log.Printf("GetAllAPIDefinitions Service SQL Query (ERROR): %s", sql)
+		log.Printf("GetAllAPIDefinitions Service SQL Args (ERROR): %v", args)
 		return nil, fmt.Errorf("error fetching services: %w", err)
 	}
 
 	// Fetch actions if not already fetched (i.e., if actionNameFilter was empty)
 	if actionNameFilter == "" {
 		if err := actionQuery.Find(&dbActions).Error; err != nil {
+			// 에러 발생 시에만 쿼리 로깅
+			sql := actionQuery.Statement.SQL.String()
+			args := actionQuery.Statement.Vars
+			log.Printf("GetAllAPIDefinitions Action SQL Query (ERROR): %s", sql)
+			log.Printf("GetAllAPIDefinitions Action SQL Args (ERROR): %v", args)
 			return nil, fmt.Errorf("error fetching actions: %w", err)
 		}
 	}
-
-	// SQL 쿼리 로깅
-	sql := serviceQuery.Statement.SQL.String()
-	args := serviceQuery.Statement.Vars
-	log.Printf("GetAllAPIDefinitions Service SQL Query: %s", sql)
-	log.Printf("GetAllAPIDefinitions Service SQL Args: %v", args)
-	log.Printf("GetAllAPIDefinitions Service Result Count: %d", len(dbServices))
-
-	sql = actionQuery.Statement.SQL.String()
-	args = actionQuery.Statement.Vars
-	log.Printf("GetAllAPIDefinitions Action SQL Query: %s", sql)
-	log.Printf("GetAllAPIDefinitions Action SQL Args: %v", args)
-	log.Printf("GetAllAPIDefinitions Action Result Count: %d", len(dbActions))
 
 	defs := &mcmpapi.McmpApiDefinitions{ // Use renamed definitions struct
 		Services:       make(map[string]mcmpapi.McmpApiServiceDefinition),        // Use renamed service definition
@@ -213,14 +205,13 @@ func (r *mcmpApiRepository) GetService(serviceName string) (*mcmpapi.McmpApiServ
 	var service mcmpapi.McmpApiService // Use renamed service model
 	query := r.db.Where("name = ?", serviceName).First(&service)
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("GetService SQL Query (ERROR): %s", sql)
+		log.Printf("GetService SQL Args (ERROR): %v", args)
 		return nil, err // gorm.ErrRecordNotFound 포함
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("GetService SQL Query: %s", sql)
-	log.Printf("GetService SQL Args: %v", args)
 
 	return &service, nil
 }
@@ -247,15 +238,13 @@ func (r *mcmpApiRepository) UpdateService(serviceName string, updates map[string
 	// The issue was likely the presence of a key not matching a column.
 	query := r.db.Model(&mcmpapi.McmpApiService{}).Where("name = ?", serviceName).Updates(updates)
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("UpdateService SQL Query (ERROR): %s", sql)
+		log.Printf("UpdateService SQL Args (ERROR): %v", args)
 		return err
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("UpdateService SQL Query: %s", sql)
-	log.Printf("UpdateService SQL Args: %v", args)
-	log.Printf("UpdateService Affected Rows: %d", query.RowsAffected)
 
 	if query.RowsAffected == 0 {
 		// This could mean the service name doesn't exist
@@ -270,18 +259,17 @@ func (r *mcmpApiRepository) GetServiceAction(serviceName, actionName string) (*m
 	// Use LOWER() function for case-insensitive comparison on action_name
 	query := r.db.Where("service_name = ? AND LOWER(action_name) = LOWER(?)", serviceName, actionName).First(&action)
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("GetServiceAction SQL Query (ERROR): %s", sql)
+		log.Printf("GetServiceAction SQL Args (ERROR): %v", args)
 		// Log the error for debugging, especially if it's not ErrRecordNotFound
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Printf("Error fetching action '%s' for service '%s': %v", actionName, serviceName, err)
 		}
 		return nil, err // gorm.ErrRecordNotFound 포함
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("GetServiceAction SQL Query: %s", sql)
-	log.Printf("GetServiceAction SQL Args: %v", args)
 
 	return &action, nil
 }
@@ -321,26 +309,24 @@ func (r *mcmpApiRepository) GetActiveService(serviceName string) (*mcmpapi.McmpA
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					return nil, errors.New("service not found") // No versions found at all
 				}
+				// 에러 발생 시에만 쿼리 로깅
+				sql := fallbackQuery.Statement.SQL.String()
+				args := fallbackQuery.Statement.Vars
+				log.Printf("GetActiveService Fallback SQL Query (ERROR): %s", sql)
+				log.Printf("GetActiveService Fallback SQL Args (ERROR): %v", args)
 				return nil, fallbackQuery.Error // Other DB error during fallback
 			}
-
-			// SQL 쿼리 로깅
-			sql := fallbackQuery.Statement.SQL.String()
-			args := fallbackQuery.Statement.Vars
-			log.Printf("GetActiveService Fallback SQL Query: %s", sql)
-			log.Printf("GetActiveService Fallback SQL Args: %v", args)
 
 			log.Printf("Found fallback version %s for service %s.", service.Version, serviceName)
 			return &service, nil // Return the found fallback version
 		}
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("GetActiveService SQL Query (ERROR): %s", sql)
+		log.Printf("GetActiveService SQL Args (ERROR): %v", args)
 		return nil, query.Error // Other DB errors when searching for active
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("GetActiveService SQL Query: %s", sql)
-	log.Printf("GetActiveService SQL Args: %v", args)
 
 	return &service, nil
 }

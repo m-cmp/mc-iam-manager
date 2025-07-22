@@ -75,10 +75,10 @@
 3. Keycloak 설정
    - Keycloak 컨테이너 실행
    - Realm 생성 : `.env` 파일의 `KEYCLOAK_REALM` 환경 변수를 통해 지정한다.
-   - 클라이언트 설정 : `.env` 파일의 `KEYCLOAK_CLIENT` 환경 변수를 통해 지정한다. (`mciamClient` 등)
+   - 클라이언트 설정 : `.env` 파일의 `KEYCLOAK_CLIENT_NAME` 환경 변수를 통해 지정한다. (`mciamClient` 등)
    - 사용자 및 역할 설정
    - **서비스 계정 역할 설정 (중요):**
-     - `mciamClient` (또는 `.env`의 `KEYCLOAK_CLIENT` 클라이언트)의 서비스 계정이 활성화되어 있는지 확인합니다.
+     - `mciamClient` (또는 `.env`의 `KEYCLOAK_CLIENT_NAME` 클라이언트)의 서비스 계정이 활성화되어 있는지 확인합니다.
      - 해당 서비스 계정에 필요한 역할(Role)을 부여해야 합니다. : `.env` 파일의 `PREDEFINED_ROLE`에 구분자가 comma로 정의된된 환경 변수를 통해 지정한다.
      - 사용자 정보 조회 (`GET /users` 등)에는 **`realm-management` 클라이언트의 `view-users` 역할**이 필요합니다.
      - 사용자 생성/수정/삭제 (`POST /users`, `PUT /users/{id}`, `DELETE /users/{id}` 등)에는 **`realm-management` 클라이언트의 `manage-users` 역할**이 필요합니다. (다른 관리 API 사용 시 추가 역할 필요)
@@ -158,11 +158,11 @@
 
 #### 4.2.8 CSP 임시 자격 증명 발급
 - **API:** `/api/csp/credentials` (POST)
-- **요청:** 원본 OIDC 토큰 (헤더), `workspaceId`, `cspType` (본문).
+- **요청:** 원본 OIDC 토큰 (헤더), `workspaceId`, `auth_method` (본문).
 - **로직:**
     1. OIDC 토큰 검증 및 사용자 확인.
     2. 사용자의 해당 워크스페이스 역할 목록 조회 (DB).
-    3. 역할 목록과 `cspType`을 사용하여 `mcmp_workspace_role_csp_role_mapping` 테이블에서 매핑된 `csp_role_arn` 및 `idp_identifier` 조회.
+    3. 역할 목록과 `auth_method(OIDC,SAML, ...) `을 사용하여 `mcmp_workspace_role_csp_role_mapping` 테이블에서 매핑된 `csp_role_arn` 및 `idp_identifier` 조회.
     4. 조회된 정보와 **원본 OIDC 토큰**을 사용하여 해당 CSP의 STS API (`AssumeRoleWithWebIdentity` 등) 호출.
     5. 발급된 임시 자격 증명 반환.
 
@@ -286,7 +286,7 @@
     - 서비스 중지: `docker-compose down`
 - **필수 설정 (`.env`):**
     - `PORT`: mc-iam-manager 실행 포트 (기본값: 8082)
-    - `IAM_POSTGRES_USER`, `IAM_POSTGRES_PASSWORD`, `IAM_POSTGRES_DB`: PostgreSQL 접속 정보
+    - `IAM_DB_USER`, `IAM_DB_PASSWORD`, `IAM_DB_DATABASE_NAME`: PostgreSQL 접속 정보
     - `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`: Keycloak 관리자 정보 (Docker Compose 및 내부 Keycloak API 호출 시 사용)
     - `KEYCLOAK_HOST`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENTID`, `KEYCLOAK_CLIENTSECRET`: Keycloak 연동 정보
     - `DOMAIN_NAME`: Nginx 및 Keycloak에서 사용할 도메인 이름 (기본값: localhost)

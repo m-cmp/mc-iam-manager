@@ -33,15 +33,13 @@ func NewProjectRepository(db *gorm.DB) *ProjectRepository { // Removed parameter
 func (r *ProjectRepository) CreateProject(project *model.Project) error {
 	query := r.db.Create(project)
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("Create SQL Query (ERROR): %s", sql)
+		log.Printf("Create SQL Args (ERROR): %v", args)
 		return err
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("Create SQL Query: %s", sql)
-	log.Printf("Create SQL Args: %v", args)
-	log.Printf("Create Created ID: %d", project.ID)
 
 	return nil
 }
@@ -67,15 +65,13 @@ func (r *ProjectRepository) FindProjects(req *model.ProjectFilterRequest) ([]*mo
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("List SQL Query (ERROR): %s", sql)
+		log.Printf("List SQL Args (ERROR): %v", args)
 		return nil, err
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("List SQL Query: %s", sql)
-	log.Printf("List SQL Args: %v", args)
-	log.Printf("List Result Count: %d", len(projects))
 
 	return projects, nil
 }
@@ -88,14 +84,13 @@ func (r *ProjectRepository) FindProjectByProjectID(id uint) (*model.Project, err
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrProjectNotFound
 		}
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("GetByID SQL Query (ERROR): %s", sql)
+		log.Printf("GetByID SQL Args (ERROR): %v", args)
 		return nil, err
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("GetByID SQL Query: %s", sql)
-	log.Printf("GetByID SQL Args: %v", args)
 
 	return &project, nil
 }
@@ -108,14 +103,13 @@ func (r *ProjectRepository) FindProjectByProjectName(name string) (*model.Projec
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrProjectNotFound
 		}
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("GetByName SQL Query (ERROR): %s", sql)
+		log.Printf("GetByName SQL Args (ERROR): %v", args)
 		return nil, err
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("GetByName SQL Query: %s", sql)
-	log.Printf("GetByName SQL Args: %v", args)
 
 	return &project, nil
 }

@@ -67,13 +67,3 @@ usecase10 : 임시자격증명 발급 및 사용
  - 임시자격증명으로 생성,삭제기능 수행
 
  
- ------------------------------
- 1usecase.sh 를 실행 : 사용자 추가
-   -> mcmp_users table에 추가한 유저가 있다
-   -> keycloak console에 해당 user들이 추가되어있다. ( 아직 platform role은 매핑되어 있지 않다 )
-
- 2usecase.sh 를 실행 : User에게 platform role 할당
-   . realm role에 등록되지 않은 상태로 호출되는 경우가 있음. "error": "Failed to assign role: realm role operator not found"
-   . 정상 등록 "message": "Successfully assigned role admin to user testadmin01"
-   -> keycloak console에서 user > user선택 > role mapping tab에 platform role이 등록되어 있다.
-

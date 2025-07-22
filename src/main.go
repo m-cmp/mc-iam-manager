@@ -73,17 +73,7 @@ func main() {
 	// 데이터베이스 초기화
 	dbConfig := config.NewDatabaseConfig()
 	db, err := gorm.Open(postgres.Open(dbConfig.GetDSN()), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-		// Logger: logger.New(
-		// 	log.New(os.Stdout, "\r\n", log.LstdFlags),
-		// 	logger.Config{
-		// 		SlowThreshold:             time.Second, // Slow SQL threshold
-		// 		LogLevel:                  logger.Info, // Log level
-		// 		IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error for logger
-		// 		Colorful:                  true,        // Enable color
-		// 		ParameterizedQueries:      true,        // Don't include params in the SQL log
-		// 	},
-		// ),
+		Logger: logger.Default.LogMode(logger.Error), // 에러가 발생할 때만 로깅
 	})
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
@@ -204,8 +194,8 @@ func main() {
 		setup.GET("/check-user-roles", adminHandler.CheckUserRoles)
 		setup.POST("/sync-projects", projectHandler.SyncProjects)
 		setup.POST("/sync-mcmp-apis", mcmpApiHandler.SyncMcmpAPIs)
-		setup.POST("/initial-menu", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
-		setup.POST("/initial-menu2", menuHandler.RegisterMenusFromBody, middleware.PlatformAdminMiddleware)
+		setup.POST("/initial-menus", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
+		setup.POST("/initial-menus2", menuHandler.RegisterMenusFromBody, middleware.PlatformAdminMiddleware)
 		setup.GET("/initial-role-menu-permission", adminHandler.InitializeMenuPermissions, middleware.PlatformAdminMiddleware)
 	}
 

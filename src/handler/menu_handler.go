@@ -535,7 +535,7 @@ func (h *MenuHandler) DeleteMenu(c echo.Context) error {
 // @Success 200 {object} map[string]string "message: Successfully registered menus from YAML"
 // @Failure 500 {object} map[string]string "error: 실패 메시지"
 // @Security BearerAuth
-// @Router /api/menus/setup/initial-menu [post]
+// @Router /api/menus/setup/initial-menus [post]
 // @Id registerMenusFromYAML
 func (h *MenuHandler) RegisterMenusFromYAML(c echo.Context) error {
 	filePath := c.QueryParam("filePath") // 쿼리 파라미터로 파일 경로 받기 (선택 사항)
@@ -562,7 +562,7 @@ func (h *MenuHandler) RegisterMenusFromYAML(c echo.Context) error {
 // @Failure 400 {object} map[string]string "error: 잘못된 요청 본문 또는 YAML 형식 오류"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /api/menus/setup/initial-menu2 [post]
+// @Router /api/menus/setup/initial-menus2 [post]
 // @Id registerMenusFromBody
 func (h *MenuHandler) RegisterMenusFromBody(c echo.Context) error {
 	bodyBytes, err := io.ReadAll(c.Request().Body)

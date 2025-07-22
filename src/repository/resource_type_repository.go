@@ -36,15 +36,13 @@ func (r *ResourceTypeRepository) FindResourceTypes(frameworkID string) ([]model.
 		query = query.Where("framework_id = ?", frameworkID)
 	}
 	if err := query.Find(&resourceTypes).Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("List SQL Query (ERROR): %s", sql)
+		log.Printf("List SQL Args (ERROR): %v", args)
 		return nil, err
 	}
-
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("List SQL Query: %s", sql)
-	log.Printf("List SQL Args: %v", args)
-	log.Printf("List Result Count: %d", len(resourceTypes))
 
 	return resourceTypes, nil
 }
@@ -56,14 +54,13 @@ func (r *ResourceTypeRepository) FindResourceTypeByID(frameworkID, id string) (*
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrResourceTypeNotFound
 		}
+		// 에러 발생 시에만 쿼리 로깅
+		sql := r.db.Statement.SQL.String()
+		args := r.db.Statement.Vars
+		log.Printf("GetByID SQL Query (ERROR): %s", sql)
+		log.Printf("GetByID SQL Args (ERROR): %v", args)
 		return nil, err
 	}
-
-	// SQL 쿼리 로깅
-	sql := r.db.Statement.SQL.String()
-	args := r.db.Statement.Vars
-	log.Printf("GetByID SQL Query: %s", sql)
-	log.Printf("GetByID SQL Args: %v", args)
 
 	return &resourceType, nil
 }
@@ -80,18 +77,16 @@ func (r *ResourceTypeRepository) UpdateResourceType(frameworkID, id string, upda
 
 	result := r.db.Model(&model.ResourceType{}).Where("framework_id = ? AND id = ?", frameworkID, id).Updates(updates)
 	if result.Error != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := result.Statement.SQL.String()
+		args := result.Statement.Vars
+		log.Printf("Update SQL Query (ERROR): %s", sql)
+		log.Printf("Update SQL Args (ERROR): %v", args)
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
 		return ErrResourceTypeNotFound // Or check if record exists before update
 	}
-
-	// SQL 쿼리 로깅
-	sql := result.Statement.SQL.String()
-	args := result.Statement.Vars
-	log.Printf("Update SQL Query: %s", sql)
-	log.Printf("Update SQL Args: %v", args)
-	log.Printf("Update Affected Rows: %d", result.RowsAffected)
 
 	return nil
 }
@@ -100,19 +95,17 @@ func (r *ResourceTypeRepository) UpdateResourceType(frameworkID, id string, upda
 func (r *ResourceTypeRepository) DeleteResourceType(frameworkID, id string) error {
 	result := r.db.Where("framework_id = ? AND id = ?", frameworkID, id).Delete(&model.ResourceType{})
 	if result.Error != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := result.Statement.SQL.String()
+		args := result.Statement.Vars
+		log.Printf("Delete SQL Query (ERROR): %s", sql)
+		log.Printf("Delete SQL Args (ERROR): %v", args)
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
 		return ErrResourceTypeNotFound
 	}
 	// Note: Associated permissions will be deleted due to CASCADE constraint in DB schema
-
-	// SQL 쿼리 로깅
-	sql := result.Statement.SQL.String()
-	args := result.Statement.Vars
-	log.Printf("Delete SQL Query: %s", sql)
-	log.Printf("Delete SQL Args: %v", args)
-	log.Printf("Delete Affected Rows: %d", result.RowsAffected)
 
 	return nil
 }

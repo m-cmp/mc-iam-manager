@@ -25,15 +25,13 @@ func (r *McmpApiPermissionActionMappingRepository) FindActionsByPermissionID(ctx
 	query := r.db.Where("permission_id = ?", permissionID).Find(&actions)
 
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("GetActionsByPermissionID SQL Query (ERROR): %s", sql)
+		log.Printf("GetActionsByPermissionID SQL Args (ERROR): %v", args)
 		return nil, fmt.Errorf("failed to get actions by permission ID: %w", err)
 	}
-
-	// SQL 쿼리 로깅 (쿼리 실행 후)
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("GetActionsByPermissionID SQL Query: %s", sql)
-	log.Printf("GetActionsByPermissionID SQL Args: %v", args)
-	log.Printf("GetActionsByPermissionID Result Count: %d", len(actions))
 
 	return actions, nil
 }
@@ -44,15 +42,13 @@ func (r *McmpApiPermissionActionMappingRepository) FindPermissionsByActionID(ctx
 	query := r.db.Where("action_id = ?", actionID).Find(&permissions)
 
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("GetPermissionsByActionID SQL Query (ERROR): %s", sql)
+		log.Printf("GetPermissionsByActionID SQL Args (ERROR): %v", args)
 		return nil, fmt.Errorf("failed to get permissions by action ID: %w", err)
 	}
-
-	// SQL 쿼리 로깅 (쿼리 실행 후)
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("GetPermissionsByActionID SQL Query: %s", sql)
-	log.Printf("GetPermissionsByActionID SQL Args: %v", args)
-	log.Printf("GetPermissionsByActionID Result Count: %d", len(permissions))
 
 	return permissions, nil
 }
@@ -65,15 +61,13 @@ func (r *McmpApiPermissionActionMappingRepository) CheckMappingExists(ctx contex
 		Count(&count)
 
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("CheckMappingExists SQL Query (ERROR): %s", sql)
+		log.Printf("CheckMappingExists SQL Args (ERROR): %v", args)
 		return false, fmt.Errorf("failed to check mapping existence: %w", err)
 	}
-
-	// SQL 쿼리 로깅 (쿼리 실행 후)
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("CheckMappingExists SQL Query: %s", sql)
-	log.Printf("CheckMappingExists SQL Args: %v", args)
-	log.Printf("CheckMappingExists Result Count: %d", count)
 
 	return count > 0, nil
 }
@@ -83,15 +77,13 @@ func (r *McmpApiPermissionActionMappingRepository) CreateMapping(ctx context.Con
 	query := r.db.Create(mapping)
 
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("CreateMapping SQL Query (ERROR): %s", sql)
+		log.Printf("CreateMapping SQL Args (ERROR): %v", args)
 		return fmt.Errorf("failed to create mapping: %w", err)
 	}
-
-	// SQL 쿼리 로깅 (쿼리 실행 후)
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("CreateMapping SQL Query: %s", sql)
-	log.Printf("CreateMapping SQL Args: %v", args)
-	log.Printf("CreateMapping Created ID: %d", mapping.ID)
 
 	return nil
 }
@@ -102,15 +94,13 @@ func (r *McmpApiPermissionActionMappingRepository) DeleteMapping(ctx context.Con
 		Delete(&mcmpapi.McmpApiPermissionActionMapping{})
 
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("DeleteMapping SQL Query (ERROR): %s", sql)
+		log.Printf("DeleteMapping SQL Args (ERROR): %v", args)
 		return fmt.Errorf("failed to delete mapping: %w", err)
 	}
-
-	// SQL 쿼리 로깅 (쿼리 실행 후)
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("DeleteMapping SQL Query: %s", sql)
-	log.Printf("DeleteMapping SQL Args: %v", args)
-	log.Printf("DeleteMapping Affected Rows: %d", query.RowsAffected)
 
 	return nil
 }
@@ -122,15 +112,13 @@ func (r *McmpApiPermissionActionMappingRepository) UpdateMapping(ctx context.Con
 		Update("action_name", mapping.ActionName)
 
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("UpdateMapping SQL Query (ERROR): %s", sql)
+		log.Printf("UpdateMapping SQL Args (ERROR): %v", args)
 		return fmt.Errorf("failed to update mapping: %w", err)
 	}
-
-	// SQL 쿼리 로깅 (쿼리 실행 후)
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("UpdateMapping SQL Query: %s", sql)
-	log.Printf("UpdateMapping SQL Args: %v", args)
-	log.Printf("UpdateMapping Affected Rows: %d", query.RowsAffected)
 
 	return nil
 }
