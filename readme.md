@@ -82,6 +82,12 @@ Generate Nginx configuration file based on environment variables.
 ./asset/setup/0_preset_create_nginx_conf.sh
 ```
 
+** keycloak address : /auth **
+  ```bash
+   location /auth/ {
+            proxy_pass http://mciam-keycloak:8080/auth/;
+  ```
+
 Generated file: `dockerfiles/nginx/nginx.conf`
 
 ### Step 3: MC-IAM-MANAGER Init Setup
