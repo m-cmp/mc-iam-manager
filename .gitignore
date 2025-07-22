@@ -33,3 +33,6 @@ generated/
 !.yarn/sdks
 !.yarn/versions
 asset/mcmpapi/mcmpapi-*.yaml
+
+dockercontainer-volume
+dockerfiles/nginx/nginx.conf
