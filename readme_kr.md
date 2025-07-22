@@ -91,6 +91,11 @@ git clone <https://github.com/m-cmp/mc-iam-manager> <YourFolderName>
   ```
 
   생성된 파일: `dockerfiles/nginx/nginx.conf`
+  ** keycloak 주소는 /auth를 붙임. **
+  ```bash
+   location /auth/ {
+            proxy_pass http://mciam-keycloak:8080/auth/;
+  ```
 
 
 ### 3단계 : MC-IAM-MANAGER Init Setup 
