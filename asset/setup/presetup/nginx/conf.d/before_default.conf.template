@@ -1,0 +1,58 @@
+# HTTP (80 포트) 설정
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN_NAME} www.${DOMAIN_NAME};
+
+    # Certbot 웹루트 챌린지를 위한 경로
+    # Let's Encrypt 서버가 이 경로로 접근하여 도메인 소유권을 확인합니다.
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # 모든 HTTP 요청을 HTTPS로 리다이렉션
+    # Certbot으로 인증서 발급이 성공하고, HTTPS 설정이 완료된 후에 이 부분을 활성화합니다.
+    # 초기 Certbot 실행 시에는 Nginx가 80포트에서 다른 웹 페이지를 제공하거나,
+    # 이 리다이렉션 라인 대신 단순히 "root /usr/share/nginx/html; index index.html;" 등으로 설정하여
+    # 80포트가 정상 동작함을 보여주는 것이 좋습니다.
+    location / {
+        return 301 https://$host$request_uri;
+    }
+
+    # 만약 Nginx가 80포트에서 임시 웹페이지를 보여주다가,
+    # 인증서 발급 후 HTTPS로 리다이렉트되도록 하고 싶다면 위 return 301 라인을 주석처리하고
+    # 아래 2줄을 사용하다가, HTTPS 설정 후 return 301 로 변경하면 됩니다.
+    # root /usr/share/nginx/html;
+    # index index.html;
+}
+
+# HTTPS (443 포트) 설정
+# 이 부분은 Certbot으로 인증서 발급이 성공한 후에 활성화해야 합니다.
+# 초기 Nginx 컨테이너 실행 시에는 이 server 블록 전체를 주석 처리한 상태로 두세요.
+server {
+    listen 443 ssl http2; # "http2" 키워드를 직접 사용 (최신 Nginx 권장 방식)
+    listen [::]:443 ssl http2; # IPv6도 리스닝
+
+    server_name ${DOMAIN_NAME} www.${DOMAIN_NAME}; # .env 파일의 DOMAIN_NAME 변수가 여기에 치환됩니다.
+
+    # Certbot이 발급한 인증서 경로
+    # dockercontainer-volume/certs 가 컨테이너 내부의 /etc/letsencrypt 와 매핑됨
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN_NAME}/privkey.pem;
+
+    # Certbot에서 제공하는 권장 SSL 설정 파일 (이전에 수동으로 다운로드/생성한 파일)
+    # 이 파일들은 /dockercontainer-volume/certs 경로에 존재해야 합니다.
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    # 웹 서비스 루트 (실제 웹 파일이 위치할 경로)
+    # Nginx 컨테이너 내부의 /usr/share/nginx/html 경로는 일반적으로 Nginx의 기본 웹 루트입니다.
+    # 실제 웹 콘텐츠가 있다면 해당 콘텐츠가 마운트된 볼륨 경로를 지정하세요.
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        try_files $uri $uri/ =404; # 파일이 없으면 404 에러 반환
+    }
+
+    # 추가적인 Nginx 설정 (로깅, 캐싱 등)은 여기에 추가할 수 있습니다.
+}

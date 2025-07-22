@@ -103,13 +103,12 @@ func (s *MciamPermissionService) checkPermission(ctx context.Context, userID uin
 		Where("mcmp_user_workspace_roles.user_id = ? AND mcmp_user_workspace_roles.workspace_id = ?", userID, workspaceID).
 		Pluck("mcmp_workspace_roles.name", &roles)
 
-	// SQL 쿼리 로깅
-	sql := query.Statement.SQL.String()
-	args := query.Statement.Vars
-	log.Printf("Permission Check SQL Query: %s", sql)
-	log.Printf("Permission Check SQL Args: %v", args)
-
 	if err := query.Error; err != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("Permission Check SQL Query (ERROR): %s", sql)
+		log.Printf("Permission Check SQL Args (ERROR): %v", args)
 		return fmt.Errorf("failed to get user workspace roles: %w", err)
 	}
 

@@ -65,14 +65,13 @@ func (r *MenuRepository) FindMenuByID(id *string) (*model.Menu, error) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrMenuNotFound // 사용자 정의 에러 반환 또는 nil, nil 반환
 		}
+		// 에러 발생 시에만 쿼리 로깅
+		sql := r.db.Statement.SQL.String()
+		args := r.db.Statement.Vars
+		log.Printf("GetByID SQL Query (ERROR): %s", sql)
+		log.Printf("GetByID SQL Args (ERROR): %v", args)
 		return nil, err
 	}
-
-	// SQL 쿼리 로깅
-	sql := r.db.Statement.SQL.String()
-	args := r.db.Statement.Vars
-	log.Printf("GetByID SQL Query: %s", sql)
-	log.Printf("GetByID SQL Args: %v", args)
 
 	return &menu, nil
 }
@@ -117,18 +116,16 @@ func (r *MenuRepository) UpdateMenu(id string, updates map[string]interface{}) e
 	// GORM의 Updates 메서드는 map[string]interface{}를 사용하여 지정된 필드만 업데이트
 	result := r.db.Model(&model.Menu{}).Where("id = ?", id).Updates(updates)
 	if result.Error != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := result.Statement.SQL.String()
+		args := result.Statement.Vars
+		log.Printf("Update SQL Query (ERROR): %s", sql)
+		log.Printf("Update SQL Args (ERROR): %v", args)
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
 		return ErrMenuNotFound // 업데이트 대상 레코드가 없음
 	}
-
-	// SQL 쿼리 로깅
-	sql := result.Statement.SQL.String()
-	args := result.Statement.Vars
-	log.Printf("Update SQL Query: %s", sql)
-	log.Printf("Update SQL Args: %v", args)
-	log.Printf("Update Affected Rows: %d", result.RowsAffected)
 
 	return nil
 }
@@ -138,18 +135,16 @@ func (r *MenuRepository) DeleteMenu(id string) error {
 	// GORM의 Delete는 삭제된 행 수를 반환
 	result := r.db.Where("id = ?", id).Delete(&model.Menu{})
 	if result.Error != nil {
+		// 에러 발생 시에만 쿼리 로깅
+		sql := result.Statement.SQL.String()
+		args := result.Statement.Vars
+		log.Printf("Delete SQL Query (ERROR): %s", sql)
+		log.Printf("Delete SQL Args (ERROR): %v", args)
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
 		return ErrMenuNotFound
 	}
-
-	// SQL 쿼리 로깅
-	sql := result.Statement.SQL.String()
-	args := result.Statement.Vars
-	log.Printf("Delete SQL Query: %s", sql)
-	log.Printf("Delete SQL Args: %v", args)
-	log.Printf("Delete Affected Rows: %d", result.RowsAffected)
 
 	return nil
 }
