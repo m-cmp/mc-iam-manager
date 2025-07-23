@@ -5,7 +5,7 @@ services:
     container_name: mciam-manager
     build:
       context: .
-      dockerfile: dockerfiles/mc-iam-manager/Dockerfile.mciammanager
+      dockerfile: ./Dockerfile.mciammanager
     ports:
       - "${MCIAMMANAGER_PORT}:${MCIAMMANAGER_PORT}"
     env_file:
@@ -28,7 +28,6 @@ services:
       POSTGRES_DB: ${IAM_DB_DATABASE_NAME}
     volumes:
       - ./dockercontainer-volume/postgres/data/:/var/lib/postgresql/data
-      - ./dockerfiles/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     networks:
