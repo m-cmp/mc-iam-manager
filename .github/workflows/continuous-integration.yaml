@@ -62,4 +62,4 @@ jobs:
       - name: Build image
         env:
           IMAGE_NAME: ${{ github.event.repository.name }}
-        run: docker image build --file ./Dockerfile.mciammanager --tag $IMAGE_NAME .
+        run: docker image build --file ./dockerfiles/mc-iam-manager/Dockerfile.mciammanager --tag $IMAGE_NAME .
