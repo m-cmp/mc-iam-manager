@@ -35,14 +35,11 @@ jobs:
         with:
           go-version: ${{matrix.go-version}}
 
-      - name: Install Buffalo CLI
-        run: go install github.com/gobuffalo/cli/cmd/buffalo@v0.18.14
-
       - name: Install Go dependencies
         run: cd src && go mod download
     
-      - name: Build Buffalo application
-        run: cd src && buffalo build --static
+      - name: Build Echo application
+        run: cd src && go build -o mc-iam-manager ./main.go
 
 
   # The job key is "build-container-image"
