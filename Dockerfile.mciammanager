@@ -24,7 +24,7 @@ COPY asset ./asset
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /mc-iam-manager ./main.go
 
 # --- Runtime Stage ---
-FROM alpine:latest
+FROM alpine:latest AS prod 
 
 WORKDIR /app
 
