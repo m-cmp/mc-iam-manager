@@ -59,6 +59,9 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
+      - name: Copy .env_sample to .env
+        run: cp .env_sample .env
+
       - name: Build image
         env:
           IMAGE_NAME: ${{ github.event.repository.name }}
