@@ -39,10 +39,10 @@ jobs:
         run: go install github.com/gobuffalo/cli/cmd/buffalo@v0.18.14
 
       - name: Install Go dependencies
-        run: go mod download
+        run: cd src && go mod download
     
       - name: Build Buffalo application
-        run: buffalo build --static
+        run: cd src && buffalo build --static
 
 
   # The job key is "build-container-image"
