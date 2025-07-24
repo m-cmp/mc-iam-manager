@@ -74,7 +74,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	token, err := ks.Login(ctx, userLogin.Id, userLogin.Password)
 	if err != nil {
 		// Differentiate between invalid credentials and other errors if possible
-		return c.JSON(http.StatusUnauthorized, map[string]string{"error": fmt.Sprintf("Keycloak authentication failed: %v", err)})
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": fmt.Sprintf("Authentication failed: %v", err)})
 	}
 
 	// 2. Get User ID (sub) from Access Token using a temporary KeycloakService instance
