@@ -37,7 +37,7 @@ import (
 // @title MC IAM Manager API
 // @version 1.0
 // @description MC IAM Manager API Documentation
-// @host localhost:3000
+// @host localhost
 // @BasePath /api/v1
 // @securityDefinitions.apikey BearerAuth
 // @in header
@@ -390,7 +390,7 @@ func main() {
 
 	// 서버 시작
 	go func() {
-		if err := e.Start(":3000"); err != nil && err != http.ErrServerClosed {
+		if err := e.Start(":5000"); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal("shutting down the server", err)
 		}
 	}()

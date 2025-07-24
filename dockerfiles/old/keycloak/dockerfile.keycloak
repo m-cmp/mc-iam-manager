@@ -1,8 +1,0 @@
-FROM quay.io/keycloak/keycloak:21.1.1
-
-ENV KEYCLOAK_ADMIN=admin
-ENV KEYCLOAK_ADMIN_PASSWORD=admin_password
-
-EXPOSE 8080
-
-CMD ["start-dev"] 
