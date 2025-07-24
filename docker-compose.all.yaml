@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mc-iam-manager:
     container_name: mciam-manager
@@ -16,7 +14,7 @@ services:
       mc-iam-keycloak:
         condition: service_healthy
     networks:
-      - mcmp-network
+      - mc-iam-manager-network
     restart: unless-stopped
 
   mc-iam-postgres:
@@ -26,12 +24,21 @@ services:
       POSTGRES_USER: ${IAM_DB_USER}
       POSTGRES_PASSWORD: ${IAM_DB_PASSWORD}
       POSTGRES_DB: ${IAM_DB_DATABASE_NAME}
+      # 초기화 스크립트용 환경변수
+      IAM_DB_USER: ${IAM_DB_USER}
+      IAM_DB_PASSWORD: ${IAM_DB_PASSWORD}
+      IAM_DB_DATABASE_NAME: ${IAM_DB_DATABASE_NAME}
+      IAM_DB_RECREATE: ${IAM_DB_RECREATE}
+      # 기존 데이터베이스 덮어쓰기 옵션
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     volumes:
       - ./dockercontainer-volume/postgres/data/:/var/lib/postgresql/data
+      - ./dockerfiles/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     ports:
       - "5432:5432"
     networks:
-      - mcmp-network
+      - mc-iam-manager-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${IAM_DB_USER} -d ${IAM_DB_DATABASE_NAME}"]
@@ -49,7 +56,7 @@ services:
     environment:
       KC_DB: postgres
       KC_DB_URL_HOST: mc-iam-postgres
-      KC_DB_URL_DATABASE: ${IAM_DB_DATABASE_NAME}
+      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_DATABASE_NAME:-mc_iam_keycloak_db}
       KC_DB_URL_PORT: ${IAM_DB_PORT}
       KC_DB_USERNAME: ${IAM_DB_USER}
       KC_DB_PASSWORD: ${IAM_DB_PASSWORD}
@@ -67,7 +74,7 @@ services:
       mc-iam-postgres:
         condition: service_healthy
     networks:
-      - mcmp-network
+      - mc-iam-manager-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n' >&3;if [ $? -eq 0 ]; then echo 'Healthcheck Successful';exit 0;else echo 'Healthcheck Failed';exit 1;fi;"]
@@ -75,6 +82,18 @@ services:
       timeout: 30s
       retries: 10
       start_period: 120s
+
+  mc-infra-manager:
+    image: cloudbaristaorg/cb-tumblebug:0.9.18
+    container_name: mc-infra-manager
+    pull_policy: if_not_present
+    ports:
+      - "1323:1323"
+    environment:
+      - MCINFRAMANAGER=${MCINFRAMANAGER}
+    networks:
+      - mc-iam-manager-network
+    restart: unless-stopped
 
   mcmp-nginx:
     image: nginx:1.25-alpine
@@ -91,10 +110,11 @@ services:
     depends_on:
       - mc-iam-keycloak
       - mc-iam-manager
+      - mc-infra-manager
     networks:
-      - mcmp-network
+      - mc-iam-manager-network
     restart: unless-stopped
 
 networks:
-  mcmp-network:
+  mc-iam-manager-network:
     driver: bridge
