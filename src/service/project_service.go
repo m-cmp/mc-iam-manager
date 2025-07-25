@@ -28,11 +28,20 @@ type ProjectService struct {
 
 // NewProjectService 새 ProjectService 인스턴스 생성
 func NewProjectService(db *gorm.DB) *ProjectService {
+	log.Printf("Creating new ProjectService with db: %v", db)
+	
+	projectRepo := repository.NewProjectRepository(db)
+	workspaceRepo := repository.NewWorkspaceRepository(db)
+	mcmpApiService := NewMcmpApiService(db)
+	
+	log.Printf("ProjectService components - projectRepo: %v, workspaceRepo: %v, mcmpApiService: %v", 
+		projectRepo, workspaceRepo, mcmpApiService)
+	
 	return &ProjectService{
 		db:            db,
-		projectRepo:   repository.NewProjectRepository(db),
-		workspaceRepo: repository.NewWorkspaceRepository(db),
-		mcmpApiService: NewMcmpApiService(db),
+		projectRepo:   projectRepo,
+		workspaceRepo: workspaceRepo,
+		mcmpApiService: mcmpApiService,
 	}
 }
 
@@ -48,6 +57,15 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 	}
 
 	log.Printf("Attempting to create namespace in mc-infra-manager for project: %s", project.Name)
+
+	// Check if mcmpApiService is properly initialized
+	if s.mcmpApiService == nil {
+		log.Printf("Error: mcmpApiService is nil. Reinitializing...")
+		s.mcmpApiService = NewMcmpApiService(s.db)
+		if s.mcmpApiService == nil {
+			return fmt.Errorf("failed to initialize mcmpApiService")
+		}
+	}
 
 	// 1. Call mc-infra-manager PostNs API
 	nsRequestBody := map[string]string{
@@ -202,6 +220,15 @@ func (s *ProjectService) AddWorkspaceAssociation(projectID, workspaceID uint) er
 // SyncProjectsWithInfraManager mc-infra-manager의 네임스페이스와 로컬 프로젝트 동기화
 func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error {
 	log.Println("Starting project synchronization with mc-infra-manager...")
+
+	// Check if mcmpApiService is properly initialized
+	if s.mcmpApiService == nil {
+		log.Printf("Error: mcmpApiService is nil. Reinitializing...")
+		s.mcmpApiService = NewMcmpApiService(s.db)
+		if s.mcmpApiService == nil {
+			return fmt.Errorf("failed to initialize mcmpApiService")
+		}
+	}
 
 	// 1. Call mc-infra-manager GetAllNs API
 	callReq := &model.McmpApiCallRequest{
