@@ -42,7 +42,14 @@ func InitializeMcmpApiTables(db *gorm.DB) error {
 
 // NewMcmpApiRepository creates a new McmpApiRepository.
 func NewMcmpApiRepository(db *gorm.DB) McmpApiRepository {
-	return &mcmpApiRepository{db: db}
+	log.Printf("Creating new McmpApiRepository with db: %v", db)
+	if db == nil {
+		log.Printf("Error: database is nil in NewMcmpApiRepository")
+		return nil
+	}
+	repo := &mcmpApiRepository{db: db}
+	log.Printf("Successfully created McmpApiRepository: %v", repo)
+	return repo
 }
 
 // GetServiceByNameAndVersion finds a specific version of a service.
