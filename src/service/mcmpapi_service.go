@@ -48,8 +48,15 @@ type mcmpApiService struct {
 
 // NewMcmpApiService creates a new McmpApiService.
 func NewMcmpApiService(db *gorm.DB) McmpApiService {
+	log.Printf("Creating new McmpApiService with db: %v", db)
 	repo := repository.NewMcmpApiRepository(db)
-	return &mcmpApiService{db: db, repo: repo}
+	if repo == nil {
+		log.Printf("Error: NewMcmpApiRepository returned nil")
+		return nil
+	}
+	service := &mcmpApiService{db: db, repo: repo}
+	log.Printf("Successfully created McmpApiService: %v", service)
+	return service
 }
 
 // GetDB returns the database instance.
