@@ -32,6 +32,7 @@ func NewProjectService(db *gorm.DB) *ProjectService {
 		db:            db,
 		projectRepo:   repository.NewProjectRepository(db),
 		workspaceRepo: repository.NewWorkspaceRepository(db),
+		mcmpApiService: NewMcmpApiService(db),
 	}
 }
 
