@@ -34,12 +34,15 @@ jobs:
   publish-container-image:
     # Job name is "Publish a container image"
     name: Publish a container image
-    if: github.repository_owner == 'm-cmp' && !contains(github.event.head_commit.message, '[skip cd]')
+          
+    if: (github.repository_owner == 'm-cmp' || github.repository_owner == 'cscservice' || github.repository_owner == 'mzc-csc') && !contains(github.event.head_commit.message, '[skip cd]')
+    #if: github.repository_owner == 'm-cmp' && !contains(github.event.head_commit.message, '[skip cd]')
     # This job runs on Ubuntu-latest (Ubuntu 22.04 LTS checked on 2023-12-13)
     # See https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
     runs-on: ubuntu-22.04
 
     steps:
+    
       - name: Checkout source code
         uses: actions/checkout@v4
 
@@ -120,4 +123,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
+        run: |
+          echo "Repository Owner: ${{ github.repository_owner }}"
+          echo "Head Commit Message: ${{ github.event.head_commit.message }}"              
+          echo ${{ steps.docker_build.outputs.digest }}
