@@ -21,18 +21,18 @@ type DatabaseConfig struct {
 // NewDatabaseConfig 데이터베이스 설정 생성
 func NewDatabaseConfig() *DatabaseConfig {
 	return &DatabaseConfig{
-		Host:     os.Getenv("IAM_DB_HOST"),
-		Port:     os.Getenv("IAM_DB_PORT"),
-		User:     os.Getenv("IAM_DB_USER"),
-		Password: os.Getenv("IAM_DB_PASSWORD"),
-		DBName:   os.Getenv("IAM_DB_DATABASE_NAME"),
-		SSLMode:  os.Getenv("IAM_DB_SSLMODE"),
+		Host:     os.Getenv("MC_IAM_MANAGER_DATABASE_HOST"),
+		Port:     os.Getenv("MC_IAM_MANAGER_DATABASE_PORT"),
+		User:     os.Getenv("MC_IAM_MANAGER_DATABASE_USER"),
+		Password: os.Getenv("MC_IAM_MANAGER_DATABASE_PASSWORD"),
+		DBName:   os.Getenv("MC_IAM_MANAGER_DATABASE_NAME"),
+		SSLMode:  os.Getenv("MC_IAM_MANAGER_DATABASE_SSLMODE"),
 	}
 }
 
 // GetDSN 데이터베이스 연결 문자열 반환
 func (c *DatabaseConfig) GetDSN() string {
-	if dsn := os.Getenv("IAM_DATABASE_URL"); dsn != "" {
+	if dsn := os.Getenv("MC_IAM_MANAGER_DATABASE_URL"); dsn != "" {
 		return dsn
 	}
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
@@ -40,14 +40,14 @@ func (c *DatabaseConfig) GetDSN() string {
 }
 
 func InitDB() (*sql.DB, error) {
-	host := os.Getenv("IAM_DB_HOST")
-	port := os.Getenv("IAM_DB_PORT")
-	user := os.Getenv("IAM_DB_USER")
-	password := os.Getenv("IAM_DB_PASSWORD")
-	dbname := os.Getenv("IAM_DB_DATABASE_NAME")
-	sslmode := os.Getenv("IAM_DB_SSLMODE")
+	host := os.Getenv("MC_IAM_MANAGER_DATABASE_HOST")
+	port := os.Getenv("MC_IAM_MANAGER_DATABASE_PORT")
+	user := os.Getenv("MC_IAM_MANAGER_DATABASE_USER")
+	password := os.Getenv("MC_IAM_MANAGER_DATABASE_PASSWORD")
+	dbname := os.Getenv("MC_IAM_MANAGER_DATABASE_NAME")
+	sslmode := os.Getenv("MC_IAM_MANAGER_DATABASE_SSLMODE")
 
-	if dsn := os.Getenv("IAM_DATABASE_URL"); dsn != "" {
+	if dsn := os.Getenv("MC_IAM_MANAGER_DATABASE_URL"); dsn != "" {
 		db, err := sql.Open("postgres", dsn)
 		if err != nil {
 			return nil, fmt.Errorf("데이터베이스 연결 실패: %v", err)

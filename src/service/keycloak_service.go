@@ -722,26 +722,26 @@ func (s *keycloakService) SetupInitialKeycloakAdmin(ctx context.Context, adminTo
 	}
 
 	// 2. platformAdmin 사용자 생성
-	platformAdminID := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_ID")
-	platformAdminPassword := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_PASSWORD")
-	platformAdminFirstName := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_FIRSTNAME")
-	platformAdminLastName := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_LASTNAME")
-	platformAdminEmail := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_EMAIL")
+	platformAdminID := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_ID")
+	platformAdminPassword := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_PASSWORD")
+	platformAdminFirstName := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_FIRSTNAME")
+	platformAdminLastName := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_LASTNAME")
+	platformAdminEmail := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_EMAIL")
 
 	if platformAdminID == "" {
-		return "", fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_ID not set in environment variables")
+		return "", fmt.Errorf("MC_IAM_MANAGER_PLATFORMADMIN_ID not set in environment variables")
 	}
 	if platformAdminPassword == "" {
-		return "", fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_PASSWORD not set in environment variables")
+		return "", fmt.Errorf("MC_IAM_MANAGER_PLATFORMADMIN_PASSWORD not set in environment variables")
 	}
 	if platformAdminFirstName == "" {
-		return "", fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_FIRSTNAME not set in environment variables")
+		return "", fmt.Errorf("MC_IAM_MANAGER_PLATFORMADMIN_FIRSTNAME not set in environment variables")
 	}
 	if platformAdminLastName == "" {
-		return "", fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_LASTNAME not set in environment variables")
+		return "", fmt.Errorf("MC_IAM_MANAGER_PLATFORMADMIN_LASTNAME not set in environment variables")
 	}
 	if platformAdminEmail == "" {
-		return "", fmt.Errorf("MCIAMMANAGER_PLATFORMADMIN_EMAIL not set in environment variables")
+		return "", fmt.Errorf("MC_IAM_MANAGER_PLATFORMADMIN_EMAIL not set in environment variables")
 	}
 
 	log.Printf("[DEBUG] Creating platform admin user: %s", platformAdminID)

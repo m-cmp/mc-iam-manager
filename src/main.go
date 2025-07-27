@@ -397,7 +397,7 @@ func main() {
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// 서버 시작
-	port := os.Getenv("MCIAMMANAGER_PORT")
+	port := os.Getenv("MC_IAM_MANAGER_PORT")
 	if port == "" {
 		port = "5000"
 	}

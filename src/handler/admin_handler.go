@@ -92,9 +92,9 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 		})
 	}
 
-	platformAdminID := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_ID")
-	platformAdminFirstName := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_FIRSTNAME")
-	platformAdminLastName := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_LASTNAME")
+	platformAdminID := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_ID")
+	platformAdminFirstName := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_FIRSTNAME")
+	platformAdminLastName := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_LASTNAME")
 
 	// 2. 유저 동기화 : keycloak에 먼저 만들었으므로 DB에 동기화 해준다.
 	err = h.userService.SyncUserByKeycloak(c.Request().Context(), &model.User{
