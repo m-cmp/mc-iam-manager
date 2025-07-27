@@ -158,11 +158,22 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 // @Tags auth
 // @Accept json
 // @Produce json
+// @Param refresh_token body string true "Refresh token"
+// @Success 200 {object} map[string]interface{} "New token information"
+// @Failure 400 {object} map[string]string "error: Bad Request"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
 // @Router /api/auth/refresh [post]
 // @Id mciamRefreshToken
 func (h *AuthHandler) RefreshToken(c echo.Context) error {
-	refreshToken := c.FormValue("refresh_token")
-	if refreshToken == "" {
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	if req.RefreshToken == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Refresh token is required"})
 	}
 
@@ -170,7 +181,7 @@ func (h *AuthHandler) RefreshToken(c echo.Context) error {
 
 	// Use KeycloakService to refresh token
 	ks := service.NewKeycloakService()
-	newToken, err := ks.RefreshToken(ctx, refreshToken)
+	newToken, err := ks.RefreshToken(ctx, req.RefreshToken)
 	if err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": fmt.Sprintf("Token refresh failed: %v", err)})
 	}
@@ -311,4 +322,73 @@ func (h *AuthHandler) GetTempCredentialProviders(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, cspInfo)
+}
+
+// Validate godoc
+// @Summary Validate access token
+// @Description Validate the current access token and refresh if expired
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param refresh_token body string true "Refresh token"
+// @Success 200 {object} map[string]interface{} "Token validation result with new token if refreshed"
+// @Failure 400 {object} map[string]string "error: Bad Request"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Security BearerAuth
+// @Router /api/auth/validate [post]
+// @Id mciamValidateToken
+func (h *AuthHandler) Validate(c echo.Context) error {
+	// 1. Get access token from Authorization header
+	authHeader := c.Request().Header.Get("Authorization")
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Authorization header is missing or invalid"})
+	}
+	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
+
+	// 2. Get refresh token from request body (same as RefreshToken handler)
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	if req.RefreshToken == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Refresh token is required"})
+	}
+
+	ctx := c.Request().Context()
+	ks := service.NewKeycloakService()
+
+	// 3. Validate access token
+	jwtToken := &gocloak.JWT{AccessToken: accessToken}
+	userID, err := ks.GetUserIDFromToken(ctx, jwtToken)
+	if err != nil {
+		// Token is invalid or expired, try to refresh
+		log.Printf("Access token validation failed: %v", err)
+
+		// 4. Try to refresh the token
+		newToken, refreshErr := ks.RefreshToken(ctx, req.RefreshToken)
+		if refreshErr != nil {
+			return c.JSON(http.StatusUnauthorized, map[string]string{
+				"error":   "Token validation failed and refresh failed",
+				"details": fmt.Sprintf("validation: %v, refresh: %v", err, refreshErr),
+			})
+		}
+
+		// 5. Return new token
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"valid":   false,
+			"message": "Token was expired and has been refreshed",
+			"token":   newToken,
+		})
+	}
+
+	// 6. Token is valid, return success
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"valid":   true,
+		"message": "Token is valid",
+		"user_id": userID,
+	})
 }

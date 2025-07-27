@@ -36,23 +36,23 @@ var KC *KeycloakConfig
 
 // InitKeycloak Keycloak 초기화
 func InitKeycloak() error {
-	host := os.Getenv("KEYCLOAK_HOST")
+	host := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_HOST")
 	if host == "" {
-		return fmt.Errorf("KEYCLOAK_HOST is not set")
+		return fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_HOST is not set")
 	}
-	fmt.Printf("KEYCLOAK_HOST: %s\n", host)
+	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_HOST: %s\n", host)
 
-	realm := os.Getenv("KEYCLOAK_REALM")
+	realm := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_REALM")
 	if realm == "" {
-		return fmt.Errorf("KEYCLOAK_REALM is not set")
+		return fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_REALM is not set")
 	}
-	fmt.Printf("KEYCLOAK_REALM: %s\n", realm)
+	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_REALM: %s\n", realm)
 
-	clientName := os.Getenv("KEYCLOAK_CLIENT_NAME")
+	clientName := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_CLIENT_NAME")
 	if clientName == "" {
-		return fmt.Errorf("KEYCLOAK_CLIENT_NAME is not set")
+		return fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_CLIENT_NAME is not set")
 	}
-	fmt.Printf("KEYCLOAK_CLIENT_NAME: %s\n", clientName)
+	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_CLIENT_NAME: %s\n", clientName)
 
 	// clientID := os.Getenv("KEYCLOAK_CLIENT_ID")
 	// if clientID == "" {
@@ -60,35 +60,35 @@ func InitKeycloak() error {
 	// }
 	// fmt.Printf("KEYCLOAK_CLIENT_ID: %s\n", clientID)
 
-	oidcClientID := os.Getenv("KEYCLOAK_OIDC_CLIENT_ID")
+	oidcClientID := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID")
 	if oidcClientID == "" {
-		return fmt.Errorf("KEYCLOAK_OIDC_CLIENT_ID is not set")
+		return fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID is not set")
 	}
-	fmt.Printf("KEYCLOAK_OIDC_CLIENT_ID: %s\n", oidcClientID)
+	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID: %s\n", oidcClientID)
 
-	oidcClientName := os.Getenv("KEYCLOAK_OIDC_CLIENT_NAME")
+	oidcClientName := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME")
 	if oidcClientName == "" {
-		return fmt.Errorf("KEYCLOAK_OIDC_CLIENT_NAME is not set")
+		return fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME is not set")
 	}
-	fmt.Printf("KEYCLOAK_OIDC_CLIENT_NAME: %s\n", oidcClientName)
+	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME: %s\n", oidcClientName)
 
-	clientSecret := os.Getenv("KEYCLOAK_CLIENT_SECRET")
+	clientSecret := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_CLIENT_SECRET")
 	if clientSecret == "" {
-		return fmt.Errorf("KEYCLOAK_CLIENT_SECRET is not set")
+		return fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_CLIENT_SECRET is not set")
 	}
-	fmt.Printf("KEYCLOAK_CLIENT_SECRET: %s\n", clientSecret)
+	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_CLIENT_SECRET: %s\n", clientSecret)
 
-	oidcClientSecret := os.Getenv("KEYCLOAK_OIDC_CLIENT_SECRET")
+	oidcClientSecret := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET")
 	if oidcClientSecret == "" {
-		return fmt.Errorf("KEYCLOAK_OIDC_CLIENT_SECRET is not set")
+		return fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET is not set")
 	}
-	fmt.Printf("KEYCLOAK_OIDC_CLIENT_SECRET: %s\n", oidcClientSecret)
+	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET: %s\n", oidcClientSecret)
 
-	platformAdminID := os.Getenv("MCIAMMANAGER_PLATFORMADMIN_ID")
-	fmt.Printf("MCIAMMANAGER_PLATFORMADMIN_ID: %s\n", platformAdminID)
+	platformAdminID := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_ID")
+	fmt.Printf("MC_IAM_MANAGER_PLATFORMADMIN_ID: %s\n", platformAdminID)
 
-	keycloakAdmin := os.Getenv("KEYCLOAK_ADMIN")
-	fmt.Printf("KEYCLOAK_ADMIN: %s\n", keycloakAdmin)
+	keycloakAdmin := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_ADMIN")
+	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_ADMIN: %s\n", keycloakAdmin)
 
 	client := gocloak.NewClient(host)
 
@@ -166,8 +166,8 @@ func (c *KeycloakConfig) LoginUser(ctx context.Context, client *gocloak.GoCloak,
 
 // LoginAdmin performs admin login to Keycloak
 func (kc *KeycloakConfig) LoginAdmin(ctx context.Context) (*gocloak.JWT, error) {
-	adminUsername := os.Getenv("KEYCLOAK_ADMIN")
-	adminPassword := os.Getenv("KEYCLOAK_ADMIN_PASSWORD")
+	adminUsername := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_ADMIN")
+	adminPassword := os.Getenv("MC_IAM_MANAGER_MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD")
 
 	log.Printf("[DEBUG] Attempting admin login with:")
 	log.Printf("[DEBUG] - Host: %s", kc.Host)
@@ -176,7 +176,7 @@ func (kc *KeycloakConfig) LoginAdmin(ctx context.Context) (*gocloak.JWT, error) 
 	// log.Printf("[DEBUG] - Admin Password: %s", adminPassword)
 
 	if adminUsername == "" || adminPassword == "" {
-		return nil, fmt.Errorf("KEYCLOAK_ADMIN or KEYCLOAK_ADMIN_PASSWORD not set")
+		return nil, fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_ADMIN or MC_IAM_MANAGER_MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD not set")
 	}
 
 	token, err := kc.Client.LoginAdmin(ctx, adminUsername, adminPassword, "master")
@@ -266,11 +266,11 @@ func (kc *KeycloakConfig) GetAdminToken(ctx context.Context) (*gocloak.JWT, erro
 		return kc.adminToken, nil
 	}
 
-	adminUsername := os.Getenv("KEYCLOAK_ADMIN")
-	adminPassword := os.Getenv("KEYCLOAK_ADMIN_PASSWORD")
+	adminUsername := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_ADMIN")
+	adminPassword := os.Getenv("MC_IAM_MANAGER_MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD")
 
 	if adminUsername == "" || adminPassword == "" {
-		return nil, fmt.Errorf("KEYCLOAK_ADMIN or KEYCLOAK_ADMIN_PASSWORD not set")
+		return nil, fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_ADMIN or MC_IAM_MANAGER_MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD not set")
 	}
 
 	log.Printf("[DEBUG] Attempting admin login with:")

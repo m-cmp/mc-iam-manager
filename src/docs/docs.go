@@ -155,6 +155,45 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/auth/validate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Validate the current access token and refresh if expired",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Validate access token",
+                "operationId": "mciamValidateToken",
+                "responses": {
+                    "200": {
+                        "description": "Token validation result with new token if refreshed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/csp-credentials": {
             "get": {
                 "security": [
@@ -1415,7 +1454,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/menus/setup/initial-menu": {
+        "/api/menus/setup/initial-menus": {
             "post": {
                 "security": [
                     {
@@ -1464,7 +1503,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/menus/setup/initial-menu2": {
+        "/api/menus/setup/initial-menus2": {
             "post": {
                 "security": [
                     {
@@ -6996,6 +7035,11 @@ const docTemplate = `{
                 "RoleTypePlatform": "플랫폼 역할",
                 "RoleTypeWorkspace": "워크스페이스 역할"
             },
+            "x-enum-descriptions": [
+                "플랫폼 역할",
+                "워크스페이스 역할",
+                "CSP 역할"
+            ],
             "x-enum-varnames": [
                 "RoleTypePlatform",
                 "RoleTypeWorkspace",
@@ -7982,7 +8026,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:3000",
+	Host:             "localhost",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "MC IAM Manager API",
