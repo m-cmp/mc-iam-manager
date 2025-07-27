@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  mc-iam-manager:
+    container_name: mciam-manager
+    build:
+      context: .
+      dockerfile: ./Dockerfile.mciammanager
+    ports:
+      - "${MCIAMMANAGER_PORT}:${MCIAMMANAGER_PORT}"
+    env_file:
+      - .env
+    depends_on:
+      mc-iam-manager-db:
+        condition: service_healthy
+      mc-iam-manager-keycloak:
+        condition: service_healthy
+    networks:
+        - mc-iam-manager-network
+    restart: unless-stopped
+
+  mc-iam-manager-db:
+    image: postgres:16
+    container_name: mciam-postgres
+    environment:
+      POSTGRES_USER: ${IAM_DB_USER}
+      POSTGRES_PASSWORD: ${IAM_DB_PASSWORD}
+      POSTGRES_DB: ${IAM_DB_DATABASE_NAME}
+    volumes:
+      - ./dockercontainer-volume/postgres/data/:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - mc-iam-manager-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${IAM_DB_USER} -d ${IAM_DB_DATABASE_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mc-iam-manager-keycloak:
+    container_name: mciam-keycloak
+    build:
+      context: ./
+      dockerfile: ./dockerfiles/keycloak/dockerfile.keycloak
+    networks:
+      - mc-iam-manager-network
+    ports:
+      - target: 8080
+        published: 8080
+        protocol: tcp
+    env_file:
+      - .env
+    volumes:
+      - ./dockercontainer-volume/keycloak/data/:/opt/keycloak/data/
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: mc-iam-manager-db
+      KC_DB_URL_DATABASE: ${IAM_DB_DATABASE_NAME}
+      KC_DB_URL_PORT: ${IAM_DB_PORT}
+      KC_DB_USERNAME: ${IAM_DB_USER}
+      KC_DB_PASSWORD: ${IAM_DB_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: ${DOMAIN_NAME}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HTTP_RELATIVE_PATH: "/auth"
+      KC_PROXY: edge
+    depends_on:
+      mc-iam-manager-db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  mcmp-nginx:
+    image: nginx:1.25-alpine
+    container_name: mciam-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME}
+    volumes:
+      - ./dockerfiles/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./dockercontainer-volume/certs:/etc/nginx/certs:ro
+      - ./dockercontainer-volume/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - mc-iam-manager-keycloak
+      - mc-iam-manager
+    networks:
+      - mc-iam-manager-network
+    restart: unless-stopped
+
+networks:
+  mc-iam-manager-network:
+    driver: bridge
