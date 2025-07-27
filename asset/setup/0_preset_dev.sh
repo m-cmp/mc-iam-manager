@@ -43,11 +43,11 @@ echo "환경변수를 로드합니다..."
 
 # .env 파일에서 필요한 변수들을 직접 읽어오기 (줄바꿈 문자 제거)
 DOMAIN_NAME=$(grep "^DOMAIN_NAME=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
-MCIAMMANAGER_PORT=$(grep "^MCIAMMANAGER_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
+MC_IAM_MANAGER_PORT=$(grep "^MC_IAM_MANAGER_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | tr -d '\r' | xargs)
 
 echo "읽어온 환경변수:"
 echo "  DOMAIN_NAME: $DOMAIN_NAME"
-echo "  MCIAMMANAGER_PORT: $MCIAMMANAGER_PORT"
+echo "  MC_IAM_MANAGER_PORT: $MC_IAM_MANAGER_PORT"
 
 # DOMAIN_NAME을 읽은 후 CERT_DIR 정의
 CERT_DIR="${CERT_PARENT_DIR}/certs/live/${DOMAIN_NAME}"      # Let's Encrypt 구조와 동일한 인증서 저장 경로
@@ -111,15 +111,15 @@ echo "출력: $OUTPUT_FILE"
 cp "$TEMPLATE_FILE" "$OUTPUT_FILE"
 
 # 환경변수 대치 (한 번에 처리)
-if [ -n "$DOMAIN_NAME" ] && [ -n "$MCIAMMANAGER_PORT" ]; then
+if [ -n "$DOMAIN_NAME" ] && [ -n "$MC_IAM_MANAGER_PORT" ]; then
     # 템플릿 파일을 복사하고 환경변수를 한 번에 대치
     sed -e "s/\${DOMAIN_NAME}/$DOMAIN_NAME/g" \
-        -e "s/\${PORT}/$MCIAMMANAGER_PORT/g" \
+        -e "s/\${PORT}/$MC_IAM_MANAGER_PORT/g" \
         "$TEMPLATE_FILE" > "$OUTPUT_FILE"
     echo "✓ DOMAIN_NAME 대치 완료: $DOMAIN_NAME"
-    echo "✓ PORT 대치 완료: $MCIAMMANAGER_PORT"
+    echo "✓ PORT 대치 완료: $MC_IAM_MANAGER_PORT"
 else
-    echo "경고: DOMAIN_NAME 또는 MCIAMMANAGER_PORT 환경변수가 설정되지 않았습니다."
+    echo "경고: DOMAIN_NAME 또는 MC_IAM_MANAGER_PORT 환경변수가 설정되지 않았습니다."
     # 환경변수가 없으면 템플릿 파일을 그대로 복사
     cp "$TEMPLATE_FILE" "$OUTPUT_FILE"
 fi

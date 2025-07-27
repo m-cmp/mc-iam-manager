@@ -7,26 +7,26 @@ init_platform_admin() {
     
     # 환경 변수 사용
     json_data=$(jq -n \
-        --arg email "$MCIAMMANAGER_PLATFORMADMIN_EMAIL" \
-        --arg password "$MCIAMMANAGER_PLATFORMADMIN_PASSWORD" \
-        --arg username "$MCIAMMANAGER_PLATFORMADMIN_ID" \
+        --arg email "$MC_IAM_MANAGER_PLATFORMADMIN_EMAIL" \
+        --arg password "$MC_IAM_MANAGER_PLATFORMADMIN_PASSWORD" \
+        --arg username "$MC_IAM_MANAGER_PLATFORMADMIN_ID" \
         '{email: $email, password: $password, username: $username}')
     
     response=$(curl -s -X POST \
         --header 'Content-Type: application/json' \
         --data "$json_data" \
-        "$MCIAMMANAGER_HOST/api/initial-admin")
+        "$MC_IAM_MANAGER_HOST/api/initial-admin")
     echo "Platform admin initialization response: $response"
 }
 
 login() {
-    read -p "Enter the platformadmin ID: " MCIAMMANAGER_PLATFORMADMIN_ID
-    read -s -p "Enter the platformadmin password: " MCIAMMANAGER_PLATFORMADMIN_PASSWORD
+    read -p "Enter the platformadmin ID: " MC_IAM_MANAGER_PLATFORMADMIN_ID
+    read -s -p "Enter the platformadmin password: " MC_IAM_MANAGER_PLATFORMADMIN_PASSWORD
     echo
     response=$(curl --location --silent --header 'Content-Type: application/json' --data '{
-        "id":"'"$MCIAMMANAGER_PLATFORMADMIN_ID"'",
-        "password":"'"$MCIAMMANAGER_PLATFORMADMIN_PASSWORD"'"
-    }' "$MCIAMMANAGER_HOST/api/auth/login")
+        "id":"'"$MC_IAM_MANAGER_PLATFORMADMIN_ID"'",
+        "password":"'"$MC_IAM_MANAGER_PLATFORMADMIN_PASSWORD"'"
+    }' "$MC_IAM_MANAGER_HOST/api/auth/login")
     
     echo "Login response: $response"
     
@@ -51,16 +51,16 @@ login() {
         return 1
     fi
     
-    MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN="$(echo "$response" | jq -r '.access_token')"
+    MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN="$(echo "$response" | jq -r '.access_token')"
     
     # 디버깅: 토큰이 제대로 추출되었는지 확인
-    if [ -z "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" ] || [ "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" = "null" ]; then
+    if [ -z "$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" ] || [ "$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" = "null" ]; then
         echo "ERROR: Failed to extract access token"
-        echo "Extracted token: '$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN'"
+        echo "Extracted token: '$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN'"
         return 1
     fi
     
-    echo "Access token extracted successfully: ${MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN:0:20}..."
+    echo "Access token extracted successfully: ${MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN:0:20}..."
     echo "Login successful"
 }
 
@@ -73,9 +73,9 @@ init_predefined_roles() {
             '{name: $name, description: $description, role_types: ["workspace", "platform"]}')
         response=$(curl -s -X POST \
             --header 'Content-Type: application/json' \
-            --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+            --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
             --data "$json_data" \
-            "$MCIAMMANAGER_HOST/api/roles")
+            "$MC_IAM_MANAGER_HOST/api/roles")
         echo "Response for role $role: $response"
     done
     echo "Platform roles initialized"
@@ -85,9 +85,9 @@ init_menu() {
     echo "Initializing menu data..."
     wget -q -O ./menu.yaml "$MCWEBCONSOLE_MENUYAML"
     response=$(curl -s -X POST \
-        --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
         --header 'Content-Type: application/json' \
-        "$MCIAMMANAGER_HOST/api/setup/initial-menus")
+        "$MC_IAM_MANAGER_HOST/api/setup/initial-menus")
     echo "Menu initialization response: $response"
     echo "Menu data initialized"
 }
@@ -96,9 +96,9 @@ init_api_resources() {
     echo "Initializing API resources..."
     wget -q -O ./api.yaml "$MCADMINCLI_APIYAML"
     response=$(curl -s -X POST \
-        --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
         --header 'Content-Type: application/json' \
-        "$MCIAMMANAGER_HOST/api/setup/sync-mcmp-apis")
+        "$MC_IAM_MANAGER_HOST/api/setup/sync-mcmp-apis")
     echo "API resources initialization response: $response"
     echo "API resources initialized"
 }
@@ -106,10 +106,10 @@ init_api_resources() {
 init_cloud_resources() {
     echo "Initializing cloud resources..."
     response=$(curl -s -X POST \
-        --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
         --header 'Content-Type: multipart/form-data' \
         --form "file=@./cloud-resource.yaml" \
-        "$MCIAMMANAGER_HOST/api/resource/file/framework/all")
+        "$MC_IAM_MANAGER_HOST/api/resource/file/framework/all")
     echo "Cloud resources initialization response: $response"
     echo "Cloud resources initialized"
 }
@@ -117,9 +117,9 @@ init_cloud_resources() {
 map_api_cloud_resources() {
     echo "Mapping API-Cloud resources..."
     response=$(curl -s -X POST \
-        --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
         --header 'Content-Type: application/json' \
-        "$MCIAMMANAGER_HOST/api/resource/mapping/api-cloud")
+        "$MC_IAM_MANAGER_HOST/api/resource/mapping/api-cloud")
     echo "API-Cloud resources mapping response: $response"
     echo "API-Cloud resources mapping completed"
 }
@@ -128,9 +128,9 @@ map_api_cloud_resources() {
 map_workspace_csp_roles() {
     echo "Mapping workspace roles to CSP IAM roles..."
     response=$(curl -s -X POST \
-        --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
         --header 'Content-Type: application/json' \
-        "$MCIAMMANAGER_HOST/api/workspace-roles/csp-mapping")
+        "$MC_IAM_MANAGER_HOST/api/workspace-roles/csp-mapping")
     echo "Workspace-CSP role mapping response: $response"
     echo "Workspace-CSP role mapping completed"
 }
@@ -139,9 +139,9 @@ map_workspace_csp_roles() {
 sync_projects() {
     echo "Syncing projects with mc-infra-manager..."
     response=$(curl -s -X POST \
-        --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
         --header 'Content-Type: application/json' \
-        "$MCIAMMANAGER_HOST/api/projects/sync")
+        "$MC_IAM_MANAGER_HOST/api/projects/sync")
     echo "Project sync response: $response"
     echo "Project sync completed"
 }
@@ -151,10 +151,10 @@ map_workspace_projects() {
     json_data=$(jq -n --arg workspace_id "$workspace_id" --arg all_projects "true" \
         '{workspace_id: $workspace_id, all_projects: $all_projects}')
     response=$(curl -s -X POST \
-        --header "Authorization: Bearer $MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
         --header 'Content-Type: application/json' \
         --data "$json_data" \
-        "$MCIAMMANAGER_HOST/api/workspaces/projects/mapping")
+        "$MC_IAM_MANAGER_HOST/api/workspaces/projects/mapping")
     echo "Workspace-Project mapping response: $response"
     echo "Workspace-Project mapping completed"
 }
@@ -188,62 +188,62 @@ while true; do
             login
             ;;
         3)
-            if [ -z "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
+            if [ -z "$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
                 echo "Please login first (option 2)"
-                echo "Current token value: '$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN'"
+                echo "Current token value: '$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN'"
             else
                 init_predefined_roles
             fi
             ;;
         4)
-            if [ -z "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
+            if [ -z "$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
                 echo "Please login first (option 2)"
-                echo "Current token value: '$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN'"
+                echo "Current token value: '$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN'"
             else
                 init_menu
             fi
             ;;
         5)
-            if [ -z "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
+            if [ -z "$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
                 echo "Please login first (option 2)"
-                echo "Current token value: '$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN'"
+                echo "Current token value: '$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN'"
             else
                 init_api_resources
             fi
             ;;
         7)
-            if [ -z "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
+            if [ -z "$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
                 echo "Please login first (option 2)"
-                echo "Current token value: '$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN'"
+                echo "Current token value: '$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN'"
             else
                 init_cloud_resources
             fi
             ;;
         8)
-            if [ -z "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
+            if [ -z "$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
                 echo "Please login first (option 2)"
-                echo "Current token value: '$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN'"
+                echo "Current token value: '$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN'"
             else
                 map_api_cloud_resources
             fi
             ;;
         9)
-            if [ -z "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
+            if [ -z "$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
                 echo "Please login first (option 2)"
-                echo "Current token value: '$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN'"
+                echo "Current token value: '$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN'"
             else
                 map_workspace_csp_roles
             fi
             ;;
         10)
-            if [ -z "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
+            if [ -z "$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
                 echo "Please login first (option 1)"
             else
                 sync_projects
             fi
             ;;
         11)
-            if [ -z "$MCIAMMANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
+            if [ -z "$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
                 echo "Please login first (option 1)"
             else
                 map_workspace_projects
