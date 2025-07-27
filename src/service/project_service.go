@@ -28,21 +28,20 @@ type ProjectService struct {
 
 // NewProjectService 새 ProjectService 인스턴스 생성
 func NewProjectService(db *gorm.DB) *ProjectService {
-	log.Printf("Creating new ProjectService with db: %v", db)
-	
-	projectRepo := repository.NewProjectRepository(db)
-	workspaceRepo := repository.NewWorkspaceRepository(db)
+	log.Printf("Creating new ProjectService with db: %+v", db)
+
 	mcmpApiService := NewMcmpApiService(db)
-	
-	log.Printf("ProjectService components - projectRepo: %v, workspaceRepo: %v, mcmpApiService: %v", 
-		projectRepo, workspaceRepo, mcmpApiService)
-	
-	return &ProjectService{
-		db:            db,
-		projectRepo:   projectRepo,
-		workspaceRepo: workspaceRepo,
+	log.Printf("Created mcmpApiService: %+v", mcmpApiService)
+
+	projectService := &ProjectService{
+		db:             db,
+		projectRepo:    repository.NewProjectRepository(db),
+		workspaceRepo:  repository.NewWorkspaceRepository(db),
 		mcmpApiService: mcmpApiService,
 	}
+
+	log.Printf("Created ProjectService with mcmpApiService: %+v", projectService.mcmpApiService)
+	return projectService
 }
 
 // Create 프로젝트 생성 (mc-infra-manager 호출 및 DB 저장)
@@ -60,11 +59,8 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 
 	// Check if mcmpApiService is properly initialized
 	if s.mcmpApiService == nil {
-		log.Printf("Error: mcmpApiService is nil. Reinitializing...")
-		s.mcmpApiService = NewMcmpApiService(s.db)
-		if s.mcmpApiService == nil {
-			return fmt.Errorf("failed to initialize mcmpApiService")
-		}
+		log.Printf("ERROR: mcmpApiService is nil! This indicates a configuration issue.")
+		return fmt.Errorf("mcmpApiService is not properly initialized")
 	}
 
 	// 1. Call mc-infra-manager PostNs API
@@ -86,6 +82,7 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 		},
 	}
 
+	log.Printf("About to call mcmpApiService.McmpApiCall with service: %+v", s.mcmpApiService)
 	statusCode, respBody, serviceVersion, calledURL, err := s.mcmpApiService.McmpApiCall(ctx, callReq) // Get new return values
 	if err != nil {
 		// Include version and URL in the error message
@@ -124,8 +121,6 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 	}
 
 	log.Printf("Successfully called mc-infra-manager PostNs. Proceeding to create project in local DB: %+v", project)
-
-	// 2. Create project in local DB
 
 	// 2. Create project in local DB
 	if err := s.projectRepo.CreateProject(project); err != nil {
@@ -223,11 +218,8 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 
 	// Check if mcmpApiService is properly initialized
 	if s.mcmpApiService == nil {
-		log.Printf("Error: mcmpApiService is nil. Reinitializing...")
-		s.mcmpApiService = NewMcmpApiService(s.db)
-		if s.mcmpApiService == nil {
-			return fmt.Errorf("failed to initialize mcmpApiService")
-		}
+		log.Printf("ERROR: mcmpApiService is nil! This indicates a configuration issue.")
+		return fmt.Errorf("mcmpApiService is not properly initialized")
 	}
 
 	// 1. Call mc-infra-manager GetAllNs API
@@ -241,6 +233,7 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 		},
 	}
 
+	log.Printf("About to call mcmpApiService.McmpApiCall with service: %+v", s.mcmpApiService)
 	statusCode, respBody, serviceVersion, calledURL, err := s.mcmpApiService.McmpApiCall(ctx, callReq)
 	if err != nil {
 		log.Printf("Error calling %s(v%s) %s (URL: %s): %v (status code: %d)", callReq.ServiceName, serviceVersion, callReq.ActionName, calledURL, err, statusCode)
