@@ -28,6 +28,10 @@ definitions:
       RoleTypeCSP: CSP 역할
       RoleTypePlatform: 플랫폼 역할
       RoleTypeWorkspace: 워크스페이스 역할
+    x-enum-descriptions:
+    - 플랫폼 역할
+    - 워크스페이스 역할
+    - CSP 역할
     x-enum-varnames:
     - RoleTypePlatform
     - RoleTypeWorkspace
@@ -679,7 +683,7 @@ definitions:
           $ref: '#/definitions/model.UserWorkspaceRole'
         type: array
     type: object
-host: localhost:3000
+host: localhost
 info:
   contact: {}
   description: MC IAM Manager API Documentation
@@ -780,6 +784,31 @@ paths:
             additionalProperties: true
             type: object
       summary: Get temporary credential CSP information
+      tags:
+      - auth
+  /api/auth/validate:
+    post:
+      consumes:
+      - application/json
+      description: Validate the current access token and refresh if expired
+      operationId: mciamValidateToken
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token validation result with new token if refreshed
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Validate access token
       tags:
       - auth
   /api/csp-credentials:
@@ -1607,7 +1636,7 @@ paths:
       summary: List menus mapped to platform role
       tags:
       - menus
-  /api/menus/setup/initial-menu:
+  /api/menus/setup/initial-menus:
     post:
       consumes:
       - application/json
@@ -1641,7 +1670,7 @@ paths:
       summary: Register/Update menus from YAML file or URL
       tags:
       - menus
-  /api/menus/setup/initial-menu2:
+  /api/menus/setup/initial-menus2:
     post:
       consumes:
       - text/plain

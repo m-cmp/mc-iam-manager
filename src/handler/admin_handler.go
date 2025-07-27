@@ -176,6 +176,8 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 		// })
 	}
 
+	// Platform Admin 역할에 모든 메뉴 매핑 추가 : 메뉴 목록 조회에 구현되어 있음.
+
 	// TODO : 해당 Realm에 scope 추가
 	// TODO : OIDC Client 생성
 	// TODO : 해당 Client에 해당 역할 매핑
