@@ -94,6 +94,8 @@ func main() {
 		&model.TempCredential{},
 		&mcmpapi.McmpApiService{},
 		&mcmpapi.McmpApiAction{},
+		&model.MciamPermission{},
+		&model.MciamRoleMciamPermission{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
@@ -183,6 +185,7 @@ func main() {
 		auth.POST("/refresh", authHandler.RefreshToken)
 		auth.GET("/certs", authHandler.AuthCerts)
 		auth.GET("/temp-credential-csps", authHandler.GetTempCredentialProviders)
+		auth.POST("/validate", authHandler.Validate)
 	}
 
 	// platform admin 생성. 권한체크 필요한데...
@@ -356,11 +359,16 @@ func main() {
 	mciamPermissions := api.Group("/permissions/mciam", middleware.PlatformRoleMiddleware(middleware.Read))
 	{
 		mciamPermissions.POST("/list", permissionHandler.ListMciamPermissions)
-		mciamPermissions.POST("/createMciamPermission", permissionHandler.CreateMciamPermission, middleware.PlatformRoleMiddleware(middleware.Write))
-		mciamPermissions.GET("/:id", permissionHandler.GetMciamPermissionByID)
+		mciamPermissions.POST("", permissionHandler.CreateMciamPermission, middleware.PlatformRoleMiddleware(middleware.Write))
+		mciamPermissions.GET("/id/:permissionId", permissionHandler.GetMciamPermissionByID)
 		mciamPermissions.PUT("/:id", permissionHandler.UpdateMciamPermission, middleware.PlatformRoleMiddleware(middleware.Write))
 		mciamPermissions.DELETE("/:id", permissionHandler.DeleteMciamPermission, middleware.PlatformRoleMiddleware(middleware.Write))
 	}
+
+	// 역할별 MC-IAM 권한 관리 라우트
+	roles.POST("/:roleType/:roleId/mciam-permissions/:permissionId", permissionHandler.AssignMciamPermissionToRole, middleware.PlatformRoleMiddleware(middleware.Write))
+	roles.DELETE("/:roleType/:roleId/mciam-permissions/:permissionId", permissionHandler.RemoveMciamPermissionFromRole, middleware.PlatformRoleMiddleware(middleware.Write))
+	roles.GET("/:roleType/:roleId/mciam-permissions", permissionHandler.GetRoleMciamPermissions, middleware.PlatformRoleMiddleware(middleware.Read))
 
 	// MCMP API 라우트
 	mcmpApis := api.Group("/mcmp-apis")
@@ -389,8 +397,13 @@ func main() {
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// 서버 시작
+	port := os.Getenv("MC_IAM_MANAGER_PORT")
+	if port == "" {
+		port = "5000"
+	}
+
 	go func() {
-		if err := e.Start(":5000"); err != nil && err != http.ErrServerClosed {
+		if err := e.Start(":" + port); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal("shutting down the server", err)
 		}
 	}()
