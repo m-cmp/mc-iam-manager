@@ -167,7 +167,7 @@ func (c *KeycloakConfig) LoginUser(ctx context.Context, client *gocloak.GoCloak,
 // LoginAdmin performs admin login to Keycloak
 func (kc *KeycloakConfig) LoginAdmin(ctx context.Context) (*gocloak.JWT, error) {
 	adminUsername := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_ADMIN")
-	adminPassword := os.Getenv("MC_IAM_MANAGER_MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD")
+	adminPassword := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD")
 
 	log.Printf("[DEBUG] Attempting admin login with:")
 	log.Printf("[DEBUG] - Host: %s", kc.Host)
@@ -176,7 +176,7 @@ func (kc *KeycloakConfig) LoginAdmin(ctx context.Context) (*gocloak.JWT, error) 
 	// log.Printf("[DEBUG] - Admin Password: %s", adminPassword)
 
 	if adminUsername == "" || adminPassword == "" {
-		return nil, fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_ADMIN or MC_IAM_MANAGER_MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD not set")
+		return nil, fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_ADMIN or MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD not set")
 	}
 
 	token, err := kc.Client.LoginAdmin(ctx, adminUsername, adminPassword, "master")
@@ -267,10 +267,10 @@ func (kc *KeycloakConfig) GetAdminToken(ctx context.Context) (*gocloak.JWT, erro
 	}
 
 	adminUsername := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_ADMIN")
-	adminPassword := os.Getenv("MC_IAM_MANAGER_MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD")
+	adminPassword := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD")
 
 	if adminUsername == "" || adminPassword == "" {
-		return nil, fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_ADMIN or MC_IAM_MANAGER_MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD not set")
+		return nil, fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_ADMIN or MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD not set")
 	}
 
 	log.Printf("[DEBUG] Attempting admin login with:")
