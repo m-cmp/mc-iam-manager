@@ -44,13 +44,6 @@ import (
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token.
 func main() {
-	// Load environment variables from .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Printf("Warning: Error loading .env file: %v", err)
-		// .env 파일이 없어도 계속 진행 (환경 변수에서 직접 설정 가능)
-	}
-
 	// 로그 파일 설정
 	logPath := filepath.Join("..", "app.log")
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -64,11 +57,11 @@ func main() {
 	log.SetOutput(multiWriter)
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-	// 시작 로그 추가
-	log.Printf("=== Application Starting ===")
-
 	// .env 파일 로드 (프로젝트 루트에서 찾도록 수정)
 	util.LoadEnvFiles()
+
+	// 시작 로그 추가
+	log.Printf("=== Application Starting ===")
 
 	// 데이터베이스 초기화
 	dbConfig := config.NewDatabaseConfig()
