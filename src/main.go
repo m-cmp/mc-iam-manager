@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/m-cmp/mc-iam-manager/config"
