@@ -110,7 +110,7 @@ func main() {
 	cspCredentialHandler := handler.NewCspCredentialHandler(db)
 	mcmpApiHandler := handler.NewMcmpApiHandler(db)
 	mcmpApiPermissionActionMappingHandler := handler.NewMcmpApiPermissionActionMappingHandler(db)
-	healthHandler := handler.NewHealthHandler()
+	healthHandler := handler.NewHealthHandler(db)
 	permissionHandler := handler.NewMciamPermissionHandler(db)
 	roleHandler := handler.NewRoleHandler(db)
 

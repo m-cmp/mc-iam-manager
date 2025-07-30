@@ -35,4 +35,6 @@ generated/
 asset/mcmpapi/mcmpapi-*.yaml
 
 dockercontainer-volume
+container-volume
+old
 dockerfiles/nginx/nginx.conf
