@@ -1,0 +1,21 @@
+companies:
+  - id: "1"
+    name: "Megazone"
+    icon: "mzc_icon"
+    logo: "mzc_logo"
+    alias: "MZC"
+    description: "Leading cloud service provider"
+
+  - id: "2"
+    name: "Amazon Web Services"
+    icon: "aws_icon"
+    logo: "aws_logo"
+    alias: "AWS"
+    description: "Global cloud infrastructure provider"
+
+  - id: "3"
+    name: "Google Cloud"
+    icon: "gcp_icon"
+    logo: "gcp_icon"
+    alias: "GCP"
+    description: "Google's cloud computing services"
