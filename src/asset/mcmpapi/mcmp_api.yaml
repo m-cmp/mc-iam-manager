@@ -12,7 +12,7 @@ services:
 
   mc-iam-manager:
     version: 0.3.0
-    baseurl: http://localhost:5000
+    baseurl: http://localhost:5005
     auth:
       type: bearer
 
