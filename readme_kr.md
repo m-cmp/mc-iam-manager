@@ -28,10 +28,12 @@
 ### 필수 조건
 - 외부 접근이 가능한 Ubuntu (22.04 테스트 완료) (https-443, http-80, ssh-ANY)
 - docker(24+) 및 docker-compose(v2)
-- 도메인 이름 (예: megazone.com)
-- SSL을 등록하기 위한 이메일 주소
-- https 설정 : nginx + keycloak + certbot 설정은 별도 문서 참조
-- database : postgres 등 
+- database : postgres 등
+
+  MC-IAM-MANAGER는 CSP의 리소스를 제어하기 위한 임시자격증명 발급을 필요로 한다.
+  IDP 설정을 위해서는 도메인, 이메일주소가 필요하다.
+  개발용으로 해당 기능을 사용하지 않고 MC-INFRA-MANAGER의 Connection을 이용하는 경우에는 자체인증서를 발급받고
+  실제 도메인이 있는 경우에는 CA인증서 발급을 받아 MC-IAM-MANAGER 설정을 한다.
 
 
 ### 1단계 : 소스 복사
@@ -59,43 +61,9 @@ git clone <https://github.com/m-cmp/mc-iam-manager> <YourFolderName>
   - `KEYCLOAK_ADMIN`: Keycloak 관리자 계정
   - `KEYCLOAK_ADMIN_PASSWORD`: Keycloak 관리자 비밀번호
 
-#### SSL 인증서 발급(필요시)
-  # SSL 인증서 발급  
-  ```bash  
-  sudo docker compose -f docker-compose.cert.yaml up
-  ```
-
-  ** 인증서 갱신 : Let's Encrypt 인증서는 90일마다 갱신이 필요합니다.
-  ```bash
-  # 수동 갱신
-  sudo docker compose -f docker-compose.cert.yaml run --rm mcmp-certbot renew
-
-  # 자동 갱신 설정 (cron)
-  0 12 * * * /usr/bin/docker compose -f /path/to/docker-compose.cert.yaml run --rm mcmp-certbot renew
-  ```
-
-  성공적인 인증서 발급 시 다음과 같은 메시지가 표시됩니다:
-  ```
-  mcmp-certbot  | Requesting a certificate for [도메인 이름]
-  mcmp-certbot  | Successfully received certificate.
-  mcmp-certbot  | Certificate is saved at: /etc/letsencrypt/live/[도메인 이름]/fullchain.pem
-  mcmp-certbot  | Key is saved at: /etc/letsencrypt/live/[도메인 이름]/privkey.pem
-  mcmp-certbot  | This certificate expires on 2025-10-20.
-  ```
-
-#### Nginx 설정 생성
-  환경 변수를 기반으로 Nginx 설정 파일을 생성합니다.
-  # Nginx 설정 스크립트 실행
-  ```bash
-  ./asset/setup/0_preset_create_nginx_conf.sh
-  ```
-
-  생성된 파일: `dockerfiles/nginx/nginx.conf`
-  ** keycloak 주소는 /auth를 붙임. **
-  ```bash
-   location /auth/ {
-            proxy_pass http://mciam-keycloak:8080/auth/;
-  ```
+#### 인증서 발급(필요시)
+  * [자체 인증서 발급](https://github.com/m-cmp/mc-iam-manager/wiki/%EC%9E%90%EC%B2%B4-%EC%9D%B8%EC%A6%9D%EC%84%9C-%EB%B0%9C%EA%B8%89)
+  * [CA 인증서 발급](https://github.com/m-cmp/mc-iam-manager/wiki/CA-%EC%9D%B8%EC%A6%9D%EC%84%9C-%EB%B0%9C%EA%B8%89)
 
 
 ### 3단계 : MC-IAM-MANAGER Init Setup 
@@ -103,12 +71,12 @@ git clone <https://github.com/m-cmp/mc-iam-manager> <YourFolderName>
   # 전체 시스템 배포( mc-iam-manager + nginx + postgres + keycloak)
   ```bash
   sudo docker compose -f docker-compose.all.yaml up -d
+  ```
 
-  # MC-IAM-MANAGER만 배포 
+  # MC-IAM-MANAGER만 배포 : ( nginx + postgres + keyclok이 이미 가동중 )
   ```bash
   sudo docker compose -f docker-compose.standalone.yaml up -d
   ```
-
 
   # MC-IAM-MANAGER만 소스로 실행하는 경우( nginx + postgres + keyclok이 이미 가동중 )
   ```bash
@@ -118,8 +86,9 @@ git clone <https://github.com/m-cmp/mc-iam-manager> <YourFolderName>
 
 
 #### 가동 확인
-curl https://<your domain or localhost>:<port>/readyz
-```
+  ```bash
+  curl https://<your domain or localhost>:<port>/readyz
+  ```
 
 #### 서비스 구성
 - **Nginx**: 리버스 프록시, SSL 종료, 정적 파일 서빙
