@@ -65,6 +65,7 @@ Internet
 - **Certbot**: SSL 인증서 자동 발급/갱신
 
 ## 빠른 시작
+  [mc-admin-cli](https://github.com/m-cmp/mc-admin-cli/blob/main/README.md) 안에 mc-iam-manager가 포함되어 있다.
 
 ### 필수 조건
 
