@@ -1,1 +1,0 @@
-drop_table("workspace_project_mappings")
