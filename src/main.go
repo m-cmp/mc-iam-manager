@@ -82,6 +82,7 @@ func main() {
 		&model.ResourceType{},
 		&model.UserPlatformRole{},
 		&model.UserWorkspaceRole{},
+		&model.CspRole{},
 		&model.RoleMasterCspRoleMapping{},
 		&model.TempCredential{},
 		&mcmpapi.McmpApiService{},
