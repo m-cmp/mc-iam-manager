@@ -4,12 +4,14 @@ vendor/
 .idea/
 bin/
 tmp/
+pkg/
 node_modules/
 .sass-cache/
 public/assets/
 .vscode/
 .grifter/
 .env
+**/.env
 **/.DS_Store
 *.pid
 coverage
@@ -30,13 +32,9 @@ generated/
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+asset/mcmpapi/mcmpapi-*.yaml
 
-scripts/dockerfiles/import/realm-import.json
-!scripts/.env
-!scripts/init/.env
-
-
-scripts/init/permission.csv
-scripts/init/mcwebconsoleMenu.yaml
-scripts/init/api.yaml
-scripts/init/.env
+dockercontainer-volume
+container-volume
+old
+dockerfiles/nginx/nginx.conf

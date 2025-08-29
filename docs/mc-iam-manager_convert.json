@@ -1,0 +1,532 @@
+API Title: MC IAM Manager API
+API Version: 1.0
+Host: localhost:3000
+Base Path: /api/v1
+    Getcsprolemappingbyroleid:
+      method: get
+      resourcePath: /api/roles/csp-roles/id/:roleId
+      description: "Get a mapping between role and CSP role"
+    Getuserbyid:
+      method: get
+      resourcePath: /api/users/id/{userId}
+      description: "Retrieve user details by user ID."
+    Listworkspaces:
+      method: post
+      resourcePath: /api/workspaces/list
+      description: "Retrieve a list of all workspaces."
+    Setupinitialadmin:
+      method: post
+      resourcePath: /api/initial-admin
+      description: "Creates the initial platform admin user with necessary permissions. platform admin 생성인데"
+    Addcsprolemappings:
+      method: post
+      resourcePath: /api/roles/csp-roles
+      description: "Create a new mapping between role and CSP role"
+    Updateframeworkservice:
+      method: put
+      resourcePath: /api/mcmp-apis/name/{serviceName}
+      description: "Updates specific fields (e.g., BaseURL, Auth info) of an MCMP API service definition identified by its name. Cannot update name or version."
+    Listcloudresourcetypes:
+      method: post
+      resourcePath: /api/resource-types/cloud-resources/list
+      description: "모든 리소스 타입 목록을 조회합니다"
+    Createrole:
+      method: post
+      resourcePath: /api/roles
+      description: "Create a new role"
+    Removerole:
+      method: delete
+      resourcePath: /api/roles/id/{roleId}/unassign
+      description: "Remove a role from a user"
+    Initializemenupermissions:
+      method: get
+      resourcePath: /api/setup/initial-role-menu-permission
+      description: "CSV 파일을 읽어서 메뉴 권한을 초기화합니다"
+    Mciamauthcerts:
+      method: get
+      resourcePath: /api/auth/certs
+      description: "Retrieve authentication certificates for MC-IAM-Manager to be used in target frameworks for token validation."
+    Mciamrefreshtoken:
+      method: post
+      resourcePath: /api/auth/refresh
+      description: "Refresh JWT access token using a valid refresh token."
+    Getplatformrolebyid:
+      method: get
+      resourcePath: /api/roles/platform-roles/id/{roleId}
+      description: "Get platform role details by ID"
+    Deleteplatformrole:
+      method: delete
+      resourcePath: /api/roles/platform-roles/id/{roleId}
+      description: "Delete a platform role"
+    Listworkspaceactionsbypermissionid:
+      method: post
+      resourcePath: /api/mcmp-api-permission-action-mappings/actions/list
+      description: "Returns all workspace actions mapped to a specific permission"
+    Getcloudresourcetypebyid:
+      method: get
+      resourcePath: /api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId
+      description: "특정 리소스 타입을 ID로 조회합니다"
+    Updateresourcetype:
+      method: put
+      resourcePath: /api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId
+      description: "리소스 타입 정보를 업데이트합니다"
+    Deleteresourcetype:
+      method: delete
+      resourcePath: /api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId
+      description: "리소스 타입을 삭제합니다"
+    Assignrole:
+      method: post
+      resourcePath: /api/roles/id/{roleId}/assign
+      description: "Assign a role to a user"
+    Listusersbyplatformrole:
+      method: post
+      resourcePath: /api/roles/mappings/platform-roles/users/list
+      description: "List users by platform role"
+    Deletemenusrolesmapping:
+      method: delete
+      resourcePath: /api/menus/platform-roles
+      description: "Delete the mapping between a platform role and a menu."
+    Createmenusrolesmapping:
+      method: post
+      resourcePath: /api/menus/platform-roles
+      description: "Create a new menu mapping"
+    Deleterole:
+      method: delete
+      resourcePath: /api/roles/id/{roleId}
+      description: "Delete a role by its name."
+    Getrolebyroleid:
+      method: get
+      resourcePath: /api/roles/id/{roleId}
+      description: "Get role details by ID"
+    Updaterole:
+      method: put
+      resourcePath: /api/roles/id/{roleId}
+      description: "Update the details of an existing role."
+    Listprojects:
+      method: post
+      resourcePath: /api/projects/list
+      description: "Retrieve a list of all projects."
+    Checkuserroles:
+      method: get
+      resourcePath: /api/setup/check-user-roles
+      description: "Check all roles assigned to a user. 특정 유저가 가진 role 목록을 조회합니다."
+    Listplatformactions:
+      method: post
+      resourcePath: /api/mcmp-api-permission-action-mappings/list
+      description: "Returns all platform actions mapped to a specific permission"
+    Createproject:
+      method: post
+      resourcePath: /api/projects
+      description: "Create a new project with the specified information."
+    Mciamgettemporarycredentials:
+      method: post
+      resourcePath: /api/workspaces/temporary-credentials
+      description: "Get temporary credentials for CSP"
+    Listcsprolemappings:
+      method: post
+      resourcePath: /api/roles/csp-roles/list
+      description: "Get a mapping between role and CSP role"
+    Addprojecttoworkspace:
+      method: post
+      resourcePath: /api/workspaces/assign/projects
+      description: "Add a project to a workspace"
+    Testcallgetallns:
+      method: get
+      resourcePath: /api/mcmp-apis/test/mc-infra-manager/getallns
+      description: "Calls the GetAllNs action of the mc-infra-manager service via the CallApi service."
+    Listmenus:
+      method: post
+      resourcePath: /api/menus/list
+      description: "List all menus as a tree structure. Admin permission required."
+    Getusermenutree:
+      method: get
+      resourcePath: /api/menus/user-menu-tree
+      description: "Get menu tree based on user's platform roles"
+    Listusers:
+      method: post
+      resourcePath: /api/users/list
+      description: "Retrieve a list of all users."
+    Mciamlogout:
+      method: post
+      resourcePath: /api/auth/logout
+      description: "Invalidate the user's refresh token and log out."
+    Listpermissionsbyactionid:
+      method: get
+      resourcePath: /api/mcmp-api-permission-action-mappings/actions/{actionId}/permissions
+      description: "Returns all permissions mapped to a specific API action"
+    Removeuserfromworkspace:
+      method: delete
+      resourcePath: /api/workspaces/{id}/users/{userId}
+      description: "Remove a user from a workspace"
+    Listmenustree:
+      method: post
+      resourcePath: /api/menus/tree/list
+      description: "List all menus as a tree structure. Admin permission required."
+    Updateuserstatus:
+      method: post
+      resourcePath: /api/users/id/{userId}/status
+      description: "Update user status (active/inactive)"
+    Createmciampermission:
+      method: post
+      resourcePath: /api/permissions/mciam
+      description: "Create a new permission with the specified information."
+    Listroles:
+      method: post
+      resourcePath: /api/roles/list
+      description: "Retrieve a list of all roles."
+    Createplatformrole:
+      method: post
+      resourcePath: /api/roles/platform-roles
+      description: "Create a new menu role"
+    Listusermenutree:
+      method: post
+      resourcePath: /api/users/menus-tree/list
+      description: "Get the menu tree accessible to the current user's platform role."
+    Updateuser:
+      method: put
+      resourcePath: /api/users/{id}
+      description: "Update the details of an existing user."
+    Deleteuser:
+      method: delete
+      resourcePath: /api/users/{id}
+      description: "Delete a user by their ID."
+    Updatemenu:
+      method: put
+      resourcePath: /api/menus/id/{menuId}
+      description: "Update menu information"
+    Getmenubyid:
+      method: post
+      resourcePath: /api/menus/id/{menuId}
+      description: "Get menu details by ID"
+    Deletemenu:
+      method: delete
+      resourcePath: /api/menus/id/{menuId}
+      description: "Delete a menu"
+    Registermenusfromyaml:
+      method: post
+      resourcePath: /api/menus/setup/initial-menu
+      description: "Register or update menus from a local YAML file specified by the filePath query parameter, or from the MCWEBCONSOLE_MENUYAML URL in .env if not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml."
+    Registermenusfrombody:
+      method: post
+      resourcePath: /api/menus/setup/initial-menu2
+      description: "Parse YAML text in the request body and register or update menus in the database. Recommended Content-Type: text/plain, text/yaml, application/yaml."
+    Listworkspaceusers:
+      method: post
+      resourcePath: /api/workspaces/users/list
+      description: "List users by workspace criteria"
+    Syncmcmpapis:
+      method: post
+      resourcePath: /api/mcmp-apis/syncMcmpAPIs
+      description: "Triggers the synchronization of MCMP API definitions from the configured YAML URL to the database."
+    Getworkspacerolebyname:
+      method: get
+      resourcePath: /api/roles/workspace-roles/name/{roleName}
+      description: "Get workspace role details by Name"
+    Syncprojects:
+      method: post
+      resourcePath: /api/setup/sync-projects
+      description: "mc-infra-manager의 네임스페이스 목록을 조회하여 로컬 DB에 없는 프로젝트를 추가합니다."
+    Getuserworkspaceandworkspacerolesbyuserid:
+      method: get
+      resourcePath: /api/users/id/{userId}/workspaces/roles/list
+      description: "Get workspaces and roles for a specific user"
+    Listservicesandactions:
+      method: post
+      resourcePath: /api/mcmp-apis/list
+      description: "Retrieves all MCMP API service and action definitions currently stored in the database."
+    Getcsprolebyid:
+      method: get
+      resourcePath: /api/roles/csp/id/{roleId}
+      description: "Get csp role details by ID"
+    Listusersbycsprole:
+      method: post
+      resourcePath: /api/roles/mappings/csp-roles/list
+      description: "List users by csp role"
+    Createworkspacerole:
+      method: post
+      resourcePath: /api/roles/workspace-roles
+      description: "Create a new workspace role"
+    Createmcmpapipermissionactionmapping:
+      method: post
+      resourcePath: /api/mcmp-api-permission-action-mappings
+      description: "Creates a new mapping between a permission and an API action"
+    Listcsproles:
+      method: post
+      resourcePath: /api/roles/csp/list
+      description: "Get a list of all csp roles"
+    Getuserbyusername:
+      method: get
+      resourcePath: /api/users/name/{username}
+      description: "Get user details by username"
+    Assignplatformrole:
+      method: post
+      resourcePath: /api/roles/assign/platform-role
+      description: "Assign a platform role to a user"
+    Setactiveversion:
+      method: put
+      resourcePath: /api/mcmp-apis/name/{serviceName}/versions/{version}/activate
+      description: "Sets the specified version of an MCMP API service as the active one."
+    Getrolemastermappings:
+      method: get
+      resourcePath: /api/roles/mappings/role/id/:roleId
+      description: "Get role master mappings"
+    Getuserworkspaceroles:
+      method: get
+      resourcePath: /api/workspaces/id/{workspaceId}/users/id/{userId}
+      description: "Get roles assigned to a user in a workspace"
+    Addusertoworkspace:
+      method: post
+      resourcePath: /api/workspaces/{id}/users
+      description: "Add a user to a workspace"
+    Mcmpapicall:
+      method: post
+      resourcePath: /api/mcmp-apis/mcmpApiCall
+      description: "Executes a defined MCMP API action with parameters structured in McmpApiCallRequest."
+    Getuserworkspaceandworkspacerolesbyuseridandworkspaceid:
+      method: get
+      resourcePath: /api/users/id/{userId}/workspaces/id/{workspaceId}/roles/list
+      description: "Get workspaces and roles for a specific user and workspace"
+    Listusersandrolesbyworkspace:
+      method: post
+      resourcePath: /api/workspaces/id/{workspaceId}/users/list
+      description: "Retrieve users and roles list belonging to workspace"
+    Removeprojectfromworkspace:
+      method: delete
+      resourcePath: /api/workspaces/unassign/projects
+      description: "Remove a project from a workspace"
+    Assignworkspacerole:
+      method: post
+      resourcePath: /api/roles/assign/workspace-role
+      description: "Assign a workspace role to a user"
+    Listusersbyworkspacerole:
+      method: post
+      resourcePath: /api/roles/mappings/workspace-roles/users/list
+      description: "List users by workspace role"
+    Listallworkspaceusersandroles:
+      method: post
+      resourcePath: /api/workspaces/users-roles/list
+      description: "Retrieve the list of users and roles assigned to the workspace."
+    Listrolemastermappings:
+      method: post
+      resourcePath: /api/roles/mappings/list
+      description: "List role master mappings"
+    Getuserworkspacesbyuserid:
+      method: get
+      resourcePath: /api/users/id/{userId}/workspaces/list
+      description: "Get workspaces for a specific user"
+    Getrolemciampermissions:
+      method: get
+      resourcePath: /api/roles/{roleType}/{roleId}/mciam-permissions
+      description: "특정 역할의 MC-IAM 권한 ID 목록을 조회합니다."
+    Createuser:
+      method: post
+      resourcePath: /api/users
+      description: "Create a new user with the specified information."
+    Mciamlogin:
+      method: post
+      resourcePath: /api/auth/login
+      description: "Authenticate user and issue JWT token."
+    Removeplatformrole:
+      method: delete
+      resourcePath: /api/roles/unassign/platform-role
+      description: "Remove a platform role from a user"
+    Mciamworkspaceticket:
+      method: post
+      resourcePath: /api/workspaces/workspace-ticket
+      description: "Set workspace ticket"
+    Addworkspacetoproject:
+      method: post
+      resourcePath: /api/projects/{id}/workspaces/{workspaceId}
+      description: "프로젝트에 워크스페이스를 연결합니다."
+    Createcsprole:
+      method: post
+      resourcePath: /api/roles/csp
+      description: "Create a new csp role"
+    Mciamgettempcredentialproviders:
+      method: get
+      resourcePath: /api/auth/temp-credential-csps
+      description: "Get temporary credential provider information for AWS and GCP"
+    Getprojectbyname:
+      method: get
+      resourcePath: /api/projects/name/{projectName}
+      description: "Get project details by name"
+    Deleteworkspace:
+      method: delete
+      resourcePath: /api/workspaces/id/{workspaceId}
+      description: "Delete a workspace by its ID."
+    Getworkspacebyid:
+      method: get
+      resourcePath: /api/workspaces/id/{workspaceId}
+      description: "Retrieve workspace details by workspace ID."
+    Updateworkspace:
+      method: put
+      resourcePath: /api/workspaces/id/{workspaceId}
+      description: "Update the details of an existing workspace."
+    Getworkspacebyname:
+      method: get
+      resourcePath: /api/workspaces/name/{workspaceName}
+      description: "Retrieve specific workspace by name"
+    Listworkspaceprojects:
+      method: post
+      resourcePath: /api/workspaces/projects/list
+      description: "Retrieve project list belonging to specific workspace"
+    Mciamlistcredentials:
+      method: get
+      resourcePath: /api/csp-credentials
+      description: "모든 CSP 인증 정보 목록을 조회합니다"
+    Mciamcreatecredential:
+      method: post
+      resourcePath: /api/csp-credentials
+      description: "새로운 CSP 인증 정보를 생성합니다"
+    Removecsprolemappings:
+      method: delete
+      resourcePath: /api/roles/unassign/csp-roles
+      description: "Delete a mapping between workspace role and CSP role"
+    Updatecsprole:
+      method: put
+      resourcePath: /api/roles/csp-roles/id/{roleId}
+      description: "Update role information"
+    Deletecsprole:
+      method: delete
+      resourcePath: /api/roles/csp-roles/id/{roleId}
+      description: "Delete a role"
+    Mciamgetcredentialbyid:
+      method: get
+      resourcePath: /api/csp-credentials/{id}
+      description: "특정 CSP 인증 정보를 ID로 조회합니다"
+    Mciamupdatecredential:
+      method: put
+      resourcePath: /api/csp-credentials/{id}
+      description: "CSP 인증 정보를 업데이트합니다"
+    Mciamdeletecredential:
+      method: delete
+      resourcePath: /api/csp-credentials/{id}
+      description: "CSP 인증 정보를 삭제합니다"
+    Updatemciampermission:
+      method: put
+      resourcePath: /api/permissions/mciam/{id}
+      description: "Update the details of an existing permission."
+    Deletemciampermission:
+      method: delete
+      resourcePath: /api/permissions/mciam/{id}
+      description: "Delete a permission by its ID."
+    Listplatformroles:
+      method: post
+      resourcePath: /api/roles/menu-roles/list
+      description: "Get a list of all menu roles"
+    Createmenu:
+      method: post
+      resourcePath: /api/menus
+      description: "Create a new menu"
+    Getmciampermissionbyid:
+      method: get
+      resourcePath: /api/permissions/mciam/id/{id}
+      description: "Retrieve permission details by permission ID."
+    Getplatformrolebyname:
+      method: get
+      resourcePath: /api/roles/platform-roles/name/{roleName}
+      description: "Get menu role details by Name"
+    Getworkspacerolebyid:
+      method: get
+      resourcePath: /api/roles/workspace-roles/id/{roleId}
+      description: "Get workspace role details by ID"
+    Deleteworkspacerole:
+      method: delete
+      resourcePath: /api/roles/workspace-roles/id/{roleId}
+      description: "Delete a workspace role"
+    Listusermenu:
+      method: post
+      resourcePath: /api/users/menus/list
+      description: "Get the menu list accessible to the current user's platform role."
+    Createworkspace:
+      method: post
+      resourcePath: /api/workspaces
+      description: "Create a new workspace with the specified information."
+    Updatemapping:
+      method: put
+      resourcePath: /api/mcmp-api-permission-action-mappings/permissions/{permissionId}/actions/{actionId}
+      description: "Updates an existing mapping between a permission and an API action"
+    Deletemapping:
+      method: delete
+      resourcePath: /api/mcmp-api-permission-action-mappings/permissions/{permissionId}/actions/{actionId}
+      description: "Deletes a mapping between a permission and an API action"
+    Getplatformactionsbypermissionid:
+      method: get
+      resourcePath: /api/mcmp-api-permission-action-mappings/platforms/id/{permissionId}/actions
+      description: "Returns all platform actions mapped to a specific permission"
+    Removeworkspacerole:
+      method: delete
+      resourcePath: /api/roles/unassign/workspace-role
+      description: "Remove a workspace role from a user"
+    Listuserworkspaces:
+      method: post
+      resourcePath: /api/users/workspaces/list
+      description: "List workspaces for the current user"
+    Mciamcheckhealth:
+      method: get
+      resourcePath: /readyz
+      description: "Check the health status of the service."
+    Listmciampermissions:
+      method: post
+      resourcePath: /api/permissions/mciam/list
+      description: "Retrieve a list of all permissions."
+    Getprojectbyid:
+      method: get
+      resourcePath: /api/projects/{id}
+      description: "Retrieve project details by project ID."
+    Updateproject:
+      method: put
+      resourcePath: /api/projects/{id}
+      description: "Update the details of an existing project."
+    Deleteproject:
+      method: delete
+      resourcePath: /api/projects/{id}
+      description: "Delete a project by its ID."
+    Createcsproles:
+      method: post
+      resourcePath: /api/roles/csp-roles/batch
+      description: "Create multiple new csp roles"
+    Listuserworkspaceandworkspaceroles:
+      method: post
+      resourcePath: /api/users/workspaces/roles/list
+      description: "List workspaces and roles for the current user"
+    Getrolebyrolename:
+      method: get
+      resourcePath: /api/roles/name/{roleName}
+      description: "Retrieve role details by role name."
+    Getcsprolebyname:
+      method: get
+      resourcePath: /api/roles/csp/name/{roleName}
+      description: "Get csp role details by Name"
+    Createresourcetype:
+      method: post
+      resourcePath: /api/resource-types/cloud-resources
+      description: "새로운 리소스 타입을 생성합니다"
+    Assignmciampermissiontorole:
+      method: post
+      resourcePath: /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}
+      description: "역할에 MC-IAM 권한을 할당합니다."
+    Removemciampermissionfromrole:
+      method: delete
+      resourcePath: /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}
+      description: "역할에서 MC-IAM 권한을 제거합니다."
+    Listuserprojectsbyworkspace:
+      method: get
+      resourcePath: /api/users/workspaces/id/{workspaceId}/projects/list
+      description: "List projects for the current user"
+    Listmappedmenusbyrole:
+      method: post
+      resourcePath: /api/menus/platform-roles/list
+      description: "List menus mapped to a specific platform role."
+    Listworkspaceroles:
+      method: post
+      resourcePath: /api/roles/workspace-roles/list
+      description: "Get a list of all workspace roles"
+    Getuserbykcid:
+      method: get
+      resourcePath: /api/users/kc/{kcUserId}
+      description: "Get user details by KcID"
+    Getworkspaceprojectsbyworkspaceid:
+      method: get
+      resourcePath: /api/workspaces/id/{workspaceId}/projects/list
+      description: "Retrieve project list belonging to specific workspace"

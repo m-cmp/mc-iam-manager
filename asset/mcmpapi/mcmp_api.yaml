@@ -1,0 +1,2664 @@
+# mc-admin-cli/conf/api.yaml
+# 우선 api.yaml 을 내장합니다. 정식 릴리즈 이후 github 기반 링크 예정
+
+services:
+  mc-infra-connector:
+    version: 0.9.8
+    baseurl: http://43.201.77.237:1024/spider
+    auth:
+      type: basic
+      username: 
+      password: 
+
+  mc-iam-manager:
+    version: 0.3.0
+    baseurl: http://localhost:3000
+    auth:
+      type: bearer
+
+  mc-infra-manager:
+    version: 0.9.22
+    baseurl: http://43.201.77.237:1323/tumblebug
+    auth:
+      type: basic
+      username: default
+      password: default
+  
+  mc-web-console:
+    version: main
+    baseurl: http://localhost:3001
+    auth:
+      type: bearer
+
+  mc-observability:
+    version: 0.2.3
+    baseurl: http://localhost:18080
+    auth:
+
+  mc-application-manager:
+    version: 0.3.0
+    baseurl: http://localhost:18084
+    auth:
+
+  mc-workflow-manager:
+    version: 0.3.0
+    baseurl: http://localhost:18083
+    auth:
+
+  mc-cost-optimizer:
+    version: 0.3.0
+    baseurl: http://localhost:9090
+    auth:
+
+  mc-data-manager:
+    version: 0.3.0
+    baseurl: http://localhost:3300
+    auth:
+  
+  # sample:
+  #   baseurl: http://localhost:1323/test
+  #   auth:
+  #     type: ""
+
+serviceActions:
+  mc-infra-connector:
+    Get-Driver:
+      method: get
+      resourcePath: /driver/{DriverName}
+      description: "Retrieve details of a specific Cloud Driver."
+    Unregister-Driver:
+      method: delete
+      resourcePath: /driver/{DriverName}
+      description: "Unregister a specific Cloud Driver."
+    List-Myimage:
+      method: get
+      resourcePath: /myimage
+      description: "Retrieve a list of MyImages associated with a specific connection."
+    Snapshot-Vm:
+      method: post
+      resourcePath: /myimage
+      description: "Create a new MyImage snapshot from a specified VM. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/MyImage-and-Driver-API)], [[Snapshot-MyImage,Disk Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Snapshot,-MyImage-and-Disk-Overview)]"
+    Unregister-Subnet:
+      method: delete
+      resourcePath: /regsubnet/{Name}
+      description: "Unregister a Subnet from a specified VPC."
+    Unregister-Nlb:
+      method: delete
+      resourcePath: /regnlb/{Name}
+      description: "Unregister a Network Load Balancer (NLB) with the specified name."
+    List-Vm-Status:
+      method: get
+      resourcePath: /vmstatus
+      description: "Retrieve a list of statuses for Virtual Machines (VMs) associated with a specific connection."
+    Any-Call:
+      method: post
+      resourcePath: /anycall
+      description: "Execute a custom function (FID) with key-value parameters through AnyCall. 🕷️ [[Development Guide](https://github.com/cloud-barista/cb-spider/wiki/AnyCall-API-Extension-Guide)]"
+    Get-Cluster:
+      method: get
+      resourcePath: /cluster/{Name}
+      description: "Retrieve details of a specific Cluster."
+    Delete-Cluster:
+      method: delete
+      resourcePath: /cluster/{Name}
+      description: "Delete a specified Cluster."
+    Count-All-Keypair:
+      method: get
+      resourcePath: /countkeypair
+      description: "Get the total number of KeyPairs across all connections."
+    Upload-Driver:
+      method: post
+      resourcePath: /driver/upload
+      description: "Upload a Cloud Driver library file."
+    Add-Subnet:
+      method: post
+      resourcePath: /vpc/{VPCName}/subnet
+      description: "Add a new Subnet to an existing VPC."
+    List-Cluster:
+      method: get
+      resourcePath: /cluster
+      description: "Retrieve a list of Clusters associated with a specific connection."
+    Create-Cluster:
+      method: post
+      resourcePath: /cluster
+      description: "Create a new Cluster with specified configurations. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Provider-Managed-Kubernetes-and-Driver-API)] <br> * NodeGroupList is optional, depends on CSP type: <br> &nbsp;- Type-I (e.g., Tencent, Alibaba): requires separate Node Group addition after Cluster creation. <br> &nbsp;- Type-II (e.g., Azure, NHN): mandates at least one Node Group during initial Cluster creation."
+    Register-Cluster:
+      method: post
+      resourcePath: /regcluster
+      description: "Register a new Cluster with the specified VPC and CSP ID."
+    Add-Rule:
+      method: post
+      resourcePath: /securitygroup/{SGName}/rules
+      description: "Add new rules to a Security Group."
+    Remove-Rule:
+      method: delete
+      resourcePath: /securitygroup/{SGName}/rules
+      description: "Remove existing rules from a Security Group."
+    List-Vm-Spec:
+      method: get
+      resourcePath: /vmspec
+      description: "Retrieve a list of VM specs associated with a specific connection. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-vm-spec-%EC%A0%95%EB%B3%B4-%EC%A0%9C%EA%B3%B5)]"
+    Check-Udp-Port:
+      method: get
+      resourcePath: /check/udp
+      description: "Verifies whether a given UDP port is open on the specified host.\n※ Note: As UDP is connectionless, this check mainly performs a lookup and may not confirm if the server is working."
+    Add-Nodegroup:
+      method: post
+      resourcePath: /cluster/{Name}/nodegroup
+      description: "Add a new Node Group to an existing Cluster."
+    Count-Vm-By-Connection:
+      method: get
+      resourcePath: /countvm/{ConnectionName}
+      description: "Get the total number of Virtual Machines (VMs) for a specific connection."
+    Register-Nlb:
+      method: post
+      resourcePath: /regnlb
+      description: "Register a new Network Load Balancer (NLB) with the specified name and CSP ID."
+    Register-Vm:
+      method: post
+      resourcePath: /regvm
+      description: "Register a new Virtual Machine (VM) with the specified name and CSP ID."
+    List-Org-Vm-Spec:
+      method: get
+      resourcePath: /vmorgspec
+      description: "Retrieve a list of Original VM Specs associated with a specific connection. <br> The response structure may vary depending on the request ConnectionName."
+    List-All-Cluster:
+      method: get
+      resourcePath: /allcluster
+      description: "Retrieve a comprehensive list of all Clusters associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    Add-Nlb-Vm:
+      method: post
+      resourcePath: /nlb/{Name}/vms
+      description: "Add a new set of VMs to an existing Network Load Balancer (NLB)."
+    Remove-Nlb-Vm:
+      method: delete
+      resourcePath: /nlb/{Name}/vms
+      description: "Remove a set of VMs from an existing Network Load Balancer (NLB)."
+    Unregister-Cluster:
+      method: delete
+      resourcePath: /regcluster/{Name}
+      description: "Unregister a Cluster with the specified name."
+    Count-All-Vpc:
+      method: get
+      resourcePath: /countvpc
+      description: "Get the total number of VPCs across all connections."
+    List-Vm:
+      method: get
+      resourcePath: /vm
+      description: "Retrieve a list of Virtual Machines (VMs) associated with a specific connection."
+    Start-Vm:
+      method: post
+      resourcePath: /vm
+      description: "Start a new Virtual Machine (VM) with specified configurations. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-%EB%A9%80%ED%8B%B0%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C-vm-%EC%9D%B8%ED%94%84%EB%9D%BC-%EC%9E%90%EC%9B%90-%EC%A0%9C%EC%96%B4multi-cloud-vm-infra-resource-control)], [[Snapshot-MyImage,Disk Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Snapshot,-MyImage-and-Disk-Overview)]"
+    Increase-Disk-Size:
+      method: put
+      resourcePath: /disk/{Name}/size
+      description: "Increase the size of an existing disk."
+    Get-Sg-Owner-Vpc:
+      method: post
+      resourcePath: /getsecuritygroupowner
+      description: "Retrieve the owner VPC of a specified Security Group."
+    List-Keypair:
+      method: get
+      resourcePath: /keypair
+      description: "Retrieve a list of KeyPairs associated with a specific connection."
+    Create-Keypair:
+      method: post
+      resourcePath: /keypair
+      description: "Create a new KeyPair with the specified configurations. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#5-vm-keypair-%EC%83%9D%EC%84%B1-%EB%B0%8F-%EC%A0%9C%EC%96%B4)]"
+    List-Disk:
+      method: get
+      resourcePath: /disk
+      description: "Retrieve a list of Disks associated with a specific connection."
+    Create-Disk:
+      method: post
+      resourcePath: /disk
+      description: "Create a new Disk with the specified configuration. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Disk-and-Driver-API)], [[Snapshot-MyImage,Disk Guide](https://github.com/cloud-barista/cb-spider/wiki/VM-Snapshot,-MyImage-and-Disk-Overview)]"
+    List-Org-Region:
+      method: get
+      resourcePath: /orgregion
+      description: "Retrieve a list of Original Regions associated with a specific connection. <br> The response structure may vary depending on the request ConnectionName."
+    Count-All-Cluster:
+      method: get
+      resourcePath: /countcluster
+      description: "Get the total number of Clusters across all connections."
+    Count-All-Myimage:
+      method: get
+      resourcePath: /countmyimage
+      description: "Get the total number of MyImages across all connections."
+    Delete-Csp-Vpc:
+      method: delete
+      resourcePath: /cspvpc/{Id}
+      description: "Delete a specified CSP Virtual Private Cloud (VPC)."
+    Delete-Csp-Securitygroup:
+      method: delete
+      resourcePath: /cspsecuritygroup/{Id}
+      description: "Delete a specified CSP Security Group."
+    Destroy-All-Resource:
+      method: delete
+      resourcePath: /destroy
+      description: "Deletes all resources associated with a specific cloud connection. This action is irreversible."
+    Get-Region-Zone:
+      method: get
+      resourcePath: /regionzone/{Name}
+      description: "Retrieve details of a specific Region Zone. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/REST-API-Region-Zone-Information-Guide)]"
+    Upgrade-Cluster:
+      method: put
+      resourcePath: /cluster/{Name}/upgrade
+      description: "Upgrade a Cluster to a specified version."
+    Register-Vpc:
+      method: post
+      resourcePath: /regvpc
+      description: "Register a new Virtual Private Cloud (VPC) with the specified name and CSP ID."
+    Count-All-Securitygroup:
+      method: get
+      resourcePath: /countsecuritygroup
+      description: "Get the total number of Security Groups across all connections."
+    List-Preconfigured-Original-Org-Region:
+      method: get
+      resourcePath: /preconfig/orgregion
+      description: "Retrieve a list of pre-configured Original Regions based on driver and credential names. <br> The response structure may vary depending on the request DriverName and CredentialName."
+    Get-Region:
+      method: get
+      resourcePath: /region/{RegionName}
+      description: "Retrieve details of a specific Region."
+    Unregister-Region:
+      method: delete
+      resourcePath: /region/{RegionName}
+      description: "Unregister a specific Region."
+    Terminate-Csp-Vm:
+      method: delete
+      resourcePath: /cspvm/{Id}
+      description: "Terminate a specified CSP Virtual Machine (VM)."
+    Get-Csp-Vm:
+      method: get
+      resourcePath: /cspvm/{Id}
+      description: "Retrieve details of a specific CSP Virtual Machine (VM)."
+    Get-Region-Zone-Preconfig:
+      method: get
+      resourcePath: /preconfig/regionzone/{Name}
+      description: "Retrieve details of a specific pre-configured Region Zone based on driver and credential names. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/REST-API-Region-Zone-Information-Guide)]"
+    Health-Check-Readyz:
+      method: get
+      resourcePath: /readyz
+      description: "Checks the health of CB-Spider service and its dependencies via /readyz endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
+    Get-Image:
+      method: get
+      resourcePath: /vmimage/{Name}
+      description: "Retrieve details of a specific Public Image. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/How-to-get-Image-List-with-REST-API)]"
+    Check-Tcp-Port:
+      method: get
+      resourcePath: /check/tcp
+      description: "Verifies whether a given TCP port is open on the specified host."
+    Count-Disk-By-Connection:
+      method: get
+      resourcePath: /countdisk/{ConnectionName}
+      description: "Get the total number of Disks for a specific connection."
+    Count-All-Subnet:
+      method: get
+      resourcePath: /countsubnet
+      description: "Get the total number of Subnets across all connections."
+    List-Nlb:
+      method: get
+      resourcePath: /nlb
+      description: "Retrieve a list of Network Load Balancers (NLBs) associated with a specific connection."
+    Create-Nlb:
+      method: post
+      resourcePath: /nlb
+      description: "Create a new Network Load Balancer (NLB) with specified configurations. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Network-Load-Balancer-and-Driver-API)]"
+    Unregister-Securitygroup:
+      method: delete
+      resourcePath: /regsecuritygroup/{Name}
+      description: "Unregister a Security Group with the specified name."
+    Register-Subnet:
+      method: post
+      resourcePath: /regsubnet
+      description: "Register a new Subnet within a specified VPC."
+    List-All-Vm:
+      method: get
+      resourcePath: /allvm
+      description: "Retrieve a comprehensive list of all Virtual Machines (VMs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    Count-Keypair-By-Connection:
+      method: get
+      resourcePath: /countkeypair/{ConnectionName}
+      description: "Get the total number of KeyPairs for a specific connection."
+    Get-Disk:
+      method: get
+      resourcePath: /disk/{Name}
+      description: "Retrieve details of a specific Disk."
+    Delete-Disk:
+      method: delete
+      resourcePath: /disk/{Name}
+      description: "Delete a specified Disk."
+    Count-All-Vm:
+      method: get
+      resourcePath: /countvm
+      description: "Get the total number of Virtual Machines (VMs) across all connections."
+    Get-Credential:
+      method: get
+      resourcePath: /credential/{CredentialName}
+      description: "Retrieve details of a specific Credential."
+    Unregister-Credential:
+      method: delete
+      resourcePath: /credential/{CredentialName}
+      description: "Unregister a specific Credential."
+    Register-Disk:
+      method: post
+      resourcePath: /regdisk
+      description: "Register a new Disk with the specified name, zone, and CSP ID."
+    Get-Vm-Status:
+      method: get
+      resourcePath: /vmstatus/{Name}
+      description: "Retrieve the status of a specific Virtual Machine (VM)."
+    List-Connection-Config:
+      method: get
+      resourcePath: /connectionconfig
+      description: "Retrieve a list of registered Connection Configs."
+    Create-Connection-Config:
+      method: post
+      resourcePath: /connectionconfig
+      description: "Create a new Connection Config. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#4-cloud-connection-configuration-%EC%A0%95%EB%B3%B4-%EB%93%B1%EB%A1%9D-%EB%B0%8F-%EA%B4%80%EB%A6%AC)]"
+    Attach-Disk:
+      method: put
+      resourcePath: /disk/{Name}/attach
+      description: "Attach an existing Disk to a VM."
+    Get-Price-Info:
+      method: post
+      resourcePath: /priceinfo/{ProductFamily}/{RegionName}
+      description: "Retrieve price details of a specific Product Family in a specific Region. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Price-Info-and-Cloud-Driver-API)], 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/RestAPI-Multi%E2%80%90Cloud-Price-Information-Guide)] <br> * example body: {\"connectionName\":\"aws-connection\",\"FilterList\":[{\"Key\":\"instanceType\",\"Value\":\"t2.micro\"}]}"
+    Get-Nlb-Owner-Vpc:
+      method: post
+      resourcePath: /getnlbowner
+      description: "Retrieve the owner VPC of a specified Network Load Balancer (NLB)."
+    List-Product-Family:
+      method: get
+      resourcePath: /productfamily/{RegionName}
+      description: "Retrieve a list of Product Families associated with a specific connection and region. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Price-Info-and-Cloud-Driver-API)], 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/RestAPI-Multi%E2%80%90Cloud-Price-Information-Guide)]"
+    Remove-Tag:
+      method: delete
+      resourcePath: /tag/{Key}
+      description: "Remove a specific tag from a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+    Get-Tag:
+      method: get
+      resourcePath: /tag/{Key}
+      description: "Retrieve a specific tag for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+    Delete-Connection-Config:
+      method: delete
+      resourcePath: /connectionconfig/{ConfigName}
+      description: "Delete a specific Connection Config."
+    Get-Connection-Config:
+      method: get
+      resourcePath: /connectionconfig/{ConfigName}
+      description: "Retrieve details of a specific Connection Config."
+    Count-Myimage-By-Connection:
+      method: get
+      resourcePath: /countmyimage/{ConnectionName}
+      description: "Get the total number of MyImages for a specific connection."
+    List-Driver:
+      method: get
+      resourcePath: /driver
+      description: "Retrieve a list of registered Cloud Drivers."
+    Register-Driver:
+      method: post
+      resourcePath: /driver
+      description: "Register a new Cloud Driver. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#1-cloud-driver-%EC%A0%95%EB%B3%B4-%EB%93%B1%EB%A1%9D-%EB%B0%8F-%EA%B4%80%EB%A6%AC)]"
+    Get-Keypair:
+      method: get
+      resourcePath: /keypair/{Name}
+      description: "Retrieve details of a specific KeyPair."
+    Delete-Keypair:
+      method: delete
+      resourcePath: /keypair/{Name}
+      description: "Delete a specified KeyPair."
+    List-Securitygroup:
+      method: get
+      resourcePath: /securitygroup
+      description: "Retrieve a list of Security Groups associated with a specific connection."
+    Create-Securitygroup:
+      method: post
+      resourcePath: /securitygroup
+      description: "Create a new Security Group with specified rules and tags. 🕷️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Security-Group-Rules-and-Driver-API)], 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#4-securitygroup-%EC%83%9D%EC%84%B1-%EB%B0%8F-%EC%A0%9C%EC%96%B4)]"
+    Get-Securitygroup:
+      method: get
+      resourcePath: /securitygroup/{Name}
+      description: "Retrieve details of a specific Security Group."
+    Delete-Securitygroup:
+      method: delete
+      resourcePath: /securitygroup/{Name}
+      description: "Delete a specified Security Group."
+    Count-Subnet-By-Connection:
+      method: get
+      resourcePath: /countsubnet/{ConnectionName}
+      description: "Get the total number of Subnets for a specific connection."
+    List-Credential:
+      method: get
+      resourcePath: /credential
+      description: "Retrieve a list of registered Credentials."
+    Register-Credential:
+      method: post
+      resourcePath: /credential
+      description: "Register a new Credential. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-cloud-credential-%EC%A0%95%EB%B3%B4-%EB%93%B1%EB%A1%9D-%EB%B0%8F-%EA%B4%80%EB%A6%AC)]"
+    Health-Check-Health:
+      method: get
+      resourcePath: /health
+      description: "Checks the health of CB-Spider service and its dependencies via /health endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
+    Get-Subnet:
+      method: get
+      resourcePath: /vpc/{VPCName}/subnet/{SubnetName}
+      description: "Retrieve a specific Subnet from a VPC."
+    Remove-Subnet:
+      method: delete
+      resourcePath: /vpc/{VPCName}/subnet/{SubnetName}
+      description: "Remove an existing Subnet from a VPC."
+    Get-Cluster-Owner-Vpc:
+      method: post
+      resourcePath: /getclusterowner
+      description: "Retrieve the owner VPC of a specified Cluster."
+    Unregister-Disk:
+      method: delete
+      resourcePath: /regdisk/{Name}
+      description: "Unregister a Disk with the specified name."
+    Register-Securitygroup:
+      method: post
+      resourcePath: /regsecuritygroup
+      description: "Register a new Security Group with the specified name and CSP ID."
+    List-All-Myimage:
+      method: get
+      resourcePath: /allmyimage
+      description: "Retrieve a comprehensive list of all MyImages associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    Health-Check-Healthcheck:
+      method: get
+      resourcePath: /healthcheck
+      description: "Checks the health of CB-Spider service and its dependencies via /healthcheck endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
+    Count-Securitygroup-By-Connection:
+      method: get
+      resourcePath: /countsecuritygroup/{ConnectionName}
+      description: "Get the total number of Security Groups for a specific connection."
+    Remove-Csp-Subnet:
+      method: delete
+      resourcePath: /vpc/{VPCName}/cspsubnet/{Id}
+      description: "Remove an existing CSP Subnet from a VPC."
+    Get-Nlb:
+      method: get
+      resourcePath: /nlb/{Name}
+      description: "Retrieve details of a specific Network Load Balancer (NLB)."
+    Delete-Nlb:
+      method: delete
+      resourcePath: /nlb/{Name}
+      description: "Delete a specified Network Load Balancer (NLB)."
+    List-Region-Zone-Preconfig:
+      method: get
+      resourcePath: /preconfig/regionzone
+      description: "Retrieve a list of pre-configured Region Zones based on driver and credential names. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/REST-API-Region-Zone-Information-Guide)]"
+    Set-Nodegroup-Autoscaling:
+      method: put
+      resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}/onautoscaling
+      description: "Enable or disable auto scaling for a Node Group in a Cluster."
+    Count-Nlb-By-Connection:
+      method: get
+      resourcePath: /countnlb/{ConnectionName}
+      description: "Get the total number of Network Load Balancers (NLBs) for a specific connection."
+    Get-Vm-Using-Rs:
+      method: post
+      resourcePath: /getvmusingresources
+      description: "Retrieve details of a VM using resource ID."
+    Get-Cloudos-Metainfo:
+      method: get
+      resourcePath: /cloudos/metainfo/{CloudOSName}
+      description: "Retrieve metadata information for a specific Cloud OS."
+    Delete-Csp-Keypair:
+      method: delete
+      resourcePath: /cspkeypair/{Id}
+      description: "Delete a specified CSP KeyPair."
+    Unregister-Keypair:
+      method: delete
+      resourcePath: /regkeypair/{Name}
+      description: "Unregister a KeyPair with the specified name."
+    Detach-Disk:
+      method: put
+      resourcePath: /disk/{Name}/detach
+      description: "Detach an existing Disk from a VM."
+    List-Region:
+      method: get
+      resourcePath: /region
+      description: "Retrieve a list of registered Regions."
+    Register-Region:
+      method: post
+      resourcePath: /region
+      description: "Register a new Region. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#3-cloud-regionzone-%EC%A0%95%EB%B3%B4-%EB%93%B1%EB%A1%9D-%EB%B0%8F-%EA%B4%80%EB%A6%AC)]"
+    Unregister-Vm:
+      method: delete
+      resourcePath: /regvm/{Name}
+      description: "Unregister a Virtual Machine (VM) with the specified name."
+    Unregister-Vpc:
+      method: delete
+      resourcePath: /regvpc/{Name}
+      description: "Unregister a VPC with the specified name."
+    Get-Org-Vm-Spec:
+      method: get
+      resourcePath: /vmorgspec/{Name}
+      description: "Retrieve details of a specific Original VM Spec."
+    Count-Cluster-By-Connection:
+      method: get
+      resourcePath: /countcluster/{ConnectionName}
+      description: "Get the total number of Clusters for a specific connection."
+    Count-Connection-By-Provider:
+      method: get
+      resourcePath: /countconnectionconfig/{ProviderName}
+      description: "Get the total number of connections for a specific provider."
+    Delete-Csp-Cluster:
+      method: delete
+      resourcePath: /cspcluster/{Id}
+      description: "Delete a specified CSP Cluster."
+    Count-Vpc-By-Connection:
+      method: get
+      resourcePath: /countvpc/{ConnectionName}
+      description: "Get the total number of VPCs for a specific connection."
+    Get-Myimage:
+      method: get
+      resourcePath: /myimage/{Name}
+      description: "Retrieve details of a specific MyImage."
+    Delete-Myimage:
+      method: delete
+      resourcePath: /myimage/{Name}
+      description: "Delete a specified MyImage."
+    Get-Vmgroup-Healthinfo:
+      method: get
+      resourcePath: /nlb/{Name}/health
+      description: "Retrieve the health information of the VM group in a specified Network Load Balancer (NLB)."
+    List-All-Securitygroup:
+      method: get
+      resourcePath: /allsecuritygroup
+      description: "Retrieve a comprehensive list of all Security Groups associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    Control-Vm:
+      method: put
+      resourcePath: /controlvm/{Name}
+      description: "Control the state of a Virtual Machine (VM) such as suspend, resume, or reboot."
+    Count-All-Disk:
+      method: get
+      resourcePath: /countdisk
+      description: "Get the total number of Disks across all connections."
+    Delete-Csp-Nlb:
+      method: delete
+      resourcePath: /cspnlb/{Id}
+      description: "Delete a specified CSP Network Load Balancer (NLB)."
+    Health-Check-Ping:
+      method: get
+      resourcePath: /ping
+      description: "Checks the health of CB-Spider service and its dependencies via /ping endpoint. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/Readiness-Check-Guide)]"
+    Register-Myimage:
+      method: post
+      resourcePath: /regmyimage
+      description: "Register a new MyImage with the specified name and CSP ID."
+    List-Vpc:
+      method: get
+      resourcePath: /vpc
+      description: "Retrieve a list of Virtual Private Clouds (VPCs) associated with a specific connection."
+    Create-Vpc:
+      method: post
+      resourcePath: /vpc
+      description: "Create a new Virtual Private Cloud (VPC) with specified subnet configurations. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#3-vpcsubnet-%EC%83%9D%EC%84%B1-%EB%B0%8F-%EC%A0%9C%EC%96%B4)]"
+    List-All-Nlb:
+      method: get
+      resourcePath: /allnlb
+      description: "Retrieve a comprehensive list of all Network Load Balancers (NLBs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    Change-Nodegroup-Scaling:
+      method: put
+      resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}/autoscalesize
+      description: "Change the scaling settings for a Node Group in a Cluster."
+    Count-All-Nlb:
+      method: get
+      resourcePath: /countnlb
+      description: "Get the total number of Network Load Balancers (NLBs) across all connections."
+    List-Tag:
+      method: get
+      resourcePath: /tag
+      description: "Retrieve a list of tags for a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+    Add-Tag:
+      method: post
+      resourcePath: /tag
+      description: "Add a tag to a specified resource.\n※ Resource types: VPC, SUBNET, SG, KEY, VM, NLB, DISK, MYIMAGE, CLUSTER"
+    Get-Vm:
+      method: get
+      resourcePath: /vm/{Name}
+      description: "Retrieve details of a specific Virtual Machine (VM)."
+    Terminate-Vm:
+      method: delete
+      resourcePath: /vm/{Name}
+      description: "Terminate a specified Virtual Machine (VM)."
+    Get-Vpc:
+      method: get
+      resourcePath: /vpc/{Name}
+      description: "Retrieve details of a specific Virtual Private Cloud (VPC)."
+    Delete-Vpc:
+      method: delete
+      resourcePath: /vpc/{Name}
+      description: "Delete a specified Virtual Private Cloud (VPC)."
+    Remove-Nodegroup:
+      method: delete
+      resourcePath: /cluster/{Name}/nodegroup/{NodeGroupName}
+      description: "Remove an existing Node Group from a Cluster."
+    Delete-Csp-Disk:
+      method: delete
+      resourcePath: /cspdisk/{Id}
+      description: "Delete a specified CSP Disk."
+    Register-Keypair:
+      method: post
+      resourcePath: /regkeypair
+      description: "Register a new KeyPair with the specified name and CSP ID."
+    List-All-Disk:
+      method: get
+      resourcePath: /alldisk
+      description: "Retrieve a comprehensive list of all Disks associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    Count-All-Connection:
+      method: get
+      resourcePath: /countconnectionconfig
+      description: "Get the total number of connections."
+    Unregister-Myimage:
+      method: delete
+      resourcePath: /regmyimage/{Name}
+      description: "Unregister a MyImage with the specified name."
+    List-Image:
+      method: get
+      resourcePath: /vmimage
+      description: "Retrieve a list of Public Images associated with a specific connection. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/How-to-get-Image-List-with-REST-API)]"
+    Get-Vm-Spec:
+      method: get
+      resourcePath: /vmspec/{Name}
+      description: "Retrieve details of a specific VM spec. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/features-and-usages#2-vm-spec-%EC%A0%95%EB%B3%B4-%EC%A0%9C%EA%B3%B5)]"
+    List-Cloudos:
+      method: get
+      resourcePath: /cloudos
+      description: "Retrieve a list of supported Cloud OS."
+    List-Org-Zone:
+      method: get
+      resourcePath: /orgzone
+      description: "Retrieve a list of Original Zones associated with a specific connection. <br> The response structure may vary depending on the request ConnectionName."
+    List-Region-Zone:
+      method: get
+      resourcePath: /regionzone
+      description: "Retrieve a list of Region Zones associated with a specific connection. 🕷️ [[User Guide](https://github.com/cloud-barista/cb-spider/wiki/REST-API-Region-Zone-Information-Guide)]"
+    List-All-Vpc:
+      method: get
+      resourcePath: /allvpc
+      description: "Retrieve a comprehensive list of all Virtual Private Clouds (VPCs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    List-All-Keypair:
+      method: get
+      resourcePath: /allkeypair
+      description: "Retrieve a comprehensive list of all KeyPairs associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP."
+    Delete-Csp-Myimage:
+      method: delete
+      resourcePath: /cspmyimage/{Id}
+      description: "Delete a specified CSP MyImage."
+
+  mc-iam-manager:
+    Getworkspaceuserrolemappinglistorderbyworkspace:
+      method: get
+      resourcePath: /api/wsuserrole
+      description: "workspace - user - role mapping 목록 workspace 기준 전체 조회"
+    Createworkspaceuserrolemappingbyname:
+      method: post
+      resourcePath: /api/wsuserrole
+      description: "workspace - user - role mapping 생성"
+    Updateresourcepermissionbyoperationid:
+      method: put
+      resourcePath: /api/permission/framewrok/{framework}/operationid/{operationid}
+      description: "권한을 OperationId를 기반으로 리소스 권한을 업데이트합니다."
+    Getpermission:
+      method: get
+      resourcePath: /api/permission/framewrok/{framework}/operationid/{operationid}
+      description: "권한을 검색합니다."
+    Appendresourcepermissionpolicesbyoperationid:
+      method: put
+      resourcePath: /api/permission/framewrok/{framework}/operationid/{operationid}/append
+      description: "권한을 OperationId를 기반으로 리소스 권한을 업데이트합니다."
+    Updaterolebyid:
+      method: put
+      resourcePath: /api/role/id/{roleId}
+      description: "role 수정"
+    Deleterolebyid:
+      method: delete
+      resourcePath: /api/role/id/{roleId}
+      description: "role 삭제"
+    Getrolebyid:
+      method: get
+      resourcePath: /api/role/id/{roleId}
+      description: "role 단건 조회"
+    Activeuser:
+      method: post
+      resourcePath: /api/user/active
+      description: "권한 있는 사용자가 해당 유저를 활성화합니다."
+    Deactiveuser:
+      method: post
+      resourcePath: /api/user/deactive
+      description: "권한 있는 사용자가 해당 유저를 비활성화합니다."
+    Login:
+      method: post
+      resourcePath: /api/auth/login
+      description: "ID/Password를 받아 JWT 세션 토큰을 반환"
+    Getdependentpermissionsbypolicyid:
+      method: get
+      resourcePath: /api/permission/policyid/{policyid}
+      description: "권한을 검색합니다."
+    Getresources:
+      method: get
+      resourcePath: /api/resource
+      description: "리소스의 정보를 검색합니다."
+    Createresource:
+      method: post
+      resourcePath: /api/resource
+      description: "리소스를 생성합니다."
+    Deleteuser:
+      method: delete
+      resourcePath: /api/user/id/{userid}
+      description: "사용자를 삭제합니다."
+    Updateuser:
+      method: put
+      resourcePath: /api/user/id/{userid}
+      description: "사용자 정보를 업데이트 합니다."
+    Readyz:
+      method: get
+      resourcePath: /readyz
+      description: "mc-iam-manager가 정상적으로 작동중인지 단순 확인합니다."
+    Getuserinfo:
+      method: get
+      resourcePath: /api/auth/userinfo
+      description: "유저 정보 조회"
+    Updateuseinfonotuse:
+      method: put
+      resourcePath: /api/auth/userinfo
+      description: "유저 정보 조회"
+    Getprojectlist:
+      method: get
+      resourcePath: /api/prj
+      description: "project 목록 조회"
+    Createproject:
+      method: post
+      resourcePath: /api/prj
+      description: "project 생성"
+    Resetmenuresource:
+      method: delete
+      resourcePath: /api/resource/reset/menu
+      description: "모든 메뉴 리소스를 삭제합니다."
+    Searchrolesbyname:
+      method: get
+      resourcePath: /api/role/name/{roleName}
+      description: "role 검색"
+    Logout:
+      method: post
+      resourcePath: /api/auth/logout
+      description: "AccessToken및 RefreshToken을 받아 해당 토큰 파기"
+    Getallavailablemenus:
+      method: get
+      resourcePath: /api/ticket/framework/{framework}/menus
+      description: "해당 프레임워크 사용자에게 할당된 메뉴 리스트를 반환합니다."
+    Syncprojectlistwithmcinfra:
+      method: get
+      resourcePath: /api/tool/mcinfra/sync
+      description: "연결된 TB(mcinframanager)의 NS 리스트를 Project List 로 등록.  \n  \n기존 등록된 project 와 중복이 발생하면 오류 발생. 새로운 환경에서 첫 회 실행하는 것을 추천."
+    Getusers:
+      method: get
+      resourcePath: /api/user
+      description: "사용자를 ID로 검색합니다."
+    Createuser:
+      method: post
+      resourcePath: /api/user
+      description: "유저를 등록합니다."
+    Getworkspaceuserrolemappingbyid:
+      method: get
+      resourcePath: /api/wsuserrole/workspace/id/{workspaceId}/user/id/{userId}
+      description: "workspace - user - role mapping 목록 workspace 와 user 로 role 조회"
+    Deleteworkspaceuserrolemapping:
+      method: delete
+      resourcePath: /api/wsuserrole/workspace/id/{workspaceId}/user/id/{userId}
+      description: "workspace - user - role mapping 목록 workspace 와 user 로 mapping 삭제"
+    Searchworkspacesbyname:
+      method: get
+      resourcePath: /api/ws/workspace/{workspaceName}
+      description: "workspace 검색"
+    Createwpmapping:
+      method: post
+      resourcePath: /api/wsprj
+      description: "workspace - projects mapping 생성"
+    Updatewpmappings:
+      method: put
+      resourcePath: /api/wsprj
+      description: "workspace - projects mapping 수정\n\n새로 입력되는 projects 와 기존 projects 를 비교하여, 없는 project 는 삭제하고, 신규 projects 는 새로 mapping 한다."
+    Getwpmappinglistorderbyworkspace:
+      method: get
+      resourcePath: /api/wsprj
+      description: "workspace - projects mapping workspace 기준 모든 목록 조회"
+    Deleteworkspaceprojectmappingbyid:
+      method: delete
+      resourcePath: /api/wsprj/workspace/id/{workspaceId}/project/id/{projectId}
+      description: "workspace - projects mapping 단건 삭제"
+    Deleteprojectbyid:
+      method: delete
+      resourcePath: /api/prj/project/id/{projectId}
+      description: "project 삭제"
+    Getprojectbyid:
+      method: get
+      resourcePath: /api/prj/project/id/{projectId}
+      description: "project 단건 조회"
+    Updateprojectbyid:
+      method: put
+      resourcePath: /api/prj/project/id/{projectId}
+      description: "project 수정"
+    Searchprojectsbyname:
+      method: get
+      resourcePath: /api/prj/project/{projectName}
+      description: "project 목록 검색"
+    Deleteresource:
+      method: delete
+      resourcePath: /api/resource/id/{id}
+      description: "리소스를 삭제합니다."
+    Updateresource:
+      method: put
+      resourcePath: /api/resource/id/{id}
+      description: "리소스를 업데이트 합니다."
+    Getmenuresources:
+      method: get
+      resourcePath: /api/resource/menus
+      description: "메뉴 리소스를 검색합니다."
+    Getallpermissions:
+      method: get
+      resourcePath: /api/ticket
+      description: "사용자는 uma_protection Role 을 가져야 한다."
+    Getpermissionticket:
+      method: post
+      resourcePath: /api/ticket
+      description: "사용자는 uma_protection Role 을 가져야 한다."
+    Getworkspaceuserrolemappinglistbyuserid:
+      method: get
+      resourcePath: /api/wsuserrole/user/id/{userId}
+      description: "workspace - user - role mapping 목록 user 기준 조회"
+    Getworkspaceuserrolemappinglistbyworkspaceid:
+      method: get
+      resourcePath: /api/wsuserrole/workspace/id/{workspaceId}
+      description: "workspace - user - role mapping 목록 workspace 기준 조회"
+    Loginrefresh:
+      method: post
+      resourcePath: /api/auth/login/refresh
+      description: "refresh_token과 기존 JWT를 받아, 새로운 JWT 토큰 발급"
+    Getcurrentpermissioncsv:
+      method: get
+      resourcePath: /api/permission/file/framework/{framework}
+      description: "현재 권한을 CSV 형태로 가져옵니다."
+    Importpermissionbycsv:
+      method: post
+      resourcePath: /api/permission/file/framework/{framework}
+      description: "CSV 기반으로 권한을 업데이트 합니다."
+    Getrolelist:
+      method: get
+      resourcePath: /api/role
+      description: "role 전체 목록 조회"
+    Createrole:
+      method: post
+      resourcePath: /api/role
+      description: "role 생성"
+    Syncrolelistwithkeycloak:
+      method: get
+      resourcePath: /api/tool/keycloak/role/sync
+      description: "연결된 TB(mcinframanager)의 NS 리스트를 Project List 로 등록.  \n  \n기존 등록된 project 와 중복이 발생하면 오류 발생. 새로운 환경에서 첫 회 실행하는 것을 추천."
+    Getwpmappinglistbyworkspaceid:
+      method: get
+      resourcePath: /api/wsprj/workspace/id/{workspaceId}
+      description: "workspace - projects mapping workspace 기준 단건 목록 조회"
+    Getpermissions:
+      method: get
+      resourcePath: /api/permission
+      description: "모든 권한을 가져옵니다."
+    Createapiresourcesbyapiyaml:
+      method: post
+      resourcePath: /api/resource/file/framework/{framework}
+      description: "mc-admin-cli 에서 생성한 api yaml을 바탕으로 모든 리소스를 등록합니다.  \n리소스가 중복될시 오류를 반환하고 업데이트 하지 않습니다."
+    Resetresource:
+      method: delete
+      resourcePath: /api/resource/reset
+      description: "모든 리소스를 삭제합니다."
+    Getrolebypolicyidnotuse:
+      method: get
+      resourcePath: /api/role/policyid/{policyid}
+      description: "role 단건 조회"
+    Getworkspacelist:
+      method: get
+      resourcePath: /api/ws
+      description: "workspace 목록 조회"
+    Createworkspace:
+      method: post
+      resourcePath: /api/ws
+      description: "workspace 생성"
+    Deleteworkspacebyid:
+      method: delete
+      resourcePath: /api/ws/workspace/id/{workspaceId}
+      description: "workspace 삭제"
+    Getworkspacebyid:
+      method: get
+      resourcePath: /api/ws/workspace/id/{workspaceId}
+      description: "workspace 단건 조회"
+    Updateworkspacebyid:
+      method: put
+      resourcePath: /api/ws/workspace/id/{workspaceId}
+      description: "workspace 수정"
+    Getcerts:
+      method: get
+      resourcePath: /api/auth/certs
+      description: "유저 토큰의 사용가능 유무"
+    Gettokeninfo:
+      method: get
+      resourcePath: /api/auth/tokeninfo
+      description: "유저 정보 조회"
+    Authgetuservalidate:
+      method: get
+      resourcePath: /api/auth/validate
+      description: "유저 토큰의 사용가능 유무"
+    Deleteresourcepermissionpolicesbyoperationid:
+      method: delete
+      resourcePath: /api/permission/framewrok/{framework}/operationid/{operationid}/remove
+      description: "권한을 OperationId를 기반으로 리소스 권한을 업데이트합니다."
+    Createmenuresourcesbymenuyaml:
+      method: post
+      resourcePath: /api/resource/file/framework/{framework}/menu
+      description: "mc-web-console 등 menu yaml을 사용해서 메뉴 리소스를 등록합니다."
+  
+  mc-infra-manager:
+    Putchangek8snodegroupautoscalesize:
+      method: put
+      resourcePath: /ns/{nsId}/k8scluster/{k8sClusterId}/k8snodegroup/{k8sNodeGroupName}/autoscalesize
+      description: "Change a K8sNodeGroup's Autoscale Size"
+    Getnlb:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}/nlb/{nlbId}
+      description: "Get NLB"
+    Delnlb:
+      method: delete
+      resourcePath: /ns/{nsId}/mci/{mciId}/nlb/{nlbId}
+      description: "Delete NLB"
+    Putsshkey:
+      method: put
+      resourcePath: /ns/{nsId}/resources/sshKey/{sshKeyId}
+      description: "Update SSH Key"
+    Delsshkey:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/sshKey/{sshKeyId}
+      description: "Delete SSH Key"
+    Getsshkey:
+      method: get
+      resourcePath: /ns/{nsId}/resources/sshKey/{sshKeyId}
+      description: "Get SSH Key"
+    Lookupimage:
+      method: post
+      resourcePath: /lookupImage
+      description: "Lookup image"
+    Getnlbhealth:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}/nlb/{nlbId}/healthz
+      description: "Get NLB Health"
+    Postmcipolicy:
+      method: post
+      resourcePath: /ns/{nsId}/policy/mci/{mciId}
+      description: "Create MCI Automation policy"
+    Delmcipolicy:
+      method: delete
+      resourcePath: /ns/{nsId}/policy/mci/{mciId}
+      description: "Delete MCI Policy"
+    Getmcipolicy:
+      method: get
+      resourcePath: /ns/{nsId}/policy/mci/{mciId}
+      description: "Get MCI Policy"
+    Postregistersubnet:
+      method: post
+      resourcePath: /ns/{nsId}/registerCspResource/vNet/{vNetId}/subnet
+      description: "Register Subnet, which was created in CSP"
+    Postfirewallrules:
+      method: post
+      resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}/rules
+      description: "Create FirewallRules"
+    Delfirewallrules:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}/rules
+      description: "Delete FirewallRules"
+    Registercspnativeresourcesall:
+      method: post
+      resourcePath: /registerCspResourcesAll
+      description: "Register CSP Native Resources (vNet, securityGroup, sshKey, vm) from all Clouds to CB-Tumblebug"
+    Inspectresourcesoverview:
+      method: get
+      resourcePath: /inspectResourcesOverview
+      description: "Inspect Resources Overview (vNet, securityGroup, sshKey, vm) registered in CB-Tumblebug and CSP for all connections"
+    Putupgradek8scluster:
+      method: put
+      resourcePath: /ns/{nsId}/k8scluster/{k8sClusterId}/upgrade
+      description: "Upgrade a K8sCluster's version"
+    Getsitetositevpn:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}/vpn/{vpnId}
+      description: "Get resource info of a site-to-site VPN (Currently, GCP-AWS is supported)"
+    Postinstallmonitoragenttomci:
+      method: post
+      resourcePath: /ns/{nsId}/monitoring/install/mci/{mciId}
+      description: "Install monitoring agent (CB-Dragonfly agent) to MCI"
+    Putmonitoragentstatusinstalled:
+      method: put
+      resourcePath: /ns/{nsId}/monitoring/status/mci/{mciId}/vm/{vmId}
+      description: "Set monitoring agent (CB-Dragonfly agent) installation status installed (for Windows VM only)"
+    Getvnet:
+      method: get
+      resourcePath: /ns/{nsId}/resources/vNet/{vNetId}
+      description: "Get VNet"
+    Delvnet:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/vNet/{vNetId}
+      description: "Delete VNet\n- withsubnets: delete VNet and its subnets\n- refine: delete information of VNet and its subnets if there's no info/resource in Spider/CSP\n- force: delete VNet and its subnets regardless of the status of info/resource in Spider/CSP"
+    Removelabel:
+      method: delete
+      resourcePath: /label/{labelType}/{uid}/{key}
+      description: "Remove a label from a resource identified by its uid"
+    Deletederegistersubnet:
+      method: delete
+      resourcePath: /ns/{nsId}/deregisterCspResource/vNet/{vNetId}/subnet/{subnetId}
+      description: "Deregister Subnet, which was created in CSP"
+    Postsystemmci:
+      method: post
+      resourcePath: /systemMci
+      description: "Create System MCI Dynamically for Special Purpose"
+    Getk8sclusterinfo:
+      method: get
+      resourcePath: /k8sClusterInfo
+      description: "Get kubernetes cluster information"
+    Deletek8snodegroup:
+      method: delete
+      resourcePath: /ns/{nsId}/k8scluster/{k8sClusterId}/k8snodegroup/{k8sNodeGroupName}
+      description: "Remove a K8sNodeGroup"
+    Getmci:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}
+      description: "Get MCI object (option: status, accessInfo, vmId)"
+    Delmci:
+      method: delete
+      resourcePath: /ns/{nsId}/mci/{mciId}
+      description: "Delete MCI"
+    Searchimage:
+      method: post
+      resourcePath: /ns/{nsId}/resources/searchImage
+      description: "Search image"
+    Getallsecuritygroup:
+      method: get
+      resourcePath: /ns/{nsId}/resources/securityGroup
+      description: "List all Security Groups or Security Groups' ID"
+    Postsecuritygroup:
+      method: post
+      resourcePath: /ns/{nsId}/resources/securityGroup
+      description: "Create Security Group"
+    Delallsecuritygroup:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/securityGroup
+      description: "Delete all Security Groups"
+    Postinstallbenchmarkagenttomci:
+      method: post
+      resourcePath: /ns/{nsId}/installBenchmarkAgent/mci/{mciId}
+      description: "Install the benchmark agent to specified MCI"
+    Lookupspeclist:
+      method: post
+      resourcePath: /lookupSpecs
+      description: "Lookup spec list"
+    Postmcivm:
+      method: post
+      resourcePath: /ns/{nsId}/mci/{mciId}/vm
+      description: "Create and add homogeneous VMs(subGroup) to a specified MCI (Set subGroupSize for multiple VMs)"
+    Getallcustomimage:
+      method: get
+      resourcePath: /ns/{nsId}/resources/customImage
+      description: "List all customImages or customImages' ID"
+    Postcustomimage:
+      method: post
+      resourcePath: /ns/{nsId}/resources/customImage
+      description: "Register existing Custom Image in a CSP (option=register)"
+    Delallcustomimage:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/customImage
+      description: "Delete all customImages"
+    Createsharedresource:
+      method: post
+      resourcePath: /ns/{nsId}/sharedResource
+      description: "Create shared resources for MC-Infra"
+    Deleteobjects:
+      method: delete
+      resourcePath: /objects
+      description: "Delete child objects along with the given object"
+    Getobjects:
+      method: get
+      resourcePath: /objects
+      description: "List all objects for a given key"
+    Checknodegroupsonk8screation:
+      method: get
+      resourcePath: /checkNodeGroupsOnK8sCreation
+      description: "Check whether nodegroups are required during the k8scluster creation"
+    Postmcivmsnapshot:
+      method: post
+      resourcePath: /ns/{nsId}/mci/{mciId}/vm/{vmId}/snapshot
+      description: "Snapshot VM and create a Custom Image Object using the Snapshot"
+    Getcustomimage:
+      method: get
+      resourcePath: /ns/{nsId}/resources/customImage/{customImageId}
+      description: "Get customImage"
+    Delcustomimage:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/customImage/{customImageId}
+      description: "Delete customImage"
+    Getrequest:
+      method: get
+      resourcePath: /request/{reqId}
+      description: "Get details of a specific request"
+    Deleterequest:
+      method: delete
+      resourcePath: /request/{reqId}
+      description: "Delete details of a specific request"
+    Getbenchmark:
+      method: post
+      resourcePath: /ns/{nsId}/benchmark/mci/{mciId}
+      description: "Run MCI benchmark for a single performance metric and return results"
+    Registercredential:
+      method: post
+      resourcePath: /credential
+      description: "This API registers credential information using hybrid encryption. The process involves compressing and encrypting sensitive data with AES-256, encrypting the AES key with a 4096-bit RSA public key (retrieved via `GET /credential/publicKey`), and using OAEP padding with SHA-256. All values, including the AES key, must be base64 encoded before sending, and the public key token ID must be included in the request."
+    Getspec:
+      method: get
+      resourcePath: /ns/{nsId}/resources/spec/{specId}
+      description: "Get spec"
+    Putspec:
+      method: put
+      resourcePath: /ns/{nsId}/resources/spec/{specId}
+      description: "Update spec"
+    Delspec:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/spec/{specId}
+      description: "Delete spec"
+    Postfiletomci:
+      method: post
+      resourcePath: /ns/{nsId}/transferFile/mci/{mciId}
+      description: "Transfer a file to specified MCI to the specified path.\nThe file size should be less than 10MB.\nNot for gerneral file transfer but for specific purpose (small configuration files)."
+    Getconfig:
+      method: get
+      resourcePath: /config/{configId}
+      description: "Get config"
+    Initconfig:
+      method: delete
+      resourcePath: /config/{configId}
+      description: "Init config"
+    Getregion:
+      method: get
+      resourcePath: /provider/{providerName}/region/{regionName}
+      description: "Get registered region info"
+    Getlatencybenchmark:
+      method: get
+      resourcePath: /ns/{nsId}/benchmarkLatency/mci/{mciId}
+      description: "Run MCI benchmark for network latency"
+    Getmcigroupvms:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}/subgroup/{subgroupId}
+      description: "List VMs with a SubGroup label in a specified MCI"
+    Postmcisubgroupscaleout:
+      method: post
+      resourcePath: /ns/{nsId}/mci/{mciId}/subgroup/{subgroupId}
+      description: "ScaleOut subGroup in specified MCI"
+    Getmcivm:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}/vm/{vmId}
+      description: "Get VM in specified MCI"
+    Delmcivm:
+      method: delete
+      resourcePath: /ns/{nsId}/mci/{mciId}/vm/{vmId}
+      description: "Delete VM in specified MCI"
+    Filterspecsbyrange:
+      method: post
+      resourcePath: /ns/{nsId}/resources/filterSpecsByRange
+      description: "Filter specs by range"
+    Postutiltodesignvnet:
+      method: post
+      resourcePath: /util/vNet/design
+      description: "Design VNet and subnets based on user-friendly properties"
+    Forwardanyreqtoany:
+      method: post
+      resourcePath: /forward/{path}
+      description: "Forward any (GET) request to CB-Spider"
+    Postk8snodegroup:
+      method: post
+      resourcePath: /ns/{nsId}/k8scluster/{k8sClusterId}/k8snodegroup
+      description: "Add a K8sNodeGroup"
+    Inspectresources:
+      method: post
+      resourcePath: /inspectResources
+      description: "Inspect Resources (vNet, securityGroup, sshKey, vm) registered in CB-Tumblebug, CB-Spider, CSP"
+    Getallconfig:
+      method: get
+      resourcePath: /config
+      description: "List all configs"
+    Postconfig:
+      method: post
+      resourcePath: /config
+      description: "Create or Update config (TB_SPIDER_REST_URL, TB_DRAGONFLY_REST_URL, ...)"
+    Initallconfig:
+      method: delete
+      resourcePath: /config
+      description: "Init all configs"
+    Getcontrolmci:
+      method: get
+      resourcePath: /ns/{nsId}/control/mci/{mciId}
+      description: "Control the lifecycle of MCI (refine, suspend, resume, reboot, terminate)"
+    Delallsshkey:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/sshKey
+      description: "Delete all SSH Keys"
+    Getallsshkey:
+      method: get
+      resourcePath: /ns/{nsId}/resources/sshKey
+      description: "List all SSH Keys or SSH Keys' ID"
+    Postsshkey:
+      method: post
+      resourcePath: /ns/{nsId}/resources/sshKey
+      description: "Create SSH Key"
+    Getavailablek8sclusterversion:
+      method: get
+      resourcePath: /availableK8sClusterVersion
+      description: "Get available kubernetes cluster version"
+    Getallmcipolicy:
+      method: get
+      resourcePath: /ns/{nsId}/policy/mci
+      description: "List all MCI policies"
+    Delallmcipolicy:
+      method: delete
+      resourcePath: /ns/{nsId}/policy/mci
+      description: "Delete all MCI policies"
+    Postutiltovalidatenetwork:
+      method: post
+      resourcePath: /util/net/validate
+      description: "Validate a hierarchical configuration of a VPC network or multi-cloud network consisting of multiple VPC networks"
+    Getbastionnodes:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}/vm/{targetVmId}/bastion
+      description: "Get bastion nodes for a VM"
+    Getproviderlist:
+      method: get
+      resourcePath: /provider
+      description: "List all registered Providers"
+    Getallbenchmark:
+      method: post
+      resourcePath: /ns/{nsId}/benchmarkAll/mci/{mciId}
+      description: "Run MCI benchmark for all performance metrics and return results"
+    Getallk8scluster:
+      method: get
+      resourcePath: /ns/{nsId}/k8scluster
+      description: "List all K8sClusters or K8sClusters' ID"
+    Postk8scluster:
+      method: post
+      resourcePath: /ns/{nsId}/k8scluster
+      description: "Create K8sCluster<br>Find details from https://github.com/cloud-barista/cb-tumblebug/discussions/1614"
+    Deleteallk8scluster:
+      method: delete
+      resourcePath: /ns/{nsId}/k8scluster
+      description: "Delete all K8sClusters"
+    Getsitesinmci:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}/site
+      description: "Get sites in MCI"
+    Getmonitordata:
+      method: get
+      resourcePath: /ns/{nsId}/monitoring/mci/{mciId}/metric/{metric}
+      description: "Get monitoring data of specified MCI for specified monitoring metric (cpu, memory, disk, network)"
+    Postmcidynamiccheckrequest:
+      method: post
+      resourcePath: /mciDynamicCheckRequest
+      description: "Check available ConnectionConfig list before create MCI Dynamically from common spec and image"
+    Getconnconfig:
+      method: get
+      resourcePath: /connConfig/{connConfigName}
+      description: "Get registered ConnConfig info"
+    Getpublickeyforcredentialencryption:
+      method: get
+      resourcePath: /credential/publicKey
+      description: "Generates an RSA key pair using a 4096-bit key size with the RSA algorithm. The public key is generated using the RSA algorithm with OAEP padding and SHA-256 as the hash function. This key is used to encrypt an AES key that will be used for hybrid encryption of credentials."
+    Getallmci:
+      method: get
+      resourcePath: /ns/{nsId}/mci
+      description: "List all MCIs or MCIs' ID"
+    Postmci:
+      method: post
+      resourcePath: /ns/{nsId}/mci
+      description: "Create MCI"
+    Delallmci:
+      method: delete
+      resourcePath: /ns/{nsId}/mci
+      description: "Delete all MCIs"
+    Getallnlb:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}/nlb
+      description: "List all NLBs or NLBs' ID"
+    Postnlb:
+      method: post
+      resourcePath: /ns/{nsId}/mci/{mciId}/nlb
+      description: "Create NLB"
+    Delallnlb:
+      method: delete
+      resourcePath: /ns/{nsId}/mci/{mciId}/nlb
+      description: "Delete all NLBs"
+    Registercspnativeresources:
+      method: post
+      resourcePath: /registerCspResources
+      description: "Register CSP Native Resources (vNet, securityGroup, sshKey, vm) to CB-Tumblebug"
+    Testjwtauth:
+      method: get
+      resourcePath: /auth/test
+      description: "Test JWT authentication"
+    Deletederegistervnet:
+      method: delete
+      resourcePath: /ns/{nsId}/deregisterCspResource/vNet/{vNetId}
+      description: "Deregister the VNet, which was created in CSP"
+    Delallimage:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/image
+      description: "Delete all images"
+    Getallimage:
+      method: get
+      resourcePath: /ns/{nsId}/resources/image
+      description: "List all images or images' ID"
+    Postimage:
+      method: post
+      resourcePath: /ns/{nsId}/resources/image
+      description: "Register image"
+    Getallsubnet:
+      method: get
+      resourcePath: /ns/{nsId}/resources/vNet/{vNetId}/subnet
+      description: "List all subnets"
+    Postsubnet:
+      method: post
+      resourcePath: /ns/{nsId}/resources/vNet/{vNetId}/subnet
+      description: "Create Subnet"
+    Delallsharedresources:
+      method: delete
+      resourcePath: /ns/{nsId}/sharedResources
+      description: "Delete all Default Resource Objects in the given namespace"
+    Retrieveregionlistfromcsp:
+      method: get
+      resourcePath: /regionFromCsp
+      description: "RetrieveR all region lists from CSPs"
+    Getcontrolmcivm:
+      method: get
+      resourcePath: /ns/{nsId}/control/mci/{mciId}/vm/{vmId}
+      description: "Control the lifecycle of VM (suspend, resume, reboot, terminate)"
+    Putsitetositevpn:
+      method: put
+      resourcePath: /stream-response/ns/{nsId}/mci/{mciId}/vpn/{vpnId}
+      description: "(To be provided) Update a site-to-site VPN"
+    Postsitetositevpn:
+      method: post
+      resourcePath: /stream-response/ns/{nsId}/mci/{mciId}/vpn/{vpnId}
+      description: "Create a site-to-site VPN (Currently, GCP-AWS is supported)"
+    Deletesitetositevpn:
+      method: delete
+      resourcePath: /stream-response/ns/{nsId}/mci/{mciId}/vpn/{vpnId}
+      description: "Delete a site-to-site VPN (Currently, GCP-AWS is supported)"
+    Postteststreamresponse:
+      method: post
+      resourcePath: /testStreamResponse
+      description: "Receives a number and streams the decrementing number every second until zero"
+    Getcloudinfo:
+      method: get
+      resourcePath: /cloudInfo
+      description: "Get cloud information"
+    Putsetk8snodegroupautoscaling:
+      method: put
+      resourcePath: /ns/{nsId}/k8scluster/{k8sClusterId}/k8snodegroup/{k8sNodeGroupName}/onautoscaling
+      description: "Set a K8sNodeGroup's Autoscaling On/Off"
+    Checkhttpversion:
+      method: get
+      resourcePath: /httpVersion
+      description: "Checks and logs the HTTP version of the incoming request to the server console."
+    Postregistercspnativevm:
+      method: post
+      resourcePath: /ns/{nsId}/registerCspVm
+      description: "Register existing VM in a CSP to Cloud-Barista MCI"
+    Getregions:
+      method: get
+      resourcePath: /provider/{providerName}/region
+      description: "Get registered region info"
+    Getconnconfiglist:
+      method: get
+      resourcePath: /connConfig
+      description: "List all registered ConnConfig"
+    Fetchspecs:
+      method: post
+      resourcePath: /ns/{nsId}/resources/fetchSpecs
+      description: "Fetch specs"
+    Postregistervnet:
+      method: post
+      resourcePath: /ns/{nsId}/registerCspResource/vNet
+      description: "Register the VNet, which was created in CSP"
+    Recommendvm:
+      method: post
+      resourcePath: /mciRecommendVm
+      description: "Recommend MCI plan (filter and priority) Find details from https://github.com/cloud-barista/cb-tumblebug/discussions/1234"
+    Getns:
+      method: get
+      resourcePath: /ns/{nsId}
+      description: "Get namespace"
+    Putns:
+      method: put
+      resourcePath: /ns/{nsId}
+      description: "Update namespace"
+    Delns:
+      method: delete
+      resourcePath: /ns/{nsId}
+      description: "Delete namespace"
+    Addnlbvms:
+      method: post
+      resourcePath: /ns/{nsId}/mci/{mciId}/nlb/{nlbId}/vm
+      description: "Add VMs to NLB"
+    Removenlbvms:
+      method: delete
+      resourcePath: /ns/{nsId}/mci/{mciId}/nlb/{nlbId}/vm
+      description: "Delete VMs from NLB"
+    Getmcigroupids:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}/subgroup
+      description: "List SubGroup IDs in a specified MCI"
+    Setbastionnodes:
+      method: put
+      resourcePath: /ns/{nsId}/mci/{mciId}/vm/{targetVmId}/bastion/{bastionVmId}
+      description: "Set bastion nodes for a VM"
+    Postmcidynamic:
+      method: post
+      resourcePath: /ns/{nsId}/mciDynamic
+      description: "Create MCI Dynamically from common spec and image"
+    Putdatadisk:
+      method: put
+      resourcePath: /ns/{nsId}/resources/dataDisk/{dataDiskId}
+      description: "Upsize Data Disk"
+    Deldatadisk:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/dataDisk/{dataDiskId}
+      description: "Delete Data Disk"
+    Getdatadisk:
+      method: get
+      resourcePath: /ns/{nsId}/resources/dataDisk/{dataDiskId}
+      description: "Get Data Disk"
+    Postspec:
+      method: post
+      resourcePath: /ns/{nsId}/resources/spec
+      description: "Register spec"
+    Getavailablek8sclusternodeimage:
+      method: get
+      resourcePath: /availableK8sClusterNodeImage
+      description: "(UNDER DEVELOPMENT!!!) Get available kubernetes cluster node image"
+    Delallvnet:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/vNet
+      description: "Delete all VNets"
+    Getallvnet:
+      method: get
+      resourcePath: /ns/{nsId}/resources/vNet
+      description: "List all VNets or VNets' ID"
+    Postvnet:
+      method: post
+      resourcePath: /ns/{nsId}/resources/vNet
+      description: "Create a new VNet"
+    Getsecuritygroup:
+      method: get
+      resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}
+      description: "Get Security Group"
+    Delsecuritygroup:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}
+      description: "Delete Security Group"
+    Lookupspec:
+      method: post
+      resourcePath: /lookupSpec
+      description: "Lookup spec"
+    Getrequeststatusofsitetositevpn:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}/vpn/{vpnId}/request/{requestId}
+      description: "Check the status of a specific request by its ID"
+    Lookupimagelist:
+      method: post
+      resourcePath: /lookupImages
+      description: "Lookup image list"
+    Getsystemlabelinfo:
+      method: get
+      resourcePath: /labelInfo
+      description: "Return LabelTypes and system defined label keys with example"
+    Fetchimages:
+      method: post
+      resourcePath: /ns/{nsId}/resources/fetchImages
+      description: "Fetch images"
+    Getimage:
+      method: get
+      resourcePath: /ns/{nsId}/resources/image/{imageId}
+      description: "GetImage returns an image object if there are matched images for the given namespace and imageKey(Id, CspResourceName, GuestOS,...)"
+    Putimage:
+      method: put
+      resourcePath: /ns/{nsId}/resources/image/{imageId}
+      description: "Update image"
+    Delimage:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/image/{imageId}
+      description: "Delete image"
+    Postutiltodesignnetwork:
+      method: post
+      resourcePath: /util/net/design
+      description: "Design a hierarchical network configuration of a VPC network or multi-cloud network consisting of multiple VPC networks"
+    Removebastionnodes:
+      method: delete
+      resourcePath: /ns/{nsId}/mci/{mciId}/bastion/{bastionVmId}
+      description: "Remove a bastion VM from all vNets"
+    Delalldatadisk:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/dataDisk
+      description: "Delete all Data Disks"
+    Getalldatadisk:
+      method: get
+      resourcePath: /ns/{nsId}/resources/dataDisk
+      description: "List all Data Disks or Data Disks' ID"
+    Postdatadisk:
+      method: post
+      resourcePath: /ns/{nsId}/resources/dataDisk
+      description: "Create Data Disk"
+    Loadassets:
+      method: get
+      resourcePath: /loadAssets
+      description: "Load Common Resources from internal asset files (Spec, Image)"
+    Checkresource:
+      method: get
+      resourcePath: /ns/{nsId}/checkResource/{resourceType}/{resourceId}
+      description: "Check resources' existence"
+    Postcmdmci:
+      method: post
+      resourcePath: /ns/{nsId}/cmd/mci/{mciId}
+      description: "Send a command to specified MCI"
+    Getk8scluster:
+      method: get
+      resourcePath: /ns/{nsId}/k8scluster/{k8sClusterId}
+      description: "Get K8sCluster"
+    Deletek8scluster:
+      method: delete
+      resourcePath: /ns/{nsId}/k8scluster/{k8sClusterId}
+      description: "Delete K8sCluster"
+    Postmcnlb:
+      method: post
+      resourcePath: /ns/{nsId}/mci/{mciId}/mcSwNlb
+      description: "Create a special purpose MCI for NLB and depoly and setting SW NLB"
+    Getvmdatadisk:
+      method: get
+      resourcePath: /ns/{nsId}/mci/{mciId}/vm/{vmId}/dataDisk
+      description: "Get available dataDisks for a VM"
+    Putvmdatadisk:
+      method: put
+      resourcePath: /ns/{nsId}/mci/{mciId}/vm/{vmId}/dataDisk
+      description: "Attach/Detach available dataDisk"
+    Postvmdatadisk:
+      method: post
+      resourcePath: /ns/{nsId}/mci/{mciId}/vm/{vmId}/dataDisk
+      description: "Provisioning (Create and attach) dataDisk"
+    Getsubnet:
+      method: get
+      resourcePath: /ns/{nsId}/resources/vNet/{vNetId}/subnet/{subnetId}
+      description: "Get Subnet"
+    Delsubnet:
+      method: delete
+      resourcePath: /ns/{nsId}/resources/vNet/{vNetId}/subnet/{subnetId}
+      description: "Delete Subnet\n- refine: delete information of subnet if there's no info/resource in Spider/CSP\n- force: delete subnet regardless of the status of info/resource in Spider/CSP"
+    Getresourcesbylabelselector:
+      method: get
+      resourcePath: /resources/{labelType}
+      description: "Get resources based on a label selector. The label selector supports the following operators:\n- `=` : Selects resources where the label key equals the specified value (e.g., `env=production`).\n- `!=` : Selects resources where the label key does not equal the specified value (e.g., `tier!=frontend`).\n- `in` : Selects resources where the label key is in the specified set of values (e.g., `region in (us-west, us-east)`).\n- `notin` : Selects resources where the label key is not in the specified set of values (e.g., `env notin (production, staging)`).\n- `exists` : Selects resources where the label key exists (e.g., `env exists`).\n- `!exists` : Selects resources where the label key does not exist (e.g., `env !exists`)."
+    Getallns:
+      method: get
+      resourcePath: /ns
+      description: "List all namespaces or namespaces' ID"
+    Postns:
+      method: post
+      resourcePath: /ns
+      description: "Create namespace"
+    Delallns:
+      method: delete
+      resourcePath: /ns
+      description: "Delete all namespaces"
+    Postmcivmdynamic:
+      method: post
+      resourcePath: /ns/{nsId}/mci/{mciId}/vmDynamic
+      description: "Create VM Dynamically and add it to MCI"
+    Getobject:
+      method: get
+      resourcePath: /object
+      description: "Get value of an object"
+    Deleteobject:
+      method: delete
+      resourcePath: /object
+      description: "Delete an object"
+    Getreadyz:
+      method: get
+      resourcePath: /readyz
+      description: "Check Tumblebug is ready"
+    Getallrequests:
+      method: get
+      resourcePath: /requests
+      description: "Get details of all requests with optional filters."
+    Deleteallrequests:
+      method: delete
+      resourcePath: /requests
+      description: "Delete details of all requests"
+    Getlabels:
+      method: get
+      resourcePath: /label/{labelType}/{uid}
+      description: "Get labels for a resource identified by its uid"
+    Createorupdatelabel:
+      method: put
+      resourcePath: /label/{labelType}/{uid}
+      description: "Create or update a label for a resource identified by its uid"
+
+  mc-web-console:
+    Anycontroller:
+      method: post
+      resourcePath: /api/{operationId}
+      description: AnyController
+    Availabledisktypebyproviderregion:
+      method: post
+      resourcePath: /api/availabledisktypebyproviderregion
+      description: AvailableDiskTypeByProviderRegion
+    Createmenuresources:
+      method: post
+      resourcePath: /api/createmenuresources
+      description: CreateMenuResources
+    Disklookup:
+      method: post
+      resourcePath: /api/disklookup
+      description: DiskLookup
+    Getmenutree:
+      method: post
+      resourcePath: /api/getmenutree
+      description: GetmenuTree
+    Webgetuserinfo:
+      method: post
+      resourcePath: /api/auth/userinfo
+      description: webGetUserInfo
+    Weblogin:
+      method: post
+      resourcePath: /api/auth/login
+      description: webLogin
+    Webloginrefresh:
+      method: post
+      resourcePath: /api/auth/refresh
+      description: webLoginRefresh
+    Weblogout:
+      method: post
+      resourcePath: /api/auth/logout
+      description: webLogout
+    Webvalidate:
+      method: post
+      resourcePath: /api/auth/validate
+      description: webValidate
+
+  mc-observability:
+    Getopensearches:
+      method: get
+      resourcePath: /api/o11y/monitoring/opensearch
+      description: ""
+    Gettriggertargetalllist:
+      method: get
+      resourcePath: /api/o11y/trigger/policy/target
+      description: ""
+    Gettargetanomalydetectionsettings:
+      method: get
+      resourcePath: /api/o11y/insight/anomaly-detection/settings/nsId/{nsId}/target/{targetId}
+      description: "Fetch the current settings for a specific anomaly detection target."
+    Deletestorage:
+      method: delete
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}/storage/{storageSeq}
+      description: ""
+    Getinfluxdbmetrics:
+      method: post
+      resourcePath: /api/o11y/monitoring/influxdb/metric
+      description: ""
+    Getinfluxdbs:
+      method: get
+      resourcePath: /api/o11y/monitoring/influxdb
+      description: ""
+    Getinfluxdbmeasurements:
+      method: get
+      resourcePath: /api/o11y/monitoring/influxdb/measurement
+      description: ""
+    Gettriggerhistoryalllist:
+      method: get
+      resourcePath: /api/o11y/trigger/policy/history
+      description: "Base64 Encoded value:  \nname\n"
+    Gettriggerpolicyalllist:
+      method: get
+      resourcePath: /api/o11y/trigger/policy
+      description: ""
+    Createrequesttriggerpolicy:
+      method: post
+      resourcePath: /api/o11y/trigger/policy
+      description: "The values that require Base64 encoding:\ndescription, name, threshold\n"
+    Getanomalydetectionoptions:
+      method: get
+      resourcePath: /api/o11y/insight/anomaly-detection/options
+      description: "Fetch the available target types, metric types, and interval options for the anomaly detection API."
+    Getanomalydetectionhistory:
+      method: get
+      resourcePath: /api/o11y/insight/anomaly-detection/nsId/{nsId}/target/{targetId}/history
+      description: "Fetch the results of anomaly detection for a specific target within a given time range."
+    Getstorages:
+      method: get
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}/storage
+      description: ""
+    Putstorage:
+      method: put
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}/storage
+      description: ""
+    Poststorage:
+      method: post
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}/storage
+      description: ""
+    Deleterequesttriggerpolicy:
+      method: delete
+      resourcePath: /api/o11y/trigger/policy/{policySeq}
+      description: ""
+    Updaterequesttriggerpolicy:
+      method: patch
+      resourcePath: /api/o11y/trigger/policy/{policySeq}
+      description: ""
+    Gettriggeralertemailuseralllist:
+      method: get
+      resourcePath: /api/o11y/trigger/policy/{policySeq}/alert/email
+      description: ""
+    Createtriggeralertemailuser:
+      method: post
+      resourcePath: /api/o11y/trigger/policy/{policySeq}/alert/email
+      description: ""
+    Getminingdbmeasurements:
+      method: get
+      resourcePath: /api/o11y/monitoring/miningdb/measurement
+      description: ""
+    Getcsp:
+      method: get
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}/csp/{measurement}
+      description: ""
+    Puttriggertarget:
+      method: put
+      resourcePath: /api/o11y/trigger/policy/{policySeq}/target
+      description: ""
+    Getallanomalydetectionsettings:
+      method: get
+      resourcePath: /api/o11y/insight/anomaly-detection/settings
+      description: "Fetch the current settings for all anomaly detection targets."
+    Postanomalydetectionsettings:
+      method: post
+      resourcePath: /api/o11y/insight/anomaly-detection/settings
+      description: "Register a target for anomaly detection and automatically schedule detection tasks.  \n(measurememt : field) Relationships are as follows.  \ncpu : usage_idle  \nmem : used_percent\n"
+    Deletetarget:
+      method: delete
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}
+      description: ""
+    Gettarget:
+      method: get
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}
+      description: ""
+    Puttarget:
+      method: put
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}
+      description: ""
+    Posttarget:
+      method: post
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}
+      description: ""
+    Getminingdbs:
+      method: get
+      resourcePath: /api/o11y/monitoring/miningdb
+      description: ""
+    Putminingdb:
+      method: put
+      resourcePath: /api/o11y/monitoring/miningdb
+      description: ""
+    Gettargetsnsmci:
+      method: get
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target
+      description: ""
+    Gettargets:
+      method: get
+      resourcePath: /api/o11y/monitoring/target
+      description: ""
+    Getminingdbmetrics:
+      method: post
+      resourcePath: /api/o11y/monitoring/miningdb/metric
+      description: ""
+    Getminingdbtags":
+      method: get
+      resourcePath: /api/o11y/monitoring/miningdb/tag
+      description: ""
+    Postanomalydetection:
+      method: post
+      resourcePath: /api/o11y/insight/anomaly-detection/{settingSeq}
+      description: "Request anomaly detection"
+    Getnss:
+      method: get
+      resourcePath: /api/o11y/monitoring/ns
+      description: ""
+    Deleteitem:
+      method: delete
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}/item/{itemSeq}
+      description: ""
+    Getinfluxdbtags:
+      method: get
+      resourcePath: /api/o11y/monitoring/influxdb/tag
+      description: ""
+    Postprediction:
+      method: post
+      resourcePath: /api/o11y/insight/predictions/nsId/{nsId}/target/{targetId}
+      description: "Predict future metrics (cpu, mem, disk, system) for a given vm or mci group.\n(measurememt : field) Relationships are as follows.  \ncpu : usage_idle  \nmem : used_percent  \ndisk : used_percent  \nsystem : load1\n"
+    Getpredictionhistory:
+      method: get
+      resourcePath: /api/o11y/insight/predictions/nsId/{nsId}/target/{targetId}/history
+      description: "Get previously stored prediction data for a specific vm or mci group."
+    Getreadyz:
+      method: get
+      resourcePath: /api/o11y/readyz
+      description: ""
+    Getplugins:
+      method: get
+      resourcePath: /api/o11y/monitoring/plugins
+      description: ""
+    Gettriggeralertslackuseralllist:
+      method: get
+      resourcePath: /api/o11y/trigger/policy/{policySeq}/alert/slack
+      description: ""
+    Createtriggeralertslackuser:
+      method: post
+      resourcePath: /api/o11y/trigger/policy/{policySeq}/alert/slack
+      description: ""
+    Deletetriggeralertslackuser:
+      method: delete
+      resourcePath: /api/o11y/trigger/policy/{policySeq}/alert/slack/{seq}
+      description: ""
+    Getpredictionoptions:
+      method: get
+      resourcePath: /api/o11y/insight/predictions/options
+      description: "Fetch the available target types, metric types, and prediction range options for the prediction API."
+    Getitems:
+      method: get
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}/item
+      description: ""
+    Putitem:
+      method: put
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}/item
+      description: ""
+    Postitem:
+      method: post
+      resourcePath: /api/o11y/monitoring/{nsId}/{mciId}/target/{targetId}/item
+      description: ""
+    Getopensearchlogs:
+      method: post
+      resourcePath: /api/o11y/monitoring/opensearch/logs
+      description: ""
+    Deletetriggeralertemailuser:
+      method: delete
+      resourcePath: /api/o11y/trigger/policy/{policySeq}/alert/email/{seq}
+      description: ""
+    Putanomalydetectionsettings:
+      method: put
+      resourcePath: /api/o11y/insight/anomaly-detection/settings/{settingSeq}
+      description: "Modify the settings for a specific anomaly detection target, including the monitoring metric and interval."
+    Deleteanomalydetectionsettings:
+      method: delete
+      resourcePath: /api/o11y/insight/anomaly-detection/settings/{settingSeq}
+      description: "Remove a target from anomaly detection, stopping and removing any scheduled tasks."
+  
+  mc-application-manager:
+    Getosslistusingget:
+      method: get
+      resourcePath: /oss/list/{ossTypeName}
+      description: ""
+    Createcomponentbytextusingpost:
+      method: post
+      resourcePath: /oss/v1/components/{module}/create/{name}/text
+      description: ""
+    Getcomponentlistusingget:
+      method: get
+      resourcePath: /oss/v1/components/{module}/list/{name}
+      description: ""
+    Getrepositorylistusingget_1:
+      method: get
+      resourcePath: /repository/
+      description: ""
+    Createrepositoryusingpost_1:
+      method: post
+      resourcePath: /repository/
+      description: ""
+    Updaterepositoryusingput_1:
+      method: put
+      resourcePath: /repository/
+      description: ""
+    Deleterepositoryusingdelete_1:
+      method: delete
+      resourcePath: /repository/
+      description: ""
+    Getrepositorylistusingget:
+      method: get
+      resourcePath: /oss/v1/repositories/{module}/list
+      description: ""
+    Updaterepositoryusingput:
+      method: put
+      resourcePath: /oss/v1/repositories/{module}/update
+      description: ""
+    Deleteosstypeusingdelete:
+      method: delete
+      resourcePath: /ossType/{ossTypeIdx}
+      description: ""
+    Updateosstypeusingpatch:
+      method: patch
+      resourcePath: /ossType/{ossTypeIdx}
+      description: ""
+    Detailosstypeusingget:
+      method: get
+      resourcePath: /ossType/{ossTypeIdx}
+      description: ""
+    Openapiyamlusingget:
+      method: get
+      resourcePath: /v3/api-docs.yaml
+      description: ""
+    Openapijsonusingget_1:
+      method: get
+      resourcePath: /v3/api-docs/swagger-config
+      description: ""
+    Getmanifestusingget:
+      method: get
+      resourcePath: /manifest/
+      description: ""
+    Createmanifestusingpost:
+      method: post
+      resourcePath: /manifest/
+      description: ""
+    Updatemanifestusingput:
+      method: put
+      resourcePath: /manifest/
+      description: ""
+    Registossusingpost:
+      method: post
+      resourcePath: /oss
+      description: ""
+    Checkconnectionusingpost:
+      method: post
+      resourcePath: /oss/connection-check
+      description: ""
+    Createcomponentusingpost:
+      method: post
+      resourcePath: /oss/v1/components/{module}/create/{name}
+      description: ""
+    Getartifacthublistusingget:
+      method: get
+      resourcePath: /search/artifacthub/{keyword}
+      description: ""
+    Detailossusingget:
+      method: get
+      resourcePath: /oss/{ossIdx}
+      description: ""
+    Deleteossusingdelete:
+      method: delete
+      resourcePath: /oss/{ossIdx}
+      description: ""
+    Updateossusingpatch:
+      method: patch
+      resourcePath: /oss/{ossIdx}
+      description: ""
+    Registosstypeusingpost:
+      method: post
+      resourcePath: /ossType
+      description: ""
+    Getosstypelistusingget:
+      method: get
+      resourcePath: /ossType/list
+      description: ""
+    Getdockerhublistusingget:
+      method: get
+      resourcePath: /search/dockerhub/{keyword}
+      description: ""
+    Createrepositoryusingpost:
+      method: post
+      resourcePath: /oss/v1/repositories/{module}/create
+      description: ""
+    Getrepositoryfileusingget:
+      method: get
+      resourcePath: /repository/file/{filename}
+      description: ""
+    Deleterepositoryfileusingdelete:
+      method: delete
+      resourcePath: /repository/file/{filename}
+      description: ""
+    Redirecttouiusingget:
+      method: get
+      resourcePath: /swagger-ui.html
+      description: ""
+    Updatecatalogusingput:
+      method: put
+      resourcePath: /catalog/software/
+      description: "software catalog 수정"
+    Getcataloglistusingget:
+      method: get
+      resourcePath: /catalog/software/
+      description: "software catalog 리스트 불러오기"
+    Createcatalogusingpost:
+      method: post
+      resourcePath: /catalog/software/
+      description: "software catalog 등록"
+    Getcatalogreferenceusingget:
+      method: get
+      resourcePath: /catalog/software/ref/{catalogIdx}
+      description: ""
+    Createcatalogrefusingpost:
+      method: post
+      resourcePath: /catalog/software/ref/{catalogIdx}
+      description: "software catalog 관련정보 등록(webpage, workflow 등)"
+    Savemanifestusingget:
+      method: get
+      resourcePath: /manifest/download/{manifestIdx}
+      description: ""
+    Getmanifestdetailtxtusingget:
+      method: get
+      resourcePath: /manifest/{manifestIdx}/txt
+      description: ""
+    Getosslistusingget_1:
+      method: get
+      resourcePath: /oss/list
+      description: ""
+    Openapijsonusingget:
+      method: get
+      resourcePath: /v3/api-docs
+      description: ""
+    Generateconfigmapyamlusingpost:
+      method: post
+      resourcePath: /yaml/configmap
+      description: ""
+    Generatedeploymentyamlusingpost:
+      method: post
+      resourcePath: /yaml/deployment
+      description: ""
+    Errorhtmlusinghead:
+      method: head
+      resourcePath: /error
+      description: ""
+    Errorhtmlusingpost:
+      method: post
+      resourcePath: /error
+      description: ""
+    Errorhtmlusingput:
+      method: put
+      resourcePath: /error
+      description: ""
+    Errorhtmlusingdelete:
+      method: delete
+      resourcePath: /error
+      description: ""
+    Errorhtmlusingoptions:
+      method: options
+      resourcePath: /error
+      description: ""
+    Errorhtmlusingpatch:
+      method: patch
+      resourcePath: /error
+      description: ""
+    Errorhtmlusingget:
+      method: get
+      resourcePath: /error
+      description: ""
+    Getmanifestdetailusingget:
+      method: get
+      resourcePath: /manifest/{manifestIdx}
+      description: ""
+    Updatemanifestusingdelete:
+      method: delete
+      resourcePath: /manifest/{manifestIdx}
+      description: ""
+    Deletecomponentusingdelete:
+      method: delete
+      resourcePath: /oss/v1/components/{module}/delete/{id}
+      description: ""
+    Getcomponentdetailbynameusingget:
+      method: get
+      resourcePath: /oss/v1/components/{module}/detail/{id}
+      description: ""
+    Generatehpayamlusingpost:
+      method: post
+      resourcePath: /yaml/hpa
+      description: ""
+    Deleterepositoryusingdelete:
+      method: delete
+      resourcePath: /oss/v1/repositories/{module}/delete/{name}
+      description: ""
+    Getrepositorydetailbynameusingget:
+      method: get
+      resourcePath: /oss/v1/repositories/{module}/detail/{name}
+      description: ""
+    Getrepositoryusingget:
+      method: get
+      resourcePath: /repository/{repositoryName}
+      description: ""
+    Insertrepositoryusingpost:
+      method: post
+      resourcePath: /repository/{repositoryName}
+      description: ""
+    Generatepodyamlusingpost:
+      method: post
+      resourcePath: /yaml/pod
+      description: ""
+    Generateserviceyamlusingpost:
+      method: post
+      resourcePath: /yaml/service
+      description: ""
+    Execworkflowusingpost:
+      method: post
+      resourcePath: /catalog/software/ref/workflow
+      description: ""
+    Deletecatalogrefworkflowusingdelete:
+      method: delete
+      resourcePath: /catalog/software/ref/{catalogIdx}/{catalogRefIdx}
+      description: ""
+    Getcatalogdetailusingget:
+      method: get
+      resourcePath: /catalog/software/{catalogIdx}
+      description: "software catalog 내용 확인(연결된 정보들까지)"
+    Deletecatalogusingdelete:
+      method: delete
+      resourcePath: /catalog/software/{catalogIdx}
+      description: "software catalog 삭제"
+    Isossinfoduplicatedusingget:
+      method: get
+      resourcePath: /oss/duplicate
+      description: ""
+    Uploadfilesusingpost:
+      method: post
+      resourcePath: /repository/file/
+      description: "file upload"
+
+  mc-workflow-manager:
+    Getworkflowlogusingget:
+      method: get
+      resourcePath: /workflow/log/{workflowIdx}
+      description: ""
+    Runworkflowpostusingpost:
+      method: post
+      resourcePath: /workflow/run
+      description: ""
+    Getdefaultworkflowstageusingget:
+      method: get
+      resourcePath: /workflowStage/default/script/{workflowStageTypeName}
+      description: ""
+    Detailworkflowstagetypeusingget:
+      method: get
+      resourcePath: /workflowStageType/{workflowStageTypeIdx}
+      description: ""
+    Deleteworkflowstagetypeusingdelete:
+      method: delete
+      resourcePath: /workflowStageType/{workflowStageTypeIdx}
+      description: ""
+    Updateworkflowstagetypeusingpatch:
+      method: patch
+      resourcePath: /workflowStageType/{workflowStageTypeIdx}
+      description: ""
+    Geteventlistenerlistusingget:
+      method: get
+      resourcePath: /eventlistener/list
+      description: ""
+    Detaileventlistenerusingget:
+      method: get
+      resourcePath: /eventlistener/{eventListenerIdx}
+      description: ""
+    Deleteeventlistnerusingdelete:
+      method: delete
+      resourcePath: /eventlistener/{eventListenerIdx}
+      description: ""
+    Updateeventlistnerusingpatch:
+      method: patch
+      resourcePath: /eventlistener/{eventListenerIdx}
+      description: ""
+    Checkconnectionusingpost:
+      method: post
+      resourcePath: /oss/connection-check
+      description: ""
+    Getworkflowhistorylistusingget:
+      method: get
+      resourcePath: /workflow/history/{workflowIdx}
+      description: ""
+    Detailworkflowstageusingget:
+      method: get
+      resourcePath: /workflowStage/{workflowStageIdx}
+      description: ""
+    Deleteworkflowstageusingdelete:
+      method: delete
+      resourcePath: /workflowStage/{workflowStageIdx}
+      description: ""
+    Updateworkflowstageusingpatch:
+      method: patch
+      resourcePath: /workflowStage/{workflowStageIdx}
+      description: ""
+    Registworkflowstageusingpost_1:
+      method: post
+      resourcePath: /workflowStageType
+      description: ""
+    Isossinfoduplicatedusingget:
+      method: get
+      resourcePath: /oss/duplicate
+      description: ""
+    Getosslistusingget:
+      method: get
+      resourcePath: /oss/list/{ossTypeName}
+      description: ""
+    Openapiyamlusingget:
+      method: get
+      resourcePath: /v3/api-docs.yaml
+      description: ""
+    Getworkflowstagehistorylistusingget:
+      method: get
+      resourcePath: /workflow/stageHistory/{workflowIdx}
+      description: ""
+    Getosslistusingget_1:
+      method: get
+      resourcePath: /oss/list
+      description: ""
+    Checkconnectionusingget:
+      method: get
+      resourcePath: /readyz
+      description: ""
+    Getworkflowusingget:
+      method: get
+      resourcePath: /workflow/{workflowIdx}
+      description: ""
+    Deleteworkflowusingdelete:
+      method: delete
+      resourcePath: /workflow/{workflowIdx}
+      description: ""
+    Updateworkflowusingpatch:
+      method: patch
+      resourcePath: /workflow/{workflowIdx}
+      description: ""
+    Getworkflowstagelistusingget_2:
+      method: get
+      resourcePath: /workflowStageType/list
+      description: ""
+    Isworkflowstagenameduplicatedusingget:
+      method: get
+      resourcePath: /workflowStage/duplicate
+      description: ""
+    Errorusinghead:
+      method: head
+      resourcePath: /error
+      description: ""
+    Errorusingpost:
+      method: post
+      resourcePath: /error
+      description: ""
+    Errorusingput:
+      method: put
+      resourcePath: /error
+      description: ""
+    Errorusingdelete:
+      method: delete
+      resourcePath: /error
+      description: ""
+    Errorusingoptions:
+      method: options
+      resourcePath: /error
+      description: ""
+    Errorusingpatch:
+      method: patch
+      resourcePath: /error
+      description: ""
+    Errorusingget:
+      method: get
+      resourcePath: /error
+      description: ""
+    Registossusingpost:
+      method: post
+      resourcePath: /oss
+      description: ""
+    Openapijsonusingget_1:
+      method: get
+      resourcePath: /v3/api-docs/swagger-config
+      description: ""
+    Getworkflowrunhistorylistusingget:
+      method: get
+      resourcePath: /workflow/runHistory/{workflowIdx}
+      description: ""
+    Getworkflowtemplateusingget:
+      method: get
+      resourcePath: /workflow/template/{workflowName}
+      description: ""
+    Getworkflowstagelistusingget_1:
+      method: get
+      resourcePath: /workflowStage/list
+      description: ""
+    Runeventlistenerusingget:
+      method: get
+      resourcePath: /eventlistener/run/{eventListenerIdx}
+      description: ""
+    Getworkflowlistusingget:
+      method: get
+      resourcePath: /eventlistener/workflowList/{eventListenerYn}
+      description: ""
+    Getosstypelistusingget:
+      method: get
+      resourcePath: /ossType/list
+      description: ""
+    Openapijsonusingget:
+      method: get
+      resourcePath: /v3/api-docs
+      description: ""
+    Redirecttouiusingget:
+      method: get
+      resourcePath: /swagger-ui.html
+      description: ""
+    Isworkflownameduplicatedusingget:
+      method: get
+      resourcePath: /workflow/name/duplicate
+      description: ""
+    Getworkflowparamlistusingget:
+      method: get
+      resourcePath: /workflow/param/list
+      description: ""
+    Runworkflowgetusingget:
+      method: get
+      resourcePath: /workflow/run/{workflowIdx}
+      description: ""
+    Iseventlistenerduplicatedusingget:
+      method: get
+      resourcePath: /eventlistener/duplicate
+      description: ""
+    Getworkflowdetailusingget:
+      method: get
+      resourcePath: /eventlistener/workflowDetail/{workflowIdx}/{evnetListenerYn}
+      description: ""
+    Getosstypefilteredlistusingget:
+      method: get
+      resourcePath: /ossType/filter/list
+      description: ""
+    Deleteosstypeusingdelete:
+      method: delete
+      resourcePath: /ossType/{ossTypeIdx}
+      description: ""
+    Updateosstypeusingpatch:
+      method: patch
+      resourcePath: /ossType/{ossTypeIdx}
+      description: ""
+    Detailosstypeusingget:
+      method: get
+      resourcePath: /ossType/{ossTypeIdx}
+      description: ""
+    Registworkflowstageusingpost:
+      method: post
+      resourcePath: /workflowStage
+      description: ""
+    Registeventlistnerusingpost:
+      method: post
+      resourcePath: /eventlistener
+      description: ""
+    Registosstypeusingpost:
+      method: post
+      resourcePath: /ossType
+      description: ""
+    Registworkflowusingpost:
+      method: post
+      resourcePath: /workflow
+      description: ""
+    Getworkflowlistusingget_1:
+      method: get
+      resourcePath: /workflow/list
+      description: ""
+    Detailossusingget:
+      method: get
+      resourcePath: /oss/{ossIdx}
+      description: ""
+    Deleteossusingdelete:
+      method: delete
+      resourcePath: /oss/{ossIdx}
+      description: ""
+    Updateossusingpatch:
+      method: patch
+      resourcePath: /oss/{ossIdx}
+      description: ""
+    Getworkflowstagelistusingget:
+      method: get
+      resourcePath: /workflow/workflowStageList
+      description: ""
+
+  mc-cost-optimizer:
+    Getinvoice:
+      method: post
+      resourcePath: /api/costopti/be/invoice/getInvoice
+      description: "이번달 빌링 인보이스 내역을 확인한다."
+    Gettop5bill:
+      method: post
+      resourcePath: /api/costopti/be/getTop5Bill
+      description: "이번달에 사용한 비용 상위 5개의 리소스와 비용을 확인합니다."
+    Getalarmhistory:
+      method: post
+      resourcePath: /api/costopti/be/alarm/history
+      description: "최근 7일간 발생한 최적화 알람을 조회한다."
+    Getinstoptisizercmd:
+      method: post
+      resourcePath: /api/costopti/be/opti/instOptiSizeRcmd
+      description: "사용중인 인스턴스의 추천 사이즈를 확인한다."
+    Getcurmonthbill:
+      method: post
+      resourcePath: /api/costopti/be/getCurMonthBill
+      description: "지난달 대비 이번달 비용을 확인합니다."
+    Getreadyz:
+      method: get
+      resourcePath: /api/costopti/be/readyz
+      description: "어플리케이션의 상태를 조회합니다."
+    Getworkspaces:
+      method: get
+      resourcePath: /api/costopti/be/getWorkspaces
+      description: "워크스페이스 목록을 조회합니다."
+    Getabrnormalrcmd:
+      method: post
+      resourcePath: /api/costopti/be/opti/abnormalRcmd
+      description: "최근 24시간동안 과금이 발생한 서비스들의 이상 비용 여부를 확인한다."
+    Getbillingbaseinfo:
+      method: post
+      resourcePath: /api/costopti/be/invoice/getBillingBaseInfo
+      description: "이번달 CSP별 요약된 빌링 인보이스를 확인한다."
+    Getbillasset:
+      method: post
+      resourcePath: /api/costopti/be/getBillAsset
+      description: "이번달 사용한 서비스(VM, DB 등) 단위의 비용을 확인합니다."
+    Updatetbbrscmeta:
+      method: get
+      resourcePath: /api/costopti/be/updateRscMeta
+      description: ""
+    Getunusedrcmd:
+      method: post
+      resourcePath: /api/costopti/be/opti/unusedRcmd
+      description: "최근 24시간동안 과금이 발생한 리소스에 대하여 미사용 자원을 추천한다."
+    Getsummary:
+      method: post
+      resourcePath: /api/costopti/be/invoice/getSummary
+      description: "CSP별 빌링 인보이스 비용을 월별로 확인한다."
+    Getprojects:
+      method: get
+      resourcePath: /api/costopti/be/getProjects
+      description: "워크스페이스에 속한 프로젝트 목록을 조회합니다."
+
+  mc-data-manager:
+    Getbackuphandler:
+      method: get
+      resourcePath: /backup/{id}
+      description: "Get the details of a Task using its ID."
+    Updatebackuphandler:
+      method: put
+      resourcePath: /backup/{id}
+      description: "Update the details of an existing Task using its ID."
+    Deletebackupkhandler:
+      method: delete
+      resourcePath: /backup/{id}
+      description: "Delete an existing Task using its ID."
+    Generateobjectstorageposthandler:
+      method: post
+      resourcePath: /generate/objectstorage
+      description: "Generate test data on Object Storage"
+    Migrationrdbmsposthandler:
+      method: post
+      resourcePath: /migrate/rdbms
+      description: "Migrate data from RDBMS to RDBMS."
+    Restorenrdbposthandler:
+      method: post
+      resourcePath: /restore/nrdbms
+      description: "Restore NoSQL from SQL files to a NoSQL database"
+    Updaterestorehandler:
+      method: put
+      resourcePath: /restore/{id}
+      description: "Update the details of an existing Task using its ID."
+    Deleterestorekhandler:
+      method: delete
+      resourcePath: /restore/{id}
+      description: "Delete an existing Task using its ID."
+    Getrestorehandler:
+      method: get
+      resourcePath: /restore/{id}
+      description: "Get the details of a Task using its ID."
+    Createtaskhandler:
+      method: post
+      resourcePath: /task
+      description: "Create a new Task and store it in the system."
+    Getalltaskshandler:
+      method: get
+      resourcePath: /task
+      description: "Retrieve a list of all Tasks in the system."
+    Getallbackuphandler:
+      method: get
+      resourcePath: /backup
+      description: "Retrieve a list of all Tasks in the system."
+    Backuposposthandler:
+      method: post
+      resourcePath: /backup/objectstorage
+      description: "Export data from a objectstorage  to files."
+    Generatelinuxposthandler:
+      method: post
+      resourcePath: /generate/linux
+      description: "Generate test data on on-premise Linux."
+    Generatewindowsposthandler:
+      method: post
+      resourcePath: /generate/windows
+      description: "Generate test data on on-premise Windows."
+    Destroyresourcehandler:
+      method: delete
+      resourcePath: /service/destroy
+      description: "Execute the destroy.sh script to destroy resources."
+    Backuprdbposthandler:
+      method: post
+      resourcePath: /backup/rdbms
+      description: "Export data from a MySQL database to SQL files."
+    Getallrestorehandler:
+      method: get
+      resourcePath: /restore
+      description: "Retrieve a list of all Tasks in the system."
+    Getmigratehandler:
+      method: get
+      resourcePath: /migrate/{id}
+      description: "Get the details of a Task using its ID."
+    Updatemigratehandler:
+      method: put
+      resourcePath: /migrate/{id}
+      description: "Update the details of an existing Task using its ID."
+    Deletemigratekhandler:
+      method: delete
+      resourcePath: /migrate/{id}
+      description: "Delete an existing Task using its ID."
+    Createschedulehandler:
+      method: post
+      resourcePath: /schedule
+      description: "Create a new Schedule and store it in the system."
+    Getallscheduleshandler:
+      method: get
+      resourcePath: /schedule
+      description: "Retrieve a list of all Schedules in the system."
+    Generaterdbmsposthandler:
+      method: post
+      resourcePath: /generate/rdbms
+      description: "Generate test data on RDBMS"
+    Deletegeneratekhandler:
+      method: delete
+      resourcePath: /generate/{id}
+      description: "Delete an existing Task using its ID."
+    Getgeneratehandler:
+      method: get
+      resourcePath: /generate/{id}
+      description: "Get the details of a Task using its ID."
+    Updategeneratehandler:
+      method: put
+      resourcePath: /generate/{id}
+      description: "Update the details of an existing Task using its ID."
+    Applyresourcehandler:
+      method: post
+      resourcePath: /service/apply
+      description: "Execute the apply.sh script to set up resources."
+    Gettaskhandler:
+      method: get
+      resourcePath: /task/{id}
+      description: "Get the details of a Task using its ID."
+    Updatetaskhandler:
+      method: put
+      resourcePath: /task/{id}
+      description: "Update the details of an existing Task using its ID."
+    Deletetaskhandler:
+      method: delete
+      resourcePath: /task/{id}
+      description: "Delete an existing Task using its ID."
+    Backupnrdbposthandler:
+      method: post
+      resourcePath: /backup/nrdbms
+      description: "Export data from a MySQL database to SQL files."
+    Getallmigratehandler:
+      method: get
+      resourcePath: /migrate
+      description: "Retrieve a list of all Tasks in the system."
+    Getsystemreadyhandler:
+      method: get
+      resourcePath: /readyZ
+      description: "Get System Ready"
+    Deleteserviceandtaskallhandler:
+      method: delete
+      resourcePath: /service/clearAll
+      description: "Delete an All Service and Task."
+    Restoreosposthandler:
+      method: post
+      resourcePath: /restore/objectstorage
+      description: "Restore objectstorage from files to a objectstorage"
+    Restorerdbposthandler:
+      method: post
+      resourcePath: /restore/rdbms
+      description: "Restore MySQL from MySQL files to a MySQL database"
+    Getschedulehandler:
+      method: get
+      resourcePath: /schedule/{id}
+      description: "Get the details of a Schedule using its ID."
+    Updateschedulehandler:
+      method: put
+      resourcePath: /schedule/{id}
+      description: "Update the details of an existing Schedule using its ID."
+    Deleteschedulehandler:
+      method: delete
+      resourcePath: /schedule/{id}
+      description: "Delete an existing Schedule using its ID."
+    Getallgeneratehandler:
+      method: get
+      resourcePath: /generate
+      description: "Retrieve a list of all Tasks in the system."
+    Generatenrdbmsposthandler:
+      method: post
+      resourcePath: /generate/nrdbms
+      description: "Generate test data on Object Storage"
+    Migrationnrdbmsposthandler:
+      method: post
+      resourcePath: /migrate/nrdbms
+      description: "Migrate data from NRDBMS to NRDBMS."
+    Migrationobjectstorageposthandler:
+      method: post
+      resourcePath: /migrate/objectstorage
+      description: "Migrate data from ObjectStorage to ObjectStorage."
