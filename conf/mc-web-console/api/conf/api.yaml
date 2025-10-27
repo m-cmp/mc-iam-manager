@@ -1589,9 +1589,9 @@ serviceActions:
       method: post
       resourcePath: /lookupImages
       description: "Lookup image list"
-    Recommendvm:
+    RecommendSpec:
       method: post
-      resourcePath: /mciRecommendVm
+      resourcePath: /recommendSpec
       description: "Recommend MCI plan (filter and priority) Find details from https://github.com/cloud-barista/cb-tumblebug/discussions/1234"
     Getallns:
       method: get
