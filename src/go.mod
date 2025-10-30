@@ -1,6 +1,6 @@
 module github.com/m-cmp/mc-iam-manager
 
-go 1.23.1
+go 1.25.0
 
 require (
 	cloud.google.com/go/iam v1.5.2
@@ -10,7 +10,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.67
 	github.com/aws/aws-sdk-go-v2/service/iam v1.41.1
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.19
+	github.com/go-playground/validator/v10 v10.26.0
 	github.com/golang-jwt/jwt/v5 v5.0.0
+	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/lib/pq v1.10.9
@@ -19,6 +21,7 @@ require (
 	github.com/swaggo/swag v1.16.4
 	google.golang.org/api v0.232.0
 	gopkg.in/yaml.v3 v3.0.1
+	gorm.io/datatypes v1.2.5
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/driver/sqlite v1.5.7
 	gorm.io/gorm v1.26.1
@@ -42,17 +45,17 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.21.1 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/spec v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.1 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.26.0 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/go-sql-driver/mysql v1.9.2 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -75,6 +78,11 @@ require (
 	github.com/swaggo/files/v2 v2.0.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
+	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
+	go.opentelemetry.io/otel v1.35.0 // indirect
+	go.opentelemetry.io/otel/metric v1.35.0 // indirect
+	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
@@ -89,6 +97,5 @@ require (
 	google.golang.org/grpc v1.72.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gorm.io/datatypes v1.2.5 // indirect
 	gorm.io/driver/mysql v1.5.7 // indirect
 )
