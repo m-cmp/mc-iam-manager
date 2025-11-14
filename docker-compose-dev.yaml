@@ -28,7 +28,7 @@ services:
       - mc-infra-manager-network
       - mc-web-console-network
     ports:
-      - '5006:5006'  // Dev 환경 전용 포트
+      - '5006:5006'  # Dev 환경 전용 포트
     environment:
       # Release 브랜치의 로컬 Docker 컨테이너를 참조하도록 override
       # .env 파일의 원격 서버 설정을 로컬 Docker 컨테이너로 변경
