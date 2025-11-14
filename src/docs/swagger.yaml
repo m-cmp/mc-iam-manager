@@ -209,6 +209,18 @@ definitions:
     - menuIds
     - roleId
     type: object
+  model.CreateProjectRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      workspaceId:
+        description: optional workspace to assign project to
+        type: string
+    required:
+    - name
+    type: object
   model.CreateRoleRequest:
     properties:
       cspRoles:
@@ -763,9 +775,33 @@ paths:
       - application/json
       description: Refresh JWT access token using a valid refresh token.
       operationId: mciamRefreshToken
+      parameters:
+      - description: Refresh token
+        in: body
+        name: refresh_token
+        required: true
+        schema:
+          type: string
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: New token information
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: Bad Request'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       summary: Refresh access token
       tags:
       - auth
@@ -792,6 +828,13 @@ paths:
       - application/json
       description: Validate the current access token and refresh if expired
       operationId: mciamValidateToken
+      parameters:
+      - description: Refresh token
+        in: body
+        name: refresh_token
+        required: true
+        schema:
+          type: string
       produces:
       - application/json
       responses:
@@ -799,6 +842,12 @@ paths:
           description: Token validation result with new token if refreshed
           schema:
             additionalProperties: true
+            type: object
+        "400":
+          description: 'error: Bad Request'
+          schema:
+            additionalProperties:
+              type: string
             type: object
         "401":
           description: 'error: Unauthorized'
@@ -1961,7 +2010,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new project with the specified information.
+      description: Create a new project with the specified information. Optionally
+        specify a workspace to assign the project to.
       operationId: createProject
       parameters:
       - description: Project Info
@@ -1969,7 +2019,7 @@ paths:
         name: project
         required: true
         schema:
-          $ref: '#/definitions/model.Project'
+          $ref: '#/definitions/model.CreateProjectRequest'
       produces:
       - application/json
       responses:
@@ -1979,6 +2029,12 @@ paths:
             $ref: '#/definitions/model.Project'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
           schema:
             additionalProperties:
               type: string
@@ -2153,6 +2209,50 @@ paths:
       security:
       - BearerAuth: []
       summary: 프로젝트에 워크스페이스 연결
+      tags:
+      - projects
+  /api/projects/id/{projectId}/workspaces:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve list of workspaces that the project is assigned to
+      operationId: getProjectWorkspaces
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Workspace'
+            type: array
+        "400":
+          description: 'error: Invalid project ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Project not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get workspaces assigned to project
       tags:
       - projects
   /api/projects/list:
@@ -4528,7 +4628,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new workspace with the specified information.
+      description: Create a new workspace with the specified information. Optionally
+        assign existing projects to the workspace.
       operationId: createWorkspace
       parameters:
       - description: Workspace Info
@@ -5204,6 +5305,11 @@ paths:
       - application/json
       description: Check the health status of the service.
       operationId: mciamCheckHealth
+      parameters:
+      - description: Detail check components (nginx,db,keycloak,all)
+        in: query
+        name: detail
+        type: string
       produces:
       - application/json
       responses:
