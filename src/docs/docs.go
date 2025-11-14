@@ -127,7 +127,44 @@ const docTemplate = `{
                 ],
                 "summary": "Refresh access token",
                 "operationId": "mciamRefreshToken",
-                "responses": {}
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "New token information",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "error: Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/auth/temp-credential-csps": {
@@ -174,12 +211,32 @@ const docTemplate = `{
                 ],
                 "summary": "Validate access token",
                 "operationId": "mciamValidateToken",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Token validation result with new token if refreshed",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "error: Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "401": {
@@ -1952,7 +2009,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new project with the specified information.",
+                "description": "Create a new project with the specified information. Optionally specify a workspace to assign the project to.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1971,7 +2028,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Project"
+                            "$ref": "#/definitions/model.CreateProjectRequest"
                         }
                     }
                 ],
@@ -1991,8 +2048,85 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/projects/id/{projectId}/workspaces": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve list of workspaces that the project is assigned to",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Get workspaces assigned to project",
+                "operationId": "getProjectWorkspaces",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Workspace"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "error: Invalid project ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Project not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Internal server error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -5938,7 +6072,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new workspace with the specified information.",
+                "description": "Create a new workspace with the specified information. Optionally assign existing projects to the workspace.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6984,6 +7118,14 @@ const docTemplate = `{
                 ],
                 "summary": "Health check",
                 "operationId": "mciamCheckHealth",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Detail check components (nginx,db,keycloak,all)",
+                        "name": "detail",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -7301,6 +7443,24 @@ const docTemplate = `{
                     }
                 },
                 "roleId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateProjectRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "workspaceId": {
+                    "description": "optional workspace to assign project to",
                     "type": "string"
                 }
             }

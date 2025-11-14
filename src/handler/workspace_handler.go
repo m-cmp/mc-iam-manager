@@ -144,7 +144,7 @@ func (h *WorkspaceHandler) GetWorkspaceByID(c echo.Context) error {
 
 // CreateWorkspace godoc
 // @Summary Create new workspace
-// @Description Create a new workspace with the specified information.
+// @Description Create a new workspace with the specified information. Optionally assign existing projects to the workspace.
 // @Tags workspaces
 // @Accept json
 // @Produce json
@@ -163,10 +163,33 @@ func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 		})
 	}
 
+	// Save projects array temporarily and clear it to avoid duplicate assignment
+	projectsToAssign := workspace.Projects
+	workspace.Projects = nil
+
+	// Create workspace
 	if err := h.workspaceService.CreateWorkspace(&workspace); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to create workspace",
 		})
+	}
+
+	// If projects array is provided, assign them to the new workspace
+	if len(projectsToAssign) > 0 {
+		for _, project := range projectsToAssign {
+			// AddProjectToWorkspace will remove project from any existing workspace
+			// and assign it to the new workspace (enforcing 1:N relationship)
+			if err := h.workspaceService.AddProjectToWorkspace(workspace.ID, project.ID); err != nil {
+				log.Printf("Failed to assign project %d to workspace %d: %v", project.ID, workspace.ID, err)
+				// Continue with other projects even if one fails
+			}
+		}
+
+		// Fetch updated workspace with assigned projects
+		updatedWorkspace, err := h.workspaceService.GetWorkspaceProjectsByWorkspaceId(workspace.ID)
+		if err == nil && updatedWorkspace != nil {
+			return c.JSON(http.StatusCreated, updatedWorkspace)
+		}
 	}
 
 	return c.JSON(http.StatusCreated, workspace)

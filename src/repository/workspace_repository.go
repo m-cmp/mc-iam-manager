@@ -182,24 +182,23 @@ func (r *WorkspaceRepository) FindWorkspaceProjectsByWorkspaceID(id uint) (*mode
 
 // AddProjectAssociation add project association to workspace
 func (r *WorkspaceRepository) AddProjectAssociation(workspaceID, projectID uint) error {
+	// Remove all existing workspace associations for this project (1:N relationship enforcement)
+	// This ensures a project can only belong to one workspace at a time
+	result := r.db.Where("project_id = ?", projectID).
+		Delete(&model.WorkspaceProject{})
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// Add new workspace association
 	workspaceProject := &model.WorkspaceProject{
 		WorkspaceID: workspaceID,
 		ProjectID:   projectID,
 	}
 
-	// If project was stored in default workspace, remove it from default workspace
-	if workspaceID != 1 {
-		result := r.db.Where("workspace_id = ? AND project_id = ?", 1, projectID).
-			Delete(&model.WorkspaceProject{})
-		if result.Error != nil {
-			return result.Error
-		}
-	}
-
 	// Save directly to mcmp_workspace_projects table
 	err := r.db.Save(workspaceProject).Error
 	if err != nil {
-
 		return err
 	}
 	return nil

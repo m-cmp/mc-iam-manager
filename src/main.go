@@ -231,6 +231,8 @@ func main() {
 		projects.PUT("/id/:projectId", projectHandler.UpdateProject, middleware.PlatformRoleMiddleware(middleware.Manage))
 		projects.DELETE("/id/:projectId", projectHandler.DeleteProject, middleware.PlatformRoleMiddleware(middleware.Manage))
 
+		projects.GET("/id/:projectId/workspaces", projectHandler.GetProjectWorkspaces) // Get workspaces assigned to project
+
 		projects.POST("/assign/workspaces", projectHandler.AddWorkspaceToProject, middleware.PlatformAdminMiddleware)
 		projects.DELETE("/unassign/workspaces", projectHandler.RemoveWorkspaceFromProject, middleware.PlatformAdminMiddleware)
 	}

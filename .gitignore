@@ -38,3 +38,6 @@ dockercontainer-volume
 container-volume
 old
 dockerfiles/nginx/nginx.conf
+
+# Documentation (local only)
+doc/

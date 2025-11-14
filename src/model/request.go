@@ -27,6 +27,7 @@ type ProjectFilterRequest struct {
 type CreateProjectRequest struct {
 	Name        string `json:"name" validate:"required"`
 	Description string `json:"description"`
+	WorkspaceID string `json:"workspaceId,omitempty"` // optional workspace to assign project to
 }
 
 // McmpApiRequestParams defines the structure for parameters needed in an API call.
