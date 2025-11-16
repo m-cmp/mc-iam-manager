@@ -6,9 +6,10 @@ import (
 	"errors"
 
 	// "errors"        // Remove unused import
-	"fmt" // Add fmt import for errors
-	"log" // Add log import
-	"os"  // Import os package to read environment variables
+	"fmt"     // Add fmt import for errors
+	"log"     // Add log import
+	"os"      // Import os package to read environment variables
+	"strings" // Add strings import for string operations
 
 	// "net/http"      // Remove unused import
 
@@ -55,6 +56,51 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project, wor
 	if err != nil && err.Error() != "project not found" {
 		return err
 	}
+
+	// Step 0: Determine target workspace (specified or default) and validate BEFORE calling mc-infra-manager
+	var targetWorkspace *model.Workspace
+	var targetWorkspaceID uint
+
+	if len(workspaceID) > 0 && workspaceID[0] != 0 {
+		// Workspace specified, verify it exists
+		targetWorkspaceID = workspaceID[0]
+		targetWorkspace, err = s.workspaceRepo.FindWorkspaceByID(targetWorkspaceID)
+		if err != nil || targetWorkspace == nil {
+			log.Printf("Error finding specified workspace %d: %v", targetWorkspaceID, err)
+			return fmt.Errorf("workspace not found")
+		}
+		log.Printf("Validated specified workspace: %s (ID: %d)", targetWorkspace.Name, targetWorkspace.ID)
+	} else {
+		// No workspace specified, use default
+		defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
+		if defaultWsName == "" {
+			defaultWsName = "default"
+			log.Printf("DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
+		}
+		log.Printf("Using default workspace name: %s", defaultWsName)
+		targetWorkspace, err = s.workspaceRepo.FindWorkspaceByName(defaultWsName)
+		if err != nil {
+			if err.Error() == "workspace not found" {
+				// Default workspace doesn't exist, create it
+				log.Printf("Default workspace '%s' not found. Creating it...", defaultWsName)
+				newWorkspace := &model.Workspace{
+					Name:        defaultWsName,
+					Description: "Default workspace for automatically synced projects",
+				}
+				if err := s.workspaceRepo.CreateWorkspace(newWorkspace); err != nil {
+					log.Printf("Error creating default workspace '%s': %v", defaultWsName, err)
+					return fmt.Errorf("failed to create default workspace: %w", err)
+				}
+				log.Printf("Successfully created default workspace '%s'", defaultWsName)
+				targetWorkspace = newWorkspace
+			} else {
+				log.Printf("Error finding default workspace '%s': %v. Cannot assign projects.", defaultWsName, err)
+				return fmt.Errorf("failed to find or create default workspace: %w", err)
+			}
+		}
+		targetWorkspaceID = targetWorkspace.ID
+	}
+	log.Printf("Workspace validation complete. Will assign project to workspace: %s (ID: %d)", targetWorkspace.Name, targetWorkspaceID)
 
 	log.Printf("Attempting to create namespace in mc-infra-manager for project: %s", project.Name)
 
@@ -121,51 +167,7 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project, wor
 		return err
 	}
 
-	// 3. Determine target workspace (specified or default)
-	var targetWorkspace *model.Workspace
-	var targetWorkspaceID uint
-
-	if len(workspaceID) > 0 && workspaceID[0] != 0 {
-		// Workspace specified, verify it exists
-		targetWorkspaceID = workspaceID[0]
-		targetWorkspace, err = s.workspaceRepo.FindWorkspaceByID(targetWorkspaceID)
-		if err != nil || targetWorkspace == nil {
-			log.Printf("Error finding specified workspace %d: %v", targetWorkspaceID, err)
-			return fmt.Errorf("workspace not found")
-		}
-		log.Printf("Assigning project to specified workspace: %s (ID: %d)", targetWorkspace.Name, targetWorkspace.ID)
-	} else {
-		// No workspace specified, use default
-		defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
-		if defaultWsName == "" {
-			defaultWsName = "default"
-			log.Printf("DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
-		}
-		log.Printf("Using default workspace name: %s", defaultWsName)
-		targetWorkspace, err = s.workspaceRepo.FindWorkspaceByName(defaultWsName)
-		if err != nil {
-			if err.Error() == "workspace not found" {
-				// Default workspace doesn't exist, create it
-				log.Printf("Default workspace '%s' not found. Creating it...", defaultWsName)
-				newWorkspace := &model.Workspace{
-					Name:        defaultWsName,
-					Description: "Default workspace for automatically synced projects",
-				}
-				if err := s.workspaceRepo.CreateWorkspace(newWorkspace); err != nil {
-					log.Printf("Error creating default workspace '%s': %v", defaultWsName, err)
-					return fmt.Errorf("failed to create default workspace: %w", err)
-				}
-				log.Printf("Successfully created default workspace '%s'", defaultWsName)
-				targetWorkspace = newWorkspace
-			} else {
-				log.Printf("Error finding default workspace '%s': %v. Cannot assign projects.", defaultWsName, err)
-				return fmt.Errorf("failed to find or create default workspace: %w", err)
-			}
-		}
-		targetWorkspaceID = targetWorkspace.ID
-	}
-
-	// 4. Assign project to target workspace
+	// 3. Assign project to target workspace (already validated above)
 	if err := s.projectRepo.AddProjectWorkspaceAssociation(project.ID, targetWorkspaceID); err != nil {
 		log.Printf("Error assigning project %d to workspace %d: %v", project.ID, targetWorkspaceID, err)
 		return nil // Project created but assignment failed
@@ -214,10 +216,54 @@ func (s *ProjectService) UpdateProject(id uint, updates map[string]interface{}) 
 
 // Delete 프로젝트 삭제
 func (s *ProjectService) DeleteProject(id uint) error {
-	_, err := s.projectRepo.FindProjectByProjectID(id)
+	// 1. 프로젝트 존재 여부 확인
+	project, err := s.projectRepo.FindProjectByProjectID(id)
 	if err != nil {
 		return err
 	}
+
+	// 2. 워크스페이스 할당 확인
+	workspaces, err := s.projectRepo.FindAssignedWorkspaces(id)
+	if err != nil {
+		return fmt.Errorf("워크스페이스 할당 확인 실패: %v", err)
+	}
+
+	// 3. 할당된 워크스페이스가 있으면 삭제 불가
+	if len(workspaces) > 0 {
+		workspaceNames := make([]string, len(workspaces))
+		for i, ws := range workspaces {
+			workspaceNames[i] = ws.Name
+		}
+		return fmt.Errorf("프로젝트가 워크스페이스에 할당되어 있습니다: %s. 먼저 모든 워크스페이스에서 할당을 해제하세요",
+			strings.Join(workspaceNames, ", "))
+	}
+
+	// 4. mc-infra-manager namespace 삭제
+	if project.NsId != "" {
+		ctx := context.Background()
+		callReq := &model.McmpApiCallRequest{
+			ServiceName: "mc-infra-manager",
+			ActionName:  "DeleteNs",
+			RequestParams: model.McmpApiRequestParams{
+				PathParams: map[string]string{
+					"nsId": project.NsId,
+				},
+			},
+		}
+
+		statusCode, respBody, _, _, err := s.mcmpApiService.McmpApiCall(ctx, callReq)
+		if err != nil {
+			log.Printf("Warning: failed to delete namespace %s from mc-infra-manager: %v", project.NsId, err)
+			// 계속 진행 (DB 정리는 수행)
+		} else if statusCode < 200 || statusCode >= 300 {
+			log.Printf("Warning: mc-infra-manager DeleteNs failed (status %d): %s", statusCode, string(respBody))
+			// 계속 진행 (DB 정리는 수행)
+		} else {
+			log.Printf("Successfully deleted namespace %s from mc-infra-manager", project.NsId)
+		}
+	}
+
+	// 5. DB에서 프로젝트 삭제
 	return s.projectRepo.DeleteProject(id)
 }
 

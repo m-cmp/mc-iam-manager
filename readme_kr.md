@@ -128,6 +128,73 @@ cd ./src
 go run main.go
 ```
 
+### Docker 로컬 빌드 배포
+
+`mc-iam-manager` 서비스는 로컬의 `Dockerfile.mciammanager`를 사용하여 컨테이너 이미지를 빌드하도록 구성되어 있습니다.
+
+#### 빌드 설정
+
+`docker-compose.yaml`에서 다음과 같이 설정되어 있습니다:
+
+```yaml
+mc-iam-manager:
+  build:
+    context: .
+    dockerfile: Dockerfile.mciammanager
+  image: cloudbaristaorg/mc-iam-manager:edge
+```
+
+#### 배포 방법
+
+**1. mc-iam-manager 빌드 및 실행:**
+```bash
+# 로컬 Dockerfile로 빌드하고 시작
+docker-compose up --build mc-iam-manager
+
+# 백그라운드로 실행
+docker-compose up --build -d mc-iam-manager
+```
+
+**2. 전체 서비스 실행:**
+```bash
+# 모든 서비스 빌드 및 시작
+docker-compose up --build -d
+```
+
+**3. 완전 재빌드:**
+```bash
+# 캐시 없이 강제 재빌드
+docker-compose build --no-cache mc-iam-manager
+docker-compose up -d mc-iam-manager
+```
+
+**4. 의존성 서비스와 함께 실행:**
+```bash
+# 필수 서비스와 함께 mc-iam-manager 시작
+docker-compose up -d mc-iam-manager-db mc-iam-manager-kc mc-iam-manager
+```
+
+#### 서비스 의존성
+
+`mc-iam-manager` 서비스는 다음 서비스가 필요합니다:
+- `mc-iam-manager-db` (PostgreSQL 데이터베이스)
+- `mc-iam-manager-kc` (인증을 위한 Keycloak)
+
+`mc-iam-manager`를 실행하면 의존성 서비스가 자동으로 시작됩니다.
+
+#### 이미지 관리
+
+```bash
+# 최신 이미지 가져오기 (사전 빌드된 이미지 사용 시)
+docker-compose pull
+
+# Docker 이미지 목록 확인
+docker images | grep mc-iam-manager
+
+# 이전 이미지 제거
+docker rmi cloudbaristaorg/mc-iam-manager:edge
+```
+
 #### 5단계: 가동 확인
 
 ```bash

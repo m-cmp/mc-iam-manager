@@ -206,9 +206,8 @@ func (r *WorkspaceRepository) AddProjectAssociation(workspaceID, projectID uint)
 
 // RemoveProjectAssociation remove project association from workspace
 func (r *WorkspaceRepository) RemoveProjectAssociation(workspaceID, projectID uint) error {
-	// Cannot remove from default workspace, and when removing connection from other workspaces, assign to default workspace
-
 	// Delete directly from mcmp_workspace_projects table
+	// 기본 workspace 포함 모든 workspace에서 제거 가능
 	result := r.db.Where("workspace_id = ? AND project_id = ?", workspaceID, projectID).
 		Delete(&model.WorkspaceProject{})
 
@@ -216,24 +215,8 @@ func (r *WorkspaceRepository) RemoveProjectAssociation(workspaceID, projectID ui
 		return result.Error
 	}
 
-	workspaceProject := &model.WorkspaceProject{
-		WorkspaceID: 1, // Default workspace ID
-		ProjectID:   projectID,
-	}
-
-	err := r.db.Save(workspaceProject).Error
-	if err != nil {
-
-		return err
-	}
-
-	// mcmp_workspace_projects 테이블에서 직접 삭제
-	// result := r.db.Where("workspace_id = ? AND project_id = ?", workspaceID, projectID).
-	// 	Delete(&model.WorkspaceProject{})
-
-	// if result.Error != nil {
-	// 	return result.Error
-	// }
+	// 기본 workspace로 재할당하지 않음
+	// 프로젝트가 미할당 상태가 될 수 있음
 
 	// Do not treat as error even if no records were deleted (relationship may not have existed)
 	return nil
