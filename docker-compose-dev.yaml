@@ -5,10 +5,10 @@ version: '3.8'
 networks:
   mc-iam-manager-network:
     external: true
-    name: mcc_mc-iam-manager-network
+    name: mc-iam-manager_mc-iam-manager-network
   mc-infra-manager-network:
     external: true
-    name: mcc_mc-infra-manager-network
+    name: mc-iam-manager_mc-infra-manager-network
 
 services:
   # Dev 환경용 mc-iam-manager 소스 컨테이너
@@ -34,6 +34,7 @@ services:
       MC_IAM_MANAGER_DATABASE_PASSWORD: ${MC_IAM_MANAGER_DATABASE_PASSWORD}
       MC_IAM_MANAGER_DATABASE_PORT: 5432
       MC_IAM_MANAGER_DATABASE_SSLMODE: disable
+      MC_IAM_MANAGER_DATABASE_URL: postgres://${MC_IAM_MANAGER_DATABASE_USER}:${MC_IAM_MANAGER_DATABASE_PASSWORD}@mc-iam-manager-db:5432/${MC_IAM_MANAGER_DATABASE_NAME}?sslmode=disable
       DATABASE_URL: postgres://${MC_IAM_MANAGER_DATABASE_USER}:${MC_IAM_MANAGER_DATABASE_PASSWORD}@mc-iam-manager-db:5432/${MC_IAM_MANAGER_DATABASE_NAME}?sslmode=disable
       
       # Keycloak 설정 - Release 브랜치의 로컬 Keycloak 컨테이너 사용
@@ -49,8 +50,8 @@ services:
       # 애플리케이션 포트 설정
       PORT: 5006
       MC_IAM_MANAGER_PORT: 5006
-      MC_IAM_MANAGER_DOMAIN: localhost
-      MC_IAM_MANAGER_HOST: http://localhost:5006
+      MC_IAM_MANAGER_DOMAIN: mciambase.onecloudcon.com
+      MC_IAM_MANAGER_HOST: http://mciambase.onecloudcon.com:5006
       
       # 기타 필요한 환경 변수들
       DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE}
@@ -72,7 +73,7 @@ services:
     volumes:
       - ./tool/mcc:/app/tool/mcc
     healthcheck:
-      test: [ 'CMD', '/app/tool/mcc', 'rest', 'get', 'http://localhost:5006/readyz' ]
+      test: [ 'CMD', '/app/tool/mcc', 'rest', 'get', 'http://mciambase.onecloudcon.com:5006/readyz' ]
       interval: 30s
       timeout: 10s
       retries: 5

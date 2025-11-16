@@ -313,14 +313,13 @@ func (h *ProjectHandler) SyncProjects(c echo.Context) error {
 // @Tags projects
 // @Accept json
 // @Produce json
-// @Param id path int true "프로젝트 ID"
-// @Param workspaceId path int true "워크스페이스 ID"
+// @Param request body model.WorkspaceProjectMappingRequest true "Workspace and Project IDs"
 // @Success 204 "No Content"
 // @Failure 400 {object} map[string]string "error: 잘못된 ID 형식"
 // @Failure 404 {object} map[string]string "error: 프로젝트 또는 워크스페이스를 찾을 수 없습니다"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /api/projects/{id}/workspaces/{workspaceId} [post]
+// @Router /api/projects/assign/workspaces [post]
 // @Id addWorkspaceToProject
 func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 	var req model.WorkspaceProjectMappingRequest
@@ -364,7 +363,12 @@ func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 // @Tags projects
 // @Accept json
 // @Produce json
-// @Param id path string true "Project ID"
+// @Param request body model.WorkspaceProjectMappingRequest true "Workspace and Project IDs"
+// @Success 204 "No Content"
+// @Failure 400 {object} map[string]string "error: Invalid request"
+// @Failure 500 {object} map[string]string "error: Internal server error"
+// @Security BearerAuth
+// @Router /api/projects/unassign/workspaces [delete]
 // @Id removeWorkspaceFromProject
 func (h *ProjectHandler) RemoveWorkspaceFromProject(c echo.Context) error {
 	var req model.WorkspaceProjectMappingRequest

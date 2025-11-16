@@ -678,6 +678,18 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.WorkspaceProjectMappingRequest:
+    properties:
+      projectIds:
+        items:
+          type: string
+        type: array
+      workspaceId:
+        type: string
+    required:
+    - projectIds
+    - workspaceId
+    type: object
   model.WorkspaceWithUsersAndRoles:
     properties:
       created_at:
@@ -1153,30 +1165,6 @@ paths:
       summary: Update permission-action mapping
       tags:
       - mcmp-api-permission-action-mappings
-  /api/mcmp-api-permission-action-mappings/platforms/id/{permissionId}/actions:
-    get:
-      consumes:
-      - application/json
-      description: Returns all platform actions mapped to a specific permission
-      operationId: getPlatformActionsByPermissionID
-      parameters:
-      - description: Permission ID
-        in: path
-        name: permissionId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/mcmpapi.McmpApiAction'
-            type: array
-      summary: Get platform actions by permission ID
-      tags:
-      - mcmp-api-permission-action-mappings
   /api/mcmp-apis/list:
     post:
       consumes:
@@ -1359,6 +1347,30 @@ paths:
       summary: Set Active Version for a Service
       tags:
       - McmpAPI
+  /api/mcmp-apis/permission-action-mappings/id/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Returns all platform actions mapped to a specific permission
+      operationId: getPlatformActionsByPermissionID
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mcmpapi.McmpApiAction'
+            type: array
+      summary: Get platform actions by permission ID
+      tags:
+      - mcmp-api-permission-action-mappings
   /api/mcmp-apis/syncMcmpAPIs:
     post:
       consumes:
@@ -2166,23 +2178,19 @@ paths:
       summary: Update project
       tags:
       - projects
-  /api/projects/{id}/workspaces/{workspaceId}:
+  /api/projects/assign/workspaces:
     post:
       consumes:
       - application/json
       description: 프로젝트에 워크스페이스를 연결합니다.
       operationId: addWorkspaceToProject
       parameters:
-      - description: 프로젝트 ID
-        in: path
-        name: id
+      - description: Workspace and Project IDs
+        in: body
+        name: request
         required: true
-        type: integer
-      - description: 워크스페이스 ID
-        in: path
-        name: workspaceId
-        required: true
-        type: integer
+        schema:
+          $ref: '#/definitions/model.WorkspaceProjectMappingRequest'
       produces:
       - application/json
       responses:
@@ -2315,6 +2323,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Get project by name
+      tags:
+      - projects
+  /api/projects/unassign/workspaces:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a workspace from a project
+      operationId: removeWorkspaceFromProject
+      parameters:
+      - description: Workspace and Project IDs
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.WorkspaceProjectMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: 'error: Invalid request'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove workspace from project
       tags:
       - projects
   /api/resource-types/cloud-resources:
@@ -4660,105 +4703,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Create new workspace
-      tags:
-      - workspaces
-  /api/workspaces/{id}/users:
-    post:
-      consumes:
-      - application/json
-      description: Add a user to a workspace
-      operationId: addUserToWorkspace
-      parameters:
-      - description: Workspace ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: User Info
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.AssignRoleRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Add user to workspace
-      tags:
-      - workspaces
-  /api/workspaces/{id}/users/{userId}:
-    delete:
-      consumes:
-      - application/json
-      description: Remove a user from a workspace
-      operationId: removeUserFromWorkspace
-      parameters:
-      - description: Workspace ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: User ID
-        in: path
-        name: userId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Remove user from workspace
       tags:
       - workspaces
   /api/workspaces/assign/projects:
