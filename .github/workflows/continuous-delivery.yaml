@@ -25,7 +25,7 @@ on:
       - "CODEOWNERS"
 
 env:
-  DOCKER_REGISTRY_NAME: mzccsta
+  DOCKER_REGISTRY_NAME: cloudbaristaorg
   GHCR_REGISTRY_NAME: ${{ github.repository_owner }}
   IMAGE_NAME: ${{ github.event.repository.name }}
 
