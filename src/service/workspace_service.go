@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
+	"strings"
 
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -73,17 +73,23 @@ func (s *WorkspaceService) UpdateWorkspace(workspace *model.Workspace) error {
 
 // Delete 워크스페이스 삭제
 func (s *WorkspaceService) DeleteWorkspace(workspaceID uint) error {
-	// Check if workspace exists
-	workspace, err := s.workspaceRepo.FindWorkspaceProjectsByWorkspaceID(workspaceID) // 실제 존재하는 workspace인지 확인
+	// 1. 워크스페이스 존재 확인
+	workspace, err := s.workspaceRepo.FindWorkspaceProjectsByWorkspaceID(workspaceID)
 	if err != nil {
 		return err
 	}
 
-	// 워크스페이스에 연결된 프로젝트가 있는지 확인
+	// 2. 할당된 프로젝트 확인
 	if len(workspace.Projects) > 0 {
-		return errors.New("워크스페이스에 연결된 프로젝트가 있습니다")
+		projectNames := make([]string, len(workspace.Projects))
+		for i, p := range workspace.Projects {
+			projectNames[i] = p.Name
+		}
+		return fmt.Errorf("워크스페이스에 연결된 프로젝트가 있습니다: %s. 먼저 모든 프로젝트를 제거하세요",
+			strings.Join(projectNames, ", "))
 	}
 
+	// 3. 삭제 실행
 	return s.workspaceRepo.DeleteWorkspace(workspaceID)
 }
 
@@ -181,50 +187,11 @@ func (s *WorkspaceService) AddProjectToWorkspace(workspaceID, projectID uint) er
 
 // RemoveProjectFromWorkspace 워크스페이스에서 프로젝트 제거
 func (s *WorkspaceService) RemoveProjectFromWorkspace(workspaceID, projectID uint) error {
-	// 프로젝트가 다른 워크스페이스에 할당되어 있는지 확인
-	assignedWorkspaces, err := s.projectRepo.FindAssignedWorkspaces(projectID)
-	if err != nil {
-		return fmt.Errorf("워크스페이스 할당 정보를 가져오는데 실패했습니다: %v", err)
-	}
-
-	// 현재 워크스페이스에서만 할당되어 있는 경우에만 기본 워크스페이스에 할당
-	if len(assignedWorkspaces) == 1 && assignedWorkspaces[0].ID == workspaceID {
-		// 기본 워크스페이스 조회
-		defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
-		if defaultWsName == "" {
-			defaultWsName = "default"
-		}
-		defaultWs, err := s.workspaceRepo.FindWorkspaceByName(defaultWsName)
-		if err != nil {
-			if err.Error() == "workspace not found" {
-				// 기본 워크스페이스가 없으면 생성
-				newWorkspace := &model.Workspace{
-					Name:        defaultWsName,
-					Description: "Default workspace for automatically synced projects",
-				}
-				if err := s.workspaceRepo.CreateWorkspace(newWorkspace); err != nil {
-					return fmt.Errorf("기본 워크스페이스 생성에 실패했습니다: %v", err)
-				}
-				defaultWs = newWorkspace
-			} else {
-				return fmt.Errorf("기본 워크스페이스를 찾는데 실패했습니다: %v", err)
-			}
-		}
-
-		// 기존 워크스페이스에서 제거
-		if err := s.workspaceRepo.RemoveProjectAssociation(workspaceID, projectID); err != nil {
-			return fmt.Errorf("워크스페이스 연결 제거에 실패했습니다: %v", err)
-		}
-
-		// 기본 워크스페이스에 할당
-		if err := s.workspaceRepo.AddProjectAssociation(defaultWs.ID, projectID); err != nil {
-			return fmt.Errorf("기본 워크스페이스 할당에 실패했습니다: %v", err)
-		}
-	} else {
-		// 다른 워크스페이스에도 할당되어 있는 경우 단순히 현재 워크스페이스에서만 제거
-		if err := s.workspaceRepo.RemoveProjectAssociation(workspaceID, projectID); err != nil {
-			return fmt.Errorf("워크스페이스 연결 제거에 실패했습니다: %v", err)
-		}
+	// 워크스페이스에서 프로젝트 제거
+	// 기본 workspace 포함 모든 workspace에서 제거 가능
+	// 프로젝트는 미할당 상태가 될 수 있음
+	if err := s.workspaceRepo.RemoveProjectAssociation(workspaceID, projectID); err != nil {
+		return fmt.Errorf("워크스페이스 연결 제거에 실패했습니다: %v", err)
 	}
 
 	return nil

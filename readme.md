@@ -127,6 +127,73 @@ cd ./src
 go run main.go
 ```
 
+### Docker Deployment with Local Build
+
+The `mc-iam-manager` service is configured to use the local `Dockerfile.mciammanager` for building the container image.
+
+#### Build Configuration
+
+In `docker-compose.yaml`, the service is configured as:
+
+```yaml
+mc-iam-manager:
+  build:
+    context: .
+    dockerfile: Dockerfile.mciammanager
+  image: cloudbaristaorg/mc-iam-manager:edge
+```
+
+#### Deployment Options
+
+**1. Build and Run mc-iam-manager:**
+```bash
+# Build from local Dockerfile and start
+docker-compose up --build mc-iam-manager
+
+# Run in background
+docker-compose up --build -d mc-iam-manager
+```
+
+**2. Run All Services:**
+```bash
+# Build and start all services
+docker-compose up --build -d
+```
+
+**3. Rebuild from Scratch:**
+```bash
+# Force rebuild without cache
+docker-compose build --no-cache mc-iam-manager
+docker-compose up -d mc-iam-manager
+```
+
+**4. Run with Dependencies Only:**
+```bash
+# Start mc-iam-manager with required services
+docker-compose up -d mc-iam-manager-db mc-iam-manager-kc mc-iam-manager
+```
+
+#### Service Dependencies
+
+The `mc-iam-manager` service requires:
+- `mc-iam-manager-db` (PostgreSQL database)
+- `mc-iam-manager-kc` (Keycloak for authentication)
+
+These dependencies are automatically started when you run `mc-iam-manager`.
+
+#### Image Management
+
+```bash
+# Pull latest images (if using pre-built images)
+docker-compose pull
+
+# List Docker images
+docker images | grep mc-iam-manager
+
+# Remove old images
+docker rmi cloudbaristaorg/mc-iam-manager:edge
+```
+
 #### Step 5: Operation Verification
 
 ```bash

@@ -182,24 +182,23 @@ func (r *WorkspaceRepository) FindWorkspaceProjectsByWorkspaceID(id uint) (*mode
 
 // AddProjectAssociation add project association to workspace
 func (r *WorkspaceRepository) AddProjectAssociation(workspaceID, projectID uint) error {
+	// Remove all existing workspace associations for this project (1:N relationship enforcement)
+	// This ensures a project can only belong to one workspace at a time
+	result := r.db.Where("project_id = ?", projectID).
+		Delete(&model.WorkspaceProject{})
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// Add new workspace association
 	workspaceProject := &model.WorkspaceProject{
 		WorkspaceID: workspaceID,
 		ProjectID:   projectID,
 	}
 
-	// If project was stored in default workspace, remove it from default workspace
-	if workspaceID != 1 {
-		result := r.db.Where("workspace_id = ? AND project_id = ?", 1, projectID).
-			Delete(&model.WorkspaceProject{})
-		if result.Error != nil {
-			return result.Error
-		}
-	}
-
 	// Save directly to mcmp_workspace_projects table
 	err := r.db.Save(workspaceProject).Error
 	if err != nil {
-
 		return err
 	}
 	return nil
@@ -207,9 +206,8 @@ func (r *WorkspaceRepository) AddProjectAssociation(workspaceID, projectID uint)
 
 // RemoveProjectAssociation remove project association from workspace
 func (r *WorkspaceRepository) RemoveProjectAssociation(workspaceID, projectID uint) error {
-	// Cannot remove from default workspace, and when removing connection from other workspaces, assign to default workspace
-
 	// Delete directly from mcmp_workspace_projects table
+	// 기본 workspace 포함 모든 workspace에서 제거 가능
 	result := r.db.Where("workspace_id = ? AND project_id = ?", workspaceID, projectID).
 		Delete(&model.WorkspaceProject{})
 
@@ -217,24 +215,8 @@ func (r *WorkspaceRepository) RemoveProjectAssociation(workspaceID, projectID ui
 		return result.Error
 	}
 
-	workspaceProject := &model.WorkspaceProject{
-		WorkspaceID: 1, // Default workspace ID
-		ProjectID:   projectID,
-	}
-
-	err := r.db.Save(workspaceProject).Error
-	if err != nil {
-
-		return err
-	}
-
-	// mcmp_workspace_projects 테이블에서 직접 삭제
-	// result := r.db.Where("workspace_id = ? AND project_id = ?", workspaceID, projectID).
-	// 	Delete(&model.WorkspaceProject{})
-
-	// if result.Error != nil {
-	// 	return result.Error
-	// }
+	// 기본 workspace로 재할당하지 않음
+	// 프로젝트가 미할당 상태가 될 수 있음
 
 	// Do not treat as error even if no records were deleted (relationship may not have existed)
 	return nil
