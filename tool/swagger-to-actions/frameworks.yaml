@@ -1,0 +1,59 @@
+# Swagger-to-Actions Framework Configuration
+# This file defines multiple frameworks and their Swagger specifications
+# to be aggregated into a single serviceActions YAML file.
+
+# Output file path (relative to this config file)
+output: ./service-actions.yaml
+
+# HTTP timeout for fetching remote Swagger specs (in seconds)
+timeout: 30
+
+# Enable verbose output
+verbose: false
+
+# List of frameworks to process
+frameworks:
+  # MC-IAM-Manager - Identity and Access Management
+  - name: mc-iam-manager
+    repository: https://github.com/m-cmp/mc-iam-manager
+    swagger: ../../docs/swagger.yaml   # Local path relative to this file
+
+  # MC-Infra-Connector (CB-Spider) - Cloud Infrastructure Connection
+  # - name: mc-infra-connector
+  #   repository: https://github.com/cloud-barista/cb-spider
+  #   swagger: https://raw.githubusercontent.com/cloud-barista/cb-spider/master/api-runtime/rest-runtime/docs/swagger.yaml
+
+  # MC-Infra-Manager (CB-Tumblebug) - Multi-Cloud Infrastructure Management
+  # - name: mc-infra-manager
+  #   repository: https://github.com/cloud-barista/cb-tumblebug
+  #   swagger: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/main/src/api/rest/docs/swagger.yaml
+
+  # MC-Web-Console - Web Console Interface
+  # - name: mc-web-console
+  #   repository: https://github.com/m-cmp/mc-web-console
+  #   swagger: /path/to/swagger.yaml
+
+  # MC-Observability - Monitoring and Observability
+  # - name: mc-observability
+  #   repository: https://github.com/m-cmp/mc-observability
+  #   swagger: https://example.com/swagger.yaml
+
+  # MC-Application-Manager - Application Deployment Management
+  # - name: mc-application-manager
+  #   repository: https://github.com/m-cmp/mc-application-manager
+  #   swagger: /path/to/swagger.yaml
+
+  # MC-Workflow-Manager - Workflow Orchestration
+  # - name: mc-workflow-manager
+  #   repository: https://github.com/m-cmp/mc-workflow-manager
+  #   swagger: /path/to/swagger.yaml
+
+  # MC-Cost-Optimizer - Cost Optimization
+  # - name: mc-cost-optimizer
+  #   repository: https://github.com/m-cmp/mc-cost-optimizer
+  #   swagger: /path/to/swagger.yaml
+
+  # MC-Data-Manager - Data Management
+  # - name: mc-data-manager
+  #   repository: https://github.com/m-cmp/mc-data-manager
+  #   swagger: /path/to/swagger.yaml
