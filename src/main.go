@@ -82,11 +82,16 @@ func main() {
 		&model.ResourceType{},
 		&model.UserPlatformRole{},
 		&model.UserWorkspaceRole{},
+		&model.CspAccount{},
+		&model.CspIdpConfig{},
 		&model.CspRole{},
+		&model.CspPolicy{},
+		&model.CspRolePolicyMapping{},
 		&model.RoleMasterCspRoleMapping{},
 		&model.TempCredential{},
 		&mcmpapi.McmpApiService{},
 		&mcmpapi.McmpApiAction{},
+		&mcmpapi.McmpApiServiceMeta{},
 		&model.MciamPermission{},
 		&model.MciamRoleMciamPermission{},
 	); err != nil {
@@ -114,6 +119,11 @@ func main() {
 	healthHandler := handler.NewHealthHandler(db)
 	permissionHandler := handler.NewMciamPermissionHandler(db)
 	roleHandler := handler.NewRoleHandler(db)
+
+	// CSP 관리 핸들러 초기화
+	cspAccountHandler := handler.NewCspAccountHandler(db)
+	cspIdpConfigHandler := handler.NewCspIdpConfigHandler(db)
+	cspPolicyHandler := handler.NewCspPolicyHandler(db)
 
 	// Echo 인스턴스 생성
 	e := echo.New()
@@ -210,12 +220,15 @@ func main() {
 
 		workspaces.POST("/users/list", workspaceHandler.ListWorkspaceUsers)                                                                    // workspace의 사용자 목록 조회
 		workspaces.POST("/users-roles/list", workspaceHandler.ListWorkspaceUsersAndRoles, middleware.PlatformRoleMiddleware(middleware.Write)) // workspace와 사용자 및 role 조회
+		workspaces.POST("/roles/list", workspaceHandler.ListWorkspaceRoles) // workspace 역할 목록 조회
 
 		workspaces.POST("/projects/list", workspaceHandler.ListWorkspaceProjects)
 		workspaces.GET("/id/:workspaceId/projects/list", workspaceHandler.GetWorkspaceProjectsByWorkspaceId)
 		workspaces.POST("/id/:workspaceId/users/list", workspaceHandler.ListUsersAndRolesByWorkspaces)                                              // TODO ListAllWorkspaceUsersAndRoles으로 대체 또는 통합 가능하지 않나?
 		workspaces.GET("/id/:workspaceId/users/id/:userId", roleHandler.GetUserWorkspaceRoles, middleware.PlatformRoleMiddleware(middleware.Write)) // 특정 사용자에게 할당된 워크스페이스 역할 조회 ( 관리자가 사용자의 workspace role 조회) --> get을 post로 바꿀까?
 
+		workspaces.POST("/id/:id/users", workspaceHandler.AddUserToWorkspace, middleware.PlatformRoleMiddleware(middleware.Write)) // workspace에 사용자 추가
+		workspaces.DELETE("/id/:id/users/:userId", workspaceHandler.RemoveUserFromWorkspace, middleware.PlatformRoleMiddleware(middleware.Write)) // workspace에서 사용자 제거
 		workspaces.POST("/assign/projects", workspaceHandler.AddProjectToWorkspace, middleware.PlatformAdminMiddleware)
 		workspaces.DELETE("/unassign/projects", workspaceHandler.RemoveProjectFromWorkspace, middleware.PlatformAdminMiddleware)
 
@@ -373,6 +386,7 @@ func main() {
 		mcmpApis.POST("/call", mcmpApiHandler.McmpApiCall, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApis.GET("/test/mc-infra-manager/getallns", mcmpApiHandler.TestCallGetAllNs, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApis.PUT("/name/:serviceName", mcmpApiHandler.UpdateFrameworkService, middleware.PlatformRoleMiddleware(middleware.Manage))
+		mcmpApis.POST("/import", mcmpApiHandler.ImportAPIs, middleware.PlatformRoleMiddleware(middleware.Manage))
 	}
 
 	// MCMP API 권한-액션 매핑 라우트
@@ -386,6 +400,47 @@ func main() {
 		mcmpApiPermissionActionMappings.GET("/actions/:actionId/permissions", mcmpApiPermissionActionMappingHandler.ListPermissionsByActionID, middleware.PlatformRoleMiddleware(middleware.Read))
 		mcmpApiPermissionActionMappings.PUT("/permissions/:permissionId/actions/:actionId", mcmpApiPermissionActionMappingHandler.UpdateMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApiPermissionActionMappings.DELETE("/permissions/:permissionId/actions/:actionId", mcmpApiPermissionActionMappingHandler.DeleteMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
+	}
+
+	// CSP 계정 관리 라우트
+	cspAccounts := api.Group("/csp-accounts", middleware.PlatformRoleMiddleware(middleware.Read))
+	{
+		cspAccounts.POST("/list", cspAccountHandler.ListCspAccounts)
+		cspAccounts.POST("", cspAccountHandler.CreateCspAccount, middleware.PlatformAdminMiddleware)
+		cspAccounts.GET("/id/:accountId", cspAccountHandler.GetCspAccountByID)
+		cspAccounts.PUT("/id/:accountId", cspAccountHandler.UpdateCspAccount, middleware.PlatformAdminMiddleware)
+		cspAccounts.DELETE("/id/:accountId", cspAccountHandler.DeleteCspAccount, middleware.PlatformAdminMiddleware)
+		cspAccounts.POST("/id/:accountId/validate", cspAccountHandler.ValidateCspAccount, middleware.PlatformAdminMiddleware)
+		cspAccounts.POST("/id/:accountId/activate", cspAccountHandler.ActivateCspAccount, middleware.PlatformAdminMiddleware)
+		cspAccounts.POST("/id/:accountId/deactivate", cspAccountHandler.DeactivateCspAccount, middleware.PlatformAdminMiddleware)
+	}
+
+	// CSP IDP 설정 관리 라우트
+	cspIdpConfigs := api.Group("/csp-idp-configs", middleware.PlatformRoleMiddleware(middleware.Read))
+	{
+		cspIdpConfigs.POST("/list", cspIdpConfigHandler.ListCspIdpConfigs)
+		cspIdpConfigs.POST("", cspIdpConfigHandler.CreateCspIdpConfig, middleware.PlatformAdminMiddleware)
+		cspIdpConfigs.GET("/id/:configId", cspIdpConfigHandler.GetCspIdpConfigByID)
+		cspIdpConfigs.PUT("/id/:configId", cspIdpConfigHandler.UpdateCspIdpConfig, middleware.PlatformAdminMiddleware)
+		cspIdpConfigs.DELETE("/id/:configId", cspIdpConfigHandler.DeleteCspIdpConfig, middleware.PlatformAdminMiddleware)
+		cspIdpConfigs.POST("/id/:configId/test", cspIdpConfigHandler.TestCspIdpConnection, middleware.PlatformAdminMiddleware)
+		cspIdpConfigs.POST("/id/:configId/activate", cspIdpConfigHandler.ActivateCspIdpConfig, middleware.PlatformAdminMiddleware)
+		cspIdpConfigs.POST("/id/:configId/deactivate", cspIdpConfigHandler.DeactivateCspIdpConfig, middleware.PlatformAdminMiddleware)
+	}
+
+	// CSP 정책 관리 라우트
+	cspPolicies := api.Group("/csp-policies", middleware.PlatformRoleMiddleware(middleware.Read))
+	{
+		cspPolicies.POST("/list", cspPolicyHandler.ListCspPolicies)
+		cspPolicies.POST("", cspPolicyHandler.CreateCspPolicy, middleware.PlatformAdminMiddleware)
+		cspPolicies.GET("/id/:policyId", cspPolicyHandler.GetCspPolicyByID)
+		cspPolicies.PUT("/id/:policyId", cspPolicyHandler.UpdateCspPolicy, middleware.PlatformAdminMiddleware)
+		cspPolicies.DELETE("/id/:policyId", cspPolicyHandler.DeleteCspPolicy, middleware.PlatformAdminMiddleware)
+		cspPolicies.GET("/id/:policyId/document", cspPolicyHandler.GetPolicyDocument)
+		cspPolicies.POST("/sync", cspPolicyHandler.SyncCspPolicies, middleware.PlatformAdminMiddleware)
+		cspPolicies.POST("/attach", cspPolicyHandler.AttachPolicyToRole, middleware.PlatformAdminMiddleware)
+		cspPolicies.POST("/detach", cspPolicyHandler.DetachPolicyFromRole, middleware.PlatformAdminMiddleware)
+		cspPolicies.GET("/role/:roleId", cspPolicyHandler.GetRolePolicies)
 	}
 
 	// Swagger 문서 라우트

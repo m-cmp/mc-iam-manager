@@ -144,7 +144,7 @@ func (h *WorkspaceHandler) GetWorkspaceByID(c echo.Context) error {
 
 // CreateWorkspace godoc
 // @Summary Create new workspace
-// @Description Create a new workspace with the specified information. Optionally assign existing projects to the workspace.
+// @Description Create a new workspace with the specified information.
 // @Tags workspaces
 // @Accept json
 // @Produce json
@@ -163,33 +163,10 @@ func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 		})
 	}
 
-	// Save projects array temporarily and clear it to avoid duplicate assignment
-	projectsToAssign := workspace.Projects
-	workspace.Projects = nil
-
-	// Create workspace
 	if err := h.workspaceService.CreateWorkspace(&workspace); err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to create workspace",
 		})
-	}
-
-	// If projects array is provided, assign them to the new workspace
-	if len(projectsToAssign) > 0 {
-		for _, project := range projectsToAssign {
-			// AddProjectToWorkspace will remove project from any existing workspace
-			// and assign it to the new workspace (enforcing 1:N relationship)
-			if err := h.workspaceService.AddProjectToWorkspace(workspace.ID, project.ID); err != nil {
-				log.Printf("Failed to assign project %d to workspace %d: %v", project.ID, workspace.ID, err)
-				// Continue with other projects even if one fails
-			}
-		}
-
-		// Fetch updated workspace with assigned projects
-		updatedWorkspace, err := h.workspaceService.GetWorkspaceProjectsByWorkspaceId(workspace.ID)
-		if err == nil && updatedWorkspace != nil {
-			return c.JSON(http.StatusCreated, updatedWorkspace)
-		}
 	}
 
 	return c.JSON(http.StatusCreated, workspace)
@@ -571,6 +548,121 @@ func (h *WorkspaceHandler) ListWorkspaceUsersAndRoles(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, workspaceUsersRoles)
+}
+
+// ListWorkspaceRoles godoc
+// @Summary List workspace roles
+// @Description Retrieve all workspace-level roles with optional filtering
+// @Tags workspaces
+// @Accept json
+// @Produce json
+// @Param request body model.RoleFilterRequest true "Role filter parameters"
+// @Success 200 {array} model.RoleMaster "Successfully retrieved workspace roles"
+// @Failure 400 {object} map[string]string "error: Invalid request format"
+// @Failure 500 {object} map[string]string "error: Failed to retrieve workspace roles"
+// @Security BearerAuth
+// @Router /api/workspaces/roles/list [post]
+// @Id listWorkspaceRoles
+func (h *WorkspaceHandler) ListWorkspaceRoles(c echo.Context) error {
+	var req model.RoleFilterRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	}
+
+	// workspace 역할만 조회
+	if req.RoleTypes == nil {
+		req.RoleTypes = []constants.IAMRoleType{constants.RoleTypeWorkspace}
+	}
+
+	roles, err := h.roleService.ListWorkspaceRoles(&req)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
+}
+
+
+// AddUserToWorkspace godoc
+// @Summary Add user to workspace
+// @Description Add a user to a workspace
+// @Tags workspaces
+// @Accept json
+// @Produce json
+// @Param id path string true "Workspace ID"
+// @Param request body model.AssignRoleRequest true "User Info"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/workspaces/{id}/users [post]
+// @Id addUserToWorkspace
+func (h *WorkspaceHandler) AddUserToWorkspace(c echo.Context) error {
+	var req model.AssignRoleRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	}
+	if req.WorkspaceID == "" || req.UserID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Workspace ID and User ID are required"})
+	}
+
+	// 워크스페이스 역할 할당
+	var workspaceID uint
+	var userID uint
+	var err error
+	workspaceID, err = util.StringToUint(req.WorkspaceID)
+	if err != nil {
+		log.Printf("Workspace ID conversion error: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid workspace ID format"})
+	}
+	if req.UserID != "" {
+		userID, err = util.StringToUint(req.UserID)
+		if err != nil {
+			log.Printf("User ID conversion error: %v", err)
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID format"})
+		}
+	}
+
+	if err := h.workspaceService.AddUserToWorkspace(workspaceID, userID); err != nil {
+		if err.Error() == "workspace not found" || err.Error() == "user not found" {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to add user: %v", err)})
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// RemoveUserFromWorkspace godoc
+// @Summary Remove user from workspace
+// @Description Remove a user from a workspace
+// @Tags workspaces
+// @Accept json
+// @Produce json
+// @Param id path string true "Workspace ID"
+// @Param userId path string true "User ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/workspaces/{id}/users/{userId} [delete]
+// @Id removeUserFromWorkspace
+func (h *WorkspaceHandler) RemoveUserFromWorkspace(c echo.Context) error {
+	workspaceID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid workspace ID"})
+	}
+
+	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID"})
+	}
+
+	if err := h.workspaceService.RemoveUserFromWorkspace(uint(workspaceID), uint(userID)); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }
 
 // Helper function to get user DB ID and Platform Roles from context

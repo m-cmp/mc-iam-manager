@@ -715,7 +715,7 @@ func (h *RoleHandler) ListPlatformRoles(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/roles/workspace-roles/list [post]
-// @Id listWorkspaceRoles
+// @Id listRolesOfWorkspaceType
 func (h *RoleHandler) ListWorkspaceRoles(c echo.Context) error {
 	var req model.RoleFilterRequest
 	if err := c.Bind(&req); err != nil {
