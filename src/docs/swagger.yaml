@@ -299,6 +299,18 @@ definitions:
     - menuIds
     - roleId
     type: object
+  model.CreateProjectRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      workspaceId:
+        description: optional workspace to assign project to
+        type: string
+    required:
+    - name
+    type: object
   model.CreateRoleRequest:
     properties:
       cspRoles:
@@ -1016,6 +1028,18 @@ definitions:
         type: array
       updated_at:
         type: string
+    type: object
+  model.WorkspaceProjectMappingRequest:
+    properties:
+      projectIds:
+        items:
+          type: string
+        type: array
+      workspaceId:
+        type: string
+    required:
+    - projectIds
+    - workspaceId
     type: object
   model.WorkspaceWithUsersAndRoles:
     properties:
@@ -3452,7 +3476,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new project with the specified information.
+      description: Create a new project with the specified information. Optionally
+        specify a workspace to assign the project to.
       operationId: createProject
       parameters:
       - description: Project Info
@@ -3460,7 +3485,7 @@ paths:
         name: project
         required: true
         schema:
-          $ref: '#/definitions/model.Project'
+          $ref: '#/definitions/model.CreateProjectRequest'
       produces:
       - application/json
       responses:
@@ -3470,6 +3495,12 @@ paths:
             $ref: '#/definitions/model.Project'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
           schema:
             additionalProperties:
               type: string
@@ -3601,23 +3632,19 @@ paths:
       summary: Update project
       tags:
       - projects
-  /api/projects/{id}/workspaces/{workspaceId}:
+  /api/projects/assign/workspaces:
     post:
       consumes:
       - application/json
       description: 프로젝트에 워크스페이스를 연결합니다.
       operationId: addWorkspaceToProject
       parameters:
-      - description: 프로젝트 ID
-        in: path
-        name: id
+      - description: Workspace and Project IDs
+        in: body
+        name: request
         required: true
-        type: integer
-      - description: 워크스페이스 ID
-        in: path
-        name: workspaceId
-        required: true
-        type: integer
+        schema:
+          $ref: '#/definitions/model.WorkspaceProjectMappingRequest'
       produces:
       - application/json
       responses:
@@ -3644,6 +3671,50 @@ paths:
       security:
       - BearerAuth: []
       summary: 프로젝트에 워크스페이스 연결
+      tags:
+      - projects
+  /api/projects/id/{projectId}/workspaces:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve list of workspaces that the project is assigned to
+      operationId: getProjectWorkspaces
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Workspace'
+            type: array
+        "400":
+          description: 'error: Invalid project ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Project not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get workspaces assigned to project
       tags:
       - projects
   /api/projects/list:
@@ -3706,6 +3777,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Get project by name
+      tags:
+      - projects
+  /api/projects/unassign/workspaces:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a workspace from a project
+      operationId: removeWorkspaceFromProject
+      parameters:
+      - description: Workspace and Project IDs
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.WorkspaceProjectMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: 'error: Invalid request'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove workspace from project
       tags:
       - projects
   /api/resource-types/cloud-resources:
