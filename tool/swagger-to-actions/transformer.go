@@ -1,5 +1,12 @@
 package main
 
+// FrameworkMeta contains metadata for a framework
+type FrameworkMeta struct {
+	Version     string `yaml:"version"`
+	Repository  string `yaml:"repository"`
+	GeneratedAt string `yaml:"generatedAt"`
+}
+
 // ServiceAction represents a single service action
 type ServiceAction struct {
 	Method       string `yaml:"method"`

@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 // ServiceActionsOutput represents the final output structure
 type ServiceActionsOutput struct {
-	ServiceActions map[string]map[string]ServiceAction `yaml:"serviceActions"`
+	ServiceActions map[string]map[string]interface{} `yaml:"serviceActions"`
 }
 
 // Aggregator handles processing of multiple frameworks
@@ -26,11 +27,12 @@ func NewAggregator(timeout int, verbose bool) *Aggregator {
 // Process processes all frameworks from the config and aggregates results
 func (a *Aggregator) Process(cfg *Config) (*ServiceActionsOutput, error) {
 	output := &ServiceActionsOutput{
-		ServiceActions: make(map[string]map[string]ServiceAction),
+		ServiceActions: make(map[string]map[string]interface{}),
 	}
 
 	successCount := 0
 	failCount := 0
+	generatedAt := time.Now().UTC().Format(time.RFC3339)
 
 	// Process each framework from config (no hardcoding!)
 	for _, fw := range cfg.Frameworks {
@@ -46,7 +48,22 @@ func (a *Aggregator) Process(cfg *Config) (*ServiceActionsOutput, error) {
 			continue
 		}
 
-		output.ServiceActions[fw.Name] = actions
+		// Create framework output with _meta and actions
+		frameworkOutput := make(map[string]interface{})
+
+		// Add metadata
+		frameworkOutput["_meta"] = FrameworkMeta{
+			Version:     fw.Version,
+			Repository:  fw.Repository,
+			GeneratedAt: generatedAt,
+		}
+
+		// Add all actions
+		for name, action := range actions {
+			frameworkOutput[name] = action
+		}
+
+		output.ServiceActions[fw.Name] = frameworkOutput
 		successCount++
 
 		if a.verbose {
@@ -66,10 +83,12 @@ func (a *Aggregator) Process(cfg *Config) (*ServiceActionsOutput, error) {
 }
 
 // ProcessSingle processes a single swagger file
-func (a *Aggregator) ProcessSingle(input, serviceName string) (*ServiceActionsOutput, error) {
+func (a *Aggregator) ProcessSingle(input, serviceName, version, repository string) (*ServiceActionsOutput, error) {
 	fw := Framework{
-		Name:    serviceName,
-		Swagger: input,
+		Name:       serviceName,
+		Version:    version,
+		Repository: repository,
+		Swagger:    input,
 	}
 
 	actions, err := a.processFramework(fw)
@@ -77,9 +96,26 @@ func (a *Aggregator) ProcessSingle(input, serviceName string) (*ServiceActionsOu
 		return nil, err
 	}
 
+	generatedAt := time.Now().UTC().Format(time.RFC3339)
+
+	// Create framework output with _meta and actions
+	frameworkOutput := make(map[string]interface{})
+
+	// Add metadata
+	frameworkOutput["_meta"] = FrameworkMeta{
+		Version:     fw.Version,
+		Repository:  fw.Repository,
+		GeneratedAt: generatedAt,
+	}
+
+	// Add all actions
+	for name, action := range actions {
+		frameworkOutput[name] = action
+	}
+
 	output := &ServiceActionsOutput{
-		ServiceActions: map[string]map[string]ServiceAction{
-			serviceName: actions,
+		ServiceActions: map[string]map[string]interface{}{
+			serviceName: frameworkOutput,
 		},
 	}
 

@@ -41,12 +41,12 @@ func AppendToYAML(output *ServiceActionsOutput, path string) error {
 
 	// Merge new actions into existing
 	if existing.ServiceActions == nil {
-		existing.ServiceActions = make(map[string]map[string]ServiceAction)
+		existing.ServiceActions = make(map[string]map[string]interface{})
 	}
 
 	for serviceName, actions := range output.ServiceActions {
 		if existing.ServiceActions[serviceName] == nil {
-			existing.ServiceActions[serviceName] = make(map[string]ServiceAction)
+			existing.ServiceActions[serviceName] = make(map[string]interface{})
 		}
 		for actionName, action := range actions {
 			existing.ServiceActions[serviceName][actionName] = action

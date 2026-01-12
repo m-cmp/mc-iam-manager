@@ -9,13 +9,15 @@ import (
 )
 
 var (
-	cfgFile     string
-	inputFile   string
-	outputFile  string
-	serviceName string
-	appendMode  bool
-	verbose     bool
-	timeout     int
+	cfgFile        string
+	inputFile      string
+	outputFile     string
+	serviceName    string
+	serviceVersion string
+	serviceRepo    string
+	appendMode     bool
+	verbose        bool
+	timeout        int
 )
 
 var rootCmd = &cobra.Command{
@@ -47,6 +49,8 @@ func init() {
 	rootCmd.Flags().StringVarP(&inputFile, "input", "i", "", "Input Swagger/OpenAPI file path or URL (single mode)")
 	rootCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output YAML file path")
 	rootCmd.Flags().StringVarP(&serviceName, "service", "s", "", "Service name for single mode")
+	rootCmd.Flags().StringVarP(&serviceVersion, "version", "V", "", "Service version for single mode (optional)")
+	rootCmd.Flags().StringVarP(&serviceRepo, "repository", "r", "", "Repository URL for single mode (optional)")
 	rootCmd.Flags().BoolVarP(&appendMode, "append", "a", false, "Append to existing output file")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Verbose output")
 	rootCmd.Flags().IntVarP(&timeout, "timeout", "t", 30, "HTTP timeout in seconds for URL fetching")
@@ -152,8 +156,10 @@ func runConfigMode() error {
 
 	totalActions := 0
 	for name, actions := range output.ServiceActions {
-		printInfo("  - %s: %d actions", name, len(actions))
-		totalActions += len(actions)
+		// Action count excludes _meta
+		actionCount := len(actions) - 1
+		printInfo("  - %s: %d actions", name, actionCount)
+		totalActions += actionCount
 	}
 	printInfo("Total actions: %d", totalActions)
 
@@ -164,12 +170,15 @@ func runSingleMode() error {
 	printInfo("Running in single mode")
 	printInfo("Input: %s", inputFile)
 	printInfo("Service: %s", serviceName)
+	if serviceVersion != "" {
+		printInfo("Version: %s", serviceVersion)
+	}
 
 	// Create aggregator
 	agg := NewAggregator(timeout, verbose)
 
 	// Process single framework
-	output, err := agg.ProcessSingle(inputFile, serviceName)
+	output, err := agg.ProcessSingle(inputFile, serviceName, serviceVersion, serviceRepo)
 	if err != nil {
 		printError("Failed to process: %v", err)
 		return err
@@ -190,7 +199,9 @@ func runSingleMode() error {
 		printSuccess("Successfully generated: %s", outputFile)
 	}
 
-	printInfo("Actions: %d", len(output.ServiceActions[serviceName]))
+	// Action count excludes _meta
+	actionCount := len(output.ServiceActions[serviceName]) - 1
+	printInfo("Actions: %d", actionCount)
 
 	return nil
 }

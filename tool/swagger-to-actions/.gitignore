@@ -1,0 +1,7 @@
+# Compiled binary
+swagger-to-actions
+
+# Test output files
+*.yaml.bak
+test-output.yaml
+service-actions.yaml

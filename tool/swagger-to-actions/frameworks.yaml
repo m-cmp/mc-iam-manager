@@ -1,6 +1,11 @@
 # Swagger-to-Actions Framework Configuration
 # This file defines multiple frameworks and their Swagger specifications
 # to be aggregated into a single serviceActions YAML file.
+#
+# Version Management:
+# - Each framework has a 'version' field to track the active API version
+# - The output file includes '_meta' with version, repository, and generatedAt
+# - mc-iam-manager can load this file at init and manage version tracking in DB
 
 # Output file path (relative to this config file)
 output: ./service-actions.yaml
@@ -15,45 +20,65 @@ verbose: false
 frameworks:
   # MC-IAM-Manager - Identity and Access Management
   - name: mc-iam-manager
+    version: "0.3.0"                    # Active version (local development)
     repository: https://github.com/m-cmp/mc-iam-manager
     swagger: ../../docs/swagger.yaml   # Local path relative to this file
 
-  # MC-Infra-Connector (CB-Spider) - Cloud Infrastructure Connection
-  # - name: mc-infra-connector
-  #   repository: https://github.com/cloud-barista/cb-spider
-  #   swagger: https://raw.githubusercontent.com/cloud-barista/cb-spider/master/api-runtime/rest-runtime/docs/swagger.yaml
+  # MC-Observability - Monitoring and Observability
+  # Note: Swagger file path needs to be verified - currently not found in v0.5.0
+  # - name: mc-observability
+  #   version: "0.5.0"                    # Latest release: v0.5.0 (Nov 3, 2025)
+  #   repository: https://github.com/m-cmp/mc-observability
+  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-observability/v0.5.0/swagger/swagger.yaml
 
-  # MC-Infra-Manager (CB-Tumblebug) - Multi-Cloud Infrastructure Management
+  # MC-Application-Manager - Application Deployment Management
+  - name: mc-application-manager
+    version: "0.5.0"                    # Latest release: v0.5.0
+    repository: https://github.com/m-cmp/mc-application-manager
+    swagger: https://raw.githubusercontent.com/m-cmp/mc-application-manager/v0.5.0/swagger.json
+
+  # MC-Cost-Optimizer - Cost Optimization
+  - name: mc-cost-optimizer
+    version: "0.5.0"                    # Latest release: v0.5.0
+    repository: https://github.com/m-cmp/mc-cost-optimizer
+    swagger: https://raw.githubusercontent.com/m-cmp/mc-cost-optimizer/v0.5.0/swagger.yaml
+
+  # MC-Workflow-Manager - Workflow Orchestration
+  - name: mc-workflow-manager
+    version: "0.5.0"                    # Latest release: v0.5.0
+    repository: https://github.com/m-cmp/mc-workflow-manager
+    swagger: https://raw.githubusercontent.com/m-cmp/mc-workflow-manager/v0.5.0/swagger.json
+
+  # MC-Infra-Manager - Multi-Cloud Infrastructure Management
+  # Note: No releases found - using main branch
   # - name: mc-infra-manager
-  #   repository: https://github.com/cloud-barista/cb-tumblebug
-  #   swagger: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/main/src/api/rest/docs/swagger.yaml
+  #   version: "main"                     # No releases, using main branch
+  #   repository: https://github.com/m-cmp/mc-infra-manager
+  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-infra-manager/main/swagger.yaml
+
+  # MC-Infra-Connector - Cloud Infrastructure Connection
+  # Note: No releases found - using main branch
+  # - name: mc-infra-connector
+  #   version: "main"                     # No releases, using main branch
+  #   repository: https://github.com/m-cmp/mc-infra-connector
+  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-infra-connector/main/swagger.yaml
+
+  # MC-Data-Manager - Data Management
+  # Note: No releases found - using main branch
+  # - name: mc-data-manager
+  #   version: "main"                     # No releases, using main branch
+  #   repository: https://github.com/m-cmp/mc-data-manager
+  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-data-manager/main/swagger.yaml
+
+  # MC-Across-Service-Manager - Cross-Service Management
+  # Note: Latest release is v0.1.0, not v0.5.0 - Swagger file path needs verification
+  # - name: mc-across-service-manager
+  #   version: "0.1.0"                   # Latest release: v0.1.0 (not v0.5.0)
+  #   repository: https://github.com/m-cmp/mc-across-service-manager
+  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-across-service-manager/v0.1.0/swagger.yaml
 
   # MC-Web-Console - Web Console Interface
   # - name: mc-web-console
+  #   version: "0.1.0"
   #   repository: https://github.com/m-cmp/mc-web-console
-  #   swagger: /path/to/swagger.yaml
-
-  # MC-Observability - Monitoring and Observability
-  # - name: mc-observability
-  #   repository: https://github.com/m-cmp/mc-observability
-  #   swagger: https://example.com/swagger.yaml
-
-  # MC-Application-Manager - Application Deployment Management
-  # - name: mc-application-manager
-  #   repository: https://github.com/m-cmp/mc-application-manager
-  #   swagger: /path/to/swagger.yaml
-
-  # MC-Workflow-Manager - Workflow Orchestration
-  # - name: mc-workflow-manager
-  #   repository: https://github.com/m-cmp/mc-workflow-manager
-  #   swagger: /path/to/swagger.yaml
-
-  # MC-Cost-Optimizer - Cost Optimization
-  # - name: mc-cost-optimizer
-  #   repository: https://github.com/m-cmp/mc-cost-optimizer
-  #   swagger: /path/to/swagger.yaml
-
-  # MC-Data-Manager - Data Management
-  # - name: mc-data-manager
-  #   repository: https://github.com/m-cmp/mc-data-manager
   #   swagger: /path/to/swagger.yaml
