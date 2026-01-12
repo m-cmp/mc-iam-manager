@@ -46,9 +46,9 @@ func (h *McmpApiPermissionActionMappingHandler) ListPlatformActions(c echo.Conte
 // @Tags mcmp-api-permission-action-mappings
 // @Accept json
 // @Produce json
-// @Param id path string true "Permission ID"
+// @Param permissionId path string true "Permission ID"
 // @Success 200 {array} mcmpapi.McmpApiAction
-// @Router /api/mcmp-apis/permission-action-mappings/id/{id} [get]
+// @Router /api/mcmp-api-permission-action-mappings/platforms/id/{permissionId}/actions [get]
 // @Id getPlatformActionsByPermissionID
 func (h *McmpApiPermissionActionMappingHandler) GetPlatformActionsByPermissionID(c echo.Context) error {
 	permissionID := c.Param("permission_id")
@@ -226,3 +226,4 @@ func (h *McmpApiPermissionActionMappingHandler) UpdateMapping(c echo.Context) er
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "mapping updated successfully"})
 }
+

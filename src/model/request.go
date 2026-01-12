@@ -228,3 +228,34 @@ type FilterRoleMasterMappingRequest struct {
 	CspType       string                  `json:"cspType,omitempty"`
 	AuthMethod    string                  `json:"authMethod,omitempty"`
 }
+
+// ImportApiFramework represents a single framework to import
+type ImportApiFramework struct {
+	Name       string `json:"name" validate:"required"`       // Framework name (e.g., "mc-infra-manager")
+	Version    string `json:"version" validate:"required"`    // Framework version (e.g., "0.9.22")
+	Repository string `json:"repository,omitempty"`           // Repository URL (e.g., "https://github.com/...")
+	SourceType string `json:"sourceType" validate:"required"` // Source type: "swagger" or "openapi"
+	SourceURL  string `json:"sourceUrl" validate:"required"`  // URL to fetch the API specification from
+}
+
+// ImportApiRequest represents the request body for importing APIs from remote sources
+type ImportApiRequest struct {
+	Frameworks []ImportApiFramework `json:"frameworks" validate:"required,min=1"`
+}
+
+// ImportApiFrameworkResult represents the result of importing a single framework
+type ImportApiFrameworkResult struct {
+	Name         string `json:"name"`                   // Framework name
+	Version      string `json:"version"`                // Framework version
+	Success      bool   `json:"success"`                // Whether the import was successful
+	ActionCount  int    `json:"actionCount,omitempty"`  // Number of actions imported (on success)
+	ErrorMessage string `json:"errorMessage,omitempty"` // Error message (on failure)
+}
+
+// ImportApiResponse represents the response body for importing APIs
+type ImportApiResponse struct {
+	TotalFrameworks  int                        `json:"totalFrameworks"`  // Total number of frameworks in request
+	SuccessCount     int                        `json:"successCount"`     // Number of successfully imported frameworks
+	FailureCount     int                        `json:"failureCount"`     // Number of failed frameworks
+	FrameworkResults []ImportApiFrameworkResult `json:"frameworkResults"` // Detailed results for each framework
+}

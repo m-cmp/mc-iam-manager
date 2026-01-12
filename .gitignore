@@ -41,3 +41,7 @@ dockerfiles/nginx/nginx.conf
 
 # Documentation (local only)
 doc/
+# Spec reference (local only)
+# Developers copy SPEC.md.template to SPEC.md for local reference
+# SPEC.md is not committed to avoid conflicts
+SPEC.md

@@ -15,522 +15,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/call": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Executes a defined MCMP API action with query parameters and a request body.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "McmpAPI"
-                ],
-                "summary": "Call an external MCMP API action (Generic Request)",
-                "parameters": [
-                    {
-                        "description": "Generic API Call Request",
-                        "name": "callRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/mcmpapi.ServiceApiCallRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "External API Response (structure depends on the called API)",
-                        "schema": {
-                            "type": "object"
-                        }
-                    },
-                    "400": {
-                        "description": "error: Invalid request body or parameters",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "error: Service or action not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: Internal server error or failed to call external API",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "error: External API unavailable",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/permissions": {
+        "/api/auth/certs": {
             "get": {
-                "description": "모든 권한 목록을 조회합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "권한 목록 조회",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.Permission"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "새로운 권한을 생성합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "권한 생성",
-                "parameters": [
-                    {
-                        "description": "권한 정보",
-                        "name": "permission",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Permission"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/model.Permission"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/permissions/{id}": {
-            "get": {
-                "description": "ID로 특정 권한을 조회합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "ID로 권한 조회",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "권한 ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.Permission"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "기존 권한을 수정합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "권한 수정",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "권한 ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "권한 정보",
-                        "name": "permission",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Permission"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.Permission"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "권한을 삭제합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "권한 삭제",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "권한 ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/api/platform-roles": {
-            "get": {
-                "description": "모든 플랫폼 역할을 조회합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "platform-roles"
-                ],
-                "summary": "플랫폼 역할 목록 조회",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.PlatformRole"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "새로운 플랫폼 역할을 생성합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "platform-roles"
-                ],
-                "summary": "플랫폼 역할 생성",
-                "parameters": [
-                    {
-                        "description": "Platform Role",
-                        "name": "role",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.PlatformRole"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/model.PlatformRole"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/platform-roles/{id}": {
-            "get": {
-                "description": "ID로 플랫폼 역할을 조회합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "platform-roles"
-                ],
-                "summary": "플랫폼 역할 조회",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Platform Role ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.PlatformRole"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "기존 플랫폼 역할을 수정합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "platform-roles"
-                ],
-                "summary": "플랫폼 역할 수정",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Platform Role ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Platform Role",
-                        "name": "role",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.PlatformRole"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.PlatformRole"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "플랫폼 역할을 삭제합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "platform-roles"
-                ],
-                "summary": "플랫폼 역할 삭제",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Platform Role ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/api/roles/{roleType}/{roleId}/permissions": {
-            "get": {
-                "description": "특정 역할의 권한 목록을 조회합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "역할의 권한 목록 조회",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "역할 타입 ('platform' or 'workspace')",
-                        "name": "roleType",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "역할 ID",
-                        "name": "roleId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.Permission"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/roles/{roleType}/{roleId}/permissions/{permissionId}": {
-            "post": {
-                "description": "역할에 권한을 할당합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "역할에 권한 할당",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "역할 타입 ('platform' or 'workspace')",
-                        "name": "roleType",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "역할 ID",
-                        "name": "roleId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "권한 ID",
-                        "name": "permissionId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            },
-            "delete": {
-                "description": "역할에서 권한을 제거합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "permissions"
-                ],
-                "summary": "역할에서 권한 제거",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "역할 타입 ('platform' or 'workspace')",
-                        "name": "roleType",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "역할 ID",
-                        "name": "roleId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "권한 ID",
-                        "name": "permissionId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/auth/login": {
-            "post": {
-                "description": "사용자 ID와 비밀번호로 로그인하여 JWT 토큰을 발급받습니다.",
+                "description": "Retrieve authentication certificates for MC-IAM-Manager to be used in target frameworks for token validation.",
                 "consumes": [
                     "application/json"
                 ],
@@ -540,55 +27,18 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "로그인",
-                "parameters": [
-                    {
-                        "description": "로그인 정보 (Id, Password)",
-                        "name": "login",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/idp.UserLogin"
-                        }
-                    }
-                ],
+                "summary": "Get authentication certificates",
+                "operationId": "mciamAuthCerts",
                 "responses": {
                     "200": {
-                        "description": "로그인 성공 및 토큰 정보 (gocloak.JWT 구조체와 유사)",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "error: 잘못된 요청 형식",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "error: 인증 실패 (자격 증명 오류)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "error: 계정이 비활성화되었거나 승인 대기 중입니다",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 서버 내부 오류 (Keycloak 통신, DB 동기화 등)",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -599,8 +49,690 @@ const docTemplate = `{
                 }
             }
         },
-        "/mcmp-apis": {
+        "/api/auth/login": {
+            "post": {
+                "description": "Authenticate user and issue JWT token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User login",
+                "operationId": "mciamLogin",
+                "parameters": [
+                    {
+                        "description": "Login Credentials",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/idp.UserLogin"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "description": "Invalidate the user's refresh token and log out.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Logout user",
+                "operationId": "mciamLogout",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/refresh": {
+            "post": {
+                "description": "Refresh JWT access token using a valid refresh token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh access token",
+                "operationId": "mciamRefreshToken",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "New token information",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "error: Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/temp-credential-csps": {
             "get": {
+                "description": "Get temporary credential provider information for AWS and GCP",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get temporary credential CSP information",
+                "operationId": "mciamGetTempCredentialProviders",
+                "responses": {
+                    "200": {
+                        "description": "CSP temporary credential information",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/validate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Validate the current access token and refresh if expired",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Validate access token",
+                "operationId": "mciamValidateToken",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Token validation result with new token if refreshed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "error: Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-credentials": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "모든 CSP 인증 정보 목록을 조회합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-credentials"
+                ],
+                "summary": "CSP 인증 정보 목록 조회",
+                "operationId": "mciamListCredentials",
+                "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "새로운 CSP 인증 정보를 생성합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-credentials"
+                ],
+                "summary": "새 CSP 인증 정보 생성",
+                "operationId": "mciamCreateCredential",
+                "responses": {}
+            }
+        },
+        "/api/csp-credentials/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "특정 CSP 인증 정보를 ID로 조회합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-credentials"
+                ],
+                "summary": "CSP 인증 정보 ID로 조회",
+                "operationId": "mciamGetCredentialByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Credential ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "404": {
+                        "description": "error: Credential not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSP 인증 정보를 업데이트합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-credentials"
+                ],
+                "summary": "CSP 인증 정보 업데이트",
+                "operationId": "mciamUpdateCredential",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Credential ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "404": {
+                        "description": "error: Credential not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSP 인증 정보를 삭제합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-credentials"
+                ],
+                "summary": "CSP 인증 정보 삭제",
+                "operationId": "mciamDeleteCredential",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Credential ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Credential not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/initial-admin": {
+            "post": {
+                "description": "Creates the initial platform admin user with necessary permissions. platform admin 생성인데",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Setup initial platform admin",
+                "operationId": "setupInitialAdmin",
+                "parameters": [
+                    {
+                        "description": "Setup Initial Admin Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SetupInitialAdminRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mcmp-api-permission-action-mappings": {
+            "post": {
+                "description": "Creates a new mapping between a permission and an API action",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mcmp-api-permission-action-mappings"
+                ],
+                "summary": "Create permission-action mapping",
+                "operationId": "createMcmpApiPermissionActionMapping",
+                "parameters": [
+                    {
+                        "description": "Mapping to create",
+                        "name": "mapping",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mcmpapi.McmpApiPermissionActionMapping"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/mcmp-api-permission-action-mappings/actions/list": {
+            "post": {
+                "description": "Returns all workspace actions mapped to a specific permission",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mcmp-api-permission-action-mappings"
+                ],
+                "summary": "Get workspace actions by permission ID",
+                "operationId": "listWorkspaceActionsByPermissionID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Permission ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/mcmpapi.McmpApiAction"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mcmp-api-permission-action-mappings/actions/{actionId}/permissions": {
+            "get": {
+                "description": "Returns all permissions mapped to a specific API action",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mcmp-api-permission-action-mappings"
+                ],
+                "summary": "Get permissions by action ID",
+                "operationId": "listPermissionsByActionID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Action ID",
+                        "name": "actionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mcmp-api-permission-action-mappings/list": {
+            "post": {
+                "description": "Returns all platform actions mapped to a specific permission",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mcmp-api-permission-action-mappings"
+                ],
+                "summary": "List platform actions by permission ID",
+                "operationId": "listPlatformActions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Permission ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/mcmpapi.McmpApiAction"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mcmp-api-permission-action-mappings/permissions/{permissionId}/actions/{actionId}": {
+            "put": {
+                "description": "Updates an existing mapping between a permission and an API action",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mcmp-api-permission-action-mappings"
+                ],
+                "summary": "Update permission-action mapping",
+                "operationId": "updateMapping",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Permission ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Action ID",
+                        "name": "actionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated mapping",
+                        "name": "mapping",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mcmpapi.McmpApiPermissionActionMapping"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a mapping between a permission and an API action",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mcmp-api-permission-action-mappings"
+                ],
+                "summary": "Delete permission-action mapping",
+                "operationId": "deleteMapping",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Permission ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Action ID",
+                        "name": "actionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/mcmp-api-permission-action-mappings/platforms/id/{permissionId}/actions": {
+            "get": {
+                "description": "Returns all platform actions mapped to a specific permission",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mcmp-api-permission-action-mappings"
+                ],
+                "summary": "Get platform actions by permission ID",
+                "operationId": "getPlatformActionsByPermissionID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Permission ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/mcmpapi.McmpApiAction"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mcmp-apis/list": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
@@ -617,6 +749,7 @@ const docTemplate = `{
                     "McmpAPI"
                 ],
                 "summary": "Get All Stored MCMP API Definitions",
+                "operationId": "listServicesAndActions",
                 "parameters": [
                     {
                         "type": "string",
@@ -650,7 +783,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/mcmp-apis/call": {
+        "/api/mcmp-apis/mcmpApiCall": {
             "post": {
                 "security": [
                     {
@@ -668,6 +801,7 @@ const docTemplate = `{
                     "McmpAPI"
                 ],
                 "summary": "Call an external MCMP API action (Structured Request)",
+                "operationId": "mcmpApiCall",
                 "parameters": [
                     {
                         "description": "API Call Request",
@@ -675,7 +809,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/mcmpapi.McmpApiCallRequest"
+                            "$ref": "#/definitions/model.McmpApiCallRequest"
                         }
                     }
                 ],
@@ -725,109 +859,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/mcmp-apis/sync": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Triggers the synchronization of MCMP API definitions from the configured YAML URL to the database.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "McmpAPI // Updated tag"
-                ],
-                "summary": "Sync MCMP API Definitions",
-                "responses": {
-                    "200": {
-                        "description": "message: Successfully triggered MCMP API sync\" // Updated message",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "message: Failed to trigger MCMP API sync\" // Updated message",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/mcmp-apis/test/mc-infra-manager/getallns": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Calls the GetAllNs action of the mc-infra-manager service via the CallApi service.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "McmpAPI",
-                    "Test"
-                ],
-                "summary": "Test Call to mc-infra-manager GetAllNs",
-                "responses": {
-                    "200": {
-                        "description": "Response from mc-infra-manager GetAllNs",
-                        "schema": {
-                            "type": "object"
-                        }
-                    },
-                    "400": {
-                        "description": "error: Bad Request (e.g., invalid parameters)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "error: Service or Action Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "error: External API Service Unavailable",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/mcmp-apis/{serviceName}": {
+        "/api/mcmp-apis/name/{serviceName}": {
             "put": {
                 "security": [
                     {
@@ -845,6 +877,7 @@ const docTemplate = `{
                     "McmpAPI"
                 ],
                 "summary": "Update MCMP API Service Definition",
+                "operationId": "UpdateFrameworkService",
                 "parameters": [
                     {
                         "type": "string",
@@ -903,7 +936,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/mcmp-apis/{serviceName}/versions/{version}/activate": {
+        "/api/mcmp-apis/name/{serviceName}/versions/{version}/activate": {
             "put": {
                 "security": [
                     {
@@ -921,6 +954,7 @@ const docTemplate = `{
                     "McmpAPI"
                 ],
                 "summary": "Set Active Version for a Service",
+                "operationId": "setActiveVersion",
                 "parameters": [
                     {
                         "type": "string",
@@ -971,14 +1005,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/menus": {
-            "get": {
+        "/api/mcmp-apis/syncMcmpAPIs": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "현재 로그인한 사용자의 Platform Role에 따라 접근 가능한 메뉴 목록을 트리 구조로 조회합니다.",
+                "description": "Triggers the synchronization of MCMP API definitions from the configured YAML URL to the database.",
                 "consumes": [
                     "application/json"
                 ],
@@ -986,21 +1020,13 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "menus"
+                    "McmpAPI"
                 ],
-                "summary": "현재 사용자의 메뉴 트리 조회",
+                "summary": "Sync MCMP API Definitions",
+                "operationId": "syncMcmpAPIs",
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.MenuTreeNode"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "error: Unauthorized",
+                        "description": "message: Successfully triggered MCMP API sync",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1009,7 +1035,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "message: Failed to trigger MCMP API sync",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1018,14 +1044,79 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
+            }
+        },
+        "/api/mcmp-apis/test/mc-infra-manager/getallns": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Calls the GetAllNs action of the mc-infra-manager service via the CallApi service.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "McmpAPI",
+                    "Test"
+                ],
+                "summary": "Test Call to mc-infra-manager GetAllNs",
+                "operationId": "testCallGetAllNs",
+                "responses": {
+                    "200": {
+                        "description": "Response from mc-infra-manager GetAllNs",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "error: Bad Request (e.g., invalid parameters)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Service or Action Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "error: External API Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/menus": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "새로운 메뉴를 생성합니다",
+                "description": "Create a new menu",
                 "consumes": [
                     "application/json"
                 ],
@@ -1035,7 +1126,8 @@ const docTemplate = `{
                 "tags": [
                     "menus"
                 ],
-                "summary": "새 메뉴 생성",
+                "summary": "Create new menu",
+                "operationId": "createMenu",
                 "parameters": [
                     {
                         "description": "Menu Info",
@@ -1057,14 +1149,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/menus/all": {
-            "get": {
+        "/api/menus/id/{menuId}": {
+            "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "모든 메뉴 목록을 트리 구조로 조회합니다. 관리자 권한이 필요합니다.",
+                "description": "Update menu information",
                 "consumes": [
                     "application/json"
                 ],
@@ -1074,7 +1166,124 @@ const docTemplate = `{
                 "tags": [
                     "menus"
                 ],
-                "summary": "모든 메뉴 트리 조회 (관리자용)",
+                "summary": "Update menu information",
+                "operationId": "updateMenu",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Menu ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Menu Info",
+                        "name": "menu",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Menu"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Menu"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get menu details by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menus"
+                ],
+                "summary": "Get menu by ID",
+                "operationId": "getMenuByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Menu ID",
+                        "name": "menuId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Menu"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a menu",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menus"
+                ],
+                "summary": "Delete menu",
+                "operationId": "deleteMenu",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Menu ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/menus/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List all menus as a tree structure. Admin permission required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menus"
+                ],
+                "summary": "List all menus",
+                "operationId": "listMenus",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1115,14 +1324,250 @@ const docTemplate = `{
                 }
             }
         },
-        "/menus/register-from-body": {
+        "/api/menus/platform-roles": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "요청 본문에 포함된 YAML 텍스트를 파싱하여 메뉴를 데이터베이스에 등록하거나 업데이트합니다. Content-Type은 text/plain, text/yaml, application/yaml 등을 권장합니다.",
+                "description": "Create a new menu mapping",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menu"
+                ],
+                "summary": "Create menu mapping",
+                "operationId": "createMenusRolesMapping",
+                "parameters": [
+                    {
+                        "description": "Menu Mapping",
+                        "name": "mapping",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateMenuMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete the mapping between a platform role and a menu.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menus"
+                ],
+                "summary": "Delete platform role-menu mapping",
+                "operationId": "deleteMenusRolesMapping",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform Role ID",
+                        "name": "roleId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Menu ID",
+                        "name": "menuId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message: Menu mapping deleted successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "error: platform role and menu ID are required",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/menus/platform-roles/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List menus mapped to a specific platform role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menus"
+                ],
+                "summary": "List menus mapped to platform role",
+                "operationId": "listMappedMenusByRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform Role ID",
+                        "name": "roleId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Menu ID",
+                        "name": "menuId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Menu"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "error: platform role is required",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/menus/setup/initial-menus": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Register or update menus from a local YAML file specified by the filePath query parameter, or from the MCWEBCONSOLE_MENUYAML URL in .env if not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menus"
+                ],
+                "summary": "Register/Update menus from YAML file or URL",
+                "operationId": "registerMenusFromYAML",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "YAML file path (optional, uses .env URL or default local path if not provided)",
+                        "name": "filePath",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message: Successfully registered menus from YAML",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 실패 메시지",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/menus/setup/initial-menus2": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Parse YAML text in the request body and register or update menus in the database. Recommended Content-Type: text/plain, text/yaml, application/yaml.",
                 "consumes": [
                     "text/plain"
                 ],
@@ -1132,7 +1577,8 @@ const docTemplate = `{
                 "tags": [
                     "menus"
                 ],
-                "summary": "요청 본문의 YAML 내용으로 메뉴 등록/업데이트",
+                "summary": "Register/Update menus from YAML in request body",
+                "operationId": "registerMenusFromBody",
                 "parameters": [
                     {
                         "example": "\"menus:\\n  - id: new-item\\n    parentid: dashboard\\n    displayname: New Menu Item\\n    restype: menu\\n    isaction: false\\n    priority: 10\\n    menunumber: 9999\"",
@@ -1176,14 +1622,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/menus/register-from-yaml": {
+        "/api/menus/tree/list": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "filePath 쿼리 파라미터로 지정된 로컬 YAML 파일 또는 파라미터가 없을 경우 .env 파일의 MCWEBCONSOLE_MENUYAML URL에서 메뉴를 가져와 데이터베이스에 등록/업데이트합니다. URL에서 가져올 경우 asset/menu/menu.yaml에 저장됩니다.",
+                "description": "List all menus as a tree structure. Admin permission required.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1193,175 +1639,33 @@ const docTemplate = `{
                 "tags": [
                     "menus"
                 ],
-                "summary": "YAML 파일 또는 URL에서 메뉴 등록/업데이트",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "YAML 파일 경로 (선택 사항, 없으면 .env의 URL 또는 기본 로컬 경로 사용)",
-                        "name": "filePath",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "message: Successfully registered menus from YAML",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 실패 메시지",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/menus/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "특정 메뉴를 ID로 조회합니다",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "menus"
-                ],
-                "summary": "메뉴 ID로 조회",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Menu ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.Menu"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "메뉴 정보를 업데이트합니다",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "menus"
-                ],
-                "summary": "메뉴 정보 업데이트",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Menu ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Menu Info",
-                        "name": "menu",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Menu"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.Menu"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "메뉴를 삭제합니다",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "menus"
-                ],
-                "summary": "메뉴 삭제",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Menu ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                }
-            }
-        },
-        "/projects": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "모든 프로젝트 목록을 조회합니다 (연결된 워크스페이스 정보 포함).",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "projects"
-                ],
-                "summary": "모든 프로젝트 조회",
+                "summary": "List all menus Tree",
+                "operationId": "listMenusTree",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/model.Project"
+                                "$ref": "#/definitions/model.MenuTreeNode"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     },
@@ -1375,14 +1679,337 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
+            }
+        },
+        "/api/menus/user-menu-tree": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get menu tree based on user's platform roles",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menus"
+                ],
+                "summary": "Get user menu tree by platform roles",
+                "operationId": "getUserMenuTree",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.MenuTreeNode"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/permissions/mciam": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "새로운 프로젝트를 생성합니다.",
+                "description": "Create a new permission with the specified information.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "permissions"
+                ],
+                "summary": "Create new permission",
+                "operationId": "createMciamPermission",
+                "parameters": [
+                    {
+                        "description": "Permission Info",
+                        "name": "permission",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MciamPermission"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.MciamPermission"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/permissions/mciam/id/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve permission details by permission ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "permissions"
+                ],
+                "summary": "Get permission by ID",
+                "operationId": "getMciamPermissionByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Permission ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.MciamPermission"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/permissions/mciam/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of all permissions.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "permissions"
+                ],
+                "summary": "List all permissions",
+                "operationId": "listMciamPermissions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.MciamPermission"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/permissions/mciam/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the details of an existing permission.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "permissions"
+                ],
+                "summary": "Update permission",
+                "operationId": "updateMciamPermission",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Permission ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Permission Info",
+                        "name": "permission",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MciamPermission"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.MciamPermission"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a permission by its ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "permissions"
+                ],
+                "summary": "Delete permission",
+                "operationId": "deleteMciamPermission",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Permission ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/projects": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new project with the specified information.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1392,10 +2019,11 @@ const docTemplate = `{
                 "tags": [
                     "projects"
                 ],
-                "summary": "프로젝트 생성",
+                "summary": "Create new project",
+                "operationId": "createProject",
                 "parameters": [
                     {
-                        "description": "프로젝트 정보 (ID, CreatedAt, UpdatedAt, Workspaces 제외)",
+                        "description": "Project Info",
                         "name": "project",
                         "in": "body",
                         "required": true,
@@ -1412,7 +2040,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "error: 잘못된 요청 형식",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1421,7 +2049,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1432,14 +2060,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/projects/name/{name}": {
-            "get": {
+        "/api/projects/list": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "이름으로 특정 프로젝트를 조회합니다 (연결된 워크스페이스 정보 포함).",
+                "description": "Retrieve a list of all projects.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1449,11 +2077,53 @@ const docTemplate = `{
                 "tags": [
                     "projects"
                 ],
-                "summary": "이름으로 프로젝트 조회",
+                "summary": "List all projects",
+                "operationId": "listProjects",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Project"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/projects/name/{projectName}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get project details by name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Get project by name",
+                "operationId": "getProjectByName",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "프로젝트 이름",
+                        "description": "Project Name",
                         "name": "name",
                         "in": "path",
                         "required": true
@@ -1467,7 +2137,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "error: 프로젝트를 찾을 수 없습니다",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1476,7 +2146,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1487,14 +2157,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/projects/{id}": {
+        "/api/projects/{id}": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "ID로 특정 프로젝트를 조회합니다 (연결된 워크스페이스 정보 포함).",
+                "description": "Retrieve project details by project ID.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1504,12 +2174,13 @@ const docTemplate = `{
                 "tags": [
                     "projects"
                 ],
-                "summary": "ID로 프로젝트 조회",
+                "summary": "Get project by ID",
+                "operationId": "getProjectByID",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "프로젝트 ID",
-                        "name": "id",
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectId",
                         "in": "path",
                         "required": true
                     }
@@ -1521,17 +2192,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/model.Project"
                         }
                     },
-                    "400": {
-                        "description": "error: 잘못된 프로젝트 ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
                     "404": {
-                        "description": "error: 프로젝트를 찾을 수 없습니다",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1540,7 +2202,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1556,7 +2218,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "기존 프로젝트 정보를 부분적으로 수정합니다.",
+                "description": "Update the details of an existing project.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1566,34 +2228,35 @@ const docTemplate = `{
                 "tags": [
                     "projects"
                 ],
-                "summary": "프로젝트 수정",
+                "summary": "Update project",
+                "operationId": "updateProject",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "프로젝트 ID",
-                        "name": "id",
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectId",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "수정할 필드와 값 (예: {\\",
-                        "name": "updates",
+                        "description": "Project Info",
+                        "name": "project",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/model.Project"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "업데이트된 프로젝트 정보",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/model.Project"
                         }
                     },
                     "400": {
-                        "description": "error: 잘못된 요청 형식 또는 ID",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1602,7 +2265,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "error: 프로젝트를 찾을 수 없습니다",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1611,7 +2274,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1627,7 +2290,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "프로젝트를 삭제합니다. 연결된 워크스페이스와의 관계도 해제됩니다.",
+                "description": "Delete a project by its ID.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1637,12 +2300,13 @@ const docTemplate = `{
                 "tags": [
                     "projects"
                 ],
-                "summary": "프로젝트 삭제",
+                "summary": "Delete project",
+                "operationId": "deleteProject",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "프로젝트 ID",
-                        "name": "id",
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectId",
                         "in": "path",
                         "required": true
                     }
@@ -1651,17 +2315,8 @@ const docTemplate = `{
                     "204": {
                         "description": "No Content"
                     },
-                    "400": {
-                        "description": "error: 잘못된 프로젝트 ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
                     "404": {
-                        "description": "error: 프로젝트를 찾을 수 없습니다",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1670,7 +2325,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1681,14 +2336,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/projects/{id}/workspaces/{workspaceId}": {
+        "/api/projects/{id}/workspaces/{workspaceId}": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "특정 프로젝트에 워크스페이스를 연결합니다.",
+                "description": "프로젝트에 워크스페이스를 연결합니다.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1699,6 +2354,7 @@ const docTemplate = `{
                     "projects"
                 ],
                 "summary": "프로젝트에 워크스페이스 연결",
+                "operationId": "addWorkspaceToProject",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1747,6 +2403,219 @@ const docTemplate = `{
                         }
                     }
                 }
+            }
+        },
+        "/api/resource-types/cloud-resources": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "새로운 리소스 타입을 생성합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "resource-types"
+                ],
+                "summary": "Cloud에서 관리되는 Resource(vm, nlb, k8s 등의 그룹) 새 리소스 타입 생성",
+                "operationId": "createResourceType",
+                "parameters": [
+                    {
+                        "description": "Resource Type Info",
+                        "name": "resourceType",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ResourceType"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.ResourceType"
+                        }
+                    },
+                    "400": {
+                        "description": "error: Invalid request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "특정 리소스 타입을 ID로 조회합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "resource-types"
+                ],
+                "summary": "리소스 타입 ID로 조회",
+                "operationId": "getCloudResourceTypeByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Resource Type ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ResourceType"
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Resource Type not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "리소스 타입 정보를 업데이트합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "resource-types"
+                ],
+                "summary": "리소스 타입 업데이트",
+                "operationId": "updateResourceType",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Resource Type ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Resource Type Info",
+                        "name": "resourceType",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ResourceType"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ResourceType"
+                        }
+                    },
+                    "400": {
+                        "description": "error: Invalid request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Resource Type not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             },
             "delete": {
                 "security": [
@@ -1754,7 +2623,2506 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "특정 프로젝트에서 워크스페이스 연결을 해제합니다.",
+                "description": "리소스 타입을 삭제합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "resource-types"
+                ],
+                "summary": "리소스 타입 삭제",
+                "operationId": "deleteResourceType",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Resource Type ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Resource Type not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/resource-types/cloud-resources/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "모든 리소스 타입 목록을 조회합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "resource-types"
+                ],
+                "summary": "리소스 타입 목록 조회",
+                "operationId": "listCloudResourceTypes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.ResourceType"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Create role",
+                "operationId": "createRole",
+                "parameters": [
+                    {
+                        "description": "Role Info",
+                        "name": "role",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMaster"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/assign/platform-role": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign a platform role to a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Assign platform role",
+                "operationId": "assignPlatformRole",
+                "parameters": [
+                    {
+                        "description": "Platform Role Assignment Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/assign/workspace-role": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign a workspace role to a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Assign workspace role",
+                "operationId": "assignWorkspaceRole",
+                "parameters": [
+                    {
+                        "description": "Workspace Role Assignment Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignWorkspaceRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/csp": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new csp role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Create csp role",
+                "operationId": "createCspRole",
+                "parameters": [
+                    {
+                        "description": "CSP Role Creation Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/csp-roles": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new mapping between role and CSP role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Create role-CSP role mapping",
+                "operationId": "addCspRoleMappings",
+                "parameters": [
+                    {
+                        "description": "Mapping Info",
+                        "name": "mapping",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMasterCspRoleMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMasterCspRoleMappingRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/csp-roles/batch": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create multiple new csp roles",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Create multiple csp roles",
+                "operationId": "createCspRoles",
+                "parameters": [
+                    {
+                        "description": "Multiple CSP Role Creation Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateCspRolesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.CspRole"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/csp-roles/id/:roleId": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a mapping between role and CSP role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get role-CSP role mapping",
+                "operationId": "getCspRoleMappingByRoleId",
+                "parameters": [
+                    {
+                        "description": "Mapping Info",
+                        "name": "mapping",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMasterCspRoleMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMasterCspRoleMappingRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/csp-roles/id/{roleId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update role information",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Update csp role",
+                "operationId": "updateCspRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Role Info",
+                        "name": "role",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMaster"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Delete csp role",
+                "operationId": "deleteCspRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/csp-roles/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a mapping between role and CSP role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get role-CSP role mapping",
+                "operationId": "listCspRoleMappings",
+                "parameters": [
+                    {
+                        "description": "Mapping Info",
+                        "name": "mapping",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMasterCspRoleMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMasterCspRoleMappingRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/csp/id/{roleId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get csp role details by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get csp role by ID",
+                "operationId": "getCspRoleByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "CSP Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMaster"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/csp/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a list of all csp roles",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "List csp roles",
+                "operationId": "listCSPRoles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMaster"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/csp/name/{roleName}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get csp role details by Name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get csp role by Name",
+                "operationId": "getCspRoleByName",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "CSP Role Name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMaster"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/id/{roleId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get role details by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get role by ID",
+                "operationId": "getRoleByRoleID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMaster"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the details of an existing role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Update role",
+                "operationId": "updateRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Role Info",
+                        "name": "role",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMaster"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a role by its name.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Delete role",
+                "operationId": "deleteRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/id/{roleId}/assign": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign a role to a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Assign role",
+                "operationId": "assignRole",
+                "parameters": [
+                    {
+                        "description": "Role Assignment Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/id/{roleId}/unassign": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a role from a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Remove role",
+                "operationId": "removeRole",
+                "parameters": [
+                    {
+                        "description": "Role Removal Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of all roles.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "List all roles",
+                "operationId": "listRoles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMaster"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/mappings/csp-roles/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List users by csp role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "List users by csp role",
+                "operationId": "listUsersByCspRole",
+                "parameters": [
+                    {
+                        "description": "Filter Role Master Mapping Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.FilterRoleMasterMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMasterMapping"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/mappings/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List role master mappings",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "List role master mappings",
+                "operationId": "listRoleMasterMappings",
+                "parameters": [
+                    {
+                        "description": "Filter Role Master Mapping Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.FilterRoleMasterMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMasterMapping"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/mappings/platform-roles/users/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List users by platform role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "List users by platform role",
+                "operationId": "listUsersByPlatformRole",
+                "parameters": [
+                    {
+                        "description": "Filter Role Master Mapping Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.FilterRoleMasterMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMasterMapping"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/mappings/role/id/:roleId": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get role master mappings",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get role master mappings",
+                "operationId": "getRoleMasterMappings",
+                "parameters": [
+                    {
+                        "description": "Filter Role Master Mapping Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.FilterRoleMasterMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMasterMapping"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/mappings/workspace-roles/users/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List users by workspace role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "List users by workspace role",
+                "operationId": "listUsersByWorkspaceRole",
+                "parameters": [
+                    {
+                        "description": "Filter Role Master Mapping Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.FilterRoleMasterMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMasterMapping"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/menu-roles/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a list of all menu roles",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "List menu roles",
+                "operationId": "listPlatformRoles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMaster"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/name/{roleName}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve role details by role name.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get role by Name",
+                "operationId": "getRoleByRoleName",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMaster"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/platform-roles": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new menu role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Create menu role",
+                "operationId": "createPlatformRole",
+                "parameters": [
+                    {
+                        "description": "Menu Role Creation Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/platform-roles/id/{roleId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get platform role details by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get platform role by ID",
+                "operationId": "getPlatformRoleByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMaster"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a platform role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Delete platform role",
+                "operationId": "deletePlatformRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform Role ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/platform-roles/name/{roleName}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get menu role details by Name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get menu role by Name",
+                "operationId": "getPlatformRoleByName",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Menu Role Name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMaster"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/unassign/csp-roles": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a mapping between workspace role and CSP role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Delete workspace role-CSP role mapping",
+                "operationId": "removeCspRoleMappings",
+                "parameters": [
+                    {
+                        "description": "Mapping Info",
+                        "name": "mapping",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMasterCspRoleMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/unassign/platform-role": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a platform role from a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Remove platform role",
+                "operationId": "removePlatformRole",
+                "parameters": [
+                    {
+                        "description": "Platform Role Removal Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/unassign/workspace-role": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a workspace role from a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Remove workspace role",
+                "operationId": "removeWorkspaceRole",
+                "parameters": [
+                    {
+                        "description": "Workspace Role Removal Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/workspace-roles": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new workspace role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Create workspace role",
+                "operationId": "createWorkspaceRole",
+                "parameters": [
+                    {
+                        "description": "Workspace Role Creation Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/workspace-roles/id/{roleId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get workspace role details by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get workspace role by ID",
+                "operationId": "getWorkspaceRoleByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMaster"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a workspace role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Delete workspace role",
+                "operationId": "deleteWorkspaceRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace Role ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/workspace-roles/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a list of all workspace roles",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "List workspace roles",
+                "operationId": "listWorkspaceRoles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMaster"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/workspace-roles/name/{roleName}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get workspace role details by Name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get workspace role by Name",
+                "operationId": "getWorkspaceRoleByName",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace Role Name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleMaster"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/{roleType}/{roleId}/mciam-permissions": {
+            "get": {
+                "description": "특정 역할의 MC-IAM 권한 ID 목록을 조회합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles",
+                    "mciam-permissions"
+                ],
+                "summary": "역할의 MC-IAM 권한 목록 조회 - Renamed",
+                "operationId": "getRoleMciamPermissions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "역할 타입 ('platform' or 'workspace')",
+                        "name": "roleType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "권한 ID 목록",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}": {
+            "post": {
+                "description": "역할에 MC-IAM 권한을 할당합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles",
+                    "mciam-permissions"
+                ],
+                "summary": "역할에 MC-IAM 권한 할당 - Renamed",
+                "operationId": "assignMciamPermissionToRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "역할 타입 ('platform' or 'workspace')",
+                        "name": "roleType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "MC-IAM 권한 ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            },
+            "delete": {
+                "description": "역할에서 MC-IAM 권한을 제거합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles",
+                    "mciam-permissions"
+                ],
+                "summary": "역할에서 MC-IAM 권한 제거 - Renamed",
+                "operationId": "removeMciamPermissionFromRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "역할 타입 ('platform' or 'workspace')",
+                        "name": "roleType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "MC-IAM 권한 ID",
+                        "name": "permissionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/setup/check-user-roles": {
+            "get": {
+                "description": "Check all roles assigned to a user. 특정 유저가 가진 role 목록을 조회합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Check user roles",
+                "operationId": "checkUserRoles",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Username to check roles",
+                        "name": "username",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setup/initial-role-menu-permission": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSV 파일을 읽어서 메뉴 권한을 초기화합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Initialize menu permissions from CSV",
+                "operationId": "initializeMenuPermissions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "CSV file path (optional, uses default if not provided)",
+                        "name": "filePath",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setup/sync-projects": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "mc-infra-manager의 네임스페이스 목록을 조회하여 로컬 DB에 없는 프로젝트를 추가합니다.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1764,121 +5132,265 @@ const docTemplate = `{
                 "tags": [
                     "projects"
                 ],
-                "summary": "프로젝트에서 워크스페이스 연결 해제",
+                "summary": "mc-infra-manager와 프로젝트 동기화",
+                "operationId": "syncProjects",
+                "responses": {
+                    "200": {
+                        "description": "message: Project synchronization successful",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류 또는 동기화 실패",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new user with the specified information.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Create new user",
+                "operationId": "createUser",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "프로젝트 ID",
+                        "description": "User Info",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve user details by user ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user by ID",
+                "operationId": "getUserByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/status": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update user status (active/inactive)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update user status",
+                "operationId": "updateUserStatus",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "type": "integer",
-                        "description": "워크스페이스 ID",
+                        "description": "User Status",
+                        "name": "status",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UserStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/workspaces/id/{workspaceId}/roles/list": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get workspaces and roles for a specific user and workspace",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user workspace and workspace roles by user ID and workspace ID",
+                "operationId": "getUserWorkspaceAndWorkspaceRolesByUserIDAndWorkspaceID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
                         "name": "workspaceId",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "error: 잘못된 ID 형식",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 서버 내부 오류",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/readyz": {
-            "get": {
-                "description": "애플리케이션의 준비 상태를 확인합니다. status=detail 쿼리 파라미터로 상세 상태를 확인할 수 있습니다.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Health"
-                ],
-                "summary": "애플리케이션 준비 상태 확인",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "상세 상태 확인 여부 ('detail')",
-                        "name": "status",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
                     "200": {
-                        "description": "상세 상태 정보 (status=detail)",
-                        "schema": {
-                            "$ref": "#/definitions/service.HealthStatus"
-                        }
-                    },
-                    "503": {
-                        "description": "상세 상태 확인 중 오류 발생 시",
-                        "schema": {
-                            "$ref": "#/definitions/service.HealthStatus"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/workspaces": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "현재 로그인한 사용자가 접근 가능한 워크스페이스 및 각 워크스페이스에서의 역할 목록을 조회합니다.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users",
-                    "workspaces",
-                    "roles",
-                    "me"
-                ],
-                "summary": "내 워크스페이스 및 역할 목록 조회",
-                "responses": {
-                    "200": {
-                        "description": "성공 시 워크스페이스 및 역할 정보 목록 반환",
+                        "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/service.WorkspaceRoleInfo"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "error: Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                                "$ref": "#/definitions/model.UserWorkspaceRole"
                             }
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1889,96 +5401,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/users": {
+        "/api/users/id/{userId}/workspaces/list": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "모든 사용자 목록을 조회합니다. 'admin' 또는 'platformAdmin' 역할이 필요합니다.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "사용자 목록 조회 (관리자용)",
-                "responses": {
-                    "200": {
-                        "description": "성공 시 사용자 목록 반환",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.User"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "error: Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "error: Forbidden (권한 부족)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 서버 내부 오류",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/users/{id}": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "User DB ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/users/{id}/approve": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "지정된 사용자를 활성화하고 시스템 사용을 승인합니다. 'admin' 또는 'platformadmin' 역할이 필요합니다.",
+                "description": "Get workspaces for a specific user",
                 "consumes": [
                     "application/json"
                 ],
@@ -1988,77 +5418,17 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "사용자 승인 (관리자용)",
+                "summary": "Get user workspaces by user ID",
+                "operationId": "getUserWorkspacesByUserID",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "사용자 Keycloak ID",
-                        "name": "id",
+                        "description": "User ID",
+                        "name": "userId",
                         "in": "path",
                         "required": true
                     }
                 ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "error: 잘못된 사용자 ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "error: Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "error: Forbidden (권한 부족)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 서버 내부 오류",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/workspaces": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "모든 워크스페이스 목록을 조회합니다 (연결된 프로젝트 정보 포함).",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "모든 워크스페이스 조회",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2070,6 +5440,203 @@ const docTemplate = `{
                         }
                     },
                     "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/workspaces/roles/list": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get workspaces and roles for a specific user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user workspace and workspace roles by user ID",
+                "operationId": "getUserWorkspaceAndWorkspaceRolesByUserID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.UserWorkspaceRole"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/kc/{kcUserId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get user details by KcID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user by KcID",
+                "operationId": "getUserByKcID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User KcID",
+                        "name": "kcUserId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of all users.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List all users",
+                "operationId": "listUsers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.User"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/menus-tree/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the menu tree accessible to the current user's platform role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menus"
+                ],
+                "summary": "Get current user's menu tree",
+                "operationId": "listUserMenuTree",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.MenuTreeNode"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
                         "description": "error: 서버 내부 오류",
                         "schema": {
                             "type": "object",
@@ -2079,14 +5646,356 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
+            }
+        },
+        "/api/users/menus/list": {
+            "post": {
+                "description": "Get the menu list accessible to the current user's platform role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menus"
+                ],
+                "summary": "Get current user's menu list",
+                "operationId": "listUserMenu",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Menu"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/name/{username}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get user details by username",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user by username",
+                "operationId": "getUserByUsername",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Username",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/workspaces/id/{workspaceId}/projects/list": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List projects for the current user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List user projects by workspace",
+                "operationId": "listUserProjectsByWorkspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Project"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/workspaces/list": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "새로운 워크스페이스를 생성합니다.",
+                "description": "List workspaces for the current user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List user workspaces",
+                "operationId": "listUserWorkspaces",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Workspace"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/workspaces/roles/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List workspaces and roles for the current user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List user workspace and roles",
+                "operationId": "listUserWorkspaceAndWorkspaceRoles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMaster"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the details of an existing user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update user",
+                "operationId": "updateUser",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User Info",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a user by their ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete user",
+                "operationId": "deleteUser",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workspaces": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new workspace with the specified information.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2096,10 +6005,11 @@ const docTemplate = `{
                 "tags": [
                     "workspaces"
                 ],
-                "summary": "워크스페이스 생성",
+                "summary": "Create new workspace",
+                "operationId": "createWorkspace",
                 "parameters": [
                     {
-                        "description": "워크스페이스 정보 (ID, CreatedAt, UpdatedAt, Projects 제외)",
+                        "description": "Workspace Info",
                         "name": "workspace",
                         "in": "body",
                         "required": true,
@@ -2116,7 +6026,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "error: 잘못된 요청 형식",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2125,7 +6035,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2136,14 +6046,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/workspaces/name/{name}": {
-            "get": {
+        "/api/workspaces/assign/projects": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "이름으로 특정 워크스페이스를 조회합니다 (연결된 프로젝트 정보 포함).",
+                "description": "Add a project to a workspace",
                 "consumes": [
                     "application/json"
                 ],
@@ -2153,67 +6063,20 @@ const docTemplate = `{
                 "tags": [
                     "workspaces"
                 ],
-                "summary": "이름으로 워크스페이스 조회",
+                "summary": "Add project to workspace",
+                "operationId": "addProjectToWorkspace",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "워크스페이스 이름",
-                        "name": "name",
+                        "description": "Workspace ID",
+                        "name": "id",
                         "in": "path",
                         "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.Workspace"
-                        }
                     },
-                    "404": {
-                        "description": "error: 워크스페이스를 찾을 수 없습니다",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 서버 내부 오류",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/workspaces/{id}": {
-            "get": {
-                "security": [
                     {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "ID로 특정 워크스페이스를 조회합니다 (연결된 프로젝트 정보 포함).",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "ID로 워크스페이스 조회",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "워크스페이스 ID",
-                        "name": "id",
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectId",
                         "in": "path",
                         "required": true
                     }
@@ -2226,7 +6089,25 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "error: 잘못된 워크스페이스 ID",
+                        "description": "error: Invalid request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2235,7 +6116,54 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "error: 워크스페이스를 찾을 수 없습니다",
+                        "description": "error: Workspace or Project not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workspaces/id/{workspaceId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve workspace details by workspace ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Get workspace by ID",
+                "operationId": "getWorkspaceByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Workspace"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2244,7 +6172,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2260,7 +6188,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "기존 워크스페이스 정보를 부분적으로 수정합니다.",
+                "description": "Update the details of an existing workspace.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2270,34 +6198,35 @@ const docTemplate = `{
                 "tags": [
                     "workspaces"
                 ],
-                "summary": "워크스페이스 수정",
+                "summary": "Update workspace",
+                "operationId": "updateWorkspace",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "워크스페이스 ID",
+                        "type": "string",
+                        "description": "Workspace ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "수정할 필드와 값 (예: {\\",
-                        "name": "updates",
+                        "description": "Workspace Info",
+                        "name": "workspace",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/model.Workspace"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "업데이트된 워크스페이스 정보",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/model.Workspace"
                         }
                     },
                     "400": {
-                        "description": "error: 잘못된 요청 형식 또는 ID",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2306,7 +6235,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "error: 워크스페이스를 찾을 수 없습니다",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2315,7 +6244,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2331,7 +6260,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "워크스페이스를 삭제합니다. 연결된 프로젝트와의 관계도 해제됩니다.",
+                "description": "Delete a workspace by its ID.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2341,11 +6270,12 @@ const docTemplate = `{
                 "tags": [
                     "workspaces"
                 ],
-                "summary": "워크스페이스 삭제",
+                "summary": "Delete workspace",
+                "operationId": "deleteWorkspace",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "워크스페이스 ID",
+                        "type": "string",
+                        "description": "Workspace ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -2355,17 +6285,8 @@ const docTemplate = `{
                     "204": {
                         "description": "No Content"
                     },
-                    "400": {
-                        "description": "error: 잘못된 워크스페이스 ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
                     "404": {
-                        "description": "error: 워크스페이스를 찾을 수 없습니다",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2374,7 +6295,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2385,14 +6306,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/workspaces/{id}/projects": {
+        "/api/workspaces/id/{workspaceId}/projects/list": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "특정 워크스페이스 ID에 연결된 모든 프로젝트 목록을 조회합니다.",
+                "description": "Retrieve project list belonging to specific workspace",
                 "consumes": [
                     "application/json"
                 ],
@@ -2402,19 +6323,20 @@ const docTemplate = `{
                 "tags": [
                     "workspaces"
                 ],
-                "summary": "워크스페이스에 연결된 프로젝트 목록 조회",
+                "summary": "List workspace projects",
+                "operationId": "getWorkspaceProjectsByWorkspaceId",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "워크스페이스 ID",
-                        "name": "id",
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceId",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "성공 시 프로젝트 목록 반환",
+                        "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -2422,8 +6344,17 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "400": {
-                        "description": "error: 잘못된 워크스페이스 ID",
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2432,16 +6363,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "error: 워크스페이스를 찾을 수 없습니다",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "error: Workspace not found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2452,139 +6374,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/workspaces/{id}/projects/{projectId}": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "특정 워크스페이스에 프로젝트를 연결합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "워크스페이스에 프로젝트 연결",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "워크스페이스 ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "프로젝트 ID",
-                        "name": "projectId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "error: 잘못된 ID 형식",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "error: 워크스페이스 또는 프로젝트를 찾을 수 없습니다",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 서버 내부 오류",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "특정 워크스페이스에서 프로젝트 연결을 해제합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "workspaces"
-                ],
-                "summary": "워크스페이스에서 프로젝트 연결 해제",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "워크스페이스 ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "프로젝트 ID",
-                        "name": "projectId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "error: 잘못된 ID 형식",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 서버 내부 오류",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/workspaces/{id}/users": {
+        "/api/workspaces/id/{workspaceId}/users/id/{userId}": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "특정 워크스페이스에 속한 모든 사용자와 각 사용자의 역할을 조회합니다.",
+                "description": "Get roles assigned to a user in a workspace",
                 "consumes": [
                     "application/json"
                 ],
@@ -2592,41 +6389,38 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "workspaces",
-                    "users",
                     "roles"
                 ],
-                "summary": "워크스페이스 사용자 및 역할 목록 조회",
+                "summary": "Get user workspace roles",
+                "operationId": "getUserWorkspaceRoles",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "워크스페이스 ID",
-                        "name": "id",
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceId",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "성공 시 사용자 및 역할 목록 반환",
+                        "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/service.UserWithRoles"
+                                "$ref": "#/definitions/model.RoleMaster"
                             }
                         }
                     },
                     "400": {
-                        "description": "error: 잘못된 워크스페이스 ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "error: 워크스페이스를 찾을 수 없습니다",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2635,7 +6429,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2646,14 +6440,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/workspaces/{workspaceId}/users/{userId}/roles/{roleId}": {
+        "/api/workspaces/id/{workspaceId}/users/list": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "특정 워크스페이스 내의 사용자에게 특정 워크스페이스 역할을 할당합니다.",
+                "description": "Retrieve users and roles list belonging to workspace",
                 "consumes": [
                     "application/json"
                 ],
@@ -2661,40 +6450,31 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "workspaces",
-                    "roles",
-                    "users"
+                    "workspaces"
                 ],
-                "summary": "워크스페이스 사용자에게 역할 할당",
+                "summary": "List users and roles by workspace",
+                "operationId": "listUsersAndRolesByWorkspace",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "워크스페이스 ID",
+                        "description": "Workspace ID",
                         "name": "workspaceId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "사용자 DB ID (db_id)",
-                        "name": "userId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "워크스페이스 역할 ID",
-                        "name": "roleId",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content"
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.UserWorkspaceRole"
+                            }
+                        }
                     },
                     "400": {
-                        "description": "error: 잘못된 ID 형식",
+                        "description": "error: Invalid workspace ID",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2703,16 +6483,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "error: 사용자, 역할 또는 워크스페이스를 찾을 수 없습니다",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "error: 역할이 해당 워크스페이스에 속하지 않음",
+                        "description": "error: Workspace not found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2721,7 +6492,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "error: Internal server error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2730,14 +6501,16 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "delete": {
+            }
+        },
+        "/api/workspaces/list": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "특정 워크스페이스 내의 사용자에게서 특정 워크스페이스 역할을 제거합니다.",
+                "description": "Retrieve a list of all workspaces.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2745,40 +6518,78 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "workspaces",
-                    "roles",
-                    "users"
+                    "workspaces"
                 ],
-                "summary": "워크스페이스 사용자 역할 제거",
+                "summary": "List all workspaces",
+                "operationId": "listWorkspaces",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Workspace"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workspaces/name/{workspaceName}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve specific workspace by name",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Get workspace by name",
+                "operationId": "getWorkspaceByName",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "워크스페이스 ID",
-                        "name": "workspaceId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "사용자 DB ID (db_id)",
-                        "name": "userId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "워크스페이스 역할 ID",
-                        "name": "roleId",
+                        "type": "string",
+                        "description": "Workspace Name",
+                        "name": "workspaceName",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content"
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Workspace"
+                        }
                     },
-                    "400": {
-                        "description": "error: 잘못된 ID 형식",
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2787,7 +6598,57 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "error: 역할 또는 워크스페이스를 찾을 수 없습니다\" // User existence check is optional here",
+                        "description": "error: Workspace not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workspaces/projects/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve project list belonging to specific workspace",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "List workspace projects",
+                "operationId": "listWorkspaceProjects",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspaceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Project"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2795,8 +6656,115 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "409": {
-                        "description": "error: 역할이 해당 워크스페이스에 속하지 않음",
+                    "403": {
+                        "description": "error: Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Workspace not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workspaces/temporary-credentials": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get temporary credentials for CSP",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-credentials"
+                ],
+                "summary": "Get temporary credentials",
+                "operationId": "mciamGetTemporaryCredentials",
+                "responses": {}
+            }
+        },
+        "/api/workspaces/unassign/projects": {
+            "delete": {
+                "description": "Remove a project from a workspace",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Remove project from workspace",
+                "operationId": "removeProjectFromWorkspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/workspaces/users-roles/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve the list of users and roles assigned to the workspace.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "List users and roles in workspace",
+                "operationId": "listAllWorkspaceUsersAndRoles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.WorkspaceWithUsersAndRoles"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2805,7 +6773,285 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "error: 서버 내부 오류",
+                        "description": "error: Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workspaces/users/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List users by workspace criteria",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "List workspace users",
+                "operationId": "listWorkspaceUsers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.WorkspaceWithUsersAndRoles"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workspaces/workspace-ticket": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Set workspace ticket",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Set workspace ticket",
+                "operationId": "mciamWorkspaceTicket",
+                "responses": {
+                    "200": {
+                        "description": "message: Workspace ticket set successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workspaces/{id}/users": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Add a user to a workspace",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Add user to workspace",
+                "operationId": "addUserToWorkspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workspaces/{id}/users/{userId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a user from a workspace",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Remove user from workspace",
+                "operationId": "removeUserFromWorkspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/readyz": {
+            "get": {
+                "description": "Check the health status of the service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check",
+                "operationId": "mciamCheckHealth",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Detail check components (nginx,db,keycloak,all)",
+                        "name": "detail",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2818,6 +7064,53 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "constants.AuthMethod": {
+            "type": "string",
+            "enum": [
+                "OIDC",
+                "SAML"
+            ],
+            "x-enum-varnames": [
+                "AuthMethodOIDC",
+                "AuthMethodSAML"
+            ]
+        },
+        "constants.CSPType": {
+            "type": "string",
+            "enum": [
+                "aws",
+                "gcp",
+                "azure"
+            ],
+            "x-enum-varnames": [
+                "CSPTypeAWS",
+                "CSPTypeGCP",
+                "CSPTypeAzure"
+            ]
+        },
+        "constants.IAMRoleType": {
+            "type": "string",
+            "enum": [
+                "platform",
+                "workspace",
+                "csp"
+            ],
+            "x-enum-comments": {
+                "RoleTypeCSP": "CSP 역할",
+                "RoleTypePlatform": "플랫폼 역할",
+                "RoleTypeWorkspace": "워크스페이스 역할"
+            },
+            "x-enum-descriptions": [
+                "플랫폼 역할",
+                "워크스페이스 역할",
+                "CSP 역할"
+            ],
+            "x-enum-varnames": [
+                "RoleTypePlatform",
+                "RoleTypeWorkspace",
+                "RoleTypeCSP"
+            ]
+        },
         "idp.UserLogin": {
             "type": "object",
             "properties": {
@@ -2829,17 +7122,33 @@ const docTemplate = `{
                 }
             }
         },
-        "mcmpapi.ApiQueryParam": {
+        "mcmpapi.McmpApiAction": {
             "type": "object",
-            "required": [
-                "key",
-                "value"
-            ],
             "properties": {
-                "key": {
+                "actionName": {
                     "type": "string"
                 },
-                "value": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Auto-incrementing primary key",
+                    "type": "integer"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "resourcePath": {
+                    "type": "string"
+                },
+                "serviceName": {
+                    "description": "Foreign key reference (indexed)",
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -2854,31 +7163,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "mcmpapi.McmpApiCallRequest": {
-            "type": "object",
-            "required": [
-                "actionName",
-                "serviceName"
-            ],
-            "properties": {
-                "actionName": {
-                    "description": "Target action name (operationId)",
-                    "type": "string"
-                },
-                "requestParams": {
-                    "description": "Parameters for the external API call",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/mcmpapi.McmpApiRequestParams"
-                        }
-                    ]
-                },
-                "serviceName": {
-                    "description": "Target service name",
                     "type": "string"
                 }
             }
@@ -2905,25 +7189,26 @@ const docTemplate = `{
                 }
             }
         },
-        "mcmpapi.McmpApiRequestParams": {
+        "mcmpapi.McmpApiPermissionActionMapping": {
             "type": "object",
             "properties": {
-                "body": {
-                    "description": "Request body (accept any JSON structure) - Changed from json.RawMessage for swag compatibility"
+                "actionID": {
+                    "type": "integer"
                 },
-                "pathParams": {
-                    "description": "Parameters to replace in the resource path (e.g., {userId})",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
+                "actionName": {
+                    "type": "string"
                 },
-                "queryParams": {
-                    "description": "Parameters to append as query string (?key=value)",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "permissionID": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
@@ -2960,31 +7245,380 @@ const docTemplate = `{
                 }
             }
         },
-        "mcmpapi.ServiceApiCallRequest": {
-            "type": "object"
-        },
-        "model.Menu": {
+        "model.AssignRoleRequest": {
             "type": "object",
             "properties": {
-                "display_name": {
+                "roleId": {
+                    "description": "역할 ID (문자열로 받음)",
+                    "type": "string"
+                },
+                "roleName": {
+                    "description": "역할명",
+                    "type": "string"
+                },
+                "roleType": {
+                    "description": "역할 타입 (platform/workspace)",
+                    "type": "string"
+                },
+                "userId": {
+                    "description": "사용자 ID (문자열로 받음)",
+                    "type": "string"
+                },
+                "username": {
+                    "description": "사용자명",
+                    "type": "string"
+                },
+                "workspaceId": {
+                    "description": "워크스페이스 ID (문자열로 받음)",
+                    "type": "string"
+                }
+            }
+        },
+        "model.AssignWorkspaceRoleRequest": {
+            "type": "object",
+            "properties": {
+                "roleId": {
+                    "description": "역할 ID (문자열로 받음)",
+                    "type": "string"
+                },
+                "roleName": {
+                    "description": "역할명",
+                    "type": "string"
+                },
+                "userId": {
+                    "description": "사용자 ID (문자열로 받음)",
+                    "type": "string"
+                },
+                "username": {
+                    "description": "사용자명",
+                    "type": "string"
+                },
+                "workspaceId": {
+                    "description": "워크스페이스 ID (문자열로 받음)",
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateCspRoleRequest": {
+            "type": "object",
+            "properties": {
+                "cspRoleName": {
+                    "description": "csp의 RoleName. 여러 role이 있기때문에 csp에 정의한 role로 구분하기 위해 사용",
+                    "type": "string"
+                },
+                "cspType": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "iamIdentifier": {
+                    "type": "string"
+                },
+                "iamRoleId": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
-                "is_action": {
-                    "type": "boolean"
+                "idpIdentifier": {
+                    "type": "string"
                 },
-                "menu_number": {
+                "path": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Tag"
+                    }
+                }
+            }
+        },
+        "model.CreateCspRolesRequest": {
+            "type": "object",
+            "required": [
+                "cspRoles"
+            ],
+            "properties": {
+                "cspRoles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CreateCspRoleRequest"
+                    }
+                }
+            }
+        },
+        "model.CreateMenuMappingRequest": {
+            "type": "object",
+            "required": [
+                "menuIds",
+                "roleId"
+            ],
+            "properties": {
+                "menuIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "roleId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateRoleRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "cspRoles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CreateCspRoleRequest"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "menuIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parentId": {
                     "type": "integer"
                 },
-                "parent_id": {
+                "roleTypes": {
+                    "description": "RoleTypes   []constants.IAMRoleType ` + "`" + `json:\"roleTypes\" validate:\"required,dive,oneof=platform workspace csp\"` + "`" + `",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/constants.IAMRoleType"
+                    }
+                }
+            }
+        },
+        "model.CspRole": {
+            "type": "object",
+            "properties": {
+                "create_date": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "csp_type": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "iam_identifier": {
+                    "type": "string"
+                },
+                "iam_role_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "idp_identifier": {
+                    "type": "string"
+                },
+                "max_session_duration": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "permissions_boundary": {
+                    "type": "string"
+                },
+                "role_last_used": {
+                    "$ref": "#/definitions/model.RoleLastUsed"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Tag"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.FilterRoleMasterMappingRequest": {
+            "type": "object",
+            "properties": {
+                "authMethod": {
+                    "type": "string"
+                },
+                "cspRoleId": {
+                    "type": "string"
+                },
+                "cspRoleName": {
+                    "type": "string"
+                },
+                "cspType": {
+                    "type": "string"
+                },
+                "projectId": {
+                    "type": "string"
+                },
+                "projectName": {
+                    "type": "string"
+                },
+                "roleId": {
+                    "type": "string"
+                },
+                "roleTypes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/constants.IAMRoleType"
+                    }
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "workspaceId": {
+                    "type": "string"
+                },
+                "workspaceName": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MciamPermission": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "description": "e.g., create, read, update, delete",
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "Match DB schema",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "frameworkId": {
+                    "description": "FK to mcmp_resource_types.framework_id",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Format: \u003cframework_id\u003e:\u003cresource_type_id\u003e:\u003caction\u003e",
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resourceTypeId": {
+                    "description": "FK to mcmp_resource_types.id",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "description": "Match DB schema",
+                    "type": "string"
+                }
+            }
+        },
+        "model.McmpApiCallRequest": {
+            "type": "object",
+            "required": [
+                "actionName",
+                "serviceName"
+            ],
+            "properties": {
+                "actionName": {
+                    "description": "Target action name (operationId)",
+                    "type": "string"
+                },
+                "requestParams": {
+                    "description": "Parameters for the external API call",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.McmpApiRequestParams"
+                        }
+                    ]
+                },
+                "serviceName": {
+                    "description": "Target service name",
+                    "type": "string"
+                }
+            }
+        },
+        "model.McmpApiRequestParams": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "description": "Request body (accept any JSON structure) - Changed from json.RawMessage for swag compatibility"
+                },
+                "pathParams": {
+                    "description": "Parameters to replace in the resource path (e.g., {userId})",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "queryParams": {
+                    "description": "Parameters to append as query string (?key=value)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.Menu": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isAction": {
+                    "type": "boolean"
+                },
+                "menuNumber": {
+                    "type": "integer"
+                },
+                "parentId": {
                     "type": "string"
                 },
                 "priority": {
                     "type": "integer"
                 },
-                "res_type": {
+                "resType": {
                     "type": "string"
                 }
             }
@@ -2999,68 +7633,25 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.MenuTreeNode"
                     }
                 },
-                "display_name": {
+                "displayName": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
-                "is_action": {
+                "isAction": {
                     "type": "boolean"
                 },
-                "menu_number": {
+                "menuNumber": {
                     "type": "integer"
                 },
-                "parent_id": {
+                "parentId": {
                     "type": "string"
                 },
                 "priority": {
                     "type": "integer"
                 },
-                "res_type": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.Permission": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "description": "Increased size to match roles",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "Changed to string",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "Assuming Name column exists or needs to be added",
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.PlatformRole": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updated_at": {
+                "resType": {
                     "type": "string"
                 }
             }
@@ -3093,6 +7684,219 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.Workspace"
                     }
+                }
+            }
+        },
+        "model.ResourceType": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "frameworkId": {
+                    "description": "Identifier of the framework (e.g., \"mc-iam-manager\", \"mc-infra-manager\")",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Unique identifier within the framework (e.g., \"workspace\", \"vm\")",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Display name (e.g., \"Workspace\", \"Virtual Machine\")",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Response": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RoleLastUsed": {
+            "type": "object",
+            "properties": {
+                "last_used_date": {
+                    "type": "string"
+                },
+                "region": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RoleMaster": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.RoleMaster"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "csp_role_mappings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.RoleMasterCspRoleMapping"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parent": {
+                    "$ref": "#/definitions/model.RoleMaster"
+                },
+                "parent_id": {
+                    "type": "integer"
+                },
+                "predefined": {
+                    "type": "boolean"
+                },
+                "role_subs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.RoleSub"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RoleMasterCspRoleMapping": {
+            "type": "object",
+            "properties": {
+                "auth_method": {
+                    "$ref": "#/definitions/constants.AuthMethod"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "cspRoles": {
+                    "description": "서비스 레이어에서 조합",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CspRole"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "roleId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.RoleMasterCspRoleMappingRequest": {
+            "type": "object",
+            "properties": {
+                "authMethod": {
+                    "$ref": "#/definitions/constants.AuthMethod"
+                },
+                "cspRoleId": {
+                    "type": "string"
+                },
+                "cspType": {
+                    "$ref": "#/definitions/constants.CSPType"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "roleId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RoleMasterMapping": {
+            "type": "object",
+            "properties": {
+                "role_id": {
+                    "type": "integer"
+                },
+                "role_master_csp_role_mappings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.RoleMasterCspRoleMapping"
+                    }
+                },
+                "role_name": {
+                    "type": "string"
+                },
+                "user_platform_roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.UserPlatformRole"
+                    }
+                },
+                "user_workspace_roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.UserWorkspaceRole"
+                    }
+                }
+            }
+        },
+        "model.RoleSub": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "role_id": {
+                    "type": "integer"
+                },
+                "role_type": {
+                    "$ref": "#/definitions/constants.IAMRoleType"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.SetupInitialAdminRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Tag": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
                 }
             }
         },
@@ -3130,10 +7934,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "platform_roles": {
-                    "description": "관계 정의 (Foreign Key는 DB ID인 'ID' 필드를 참조해야 함)",
+                    "description": "관계 정의",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.PlatformRole"
+                        "$ref": "#/definitions/model.RoleMaster"
                     }
                 },
                 "updated_at": {
@@ -3144,11 +7948,80 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "workspace_roles": {
-                    "description": "Changed foreignKey to ID",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.WorkspaceRole"
+                        "$ref": "#/definitions/model.RoleMaster"
                     }
+                }
+            }
+        },
+        "model.UserPlatformRole": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "description": "사용자 정보 (JOIN으로 가져올 필드들)",
+                    "type": "string"
+                }
+            }
+        },
+        "model.UserStatusRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "DB에 저장되는 정보 (mcmp_users 테이블)",
+                    "type": "string"
+                },
+                "kc_id": {
+                    "description": "Keycloak User ID",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "사용자 상태",
+                    "type": "string"
+                }
+            }
+        },
+        "model.UserWorkspaceRole": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/model.RoleMaster"
+                },
+                "role_id": {
+                    "type": "integer"
+                },
+                "role_name": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.User"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "workspace": {
+                    "$ref": "#/definitions/model.Workspace"
+                },
+                "workspace_id": {
+                    "type": "integer"
+                },
+                "workspace_name": {
+                    "type": "string"
                 }
             }
         },
@@ -3168,7 +8041,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "projects": {
-                    "description": "M:N relationship",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.Project"
@@ -3179,7 +8051,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.WorkspaceRole": {
+        "model.WorkspaceWithUsersAndRoles": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -3192,68 +8064,16 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
-                    "description": "이름은 고유해야 함",
                     "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
-                }
-            }
-        },
-        "service.HealthStatus": {
-            "type": "object",
-            "properties": {
-                "db_connection": {
-                    "type": "string"
                 },
-                "keycloak_admin_login": {
-                    "type": "string"
-                },
-                "keycloak_client_check": {
-                    "type": "string"
-                },
-                "keycloak_realm_check": {
-                    "type": "string"
-                },
-                "mcmp_actions_count": {
-                    "type": "integer"
-                },
-                "mcmp_services_count": {
-                    "type": "integer"
-                },
-                "menus_count": {
-                    "type": "integer"
-                },
-                "platform_roles_count": {
-                    "type": "integer"
-                },
-                "workspace_roles_count": {
-                    "type": "integer"
-                }
-            }
-        },
-        "service.UserWithRoles": {
-            "type": "object",
-            "properties": {
-                "roles": {
+                "users": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.WorkspaceRole"
+                        "$ref": "#/definitions/model.UserWorkspaceRole"
                     }
-                },
-                "user": {
-                    "$ref": "#/definitions/model.User"
-                }
-            }
-        },
-        "service.WorkspaceRoleInfo": {
-            "type": "object",
-            "properties": {
-                "role": {
-                    "$ref": "#/definitions/model.WorkspaceRole"
-                },
-                "workspace": {
-                    "$ref": "#/definitions/model.Workspace"
                 }
             }
         }
@@ -3271,7 +8091,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:3000",
+	Host:             "localhost",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "MC IAM Manager API",

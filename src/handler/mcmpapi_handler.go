@@ -49,6 +49,53 @@ func (h *McmpApiHandler) SyncMcmpAPIs(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "Successfully triggered MCMP API sync"})
 }
 
+// ImportAPIs godoc
+// @Summary Import MCMP APIs from Remote Sources
+// @Description Fetches API specifications from remote URLs and imports them to the database. Supports swagger and openapi source types.
+// @Tags McmpAPI
+// @Accept json
+// @Produce json
+// @Param request body model.ImportApiRequest true "Frameworks to import"
+// @Success 200 {object} model.ImportApiResponse "Import results"
+// @Failure 400 {object} map[string]string "error: Invalid request body"
+// @Failure 500 {object} map[string]string "error: Failed to import APIs"
+// @Router /api/mcmp-apis/import [post]
+// @Security BearerAuth
+// @Id importAPIs
+func (h *McmpApiHandler) ImportAPIs(c echo.Context) error {
+	var req model.ImportApiRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body: " + err.Error()})
+	}
+
+	// Validate request
+	if len(req.Frameworks) == 0 {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "At least one framework is required"})
+	}
+
+	for i, fw := range req.Frameworks {
+		if fw.Name == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Framework at index %d: name is required", i)})
+		}
+		if fw.Version == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Framework '%s': version is required", fw.Name)})
+		}
+		if fw.SourceType == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Framework '%s': sourceType is required (swagger or openapi)", fw.Name)})
+		}
+		if fw.SourceURL == "" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Framework '%s': sourceUrl is required", fw.Name)})
+		}
+	}
+
+	response, err := h.service.ImportAPIs(&req)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to import APIs: " + err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, response)
+}
+
 // Add other handler methods if needed, e.g., to get API definitions via API
 
 // SetActiveVersion godoc
@@ -348,120 +395,3 @@ func (h *McmpApiHandler) UpdateFrameworkService(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": fmt.Sprintf("Service '%s' updated successfully", serviceName)})
 }
 
-// ListMCMPAPIs godoc
-// @Summary MCMP API 목록 조회
-// @Description 모든 MCMP API 목록을 조회합니다
-// @Tags mcmp-apis
-// @Accept json
-// @Produce json
-// @Success 200 {array} model.MCMPAPI
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Security BearerAuth
-// @Router /api/mcmp-apis [get]
-
-// GetMCMPAPIByID godoc
-// @Summary MCMP API ID로 조회
-// @Description 특정 MCMP API를 ID로 조회합니다
-// @Tags mcmp-apis
-// @Accept json
-// @Produce json
-// @Param id path string true "API ID"
-// @Success 200 {object} model.MCMPAPI
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Failure 404 {object} map[string]string "error: API not found"
-// @Security BearerAuth
-// @Router /api/mcmp-apis/{id} [get]
-
-// CreateMCMPAPI godoc
-// @Summary 새 MCMP API 생성
-// @Description 새로운 MCMP API를 생성합니다
-// @Tags mcmp-apis
-// @Accept json
-// @Produce json
-// @Param api body model.MCMPAPI true "API Info"
-// @Success 201 {object} model.MCMPAPI
-// @Failure 400 {object} map[string]string "error: Invalid request"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Security BearerAuth
-// @Router /api/mcmp-apis [post]
-
-// UpdateMCMPAPI godoc
-// @Summary MCMP API 업데이트
-// @Description MCMP API 정보를 업데이트합니다
-// @Tags mcmp-apis
-// @Accept json
-// @Produce json
-// @Param id path string true "API ID"
-// @Param api body model.MCMPAPI true "API Info"
-// @Success 200 {object} model.MCMPAPI
-// @Failure 400 {object} map[string]string "error: Invalid request"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Failure 404 {object} map[string]string "error: API not found"
-// @Security BearerAuth
-// @Router /api/mcmp-apis/{id} [put]
-
-// DeleteMCMPAPI godoc
-// @Summary MCMP API 삭제
-// @Description MCMP API를 삭제합니다
-// @Tags mcmp-apis
-// @Accept json
-// @Produce json
-// @Param id path string true "API ID"
-// @Success 204 "No Content"
-// @Failure 401 {object} map[string]string "error: Unauthorized"
-// @Failure 403 {object} map[string]string "error: Forbidden"
-// @Failure 404 {object} map[string]string "error: API not found"
-// @Security BearerAuth
-// @Router /api/mcmp-apis/{id} [delete]
-
-// @Summary List services and actions
-// @Description Get a list of all MCMP services and their actions
-// @Tags mcmp-apis
-// @Accept json
-// @Produce json
-// @Success 200 {array} model.McmpService
-// @Failure 500 {object} map[string]string
-// @Security BearerAuth
-// @Router /api/mcmp-apis/list [post]
-
-// @Summary Set active version
-// @Description Set the active version for a service
-// @Tags mcmp-apis
-// @Accept json
-// @Produce json
-// @Param serviceName path string true "Service Name"
-// @Param version path string true "Version"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Security BearerAuth
-// @Router /api/mcmp-apis/name/{serviceName}/versions/{version}/activate [put]
-
-// @Summary Make MCMP API call
-// @Description Make a call to MCMP API
-// @Tags mcmp-apis
-// @Accept json
-// @Produce json
-// @Param request body model.McmpApiCallRequest true "API Call Request"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Security BearerAuth
-// @Router /api/mcmp-apis/call [post]
-
-// @Summary Update service
-// @Description Update MCMP service information
-// @Tags mcmp-apis
-// @Accept json
-// @Produce json
-// @Param serviceName path string true "Service Name"
-// @Param service body model.McmpService true "Service Info"
-// @Success 200 {object} model.McmpService
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Security BearerAuth
-// @Router /api/mcmp-apis/name/{serviceName} [put]

@@ -2003,7 +2003,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new project with the specified information. Optionally specify a workspace to assign the project to.",
+                "description": "Create a new project with the specified information.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2022,7 +2022,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateProjectRequest"
+                            "$ref": "#/definitions/model.Project"
                         }
                     }
                 ],
@@ -2042,85 +2042,8 @@
                             }
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/projects/id/{projectId}/workspaces": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve list of workspaces that the project is assigned to",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "projects"
-                ],
-                "summary": "Get workspaces assigned to project",
-                "operationId": "getProjectWorkspaces",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "projectId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.Workspace"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "error: Invalid project ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "error: Project not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: Internal server error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -6066,7 +5989,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new workspace with the specified information. Optionally assign existing projects to the workspace.",
+                "description": "Create a new workspace with the specified information.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7437,24 +7360,6 @@
                     }
                 },
                 "roleId": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.CreateProjectRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "workspaceId": {
-                    "description": "optional workspace to assign project to",
                     "type": "string"
                 }
             }

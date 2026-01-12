@@ -209,18 +209,6 @@ definitions:
     - menuIds
     - roleId
     type: object
-  model.CreateProjectRequest:
-    properties:
-      description:
-        type: string
-      name:
-        type: string
-      workspaceId:
-        description: optional workspace to assign project to
-        type: string
-    required:
-    - name
-    type: object
   model.CreateRoleRequest:
     properties:
       cspRoles:
@@ -2010,8 +1998,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new project with the specified information. Optionally
-        specify a workspace to assign the project to.
+      description: Create a new project with the specified information.
       operationId: createProject
       parameters:
       - description: Project Info
@@ -2019,7 +2006,7 @@ paths:
         name: project
         required: true
         schema:
-          $ref: '#/definitions/model.CreateProjectRequest'
+          $ref: '#/definitions/model.Project'
       produces:
       - application/json
       responses:
@@ -2029,12 +2016,6 @@ paths:
             $ref: '#/definitions/model.Project'
         "400":
           description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
           schema:
             additionalProperties:
               type: string
@@ -2209,50 +2190,6 @@ paths:
       security:
       - BearerAuth: []
       summary: 프로젝트에 워크스페이스 연결
-      tags:
-      - projects
-  /api/projects/id/{projectId}/workspaces:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve list of workspaces that the project is assigned to
-      operationId: getProjectWorkspaces
-      parameters:
-      - description: Project ID
-        in: path
-        name: projectId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/model.Workspace'
-            type: array
-        "400":
-          description: 'error: Invalid project ID'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: 'error: Project not found'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: Internal server error'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get workspaces assigned to project
       tags:
       - projects
   /api/projects/list:
@@ -4628,8 +4565,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new workspace with the specified information. Optionally
-        assign existing projects to the workspace.
+      description: Create a new workspace with the specified information.
       operationId: createWorkspace
       parameters:
       - description: Workspace Info
