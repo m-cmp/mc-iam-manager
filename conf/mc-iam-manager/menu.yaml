@@ -263,6 +263,14 @@ menus:
     isaction: true
     priority: 2
     menunumber: 1740
+  
+  - id: csproles
+    parentid: workspaces
+    displayname: CSP Roles
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1741
 
   - id: projectboard
     parentid: workspaces

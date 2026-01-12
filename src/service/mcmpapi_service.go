@@ -1,31 +1,31 @@
 package service
 
 import (
-	"bytes" // For request body
+	"bytes"
 	"context"
-	"encoding/base64" // For Basic Auth encoding
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"net/http/httputil" // For dumping request
-	"net/url"           // For query parameter mapping
+	"net/http/httputil"
+	"net/url"
 	"os"
-	"path/filepath" // Ensure filepath is imported
-	"strings"       // Ensure strings is imported
-
-	// "encoding/json" // Removed unused import
+	"strings"
+	"time"
 
 	"github.com/m-cmp/mc-iam-manager/model"
-	"github.com/m-cmp/mc-iam-manager/model/mcmpapi" // Updated import path
+	"github.com/m-cmp/mc-iam-manager/model/mcmpapi"
+	"github.com/m-cmp/mc-iam-manager/pkg/apiparser"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gopkg.in/yaml.v3"
-	"gorm.io/gorm" // Needed if passing db directly, but better via repo
+	"gorm.io/gorm"
 )
 
-const apiYamlEnvVar = "MCADMINCLI_APIYAML" // Re-add constant definition
+// Local path to service-actions.yaml file (relative to working directory)
+const localServiceActionsPath = "asset/mcmpapi/service-actions.yaml"
 
 // McmpApiService defines the interface for mcmp API operations
 type McmpApiService interface {
@@ -38,6 +38,7 @@ type McmpApiService interface {
 	UpdateService(serviceName string, updates map[string]interface{}) error
 	McmpApiCall(ctx context.Context, req *model.McmpApiCallRequest) (int, []byte, string, string, error)
 	SyncMcmpAPIsFromYAML() error
+	ImportAPIs(req *model.ImportApiRequest) (*model.ImportApiResponse, error)
 }
 
 // mcmpApiService implements the McmpApiService interface.
@@ -79,112 +80,50 @@ func (s *mcmpApiService) CreateAction(tx *gorm.DB, action *mcmpapi.McmpApiAction
 	return s.repo.CreateAction(tx, action)
 }
 
-// SyncMcmpAPIsFromYAML loads API definitions from the YAML URL specified by env var
-// and saves them to the database via the repository.
+// SyncMcmpAPIsFromYAML loads API definitions from local service-actions.yaml file
+// and saves them to the database via the repository with upsert logic.
 func (s *mcmpApiService) SyncMcmpAPIsFromYAML() error {
-	// 테이블이 없으면 생성
+	// Ensure tables exist
+	if err := s.ensureTables(); err != nil {
+		return fmt.Errorf("failed to ensure tables: %w", err)
+	}
+
+	// Read from local file only (no URL download)
+	log.Printf("Reading MCMP API definitions from local file: %s", localServiceActionsPath)
+	yamlData, err := os.ReadFile(localServiceActionsPath)
+	if err != nil {
+		return fmt.Errorf("failed to read service-actions.yaml from %s: %w", localServiceActionsPath, err)
+	}
+
+	// Parse the YAML structure with serviceActions containing _meta
+	var rawData map[string]interface{}
+	if err := yaml.Unmarshal(yamlData, &rawData); err != nil {
+		return fmt.Errorf("failed to unmarshal YAML: %w", err)
+	}
+
+	serviceActionsRaw, ok := rawData["serviceActions"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid YAML format: missing or invalid serviceActions")
+	}
+
+	return s.syncServicesAndActions(serviceActionsRaw)
+}
+
+// ensureTables creates MCMP API tables if they don't exist
+func (s *mcmpApiService) ensureTables() error {
 	var count int64
 	if err := s.db.Table("mcmp_api_services").Count(&count).Error; err != nil {
-		// 테이블이 없으면 생성
-		if err := s.db.AutoMigrate(&mcmpapi.McmpApiService{}, &mcmpapi.McmpApiAction{}); err != nil {
+		// Table doesn't exist, create it
+		if err := s.db.AutoMigrate(&mcmpapi.McmpApiService{}, &mcmpapi.McmpApiAction{}, &mcmpapi.McmpApiServiceMeta{}); err != nil {
 			return fmt.Errorf("failed to create mcmp API tables: %w", err)
 		}
 		log.Printf("Created mcmp API tables")
 	}
-
-	yamlSource := os.Getenv(apiYamlEnvVar)
-	if yamlSource == "" {
-		err := fmt.Errorf("environment variable %s is not set", apiYamlEnvVar)
-		log.Printf("Error syncing mcmp APIs: %v", err)
-		return err
-	}
-
-	localYamlPath := filepath.Join("asset", "mcmpapi", "mcmp_api.yaml")
-
-	// Check if yamlSource is a URL
-	if strings.HasPrefix(yamlSource, "http://") || strings.HasPrefix(yamlSource, "https://") {
-		log.Printf("Starting mcmp API sync: Downloading from URL %s to %s", yamlSource, localYamlPath)
-
-		// Ensure directory exists
-		if err := os.MkdirAll(filepath.Dir(localYamlPath), 0755); err != nil {
-			err = fmt.Errorf("failed to create directory for local YAML file %s: %w", localYamlPath, err)
-			log.Printf("Error syncing mcmp APIs: %v", err)
-			return err
-		}
-
-		// Download the file
-		resp, err := http.Get(yamlSource)
-		if err != nil {
-			err = fmt.Errorf("failed to fetch mcmp API YAML from %s: %w", yamlSource, err)
-			log.Printf("Error syncing mcmp APIs: %v", err)
-			return err
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			err = fmt.Errorf("failed to fetch mcmp API YAML: status code %d", resp.StatusCode)
-			log.Printf("Error syncing mcmp APIs: %v", err)
-			return err
-		}
-
-		// Create the local file
-		outFile, err := os.Create(localYamlPath)
-		if err != nil {
-			err = fmt.Errorf("failed to create local YAML file %s: %w", localYamlPath, err)
-			log.Printf("Error syncing mcmp APIs: %v", err)
-			return err
-		}
-		defer outFile.Close()
-
-		// Write the body to the file
-		_, err = io.Copy(outFile, resp.Body)
-		if err != nil {
-			err = fmt.Errorf("failed to write downloaded content to %s: %w", localYamlPath, err)
-			log.Printf("Error syncing mcmp APIs: %v", err)
-			return err
-		}
-		log.Printf("Successfully downloaded YAML to %s", localYamlPath)
-	} else {
-		// Assume yamlSource is a local file path relative to project root
-		log.Printf("Starting mcmp API sync: Using local file path %s", yamlSource)
-		localYamlPath = yamlSource
-	}
-
-	// Read the local YAML file
-	log.Printf("Reading mcmp API definitions from %s", localYamlPath)
-	yamlData, err := os.ReadFile(localYamlPath)
-	if err != nil {
-		err = fmt.Errorf("failed to read local mcmp API YAML file %s: %w", localYamlPath, err)
-		log.Printf("Error syncing mcmp APIs: %v", err)
-		return err
-	}
-
-	var defs mcmpapi.McmpApiDefinitions
-	err = yaml.Unmarshal(yamlData, &defs)
-	if err != nil {
-		err = fmt.Errorf("failed to unmarshal mcmp API YAML: %w", err)
-		log.Printf("Error syncing mcmp APIs: %v", err)
-		return err
-	}
-
-	// Save to Database
-	err = s.saveDefinitionsToDB(&defs)
-	if err != nil {
-		log.Printf("Error saving mcmp API definitions to database: %v", err)
-		return fmt.Errorf("failed to save mcmp API definitions to DB: %w", err)
-	}
-
-	log.Println("Successfully synced mcmp API definitions to database.")
 	return nil
 }
 
-// saveDefinitionsToDB handles the transaction and logic for saving definitions.
-func (s *mcmpApiService) saveDefinitionsToDB(defs *mcmpapi.McmpApiDefinitions) error {
-	if defs == nil || len(defs.Services) == 0 {
-		log.Println("No service definitions provided to save.")
-		return nil // Nothing to save
-	}
-
+// syncServicesAndActions processes service actions from parsed YAML and syncs to database
+func (s *mcmpApiService) syncServicesAndActions(serviceActionsRaw map[string]interface{}) error {
 	tx := s.db.Begin()
 	if tx.Error != nil {
 		return fmt.Errorf("failed to begin transaction: %w", tx.Error)
@@ -192,74 +131,150 @@ func (s *mcmpApiService) saveDefinitionsToDB(defs *mcmpapi.McmpApiDefinitions) e
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
-			panic(r) // Re-panic after rollback
+			panic(r)
 		}
 	}()
 
-	for name, serviceDef := range defs.Services {
-		// Check if service with the same name and version already exists (using non-transactional DB read is okay here)
-		_, err := s.repo.GetServiceByNameAndVersion(name, serviceDef.Version)
+	for serviceName, actionsRaw := range serviceActionsRaw {
+		actionsMap, ok := actionsRaw.(map[string]interface{})
+		if !ok {
+			log.Printf("Warning: invalid actions format for service %s, skipping", serviceName)
+			continue
+		}
 
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// Service with this name and version does not exist, create it within the transaction
-			log.Printf("Adding new service definition: %s (Version: %s)", name, serviceDef.Version)
-			dbService := mcmpapi.McmpApiService{
-				Name:     name,
-				Version:  serviceDef.Version,
-				BaseURL:  serviceDef.BaseURL,
-				AuthType: serviceDef.Auth.Type,
-				AuthUser: serviceDef.Auth.Username,
-				AuthPass: serviceDef.Auth.Password, // Consider encryption
-				// IsActive defaults to false or needs explicit handling if required
-			}
-			if createErr := s.repo.CreateService(tx, &dbService); createErr != nil {
-				tx.Rollback()
-				return fmt.Errorf("error creating service %s (Version: %s): %w", name, serviceDef.Version, createErr)
-			}
+		// Extract _meta
+		meta, err := s.extractMeta(serviceName, actionsMap)
+		if err != nil {
+			log.Printf("Warning: failed to extract meta for %s: %v", serviceName, err)
+		}
 
-			// Add Actions ONLY for the newly created service version
-			if actions, ok := defs.ServiceActions[name]; ok {
-				log.Printf("Adding actions for new service: %s (Version: %s)", name, serviceDef.Version)
-				for actionName, actionDef := range actions {
-					dbAction := mcmpapi.McmpApiAction{
-						ServiceName:  name, // Link to the service name
-						ActionName:   actionName,
-						Method:       actionDef.Method,
-						ResourcePath: actionDef.ResourcePath,
-						Description:  actionDef.Description,
-						// Version linking might be needed here if actions are version-specific
-					}
-					if createActionErr := s.repo.CreateAction(tx, &dbAction); createActionErr != nil {
-						tx.Rollback()
-						return fmt.Errorf("error creating action %s for service %s: %w", actionName, name, createActionErr)
-					}
+		// Check if update is needed
+		shouldUpdate, err := s.shouldUpdateService(serviceName, meta)
+		if err != nil {
+			log.Printf("Error checking service %s: %v", serviceName, err)
+		}
+
+		if shouldUpdate {
+			// Upsert service meta
+			if meta != nil {
+				if err := s.repo.UpsertServiceMeta(tx, meta); err != nil {
+					tx.Rollback()
+					return fmt.Errorf("failed to upsert meta for %s: %w", serviceName, err)
 				}
 			}
-		} else if err != nil {
-			// Other DB error during check
-			tx.Rollback()
-			return fmt.Errorf("error checking existing service %s (Version: %s): %w", name, serviceDef.Version, err)
+
+			// Delete existing actions for this service (full replace)
+			if err := s.repo.DeleteActionsByServiceName(tx, serviceName); err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to delete actions for %s: %w", serviceName, err)
+			}
+
+			// Create new actions
+			actionCount := 0
+			for actionName, actionRaw := range actionsMap {
+				if actionName == "_meta" {
+					continue // Skip meta entry
+				}
+
+				actionDef, ok := actionRaw.(map[string]interface{})
+				if !ok {
+					log.Printf("Warning: invalid action format for %s/%s, skipping", serviceName, actionName)
+					continue
+				}
+
+				action := &mcmpapi.McmpApiAction{
+					ServiceName:  serviceName,
+					ActionName:   actionName,
+					Method:       s.getString(actionDef, "method"),
+					ResourcePath: s.getString(actionDef, "resourcePath"),
+					Description:  s.getString(actionDef, "description"),
+				}
+
+				if err := s.repo.CreateAction(tx, action); err != nil {
+					tx.Rollback()
+					return fmt.Errorf("failed to create action %s for %s: %w", actionName, serviceName, err)
+				}
+				actionCount++
+			}
+
+			version := ""
+			if meta != nil {
+				version = meta.Version
+			}
+			log.Printf("Updated service: %s (version: %s, actions: %d)", serviceName, version, actionCount)
 		} else {
-			// Service with this name and version already exists, skip.
-			log.Printf("Skipping existing service definition: %s (Version: %s)", name, serviceDef.Version)
+			log.Printf("Skipping service %s - no changes detected", serviceName)
 		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		// Rollback might have already happened, but doesn't hurt to call again if needed
-		// tx.Rollback()
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return nil // Commit successful
+	log.Println("Successfully synced mcmp API definitions to database.")
+	return nil
 }
 
-// Implement other methods like GetMcmpService, GetMcmpAction if needed,
-// likely by calling corresponding repository methods.
-// Example:
-// func (s *mcmpApiService) GetMcmpService(name string) (*mcmpapi.McmpApiService, error) { // Renamed
-// 	return s.repo.GetService(name) // Assumes repo method exists
-// }
+// extractMeta extracts _meta information from service actions map
+func (s *mcmpApiService) extractMeta(serviceName string, actionsMap map[string]interface{}) (*mcmpapi.McmpApiServiceMeta, error) {
+	metaRaw, ok := actionsMap["_meta"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("no _meta found for service %s", serviceName)
+	}
+
+	generatedAtStr := s.getString(metaRaw, "generatedAt")
+	var generatedAt time.Time
+	if generatedAtStr != "" {
+		parsed, err := time.Parse(time.RFC3339, generatedAtStr)
+		if err != nil {
+			log.Printf("Warning: failed to parse generatedAt for %s: %v", serviceName, err)
+		} else {
+			generatedAt = parsed
+		}
+	}
+
+	return &mcmpapi.McmpApiServiceMeta{
+		ServiceName: serviceName,
+		Version:     s.getString(metaRaw, "version"),
+		Repository:  s.getString(metaRaw, "repository"),
+		GeneratedAt: generatedAt,
+	}, nil
+}
+
+// shouldUpdateService checks if a service needs to be updated based on version metadata
+func (s *mcmpApiService) shouldUpdateService(serviceName string, newMeta *mcmpapi.McmpApiServiceMeta) (bool, error) {
+	if newMeta == nil {
+		return true, nil // No meta, always update
+	}
+
+	existingMeta, err := s.repo.GetServiceMeta(serviceName)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return true, nil // New service
+	}
+	if err != nil {
+		return false, err
+	}
+
+	// Compare version and generatedAt
+	if existingMeta.Version != newMeta.Version {
+		log.Printf("Service %s version changed: %s -> %s", serviceName, existingMeta.Version, newMeta.Version)
+		return true, nil
+	}
+	if !existingMeta.GeneratedAt.Equal(newMeta.GeneratedAt) {
+		log.Printf("Service %s generatedAt changed: %v -> %v", serviceName, existingMeta.GeneratedAt, newMeta.GeneratedAt)
+		return true, nil
+	}
+
+	return false, nil // No changes
+}
+
+// getString safely extracts a string value from a map
+func (s *mcmpApiService) getString(m map[string]interface{}, key string) string {
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
+}
 
 // SetActiveVersion sets the specified version of a service as active.
 func (s *mcmpApiService) SetActiveVersion(serviceName, version string) error {
@@ -446,4 +461,106 @@ func (s *mcmpApiService) McmpApiCall(ctx context.Context, req *model.McmpApiCall
 	return statusCode, respBody, serviceVersion, calledURL, err
 }
 
-// Removed ServiceApiCall function implementation
+// ImportAPIs fetches API specifications from remote URLs and imports them to the database
+func (s *mcmpApiService) ImportAPIs(req *model.ImportApiRequest) (*model.ImportApiResponse, error) {
+	// Ensure tables exist
+	if err := s.ensureTables(); err != nil {
+		return nil, fmt.Errorf("failed to ensure tables: %w", err)
+	}
+
+	processor := apiparser.NewProcessor(30) // 30 second timeout
+
+	response := &model.ImportApiResponse{
+		TotalFrameworks:  len(req.Frameworks),
+		FrameworkResults: make([]model.ImportApiFrameworkResult, 0, len(req.Frameworks)),
+	}
+
+	for _, fw := range req.Frameworks {
+		result := model.ImportApiFrameworkResult{
+			Name:    fw.Name,
+			Version: fw.Version,
+		}
+
+		// Process the framework
+		fwResult := processor.ProcessFramework(fw.Name, fw.Version, fw.Repository, fw.SourceType, fw.SourceURL)
+
+		if fwResult.Error != nil {
+			result.Success = false
+			result.ErrorMessage = fwResult.Error.Error()
+			response.FailureCount++
+			log.Printf("Failed to import framework %s: %v", fw.Name, fwResult.Error)
+		} else {
+			// Sync to database
+			err := s.syncFrameworkToDatabase(fw.Name, fw.Version, fw.Repository, fwResult.Actions)
+			if err != nil {
+				result.Success = false
+				result.ErrorMessage = fmt.Sprintf("failed to save to database: %v", err)
+				response.FailureCount++
+				log.Printf("Failed to save framework %s to database: %v", fw.Name, err)
+			} else {
+				result.Success = true
+				result.ActionCount = fwResult.ActionCount
+				response.SuccessCount++
+				log.Printf("Successfully imported framework %s (version: %s, actions: %d)", fw.Name, fw.Version, fwResult.ActionCount)
+			}
+		}
+
+		response.FrameworkResults = append(response.FrameworkResults, result)
+	}
+
+	return response, nil
+}
+
+// syncFrameworkToDatabase saves a single framework's actions to the database
+func (s *mcmpApiService) syncFrameworkToDatabase(serviceName, version, repository string, actions map[string]apiparser.ServiceAction) error {
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("failed to begin transaction: %w", tx.Error)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
+	// Upsert service meta
+	meta := &mcmpapi.McmpApiServiceMeta{
+		ServiceName: serviceName,
+		Version:     version,
+		Repository:  repository,
+		GeneratedAt: time.Now(),
+	}
+	if err := s.repo.UpsertServiceMeta(tx, meta); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to upsert meta: %w", err)
+	}
+
+	// Delete existing actions for this service (full replace)
+	if err := s.repo.DeleteActionsByServiceName(tx, serviceName); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete existing actions: %w", err)
+	}
+
+	// Create new actions
+	for actionName, actionDef := range actions {
+		action := &mcmpapi.McmpApiAction{
+			ServiceName:  serviceName,
+			ActionName:   actionName,
+			Method:       actionDef.Method,
+			ResourcePath: actionDef.ResourcePath,
+			Description:  actionDef.Description,
+		}
+
+		if err := s.repo.CreateAction(tx, action); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to create action %s: %w", actionName, err)
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}

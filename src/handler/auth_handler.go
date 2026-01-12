@@ -110,32 +110,6 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	return c.JSON(http.StatusOK, token)
 }
 
-// Callback godoc
-// @Summary OIDC callback
-// @Description Process callback after OIDC authentication
-// @Param code query string true "Authentication code"
-// @Param state query string true "State"
-// @Success 200 {object} map[string]interface{}
-// @Router /auth/callback [get]
-// func (h *AuthHandler) Callback(c echo.Context) error {
-// 	code := c.QueryParam("code")
-// 	state := c.QueryParam("state")
-
-// 	if state != "state" {
-// 		return c.JSON(http.StatusBadRequest, map[string]string{
-// 			"error": "Invalid state value",
-// 		})
-// 	}
-
-// 	token, err := h.config.Exchange(c.Request().Context(), code)
-// 	if err != nil {
-// 		return c.JSON(http.StatusInternalServerError, map[string]string{
-// 			"error": "Token exchange failed",
-// 		})
-// 	}
-
-// 	return c.JSON(http.StatusOK, token)
-// }
 
 // Logout godoc
 // @Summary Logout user

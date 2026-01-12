@@ -19,6 +19,10 @@ type McmpApiRepository interface {
 	UpdateService(serviceName string, updates map[string]interface{}) error
 	GetService(serviceName string) (*mcmpapi.McmpApiService, error)
 	GetServiceAction(serviceName, actionName string) (*mcmpapi.McmpApiAction, error)
+	// New methods for upsert logic and version tracking
+	DeleteActionsByServiceName(tx *gorm.DB, serviceName string) error
+	GetServiceMeta(serviceName string) (*mcmpapi.McmpApiServiceMeta, error)
+	UpsertServiceMeta(tx *gorm.DB, meta *mcmpapi.McmpApiServiceMeta) error
 }
 
 // mcmpApiRepository implements the McmpApiRepository interface.
@@ -336,4 +340,48 @@ func (r *mcmpApiRepository) GetActiveService(serviceName string) (*mcmpapi.McmpA
 	}
 
 	return &service, nil
+}
+
+// DeleteActionsByServiceName deletes all actions for a service within a transaction.
+func (r *mcmpApiRepository) DeleteActionsByServiceName(tx *gorm.DB, serviceName string) error {
+	query := tx.Where("service_name = ?", serviceName).Delete(&mcmpapi.McmpApiAction{})
+	if err := query.Error; err != nil {
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("DeleteActionsByServiceName SQL Query (ERROR): %s", sql)
+		log.Printf("DeleteActionsByServiceName SQL Args (ERROR): %v", args)
+		return fmt.Errorf("failed to delete actions for service %s: %w", serviceName, err)
+	}
+	log.Printf("Deleted %d actions for service %s", query.RowsAffected, serviceName)
+	return nil
+}
+
+// GetServiceMeta retrieves version metadata for a service.
+func (r *mcmpApiRepository) GetServiceMeta(serviceName string) (*mcmpapi.McmpApiServiceMeta, error) {
+	var meta mcmpapi.McmpApiServiceMeta
+	query := r.db.Where("service_name = ?", serviceName).First(&meta)
+	if err := query.Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			sql := query.Statement.SQL.String()
+			args := query.Statement.Vars
+			log.Printf("GetServiceMeta SQL Query (ERROR): %s", sql)
+			log.Printf("GetServiceMeta SQL Args (ERROR): %v", args)
+		}
+		return nil, err
+	}
+	return &meta, nil
+}
+
+// UpsertServiceMeta creates or updates version metadata within a transaction.
+func (r *mcmpApiRepository) UpsertServiceMeta(tx *gorm.DB, meta *mcmpapi.McmpApiServiceMeta) error {
+	// Use Save which does upsert based on primary key
+	query := tx.Save(meta)
+	if err := query.Error; err != nil {
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("UpsertServiceMeta SQL Query (ERROR): %s", sql)
+		log.Printf("UpsertServiceMeta SQL Args (ERROR): %v", args)
+		return fmt.Errorf("failed to upsert meta for service %s: %w", meta.ServiceName, err)
+	}
+	return nil
 }

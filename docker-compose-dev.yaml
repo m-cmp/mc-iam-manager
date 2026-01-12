@@ -1,0 +1,81 @@
+version: '3.8'
+
+# Release 브랜치에서 이미 생성된 네트워크를 외부 네트워크로 참조
+# 네트워크 이름이 다를 경우 'docker network ls | grep mc-iam-manager'로 확인 후 수정
+networks:
+  mc-iam-manager-network:
+    external: true
+    name: mc-iam-manager_mc-iam-manager-network
+  mc-infra-manager-network:
+    external: true
+    name: mc-iam-manager_mc-infra-manager-network
+
+services:
+  # Dev 환경용 mc-iam-manager 소스 컨테이너
+  mc-iam-manager-dev:
+    container_name: mc-iam-manager-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.mciammanager
+    image: mc-iam-manager:dev
+    platform: linux/amd64
+    restart: unless-stopped
+    networks:
+      - mc-iam-manager-network
+      - mc-infra-manager-network
+    ports:
+      - '5006:5006'  # Dev 환경 전용 포트
+    environment:
+      # Release 브랜치의 로컬 Docker 컨테이너를 참조하도록 override
+      # .env 파일의 원격 서버 설정을 로컬 Docker 컨테이너로 변경
+      MC_IAM_MANAGER_DATABASE_HOST: mc-iam-manager-db
+      MC_IAM_MANAGER_DATABASE_NAME: ${MC_IAM_MANAGER_DATABASE_NAME}
+      MC_IAM_MANAGER_DATABASE_USER: ${MC_IAM_MANAGER_DATABASE_USER}
+      MC_IAM_MANAGER_DATABASE_PASSWORD: ${MC_IAM_MANAGER_DATABASE_PASSWORD}
+      MC_IAM_MANAGER_DATABASE_PORT: 5432
+      MC_IAM_MANAGER_DATABASE_SSLMODE: disable
+      MC_IAM_MANAGER_DATABASE_URL: postgres://${MC_IAM_MANAGER_DATABASE_USER}:${MC_IAM_MANAGER_DATABASE_PASSWORD}@mc-iam-manager-db:5432/${MC_IAM_MANAGER_DATABASE_NAME}?sslmode=disable
+      DATABASE_URL: postgres://${MC_IAM_MANAGER_DATABASE_USER}:${MC_IAM_MANAGER_DATABASE_PASSWORD}@mc-iam-manager-db:5432/${MC_IAM_MANAGER_DATABASE_NAME}?sslmode=disable
+      
+      # Keycloak 설정 - Release 브랜치의 로컬 Keycloak 컨테이너 사용
+      MC_IAM_MANAGER_KEYCLOAK_HOST: http://mc-iam-manager-kc:8080
+      MC_IAM_MANAGER_KEYCLOAK_DOMAIN: mc-iam-manager-kc
+      MC_IAM_MANAGER_KEYCLOAK_PORT: 8080
+      MC_IAM_MANAGER_KEYCLOAK_REALM: ${MC_IAM_MANAGER_KEYCLOAK_REALM}
+      MC_IAM_MANAGER_KEYCLOAK_CLIENT_PATH: mc-iam-manager-kc/realms/${MC_IAM_MANAGER_KEYCLOAK_REALM}
+      MC_IAM_MANAGER_KEYCLOAK_ADMIN: ${MC_IAM_MANAGER_KEYCLOAK_ADMIN}
+      MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD: ${MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD}
+      MC_IAM_MANAGER_KEYCLOAK_DATABASE_NAME: ${MC_IAM_MANAGER_KEYCLOAK_DATABASE_NAME}
+      
+      # 애플리케이션 포트 설정
+      PORT: 5006
+      MC_IAM_MANAGER_PORT: 5006
+      MC_IAM_MANAGER_DOMAIN: mciambase.onecloudcon.com
+      MC_IAM_MANAGER_HOST: http://mciambase.onecloudcon.com:5006
+      
+      # 기타 필요한 환경 변수들
+      DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE}
+      MODE: ${MODE}
+      USE_TICKET_VALID: ${USE_TICKET_VALID}
+      MC_IAM_MANAGER_PLATFORMADMIN_ID: ${MC_IAM_MANAGER_PLATFORMADMIN_ID}
+      MC_IAM_MANAGER_PLATFORMADMIN_PASSWORD: ${MC_IAM_MANAGER_PLATFORMADMIN_PASSWORD}
+      MC_IAM_MANAGER_PLATFORMADMIN_FIRSTNAME: ${MC_IAM_MANAGER_PLATFORMADMIN_FIRSTNAME}
+      MC_IAM_MANAGER_PLATFORMADMIN_LASTNAME: ${MC_IAM_MANAGER_PLATFORMADMIN_LASTNAME}
+      MC_IAM_MANAGER_PLATFORMADMIN_EMAIL: ${MC_IAM_MANAGER_PLATFORMADMIN_EMAIL}
+      
+      # MC-INFRA-MANAGER 설정
+      MCINFRAMANAGER: ${MCINFRAMANAGER}
+      MCINFRAMANAGER_APIUSERNAME: ${MCINFRAMANAGER_APIUSERNAME}
+      MCINFRAMANAGER_APIPASSWORD: ${MCINFRAMANAGER_APIPASSWORD}
+      
+    env_file:
+      - ./.env
+    volumes:
+      - ./tool/mcc:/app/tool/mcc
+    healthcheck:
+      test: [ 'CMD', '/app/tool/mcc', 'rest', 'get', 'http://mciambase.onecloudcon.com:5006/readyz' ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+

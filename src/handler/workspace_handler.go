@@ -550,7 +550,19 @@ func (h *WorkspaceHandler) ListWorkspaceUsersAndRoles(c echo.Context) error {
 	return c.JSON(http.StatusOK, workspaceUsersRoles)
 }
 
-// GetWorkspaceRoles 워크스페이스의 역할 목록 조회
+// ListWorkspaceRoles godoc
+// @Summary List workspace roles
+// @Description Retrieve all workspace-level roles with optional filtering
+// @Tags workspaces
+// @Accept json
+// @Produce json
+// @Param request body model.RoleFilterRequest true "Role filter parameters"
+// @Success 200 {array} model.RoleMaster "Successfully retrieved workspace roles"
+// @Failure 400 {object} map[string]string "error: Invalid request format"
+// @Failure 500 {object} map[string]string "error: Failed to retrieve workspace roles"
+// @Security BearerAuth
+// @Router /api/workspaces/roles/list [post]
+// @Id listWorkspaceRoles
 func (h *WorkspaceHandler) ListWorkspaceRoles(c echo.Context) error {
 	var req model.RoleFilterRequest
 	if err := c.Bind(&req); err != nil {
@@ -569,35 +581,6 @@ func (h *WorkspaceHandler) ListWorkspaceRoles(c echo.Context) error {
 	return c.JSON(http.StatusOK, roles)
 }
 
-// ListWorkspaceUsers godoc
-// @Summary Get workspace users
-// @Description Get users in a workspace
-// @Tags workspaces
-// @Accept json
-// @Produce json
-// @Param id path string true "Workspace ID"
-// @Success 200 {array} model.User
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Security BearerAuth
-// @Router /api/workspaces/{id}/users [get]
-// @Id ListWorkspaceUsers
-// func (h *WorkspaceHandler) ListWorkspaceUsers(c echo.Context) error {
-// 	var req model.WorkspaceFilterRequest
-// 	if err := c.Bind(&req); err != nil {
-// 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
-// 	}
-
-// 	workspaceUsers, err := h.workspaceService.ListWorkspaces(&req)
-// 	if err != nil {
-// 		if err.Error() == "workspace not found" {
-// 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
-// 		}
-// 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("사용자 목록 조회 실패: %v", err)})
-// 	}
-
-// 	return c.JSON(http.StatusOK, workspaceUsers)
-// }
 
 // AddUserToWorkspace godoc
 // @Summary Add user to workspace

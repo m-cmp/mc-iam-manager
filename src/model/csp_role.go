@@ -17,7 +17,9 @@ type Tag struct {
 }
 
 // CspRole CSP 역할 모델
-// 대상 CSP와 연결하기 위한 연결정보(AWS에 OIDC로 연결되는 경우 제대로 동작. TODO: SAML을 추가했을 때 Table형태나 다른Table을 추가하게 될 수 있음)
+// 대상 CSP와 연결하기 위한 연결정보
+// CspAccount: CSP 계정 정보 참조
+// CspIdpConfig: IDP 연동 설정 참조 (OIDC, SAML, SECRET_KEY)
 type CspRole struct {
 	ID                  uint          `gorm:"primaryKey" json:"id"`
 	Name                string        `gorm:"size:255;not null" json:"name"`
@@ -34,9 +36,17 @@ type CspRole struct {
 	PermissionsBoundary string        `gorm:"size:255" json:"permissions_boundary"`
 	RoleLastUsed        *RoleLastUsed `gorm:"type:jsonb;serializer:json" json:"role_last_used"`
 	Tags                []Tag         `gorm:"-" json:"tags"`
-	CreatedAt           time.Time     `json:"created_at"`
-	UpdatedAt           time.Time     `json:"updated_at"`
-	DeletedAt           *time.Time    `json:"deleted_at" gorm:"index"`
+
+	// CSP 계정 및 IDP 설정 참조 (신규 추가)
+	CspAccountID   *uint                  `gorm:"column:csp_account_id" json:"csp_account_id"`
+	CspAccount     *CspAccount            `gorm:"foreignKey:CspAccountID" json:"csp_account,omitempty"`
+	CspIdpConfigID *uint                  `gorm:"column:csp_idp_config_id" json:"csp_idp_config_id"`
+	CspIdpConfig   *CspIdpConfig          `gorm:"foreignKey:CspIdpConfigID" json:"csp_idp_config,omitempty"`
+	ExtendedConfig map[string]interface{} `gorm:"type:jsonb;serializer:json" json:"extended_config,omitempty"`
+
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at" gorm:"index"`
 }
 
 func (CspRole) TableName() string { // Renamed receiver
