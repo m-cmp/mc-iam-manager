@@ -51,11 +51,11 @@ func (h *McmpApiHandler) SyncMcmpAPIs(c echo.Context) error {
 
 // ImportAPIs godoc
 // @Summary Import MCMP APIs from Remote Sources
-// @Description Fetches API specifications from remote URLs and imports them to the database. Supports swagger and openapi source types.
+// @Description Fetches API specifications from remote URLs and imports them to the database. Supports swagger and openapi source types. Optionally accepts baseUrl and authentication info to populate the mcmp_api_services table.
 // @Tags McmpAPI
 // @Accept json
 // @Produce json
-// @Param request body model.ImportApiRequest true "Frameworks to import"
+// @Param request body model.ImportApiRequest true "Frameworks to import (with optional baseUrl, authType, authUser, authPass)"
 // @Success 200 {object} model.ImportApiResponse "Import results"
 // @Failure 400 {object} map[string]string "error: Invalid request body"
 // @Failure 500 {object} map[string]string "error: Failed to import APIs"

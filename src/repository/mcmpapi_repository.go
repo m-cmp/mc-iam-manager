@@ -23,6 +23,7 @@ type McmpApiRepository interface {
 	DeleteActionsByServiceName(tx *gorm.DB, serviceName string) error
 	GetServiceMeta(serviceName string) (*mcmpapi.McmpApiServiceMeta, error)
 	UpsertServiceMeta(tx *gorm.DB, meta *mcmpapi.McmpApiServiceMeta) error
+	UpsertService(tx *gorm.DB, service *mcmpapi.McmpApiService) error
 }
 
 // mcmpApiRepository implements the McmpApiRepository interface.
@@ -383,5 +384,20 @@ func (r *mcmpApiRepository) UpsertServiceMeta(tx *gorm.DB, meta *mcmpapi.McmpApi
 		log.Printf("UpsertServiceMeta SQL Args (ERROR): %v", args)
 		return fmt.Errorf("failed to upsert meta for service %s: %w", meta.ServiceName, err)
 	}
+	return nil
+}
+
+// UpsertService creates or updates a service record within a transaction.
+func (r *mcmpApiRepository) UpsertService(tx *gorm.DB, service *mcmpapi.McmpApiService) error {
+	// Use Save which does upsert based on primary key (Name)
+	query := tx.Save(service)
+	if err := query.Error; err != nil {
+		sql := query.Statement.SQL.String()
+		args := query.Statement.Vars
+		log.Printf("UpsertService SQL Query (ERROR): %s", sql)
+		log.Printf("UpsertService SQL Args (ERROR): %v", args)
+		return fmt.Errorf("failed to upsert service %s: %w", service.Name, err)
+	}
+	log.Printf("Upserted service: %s (version: %s, baseURL: %s)", service.Name, service.Version, service.BaseURL)
 	return nil
 }
