@@ -236,6 +236,10 @@ type ImportApiFramework struct {
 	Repository string `json:"repository,omitempty"`           // Repository URL (e.g., "https://github.com/...")
 	SourceType string `json:"sourceType" validate:"required"` // Source type: "swagger" or "openapi"
 	SourceURL  string `json:"sourceUrl" validate:"required"`  // URL to fetch the API specification from
+	BaseURL    string `json:"baseUrl,omitempty"`              // Base URL for the service (e.g., "http://localhost:1323/tumblebug")
+	AuthType   string `json:"authType,omitempty"`             // Authentication type: "none", "basic", "bearer"
+	AuthUser   string `json:"authUser,omitempty"`             // Username for basic auth
+	AuthPass   string `json:"authPass,omitempty"`             // Password for basic auth or token for bearer auth
 }
 
 // ImportApiRequest represents the request body for importing APIs from remote sources

@@ -490,8 +490,17 @@ func (s *mcmpApiService) ImportAPIs(req *model.ImportApiRequest) (*model.ImportA
 			response.FailureCount++
 			log.Printf("Failed to import framework %s: %v", fw.Name, fwResult.Error)
 		} else {
-			// Sync to database
-			err := s.syncFrameworkToDatabase(fw.Name, fw.Version, fw.Repository, fwResult.Actions)
+			// Sync to database - use the new method if service info is provided
+			var err error
+			if fw.BaseURL != "" {
+				// Use the new method that saves service info
+				err = s.syncFrameworkWithServiceInfo(fw.Name, fw.Version, fw.Repository, fw.BaseURL, fw.AuthType, fw.AuthUser, fw.AuthPass, fwResult.Actions)
+			} else {
+				// Use the old method (meta + actions only)
+				err = s.syncFrameworkToDatabase(fw.Name, fw.Version, fw.Repository, fwResult.Actions)
+				log.Printf("Warning: Framework '%s' imported without service info (baseUrl not provided)", fw.Name)
+			}
+
 			if err != nil {
 				result.Success = false
 				result.ErrorMessage = fmt.Sprintf("failed to save to database: %v", err)
@@ -534,6 +543,75 @@ func (s *mcmpApiService) syncFrameworkToDatabase(serviceName, version, repositor
 	if err := s.repo.UpsertServiceMeta(tx, meta); err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to upsert meta: %w", err)
+	}
+
+	// Delete existing actions for this service (full replace)
+	if err := s.repo.DeleteActionsByServiceName(tx, serviceName); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete existing actions: %w", err)
+	}
+
+	// Create new actions
+	for actionName, actionDef := range actions {
+		action := &mcmpapi.McmpApiAction{
+			ServiceName:  serviceName,
+			ActionName:   actionName,
+			Method:       actionDef.Method,
+			ResourcePath: actionDef.ResourcePath,
+			Description:  actionDef.Description,
+		}
+
+		if err := s.repo.CreateAction(tx, action); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to create action %s: %w", actionName, err)
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// syncFrameworkWithServiceInfo saves a framework's actions and service info to the database
+func (s *mcmpApiService) syncFrameworkWithServiceInfo(serviceName, version, repository, baseURL, authType, authUser, authPass string, actions map[string]apiparser.ServiceAction) error {
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("failed to begin transaction: %w", tx.Error)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
+	// Upsert service meta
+	meta := &mcmpapi.McmpApiServiceMeta{
+		ServiceName: serviceName,
+		Version:     version,
+		Repository:  repository,
+		GeneratedAt: time.Now(),
+	}
+	if err := s.repo.UpsertServiceMeta(tx, meta); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to upsert meta: %w", err)
+	}
+
+	// Upsert service (with BaseURL and Auth info)
+	service := &mcmpapi.McmpApiService{
+		Name:     serviceName,
+		Version:  version,
+		BaseURL:  baseURL,
+		AuthType: authType,
+		AuthUser: authUser,
+		AuthPass: authPass,
+		IsActive: true,
+	}
+	if err := s.repo.UpsertService(tx, service); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to upsert service: %w", err)
 	}
 
 	// Delete existing actions for this service (full replace)
