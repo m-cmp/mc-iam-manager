@@ -526,6 +526,18 @@ definitions:
     type: object
   model.ImportApiFramework:
     properties:
+      authPass:
+        description: Password for basic auth or token for bearer auth
+        type: string
+      authType:
+        description: 'Authentication type: "none", "basic", "bearer"'
+        type: string
+      authUser:
+        description: Username for basic auth
+        type: string
+      baseUrl:
+        description: Base URL for the service (e.g., "http://localhost:1323/tumblebug")
+        type: string
       name:
         description: Framework name (e.g., "mc-infra-manager")
         type: string
@@ -727,6 +739,14 @@ definitions:
           $ref: '#/definitions/model.Workspace'
         type: array
     type: object
+  model.ResetPasswordRequest:
+    properties:
+      newPassword:
+        minLength: 8
+        type: string
+    required:
+    - newPassword
+    type: object
   model.ResourceType:
     properties:
       createdAt:
@@ -871,6 +891,26 @@ definitions:
       username:
         type: string
     type: object
+  model.SignupRequest:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      organization:
+        description: 선택 필드
+        type: string
+      password:
+        minLength: 8
+        type: string
+    required:
+    - email
+    - firstName
+    - lastName
+    - password
+    type: object
   model.SyncPoliciesRequest:
     properties:
       csp_account_id:
@@ -949,6 +989,9 @@ definitions:
         type: string
       lastName:
         description: Ignore LastName for DB
+        type: string
+      organization:
+        description: Organization stored in Keycloak attributes
         type: string
       platform_roles:
         description: 관계 정의
@@ -1166,6 +1209,47 @@ paths:
               type: string
             type: object
       summary: Refresh access token
+      tags:
+      - auth
+  /api/auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Public user signup (no authentication required)
+      operationId: SignupUser
+      parameters:
+      - description: Signup Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User signup
       tags:
       - auth
   /api/auth/temp-credential-csps:
@@ -2610,10 +2694,12 @@ paths:
       consumes:
       - application/json
       description: Fetches API specifications from remote URLs and imports them to
-        the database. Supports swagger and openapi source types.
+        the database. Supports swagger and openapi source types. Optionally accepts
+        baseUrl and authentication info to populate the mcmp_api_services table.
       operationId: importAPIs
       parameters:
-      - description: Frameworks to import
+      - description: Frameworks to import (with optional baseUrl, authType, authUser,
+          authPass)
         in: body
         name: request
         required: true
@@ -5738,6 +5824,60 @@ paths:
       security:
       - BearerAuth: []
       summary: Get user by ID
+      tags:
+      - users
+  /api/users/id/{userId}/password:
+    put:
+      consumes:
+      - application/json
+      description: Reset a user's password (admin only)
+      operationId: ResetUserPassword
+      parameters:
+      - description: User ID (DB)
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: New Password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reset user password
       tags:
       - users
   /api/users/id/{userId}/status:

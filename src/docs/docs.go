@@ -167,6 +167,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/auth/signup": {
+            "post": {
+                "description": "Public user signup (no authentication required)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User signup",
+                "operationId": "SignupUser",
+                "parameters": [
+                    {
+                        "description": "Signup Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SignupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/temp-credential-csps": {
             "get": {
                 "description": "Get temporary credential provider information for AWS and GCP",
@@ -2390,7 +2451,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Fetches API specifications from remote URLs and imports them to the database. Supports swagger and openapi source types.",
+                "description": "Fetches API specifications from remote URLs and imports them to the database. Supports swagger and openapi source types. Optionally accepts baseUrl and authentication info to populate the mcmp_api_services table.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2404,7 +2465,7 @@ const docTemplate = `{
                 "operationId": "importAPIs",
                 "parameters": [
                     {
-                        "description": "Frameworks to import",
+                        "description": "Frameworks to import (with optional baseUrl, authType, authUser, authPass)",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -7107,6 +7168,88 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/users/id/{userId}/password": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reset a user's password (admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Reset user password",
+                "operationId": "ResetUserPassword",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (DB)",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New Password",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ResetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/id/{userId}/status": {
             "post": {
                 "security": [
@@ -9752,6 +9895,22 @@ const docTemplate = `{
                 "version"
             ],
             "properties": {
+                "authPass": {
+                    "description": "Password for basic auth or token for bearer auth",
+                    "type": "string"
+                },
+                "authType": {
+                    "description": "Authentication type: \"none\", \"basic\", \"bearer\"",
+                    "type": "string"
+                },
+                "authUser": {
+                    "description": "Username for basic auth",
+                    "type": "string"
+                },
+                "baseUrl": {
+                    "description": "Base URL for the service (e.g., \"http://localhost:1323/tumblebug\")",
+                    "type": "string"
+                },
                 "name": {
                     "description": "Framework name (e.g., \"mc-infra-manager\")",
                     "type": "string"
@@ -10033,6 +10192,18 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ResetPasswordRequest": {
+            "type": "object",
+            "required": [
+                "newPassword"
+            ],
+            "properties": {
+                "newPassword": {
+                    "type": "string",
+                    "minLength": 8
+                }
+            }
+        },
         "model.ResourceType": {
             "type": "object",
             "properties": {
@@ -10252,6 +10423,34 @@ const docTemplate = `{
                 }
             }
         },
+        "model.SignupRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "firstName",
+                "lastName",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "organization": {
+                    "description": "선택 필드",
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8
+                }
+            }
+        },
         "model.SyncPoliciesRequest": {
             "type": "object",
             "required": [
@@ -10367,6 +10566,10 @@ const docTemplate = `{
                 },
                 "lastName": {
                     "description": "Ignore LastName for DB",
+                    "type": "string"
+                },
+                "organization": {
+                    "description": "Organization stored in Keycloak attributes",
                     "type": "string"
                 },
                 "platform_roles": {
