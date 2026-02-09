@@ -3,7 +3,7 @@ serviceActions:
         _meta:
             version: 0.5.0
             repository: https://github.com/m-cmp/mc-application-manager
-            generatedAt: "2026-01-06T07:17:34Z"
+            generatedAt: "2026-02-09T04:43:42Z"
         checkConnectionUsingPOST:
             method: post
             resourcePath: /oss/connection-check
@@ -272,7 +272,7 @@ serviceActions:
         _meta:
             version: 0.5.0
             repository: https://github.com/m-cmp/mc-cost-optimizer
-            generatedAt: "2026-01-06T07:17:34Z"
+            generatedAt: "2026-02-09T04:43:42Z"
         getAbrnormalRcmd:
             method: post
             resourcePath: /api/costopti/be/opti/abnormalRcmd
@@ -333,11 +333,27 @@ serviceActions:
         _meta:
             version: 0.3.0
             repository: https://github.com/m-cmp/mc-iam-manager
-            generatedAt: "2026-01-06T07:17:34Z"
+            generatedAt: "2026-02-09T04:43:42Z"
+        ResetUserPassword:
+            method: put
+            resourcePath: /api/users/id/{userId}/password
+            description: Reset a user's password (admin only)
+        SignupUser:
+            method: post
+            resourcePath: /api/auth/signup
+            description: Public user signup (no authentication required)
         UpdateFrameworkService:
             method: put
             resourcePath: /api/mcmp-apis/name/{serviceName}
             description: Updates specific fields (e.g., BaseURL, Auth info) of an MCMP API service definition identified by its name. Cannot update name or version.
+        activateCspAccount:
+            method: post
+            resourcePath: /api/csp-accounts/id/{accountId}/activate
+            description: Activate a CSP account
+        activateCspIdpConfig:
+            method: post
+            resourcePath: /api/csp-idp-configs/id/{configId}/activate
+            description: Activate a CSP IDP configuration
         addCspRoleMappings:
             method: post
             resourcePath: /api/roles/csp-roles
@@ -352,7 +368,7 @@ serviceActions:
             description: Add a user to a workspace
         addWorkspaceToProject:
             method: post
-            resourcePath: /api/projects/{id}/workspaces/{workspaceId}
+            resourcePath: /api/projects/assign/workspaces
             description: 프로젝트에 워크스페이스를 연결합니다.
         assignMciamPermissionToRole:
             method: post
@@ -370,10 +386,26 @@ serviceActions:
             method: post
             resourcePath: /api/roles/assign/workspace-role
             description: Assign a workspace role to a user
+        attachPolicyToRole:
+            method: post
+            resourcePath: /api/csp-policies/attach
+            description: Attach a CSP policy to a CSP role
         checkUserRoles:
             method: get
             resourcePath: /api/setup/check-user-roles
             description: Check all roles assigned to a user. 특정 유저가 가진 role 목록을 조회합니다.
+        createCspAccount:
+            method: post
+            resourcePath: /api/csp-accounts
+            description: Create a new CSP account
+        createCspIdpConfig:
+            method: post
+            resourcePath: /api/csp-idp-configs
+            description: Create a new CSP IDP configuration
+        createCspPolicy:
+            method: post
+            resourcePath: /api/csp-policies
+            description: Create a new CSP policy
         createCspRole:
             method: post
             resourcePath: /api/roles/csp
@@ -405,7 +437,7 @@ serviceActions:
         createProject:
             method: post
             resourcePath: /api/projects
-            description: Create a new project with the specified information.
+            description: Create a new project with the specified information. Optionally specify a workspace to assign the project to.
         createResourceType:
             method: post
             resourcePath: /api/resource-types/cloud-resources
@@ -426,6 +458,26 @@ serviceActions:
             method: post
             resourcePath: /api/roles/workspace-roles
             description: Create a new workspace role
+        deactivateCspAccount:
+            method: post
+            resourcePath: /api/csp-accounts/id/{accountId}/deactivate
+            description: Deactivate a CSP account
+        deactivateCspIdpConfig:
+            method: post
+            resourcePath: /api/csp-idp-configs/id/{configId}/deactivate
+            description: Deactivate a CSP IDP configuration
+        deleteCspAccount:
+            method: delete
+            resourcePath: /api/csp-accounts/id/{accountId}
+            description: Delete a CSP account by ID
+        deleteCspIdpConfig:
+            method: delete
+            resourcePath: /api/csp-idp-configs/id/{configId}
+            description: Delete a CSP IDP configuration by ID
+        deleteCspPolicy:
+            method: delete
+            resourcePath: /api/csp-policies/id/{policyId}
+            description: Delete a CSP policy by ID
         deleteCspRole:
             method: delete
             resourcePath: /api/roles/csp-roles/id/{roleId}
@@ -474,10 +526,26 @@ serviceActions:
             method: delete
             resourcePath: /api/roles/workspace-roles/id/{roleId}
             description: Delete a workspace role
+        detachPolicyFromRole:
+            method: post
+            resourcePath: /api/csp-policies/detach
+            description: Detach a CSP policy from a CSP role
         getCloudResourceTypeByID:
             method: get
             resourcePath: /api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId
             description: 특정 리소스 타입을 ID로 조회합니다
+        getCspAccountByID:
+            method: get
+            resourcePath: /api/csp-accounts/id/{accountId}
+            description: Retrieve CSP account details by ID
+        getCspIdpConfigByID:
+            method: get
+            resourcePath: /api/csp-idp-configs/id/{configId}
+            description: Retrieve CSP IDP configuration details by ID
+        getCspPolicyByID:
+            method: get
+            resourcePath: /api/csp-policies/id/{policyId}
+            description: Retrieve CSP policy details by ID
         getCspRoleByID:
             method: get
             resourcePath: /api/roles/csp/id/{roleId}
@@ -510,6 +578,10 @@ serviceActions:
             method: get
             resourcePath: /api/roles/platform-roles/name/{roleName}
             description: Get menu role details by Name
+        getPolicyDocument:
+            method: get
+            resourcePath: /api/csp-policies/id/{policyId}/document
+            description: Get the policy document content
         getProjectByID:
             method: get
             resourcePath: /api/projects/{id}
@@ -518,6 +590,10 @@ serviceActions:
             method: get
             resourcePath: /api/projects/name/{projectName}
             description: Get project details by name
+        getProjectWorkspaces:
+            method: get
+            resourcePath: /api/projects/id/{projectId}/workspaces
+            description: Retrieve list of workspaces that the project is assigned to
         getRoleByRoleID:
             method: get
             resourcePath: /api/roles/id/{roleId}
@@ -534,6 +610,10 @@ serviceActions:
             method: get
             resourcePath: /api/roles/{roleType}/{roleId}/mciam-permissions
             description: 특정 역할의 MC-IAM 권한 ID 목록을 조회합니다.
+        getRolePolicies:
+            method: get
+            resourcePath: /api/csp-policies/role/{roleId}
+            description: Get list of policies attached to a CSP role
         getUserByID:
             method: get
             resourcePath: /api/users/id/{userId}
@@ -586,6 +666,10 @@ serviceActions:
             method: get
             resourcePath: /api/roles/workspace-roles/name/{roleName}
             description: Get workspace role details by Name
+        importAPIs:
+            method: post
+            resourcePath: /api/mcmp-apis/import
+            description: Fetches API specifications from remote URLs and imports them to the database. Supports swagger and openapi source types. Optionally accepts baseUrl and authentication info to populate the mcmp_api_services table.
         initializeMenuPermissions:
             method: get
             resourcePath: /api/setup/initial-role-menu-permission
@@ -602,6 +686,18 @@ serviceActions:
             method: post
             resourcePath: /api/resource-types/cloud-resources/list
             description: 모든 리소스 타입 목록을 조회합니다
+        listCspAccounts:
+            method: post
+            resourcePath: /api/csp-accounts/list
+            description: Retrieve a list of CSP accounts with optional filters
+        listCspIdpConfigs:
+            method: post
+            resourcePath: /api/csp-idp-configs/list
+            description: Retrieve a list of CSP IDP configurations with optional filters
+        listCspPolicies:
+            method: post
+            resourcePath: /api/csp-policies/list
+            description: Retrieve a list of CSP policies with optional filters
         listCspRoleMappings:
             method: post
             resourcePath: /api/roles/csp-roles/list
@@ -646,6 +742,10 @@ serviceActions:
             method: post
             resourcePath: /api/roles/list
             description: Retrieve a list of all roles.
+        listRolesOfWorkspaceType:
+            method: post
+            resourcePath: /api/roles/workspace-roles/list
+            description: Get a list of all workspace roles
         listServicesAndActions:
             method: post
             resourcePath: /api/mcmp-apis/list
@@ -700,8 +800,8 @@ serviceActions:
             description: Retrieve project list belonging to specific workspace
         listWorkspaceRoles:
             method: post
-            resourcePath: /api/roles/workspace-roles/list
-            description: Get a list of all workspace roles
+            resourcePath: /api/workspaces/roles/list
+            description: Retrieve all workspace-level roles with optional filtering
         listWorkspaceUsers:
             method: post
             resourcePath: /api/workspaces/users/list
@@ -802,6 +902,10 @@ serviceActions:
             method: delete
             resourcePath: /api/workspaces/{id}/users/{userId}
             description: Remove a user from a workspace
+        removeWorkspaceFromProject:
+            method: delete
+            resourcePath: /api/projects/unassign/workspaces
+            description: Remove a workspace from a project
         removeWorkspaceRole:
             method: delete
             resourcePath: /api/roles/unassign/workspace-role
@@ -814,6 +918,10 @@ serviceActions:
             method: post
             resourcePath: /api/initial-admin
             description: Creates the initial platform admin user with necessary permissions. platform admin 생성인데
+        syncCspPolicies:
+            method: post
+            resourcePath: /api/csp-policies/sync
+            description: Synchronize policies from the CSP cloud
         syncMcmpAPIs:
             method: post
             resourcePath: /api/mcmp-apis/syncMcmpAPIs
@@ -826,6 +934,22 @@ serviceActions:
             method: get
             resourcePath: /api/mcmp-apis/test/mc-infra-manager/getallns
             description: Calls the GetAllNs action of the mc-infra-manager service via the CallApi service.
+        testCspIdpConnection:
+            method: post
+            resourcePath: /api/csp-idp-configs/id/{configId}/test
+            description: Test connection to CSP using IDP configuration
+        updateCspAccount:
+            method: put
+            resourcePath: /api/csp-accounts/id/{accountId}
+            description: Update CSP account details
+        updateCspIdpConfig:
+            method: put
+            resourcePath: /api/csp-idp-configs/id/{configId}
+            description: Update CSP IDP configuration details
+        updateCspPolicy:
+            method: put
+            resourcePath: /api/csp-policies/id/{policyId}
+            description: Update CSP policy details
         updateCspRole:
             method: put
             resourcePath: /api/roles/csp-roles/id/{roleId}
@@ -866,11 +990,15 @@ serviceActions:
             method: put
             resourcePath: /api/workspaces/id/{workspaceId}
             description: Update the details of an existing workspace.
+        validateCspAccount:
+            method: post
+            resourcePath: /api/csp-accounts/id/{accountId}/validate
+            description: Validate CSP account configuration
     mc-workflow-manager:
         _meta:
             version: 0.5.0
             repository: https://github.com/m-cmp/mc-workflow-manager
-            generatedAt: "2026-01-06T07:17:34Z"
+            generatedAt: "2026-02-09T04:43:42Z"
         checkConnectionUsingGET:
             method: get
             resourcePath: /readyz

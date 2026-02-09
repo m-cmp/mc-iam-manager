@@ -22,7 +22,7 @@ frameworks:
   - name: mc-iam-manager
     version: "0.3.0"                    # Active version (local development)
     repository: https://github.com/m-cmp/mc-iam-manager
-    swagger: ../../docs/swagger.yaml   # Local path relative to this file
+    swagger: ../../src/docs/swagger.yaml   # Local path relative to this file
 
   # MC-Observability - Monitoring and Observability
   # Note: Swagger file path needs to be verified - currently not found in v0.5.0
