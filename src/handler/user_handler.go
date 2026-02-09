@@ -2,7 +2,10 @@ package handler
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"strconv"
+	"strings"
 
 	// Ensure jwt is imported
 	"github.com/labstack/echo/v4"
@@ -11,6 +14,7 @@ import (
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service"
 	"github.com/m-cmp/mc-iam-manager/util"
+	"github.com/m-cmp/mc-iam-manager/utils"
 	"gorm.io/gorm" // Ensure gorm is imported
 )
 
@@ -208,6 +212,131 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 	// as the service might not return the created user object directly.
 	// Ensure sensitive data like password isn't returned if it were present.
 	return c.JSON(http.StatusCreated, user)
+}
+
+// SignupUser godoc
+// @Summary User signup
+// @Description Public user signup (no authentication required)
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body model.SignupRequest true "Signup Info"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 409 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/auth/signup [post]
+// @Id signupUser
+func (h *UserHandler) SignupUser(c echo.Context) error {
+	var req model.SignupRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid request format",
+		})
+	}
+
+	// Validation
+	if err := utils.ValidateStruct(req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error":  "입력값 검증에 실패했습니다",
+			"fields": utils.FormatValidationErrorMap(err),
+		})
+	}
+
+	// Create user in pending state
+	kcId, err := h.userService.SignupUser(c.Request().Context(), &req)
+	if err != nil {
+		if strings.Contains(err.Error(), "이미 사용 중인") {
+			return c.JSON(http.StatusConflict, map[string]string{
+				"error": err.Error(),
+			})
+		}
+		log.Printf("[ERROR] SignupUser failed: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "가입 신청에 실패했습니다. 잠시 후 다시 시도해주세요",
+		})
+	}
+
+	return c.JSON(http.StatusCreated, map[string]interface{}{
+		"success":     true,
+		"message":     "가입 신청이 완료되었습니다. 관리자 승인 후 로그인 가능합니다.",
+		"kcId":        kcId,
+		"redirectUrl": "/login",
+	})
+}
+
+// ResetUserPassword godoc
+// @Summary Reset user password
+// @Description Reset a user's password (admin only)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param userId path string true "User ID (DB)"
+// @Param request body model.ResetPasswordRequest true "New Password"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/id/{userId}/password [put]
+// @Id resetUserPassword
+func (h *UserHandler) ResetUserPassword(c echo.Context) error {
+	// 관리자 권한 확인
+	requiredRoles := []string{"platformAdmin"}
+	if !checkRoleFromContext(c, requiredRoles) {
+		return c.JSON(http.StatusForbidden, map[string]string{
+			"error": "Forbidden: Platform Administrator access required",
+		})
+	}
+
+	// User ID 파싱
+	userIDStr := c.Param("userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid user ID",
+		})
+	}
+	userIDInt := uint(userID)
+
+	// 요청 바인딩
+	var req model.ResetPasswordRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid request format",
+		})
+	}
+
+	// 유효성 검증
+	if err := utils.ValidateStruct(req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error":  "입력값 검증에 실패했습니다",
+			"fields": utils.FormatValidationErrorMap(err),
+		})
+	}
+
+	// 사용자 조회 (DB)
+	user, err := h.userService.GetUserByID(c.Request().Context(), userIDInt)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{
+			"error": "User not found",
+		})
+	}
+
+	// 비밀번호 재설정
+	err = h.userService.ResetUserPassword(c.Request().Context(), user.KcId, req.NewPassword)
+	if err != nil {
+		log.Printf("[ERROR] ResetUserPassword failed: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "비밀번호 변경에 실패했습니다",
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "비밀번호가 성공적으로 변경되었습니다",
+	})
 }
 
 // UpdateUser godoc
