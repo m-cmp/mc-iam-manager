@@ -226,7 +226,7 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 // @Failure 409 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /api/auth/signup [post]
-// @Id signupUser
+// @Id SignupUser
 func (h *UserHandler) SignupUser(c echo.Context) error {
 	var req model.SignupRequest
 	if err := c.Bind(&req); err != nil {
@@ -280,7 +280,7 @@ func (h *UserHandler) SignupUser(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/id/{userId}/password [put]
-// @Id resetUserPassword
+// @Id ResetUserPassword
 func (h *UserHandler) ResetUserPassword(c echo.Context) error {
 	// 관리자 권한 확인
 	requiredRoles := []string{"platformAdmin"}
