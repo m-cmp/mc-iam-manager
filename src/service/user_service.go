@@ -153,6 +153,32 @@ func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
 	return nil
 }
 
+// SignupUser creates a user in pending state (enabled=false)
+func (s *UserService) SignupUser(ctx context.Context, req *model.SignupRequest) (string, error) {
+	ks := NewKeycloakService()
+
+	// Keycloak에 pending 상태로 사용자 생성
+	kcId, err := ks.CreatePendingUser(ctx, req)
+	if err != nil {
+		return "", err
+	}
+
+	// 로컬 DB 동기화는 승인 시에 수행 (선택사항)
+	// 가입 신청 시점에는 Keycloak에만 생성하고, 승인 후 DB 동기화
+	// _, err = s.SyncUser(ctx, kcId)
+	// if err != nil {
+	//     log.Printf("Warning: User created in Keycloak but not synced to DB: %v", err)
+	// }
+
+	return kcId, nil
+}
+
+// ResetUserPassword resets a user's password
+func (s *UserService) ResetUserPassword(ctx context.Context, kcUserID, newPassword string) error {
+	ks := NewKeycloakService()
+	return ks.ResetPassword(ctx, kcUserID, newPassword)
+}
+
 // CreateUser creates a user in Keycloak and the local DB.
 // Keycloak 에 있는 유저가 DB에 등록되어 있지 않은 경우
 func (s *UserService) SyncUserByKeycloak(ctx context.Context, user *model.User) error {

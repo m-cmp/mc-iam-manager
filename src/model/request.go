@@ -263,3 +263,17 @@ type ImportApiResponse struct {
 	FailureCount     int                        `json:"failureCount"`     // Number of failed frameworks
 	FrameworkResults []ImportApiFrameworkResult `json:"frameworkResults"` // Detailed results for each framework
 }
+
+// SignupRequest represents the signup form data
+type SignupRequest struct {
+	Email        string `json:"email" validate:"required,email"`
+	Password     string `json:"password" validate:"required,min=8"`
+	FirstName    string `json:"firstName" validate:"required"`
+	LastName     string `json:"lastName" validate:"required"`
+	Organization string `json:"organization,omitempty"` // 선택 필드
+}
+
+// ResetPasswordRequest represents the password reset request
+type ResetPasswordRequest struct {
+	NewPassword string `json:"newPassword" validate:"required,min=8"`
+}
