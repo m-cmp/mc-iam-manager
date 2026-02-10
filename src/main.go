@@ -151,7 +151,8 @@ func main() {
 		basePath + "/auth/login",
 		basePath + "/auth/logout",
 		basePath + "/auth/refresh",
-		basePath + "/auth/certs", // 인증서 조회 경로 추가
+		basePath + "/auth/certs",   // 인증서 조회 경로 추가
+		basePath + "/auth/signup",  // 사용자 가입 신청 경로 추가
 
 	}
 
@@ -189,6 +190,7 @@ func main() {
 		auth.GET("/certs", authHandler.AuthCerts)
 		auth.GET("/temp-credential-csps", authHandler.GetTempCredentialProviders)
 		auth.POST("/validate", authHandler.Validate)
+		auth.POST("/signup", userHandler.SignupUser) // Public signup
 	}
 
 	// platform admin 생성. 권한체크 필요한데...
@@ -321,6 +323,8 @@ func main() {
 		users.PUT("/id/:userId", userHandler.UpdateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.POST("/kc/:kcId/approve", userHandler.ApproveUserByKcId, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.PUT("/id/:userId/password", userHandler.ResetUserPassword, middleware.PlatformRoleMiddleware(middleware.Manage))
 
 		users.POST("/menus-tree/list", menuHandler.ListUserMenuTree)
 		users.POST("/menus/list", menuHandler.ListUserMenu)
