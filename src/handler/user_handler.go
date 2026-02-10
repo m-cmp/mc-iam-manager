@@ -238,7 +238,7 @@ func (h *UserHandler) SignupUser(c echo.Context) error {
 	// Validation
 	if err := utils.ValidateStruct(req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error":  "입력값 검증에 실패했습니다",
+			"error":  "Validation failed",
 			"fields": utils.FormatValidationErrorMap(err),
 		})
 	}
@@ -246,20 +246,20 @@ func (h *UserHandler) SignupUser(c echo.Context) error {
 	// Create user in pending state
 	kcId, err := h.userService.SignupUser(c.Request().Context(), &req)
 	if err != nil {
-		if strings.Contains(err.Error(), "이미 사용 중인") {
+		if strings.Contains(err.Error(), "already in use") {
 			return c.JSON(http.StatusConflict, map[string]string{
 				"error": err.Error(),
 			})
 		}
 		log.Printf("[ERROR] SignupUser failed: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "가입 신청에 실패했습니다. 잠시 후 다시 시도해주세요",
+			"error": "Signup request failed. Please try again later",
 		})
 	}
 
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"success":     true,
-		"message":     "가입 신청이 완료되었습니다. 관리자 승인 후 로그인 가능합니다.",
+		"message":     "Signup request completed. You can login after admin approval",
 		"kcId":        kcId,
 		"redirectUrl": "/login",
 	})
@@ -311,7 +311,7 @@ func (h *UserHandler) ResetUserPassword(c echo.Context) error {
 	// 유효성 검증
 	if err := utils.ValidateStruct(req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error":  "입력값 검증에 실패했습니다",
+			"error":  "Validation failed",
 			"fields": utils.FormatValidationErrorMap(err),
 		})
 	}
@@ -329,13 +329,13 @@ func (h *UserHandler) ResetUserPassword(c echo.Context) error {
 	if err != nil {
 		log.Printf("[ERROR] ResetUserPassword failed: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "비밀번호 변경에 실패했습니다",
+			"error": "Failed to reset password",
 		})
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
-		"message": "비밀번호가 성공적으로 변경되었습니다",
+		"message": "Password successfully changed",
 	})
 }
 

@@ -240,7 +240,7 @@ func (s *keycloakService) CreatePendingUser(ctx context.Context, req *model.Sign
 	kcId, err := config.KC.Client.CreateUser(ctx, token.AccessToken, config.KC.Realm, keycloakUser)
 	if err != nil {
 		if strings.Contains(err.Error(), "409") {
-			return "", fmt.Errorf("이미 사용 중인 이메일입니다")
+			return "", fmt.Errorf("Email already in use")
 		}
 		return "", fmt.Errorf("failed to create user: %w", err)
 	}
