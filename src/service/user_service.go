@@ -163,12 +163,12 @@ func (s *UserService) SignupUser(ctx context.Context, req *model.SignupRequest) 
 		return "", err
 	}
 
-	// 로컬 DB 동기화는 승인 시에 수행 (선택사항)
-	// 가입 신청 시점에는 Keycloak에만 생성하고, 승인 후 DB 동기화
-	// _, err = s.SyncUser(ctx, kcId)
-	// if err != nil {
-	//     log.Printf("Warning: User created in Keycloak but not synced to DB: %v", err)
-	// }
+	// 로컬 DB에도 사용자 동기화 (승인 전에도 DB 레코드 생성)
+	_, err = s.SyncUser(ctx, kcId)
+	if err != nil {
+		log.Printf("Warning: User created in Keycloak but not synced to DB: %v", err)
+		// DB 동기화 실패는 경고만 하고 계속 진행 (Keycloak에는 생성됨)
+	}
 
 	return kcId, nil
 }
