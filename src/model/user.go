@@ -5,11 +5,12 @@ import "time"
 // User 사용자 모델 (DB 테이블: mcmp_users)
 type User struct {
 	// Keycloak 정보
-	Username  string `json:"username" gorm:"column:username;size:255;not null;unique"` // Keep Username mapped to DB
-	Email     string `json:"email" gorm:"-"`                                           // Ignore Email for DB
-	FirstName string `json:"firstName,omitempty" gorm:"-"`                             // Ignore FirstName for DB
-	LastName  string `json:"lastName,omitempty" gorm:"-"`                              // Ignore LastName for DB
-	Enabled   bool   `json:"enabled" gorm:"-"`                                         // Enabled status managed by Keycloak
+	Username     string `json:"username" gorm:"column:username;size:255;not null;unique"` // Keep Username mapped to DB
+	Email        string `json:"email" gorm:"-"`                                           // Ignore Email for DB
+	FirstName    string `json:"firstName,omitempty" gorm:"-"`                             // Ignore FirstName for DB
+	LastName     string `json:"lastName,omitempty" gorm:"-"`                              // Ignore LastName for DB
+	Enabled      bool   `json:"enabled" gorm:"-"`                                         // Enabled status managed by Keycloak
+	Organization string `json:"organization,omitempty" gorm:"-"`                          // Organization stored in Keycloak attributes
 
 	// DB에 저장되는 정보 (mcmp_users 테이블)
 	ID          uint      `json:"id" gorm:"primaryKey;column:id"`                     // DB Primary Key (Renamed from DbId)

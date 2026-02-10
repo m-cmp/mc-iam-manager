@@ -76,6 +76,10 @@ type KeycloakService interface {
 	SetupPredefinedRoles(ctx context.Context, accessToken string) error
 	// GetClientCredentialsToken 클라이언트 자격 증명으로 토큰을 발급받습니다.
 	GetClientCredentialsToken(ctx context.Context) (*gocloak.JWT, error)
+	// CreatePendingUser creates a user in pending state (enabled=false) with password
+	CreatePendingUser(ctx context.Context, req *model.SignupRequest) (string, error)
+	// ResetPassword resets a user's password
+	ResetPassword(ctx context.Context, kcUserID, newPassword string) error
 }
 
 // keycloakService is now stateless, methods directly use config.KC
@@ -205,6 +209,82 @@ func (s *keycloakService) CreateUser(ctx context.Context, user *model.User) (str
 	// }
 
 	return kcId, nil
+}
+
+// CreatePendingUser creates a user in pending state (enabled=false) with password
+func (s *keycloakService) CreatePendingUser(ctx context.Context, req *model.SignupRequest) (string, error) {
+	if config.KC == nil || config.KC.Client == nil {
+		return "", fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.LoginAdmin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	// Generate username from email (before @)
+	username := strings.Split(req.Email, "@")[0]
+
+	keycloakUser := gocloak.User{
+		Username:      &username,
+		Email:         &req.Email,
+		FirstName:     &req.FirstName,
+		LastName:      &req.LastName,
+		Enabled:       gocloak.BoolP(false),       // 승인 대기 상태
+		EmailVerified: gocloak.BoolP(false),       // 이메일 미확인
+		Attributes: &map[string][]string{
+			"organization": {req.Organization},    // 조직 정보 저장
+		},
+	}
+
+	kcId, err := config.KC.Client.CreateUser(ctx, token.AccessToken, config.KC.Realm, keycloakUser)
+	if err != nil {
+		if strings.Contains(err.Error(), "409") {
+			return "", fmt.Errorf("Email already in use")
+		}
+		return "", fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// 비밀번호 설정
+	err = config.KC.Client.SetPassword(ctx, token.AccessToken, kcId, config.KC.Realm, req.Password, false)
+	if err != nil {
+		// 사용자 생성은 성공했으나 비밀번호 설정 실패 - 사용자 삭제
+		config.KC.Client.DeleteUser(ctx, token.AccessToken, config.KC.Realm, kcId)
+		return "", fmt.Errorf("failed to set password: %w", err)
+	}
+
+	return kcId, nil
+}
+
+// ResetPassword resets a user's password
+func (s *keycloakService) ResetPassword(ctx context.Context, kcUserID, newPassword string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	// Admin 토큰 획득
+	adminToken, err := config.KC.LoginAdmin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	// 사용자 존재 확인
+	existingUser, err := config.KC.Client.GetUserByID(ctx, adminToken.AccessToken, config.KC.Realm, kcUserID)
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+	if existingUser == nil {
+		return fmt.Errorf("user not found: %s", kcUserID)
+	}
+
+	// 비밀번호 재설정 (temporary=false: 영구 비밀번호)
+	err = config.KC.Client.SetPassword(ctx, adminToken.AccessToken, kcUserID, config.KC.Realm, newPassword, false)
+	if err != nil {
+		return fmt.Errorf("failed to reset password: %w", err)
+	}
+
+	log.Printf("[INFO] Password reset successfully for user: %s", kcUserID)
+	return nil
 }
 
 // UpdateUser updates a user in Keycloak.
