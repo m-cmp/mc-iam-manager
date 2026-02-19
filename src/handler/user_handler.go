@@ -244,7 +244,7 @@ func (h *UserHandler) SignupUser(c echo.Context) error {
 	}
 
 	// Create user in pending state
-	kcId, err := h.userService.SignupUser(c.Request().Context(), &req)
+	_, err := h.userService.SignupUser(c.Request().Context(), &req)
 	if err != nil {
 		if strings.Contains(err.Error(), "already in use") {
 			return c.JSON(http.StatusConflict, map[string]string{
@@ -260,7 +260,6 @@ func (h *UserHandler) SignupUser(c echo.Context) error {
 	return c.JSON(http.StatusCreated, map[string]interface{}{
 		"success":     true,
 		"message":     "Signup request completed. You can login after admin approval",
-		"kcId":        kcId,
 		"redirectUrl": "/login",
 	})
 }
@@ -514,48 +513,6 @@ func (h *UserHandler) UpdateUserStatus(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// ApproveUserByKcId godoc
-// @Summary Approve user by Keycloak ID
-// @Description Approve a user using their Keycloak ID (enables user and syncs to DB)
-// @Tags users
-// @Accept json
-// @Produce json
-// @Param kcId path string true "Keycloak User ID"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]string
-// @Failure 403 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Security BearerAuth
-// @Router /api/users/kc/{kcId}/approve [post]
-// @Id approveUserByKcId
-func (h *UserHandler) ApproveUserByKcId(c echo.Context) error {
-	// --- Role validation (Admin or platformAdmin) ---
-	requiredRoles := []string{"admin", "platformAdmin"}
-	if !checkRoleFromContext(c, requiredRoles) {
-		fmt.Printf("[INFO] ApproveUserByKcId: Permission denied. User does not have required roles: %v\n", requiredRoles)
-		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Administrator access required"})
-	}
-	fmt.Printf("[DEBUG] ApproveUserByKcId: Permission granted.\n")
-	// --- Role validation end ---
-
-	kcId := c.Param("kcId")
-	if kcId == "" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Keycloak ID is required"})
-	}
-
-	// ApproveUser enables the user in Keycloak and syncs to DB
-	err := h.userService.ApproveUser(c.Request().Context(), kcId)
-	if err != nil {
-		fmt.Printf("[ERROR] ApproveUserByKcId: Error from userService.ApproveUser: %v\n", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to approve user: %v", err)})
-	}
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-		"message": "User approved successfully",
-		"kcId":    kcId,
-	})
-}
 
 // ListUserWorkspaceAndWorkspaceRoles godoc
 // @Summary List user workspace and roles

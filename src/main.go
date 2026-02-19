@@ -323,7 +323,6 @@ func main() {
 		users.PUT("/id/:userId", userHandler.UpdateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Manage))
-		users.POST("/kc/:kcId/approve", userHandler.ApproveUserByKcId, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.PUT("/id/:userId/password", userHandler.ResetUserPassword, middleware.PlatformRoleMiddleware(middleware.Manage))
 
 		users.POST("/menus-tree/list", menuHandler.ListUserMenuTree)
