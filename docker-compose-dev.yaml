@@ -5,10 +5,10 @@ version: '3.8'
 networks:
   mc-iam-manager-network:
     external: true
-    name: mc-iam-manager_mc-iam-manager-network
+    name: mcc_mc-iam-manager-network
   mc-infra-manager-network:
     external: true
-    name: mc-iam-manager_mc-infra-manager-network
+    name: mcc_mc-infra-manager-network
 
 services:
   # Dev 환경용 mc-iam-manager 소스 컨테이너
@@ -78,4 +78,3 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-

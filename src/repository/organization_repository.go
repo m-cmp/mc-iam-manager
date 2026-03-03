@@ -246,7 +246,7 @@ func (r *OrganizationRepository) FindTreeFlat() ([]model.OrganizationTree, error
                 o.name,
                 o.description,
                 1 AS level,
-                o.name AS path,
+                o.name::text AS path,
                 (SELECT COUNT(*) FROM mcmp_user_organizations uo WHERE uo.organization_id = o.id) AS user_count
             FROM mcmp_organizations o
             WHERE o.parent_id IS NULL
