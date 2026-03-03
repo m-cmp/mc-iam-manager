@@ -114,26 +114,33 @@ func (s *OrganizationService) GetOrganizations(tree bool) (interface{}, error) {
 }
 
 // buildOrganizationTree 평면 목록을 Tree 구조로 변환 (내부 함수)
+// flat은 organization_code ASC 정렬 상태 (01, 0101, 010101 ...)
+// 깊은 노드부터 역순 처리: children이 먼저 채워진 후 부모에 복사되므로 전체 트리 유지
 func buildOrganizationTree(flat []model.OrganizationTree) []model.OrganizationTree {
-	// ID → 인덱스 맵
-	indexMap := make(map[uint]int)
-	for i, org := range flat {
-		indexMap[org.ID] = i
+	nodes := make([]model.OrganizationTree, len(flat))
+	for i := range flat {
+		nodes[i] = flat[i]
+		nodes[i].Children = nil
 	}
 
-	roots := []model.OrganizationTree{}
-	nodes := make([]model.OrganizationTree, len(flat))
-	copy(nodes, flat)
-
+	indexMap := make(map[uint]int, len(nodes))
 	for i := range nodes {
-		org := &nodes[i]
-		if org.ParentID == nil {
-			roots = append(roots, *org)
-		} else {
-			parentIdx, ok := indexMap[*org.ParentID]
-			if ok {
-				nodes[parentIdx].Children = append(nodes[parentIdx].Children, *org)
+		indexMap[nodes[i].ID] = i
+	}
+
+	// 역순(깊은 노드 먼저) 처리: 자식이 채워진 후 부모에 값 복사
+	for i := len(nodes) - 1; i >= 0; i-- {
+		if nodes[i].ParentID != nil {
+			if parentIdx, ok := indexMap[*nodes[i].ParentID]; ok {
+				nodes[parentIdx].Children = append(nodes[parentIdx].Children, nodes[i])
 			}
+		}
+	}
+
+	roots := make([]model.OrganizationTree, 0)
+	for i := range nodes {
+		if nodes[i].ParentID == nil {
+			roots = append(roots, nodes[i])
 		}
 	}
 	return roots
@@ -167,35 +174,34 @@ func (s *OrganizationService) UpdateOrganization(id uint, req *model.UpdateOrgan
 		updates["description"] = req.Description
 	}
 
-	// 부모 변경
-	if req.ParentID != current.ParentID {
-		if err := s.validateNoCircularReference(id, req.ParentID); err != nil {
-			return err
-		}
+	// 부모 변경 (req.ParentID가 nil이면 부모 변경 요청 없음으로 간주)
+	if req.ParentID != nil {
+		parentChanged := current.ParentID == nil || *req.ParentID != *current.ParentID
+		if parentChanged {
+			if err := s.validateNoCircularReference(id, req.ParentID); err != nil {
+				return err
+			}
 
-		var newParentCode string
-		if req.ParentID != nil {
 			parent, err := s.orgRepo.FindByID(*req.ParentID)
 			if err != nil {
 				return fmt.Errorf("parent organization not found: %d", *req.ParentID)
 			}
-			newParentCode = parent.OrganizationCode
-		}
 
-		// 새 코드 생성
-		newCode, err := s.orgRepo.GenerateOrganizationCode(newParentCode)
-		if err != nil {
-			return err
-		}
+			// 새 코드 생성
+			newCode, err := s.orgRepo.GenerateOrganizationCode(parent.OrganizationCode)
+			if err != nil {
+				return err
+			}
 
-		// 하위 조직 코드 일괄 업데이트
-		oldCode := current.OrganizationCode
-		if err := s.orgRepo.UpdateDescendantCodes(oldCode, newCode); err != nil {
-			return fmt.Errorf("error updating descendant codes: %w", err)
-		}
+			// 하위 조직 코드 일괄 업데이트
+			oldCode := current.OrganizationCode
+			if err := s.orgRepo.UpdateDescendantCodes(oldCode, newCode); err != nil {
+				return fmt.Errorf("error updating descendant codes: %w", err)
+			}
 
-		updates["parent_id"] = req.ParentID
-		updates["organization_code"] = newCode
+			updates["parent_id"] = req.ParentID
+			updates["organization_code"] = newCode
+		}
 	}
 
 	// 코드 직접 수정
