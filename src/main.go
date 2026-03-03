@@ -94,6 +94,8 @@ func main() {
 		&mcmpapi.McmpApiServiceMeta{},
 		&model.MciamPermission{},
 		&model.MciamRoleMciamPermission{},
+		&model.Organization{},
+		&model.UserOrganization{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
@@ -124,6 +126,9 @@ func main() {
 	cspAccountHandler := handler.NewCspAccountHandler(db)
 	cspIdpConfigHandler := handler.NewCspIdpConfigHandler(db)
 	cspPolicyHandler := handler.NewCspPolicyHandler(db)
+
+	// 조직 핸들러 초기화
+	organizationHandler := handler.NewOrganizationHandler(db)
 
 	// Echo 인스턴스 생성
 	e := echo.New()
@@ -430,6 +435,23 @@ func main() {
 		cspIdpConfigs.POST("/id/:configId/activate", cspIdpConfigHandler.ActivateCspIdpConfig, middleware.PlatformAdminMiddleware)
 		cspIdpConfigs.POST("/id/:configId/deactivate", cspIdpConfigHandler.DeactivateCspIdpConfig, middleware.PlatformAdminMiddleware)
 	}
+
+	// 조직 관리 라우트 (platformAdmin 전용)
+	organizations := api.Group("/organizations", middleware.PlatformAdminMiddleware)
+	{
+		organizations.POST("", organizationHandler.CreateOrganization)
+		organizations.GET("", organizationHandler.GetOrganizations)
+		organizations.GET("/id/:organizationId", organizationHandler.GetOrganizationByID)
+		organizations.GET("/code/:code", organizationHandler.GetOrganizationByCode)
+		organizations.PUT("/id/:organizationId", organizationHandler.UpdateOrganization)
+		organizations.DELETE("/id/:organizationId", organizationHandler.DeleteOrganization)
+		organizations.GET("/id/:organizationId/users", organizationHandler.GetOrganizationUsers)
+	}
+
+	// 사용자-조직 라우트 (users 그룹에 추가, platformAdmin 전용)
+	users.POST("/id/:userId/organizations", organizationHandler.AssignUserOrganizations, middleware.PlatformAdminMiddleware)
+	users.GET("/id/:userId/organizations", organizationHandler.GetUserOrganizations, middleware.PlatformAdminMiddleware)
+	users.DELETE("/id/:userId/organizations/:organizationId", organizationHandler.RemoveUserOrganization, middleware.PlatformAdminMiddleware)
 
 	// CSP 정책 관리 라우트
 	cspPolicies := api.Group("/csp-policies", middleware.PlatformRoleMiddleware(middleware.Read))
