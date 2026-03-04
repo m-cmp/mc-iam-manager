@@ -8,6 +8,7 @@ import (
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var (
@@ -101,6 +102,48 @@ func (r *OrganizationRepository) Delete(id uint) error {
 		return ErrOrganizationNotFound
 	}
 	return nil
+}
+
+// UpsertOrganizations 조직 목록을 Upsert (organization_code 기준, 멱등성 보장)
+// 부모-우선 순서로 전달되어야 함 (호출자 책임)
+// ParentID는 organization_code에서 마지막 2자리 제거하여 내부적으로 조회
+func (r *OrganizationRepository) UpsertOrganizations(orgs []model.Organization) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		codeToID := make(map[string]uint, len(orgs))
+
+		for i := range orgs {
+			// 부모 코드 유도: 코드 길이 > 2이면 마지막 2자리 제거
+			code := orgs[i].OrganizationCode
+			if len(code) > 2 {
+				parentCode := code[:len(code)-2]
+				if parentID, ok := codeToID[parentCode]; ok {
+					orgs[i].ParentID = &parentID
+				} else {
+					// DB에서 부모 조회 (이미 존재하는 경우)
+					var parent model.Organization
+					if err := tx.Where("organization_code = ?", parentCode).First(&parent).Error; err == nil {
+						orgs[i].ParentID = &parent.ID
+					}
+				}
+			}
+
+			err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "organization_code"}},
+				DoUpdates: clause.AssignmentColumns([]string{"name", "description"}),
+			}).Create(&orgs[i]).Error
+			if err != nil {
+				return fmt.Errorf("error upserting organization code=%s: %w", code, err)
+			}
+
+			// 생성/업데이트 후 ID 조회 (OnConflict 시 Create가 ID를 채우지 않을 수 있음)
+			var loaded model.Organization
+			if err := tx.Where("organization_code = ?", code).First(&loaded).Error; err != nil {
+				return fmt.Errorf("error reloading organization code=%s: %w", code, err)
+			}
+			codeToID[code] = loaded.ID
+		}
+		return nil
+	})
 }
 
 // --- 조직 코드 자동 생성 ---

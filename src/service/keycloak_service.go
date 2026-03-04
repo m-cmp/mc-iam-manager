@@ -80,6 +80,10 @@ type KeycloakService interface {
 	CreatePendingUser(ctx context.Context, req *model.SignupRequest) (string, error)
 	// ResetPassword resets a user's password
 	ResetPassword(ctx context.Context, kcUserID, newPassword string) error
+	// AddRealmRoleToGroup adds a realm role to a Keycloak group (creates group if not exists)
+	AddRealmRoleToGroup(ctx context.Context, groupName, roleName string) error
+	// RemoveRealmRoleFromGroup removes a realm role from a Keycloak group
+	RemoveRealmRoleFromGroup(ctx context.Context, groupName, roleName string) error
 }
 
 // keycloakService is now stateless, methods directly use config.KC
@@ -1548,4 +1552,99 @@ func (s *keycloakService) CreateRealmRoleAndWait(ctx context.Context, roleName s
 	}
 
 	return fmt.Errorf("realm role %s was not available after %d attempts", roleName, maxRetries)
+}
+
+// AddRealmRoleToGroup adds a realm role to a Keycloak group (creates group if not exists)
+func (s *keycloakService) AddRealmRoleToGroup(ctx context.Context, groupName, roleName string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	// Find or create KC group
+	groupID, err := s.findGroupByName(ctx, token.AccessToken, groupName)
+	if err != nil {
+		return err
+	}
+	if groupID == "" {
+		log.Printf("Keycloak group '%s' not found, creating it for role assignment.", groupName)
+		newGroup := gocloak.Group{Name: &groupName}
+		groupID, err = config.KC.Client.CreateGroup(ctx, token.AccessToken, config.KC.Realm, newGroup)
+		if err != nil {
+			if strings.Contains(err.Error(), "409") {
+				groupID, err = s.findGroupByName(ctx, token.AccessToken, groupName)
+				if err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("failed to create keycloak group '%s': %w", groupName, err)
+			}
+		}
+		log.Printf("Created Keycloak group '%s' (ID: %s)", groupName, groupID)
+	}
+
+	// Get realm role by name
+	roles, err := config.KC.Client.GetRealmRoles(ctx, token.AccessToken, config.KC.Realm, gocloak.GetRoleParams{
+		Search: &roleName,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get realm role '%s': %w", roleName, err)
+	}
+	if len(roles) == 0 {
+		return fmt.Errorf("realm role '%s' not found in Keycloak", roleName)
+	}
+
+	// Add role to group
+	if err := config.KC.Client.AddRealmRoleToGroup(ctx, token.AccessToken, config.KC.Realm, groupID, []gocloak.Role{*roles[0]}); err != nil {
+		return fmt.Errorf("failed to add realm role '%s' to group '%s': %w", roleName, groupName, err)
+	}
+
+	log.Printf("Successfully added realm role '%s' to Keycloak group '%s'", roleName, groupName)
+	return nil
+}
+
+// RemoveRealmRoleFromGroup removes a realm role from a Keycloak group
+func (s *keycloakService) RemoveRealmRoleFromGroup(ctx context.Context, groupName, roleName string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	// Find KC group
+	groupID, err := s.findGroupByName(ctx, token.AccessToken, groupName)
+	if err != nil {
+		return err
+	}
+	if groupID == "" {
+		log.Printf("Keycloak group '%s' not found, skipping role removal", groupName)
+		return nil
+	}
+
+	// Get realm role by name
+	roles, err := config.KC.Client.GetRealmRoles(ctx, token.AccessToken, config.KC.Realm, gocloak.GetRoleParams{
+		Search: &roleName,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get realm role '%s': %w", roleName, err)
+	}
+	if len(roles) == 0 {
+		log.Printf("Realm role '%s' not found in Keycloak, skipping removal", roleName)
+		return nil
+	}
+
+	// Remove role from group
+	if err := config.KC.Client.DeleteRealmRoleFromGroup(ctx, token.AccessToken, config.KC.Realm, groupID, []gocloak.Role{*roles[0]}); err != nil {
+		return fmt.Errorf("failed to remove realm role '%s' from group '%s': %w", roleName, groupName, err)
+	}
+
+	log.Printf("Successfully removed realm role '%s' from Keycloak group '%s'", roleName, groupName)
+	return nil
 }

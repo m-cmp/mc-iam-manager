@@ -3,7 +3,7 @@ serviceActions:
         _meta:
             version: 0.5.0
             repository: https://github.com/m-cmp/mc-application-manager
-            generatedAt: "2026-02-19T05:38:06Z"
+            generatedAt: "2026-03-04T01:17:32Z"
         checkConnectionUsingPOST:
             method: post
             resourcePath: /oss/connection-check
@@ -272,7 +272,7 @@ serviceActions:
         _meta:
             version: 0.5.0
             repository: https://github.com/m-cmp/mc-cost-optimizer
-            generatedAt: "2026-02-19T05:38:06Z"
+            generatedAt: "2026-03-04T01:17:32Z"
         getAbrnormalRcmd:
             method: post
             resourcePath: /api/costopti/be/opti/abnormalRcmd
@@ -333,7 +333,7 @@ serviceActions:
         _meta:
             version: 0.3.0
             repository: https://github.com/m-cmp/mc-iam-manager
-            generatedAt: "2026-02-19T05:38:06Z"
+            generatedAt: "2026-03-04T01:17:32Z"
         ResetUserPassword:
             method: put
             resourcePath: /api/users/id/{userId}/password
@@ -382,6 +382,10 @@ serviceActions:
             method: post
             resourcePath: /api/roles/id/{roleId}/assign
             description: Assign a role to a user
+        assignUserOrganizations:
+            method: post
+            resourcePath: /api/users/{userId}/organizations
+            description: 사용자를 하나 이상의 조직에 할당합니다 (다중 소속 가능).
         assignWorkspaceRole:
             method: post
             resourcePath: /api/roles/assign/workspace-role
@@ -430,6 +434,10 @@ serviceActions:
             method: post
             resourcePath: /api/menus/platform-roles
             description: Create a new menu mapping
+        createOrganization:
+            method: post
+            resourcePath: /api/organizations
+            description: 플랫폼 관리자가 조직을 생성합니다. parent_id가 없으면 최상위 조직 생성.
         createPlatformRole:
             method: post
             resourcePath: /api/roles/platform-roles
@@ -498,6 +506,10 @@ serviceActions:
             method: delete
             resourcePath: /api/menus/platform-roles
             description: Delete the mapping between a platform role and a menu.
+        deleteOrganization:
+            method: delete
+            resourcePath: /api/organizations/id/{organizationId}
+            description: 조직을 삭제합니다. 하위 조직 또는 소속 사용자가 있으면 삭제 불가.
         deletePlatformRole:
             method: delete
             resourcePath: /api/roles/platform-roles/id/{roleId}
@@ -566,6 +578,18 @@ serviceActions:
             method: post
             resourcePath: /api/menus/id/{menuId}
             description: Get menu details by ID
+        getOrganizationByCode:
+            method: get
+            resourcePath: /api/organizations/code/{code}
+            description: 조직 코드로 조직 정보를 조회합니다.
+        getOrganizationByID:
+            method: get
+            resourcePath: /api/organizations/id/{organizationId}
+            description: 조직 ID로 조직 정보를 조회합니다.
+        getOrganizationUsers:
+            method: get
+            resourcePath: /api/organizations/id/{organizationId}/users
+            description: 특정 조직에 소속된 사용자 목록을 조회합니다.
         getPlatformActionsByPermissionID:
             method: get
             resourcePath: /api/mcmp-api-permission-action-mappings/platforms/id/{permissionId}/actions
@@ -630,6 +654,10 @@ serviceActions:
             method: get
             resourcePath: /api/menus/user-menu-tree
             description: Get menu tree based on user's platform roles
+        getUserOrganizations:
+            method: get
+            resourcePath: /api/users/{userId}/organizations
+            description: 사용자가 소속된 조직 목록을 조회합니다.
         getUserWorkspaceAndWorkspaceRolesByUserID:
             method: get
             resourcePath: /api/users/id/{userId}/workspaces/roles/list
@@ -718,6 +746,10 @@ serviceActions:
             method: post
             resourcePath: /api/menus/tree/list
             description: List all menus as a tree structure. Admin permission required.
+        listOrganizations:
+            method: get
+            resourcePath: /api/organizations
+            description: 전체 조직 목록을 조회합니다. tree=true이면 Tree 구조로 반환.
         listPermissionsByActionID:
             method: get
             resourcePath: /api/mcmp-api-permission-action-mappings/actions/{actionId}/permissions
@@ -902,6 +934,10 @@ serviceActions:
             method: delete
             resourcePath: /api/workspaces/{id}/users/{userId}
             description: Remove a user from a workspace
+        removeUserOrganization:
+            method: delete
+            resourcePath: /api/users/{userId}/organizations/{organizationId}
+            description: 사용자를 특정 조직에서 제거합니다.
         removeWorkspaceFromProject:
             method: delete
             resourcePath: /api/projects/unassign/workspaces
@@ -966,6 +1002,10 @@ serviceActions:
             method: put
             resourcePath: /api/menus/id/{menuId}
             description: Update menu information
+        updateOrganization:
+            method: put
+            resourcePath: /api/organizations/id/{organizationId}
+            description: 조직 정보를 수정합니다. 부모 변경 시 하위 조직 코드 자동 재생성.
         updateProject:
             method: put
             resourcePath: /api/projects/{id}
@@ -998,7 +1038,7 @@ serviceActions:
         _meta:
             version: 0.5.0
             repository: https://github.com/m-cmp/mc-workflow-manager
-            generatedAt: "2026-02-19T05:38:06Z"
+            generatedAt: "2026-03-04T01:17:32Z"
         checkConnectionUsingGET:
             method: get
             resourcePath: /readyz

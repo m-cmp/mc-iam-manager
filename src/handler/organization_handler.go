@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -22,6 +23,24 @@ func NewOrganizationHandler(db *gorm.DB) *OrganizationHandler {
 	return &OrganizationHandler{
 		orgService: service.NewOrganizationService(db),
 	}
+}
+
+// SetupInitialOrganizations godoc
+// @Summary 기본 조직 초기화
+// @Description YAML 시드 파일에서 기본 조직 구조(MZC + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.
+// @Tags organizations
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/setup/initial-organizations [post]
+// @Id setupInitialOrganizations
+func (h *OrganizationHandler) SetupInitialOrganizations(c echo.Context) error {
+	if err := h.orgService.LoadAndRegisterOrganizationsFromYAML(""); err != nil {
+		log.Printf("[ERROR] SetupInitialOrganizations failed: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "기본 조직이 등록되었습니다."})
 }
 
 // CreateOrganization godoc

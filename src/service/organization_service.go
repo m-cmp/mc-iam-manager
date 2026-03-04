@@ -3,9 +3,14 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
+	"github.com/m-cmp/mc-iam-manager/util"
+	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 )
 
@@ -277,6 +282,66 @@ func (s *OrganizationService) GetUserOrganizations(userID uint) ([]model.Organiz
 // GetOrganizationUsers 조직에 소속된 사용자 목록 조회
 func (s *OrganizationService) GetOrganizationUsers(orgID uint) ([]model.User, error) {
 	return s.orgRepo.FindOrganizationUsers(orgID)
+}
+
+// --- 조직 시드 ---
+
+// LoadAndRegisterOrganizationsFromYAML YAML 파일에서 기본 조직 구조를 로드하여 DB에 Upsert
+// filePath가 빈 문자열이면 기본 경로(asset/organization/organizations.yaml) 사용
+// 파일이 없으면 WARN 로그 후 skip (soft failure)
+func (s *OrganizationService) LoadAndRegisterOrganizationsFromYAML(filePath string) error {
+	effectivePath := filePath
+	if effectivePath == "" {
+		assetPath := util.GetAssetPath()
+		effectivePath = filepath.Join(assetPath, "organization", "organizations.yaml")
+	}
+
+	data, err := os.ReadFile(effectivePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Printf("[WARN] Organization seed file not found: %s, skipping", effectivePath)
+			return nil
+		}
+		return fmt.Errorf("failed to read organization seed file %s: %w", effectivePath, err)
+	}
+
+	var seedData model.OrganizationSeedData
+	if err := yaml.Unmarshal(data, &seedData); err != nil {
+		return fmt.Errorf("failed to parse organization seed YAML: %w", err)
+	}
+
+	if len(seedData.Organizations) == 0 {
+		log.Printf("[INFO] No organizations found in seed file %s, skipping", effectivePath)
+		return nil
+	}
+
+	// 중첩 구조를 부모-우선(BFS) 슬라이스로 평탄화
+	orgs := flattenOrganizationTree(seedData.Organizations)
+	if err := s.orgRepo.UpsertOrganizations(orgs); err != nil {
+		return fmt.Errorf("failed to upsert organizations: %w", err)
+	}
+
+	log.Printf("[INFO] Registered %d organizations from seed file", len(orgs))
+	return nil
+}
+
+// flattenOrganizationTree 중첩 시드 구조를 부모-우선(BFS) 순서의 Organization 슬라이스로 변환
+// ParentID는 UpsertOrganizations 내에서 organization_code로 자동 조회됨
+func flattenOrganizationTree(items []model.OrganizationSeedItem) []model.Organization {
+	var result []model.Organization
+	queue := make([]model.OrganizationSeedItem, len(items))
+	copy(queue, items)
+	for len(queue) > 0 {
+		item := queue[0]
+		queue = queue[1:]
+		result = append(result, model.Organization{
+			OrganizationCode: item.OrganizationCode,
+			Name:             item.Name,
+			Description:      item.Description,
+		})
+		queue = append(queue, item.Children...)
+	}
+	return result
 }
 
 // --- 내부 유틸리티 ---
