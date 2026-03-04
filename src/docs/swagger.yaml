@@ -144,6 +144,16 @@ definitions:
         description: 워크스페이스 ID (문자열로 받음)
         type: string
     type: object
+  model.AssignUserOrganizationsRequest:
+    properties:
+      organization_ids:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - organization_ids
+    type: object
   model.AssignWorkspaceRoleRequest:
     properties:
       roleId:
@@ -298,6 +308,23 @@ definitions:
     required:
     - menuIds
     - roleId
+    type: object
+  model.CreateOrganizationRequest:
+    properties:
+      description:
+        maxLength: 1000
+        type: string
+      name:
+        maxLength: 255
+        type: string
+      organization_code:
+        description: 비어있으면 자동 생성
+        type: string
+      parent_id:
+        description: nil = 최상위 조직
+        type: integer
+    required:
+    - name
     type: object
   model.CreateProjectRequest:
     properties:
@@ -700,6 +727,63 @@ definitions:
       resType:
         type: string
     type: object
+  model.Organization:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/model.Organization'
+        type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      organization_code:
+        type: string
+      parent:
+        allOf:
+        - $ref: '#/definitions/model.Organization'
+        description: 관계 정의 (API 응답 전용 - 필요 시 Preload)
+      parent_id:
+        type: integer
+      updated_at:
+        type: string
+      users:
+        items:
+          $ref: '#/definitions/model.User'
+        type: array
+    type: object
+  model.OrganizationTree:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/model.OrganizationTree'
+        type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      level:
+        type: integer
+      name:
+        type: string
+      organization_code:
+        type: string
+      parent_id:
+        type: integer
+      path:
+        description: '예: "/조직A/개발팀"'
+        type: string
+      updated_at:
+        type: string
+      user_count:
+        type: integer
+    type: object
   model.PolicyType:
     enum:
     - inline
@@ -965,6 +1049,21 @@ definitions:
       policy_doc:
         additionalProperties: true
         type: object
+    type: object
+  model.UpdateOrganizationRequest:
+    properties:
+      description:
+        maxLength: 1000
+        type: string
+      name:
+        maxLength: 255
+        type: string
+      organization_code:
+        description: 코드 수정 시 입력
+        type: string
+      parent_id:
+        description: 부모 변경 시 입력
+        type: integer
     type: object
   model.User:
     properties:
@@ -3378,6 +3477,241 @@ paths:
       summary: Get user menu tree by platform roles
       tags:
       - menus
+  /api/organizations:
+    get:
+      description: 전체 조직 목록을 조회합니다. tree=true이면 Tree 구조로 반환.
+      operationId: listOrganizations
+      parameters:
+      - description: 'Tree 구조 반환 여부 (기본: false)'
+        in: query
+        name: tree
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.OrganizationTree'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 목록 조회
+      tags:
+      - organizations
+    post:
+      consumes:
+      - application/json
+      description: 플랫폼 관리자가 조직을 생성합니다. parent_id가 없으면 최상위 조직 생성.
+      operationId: createOrganization
+      parameters:
+      - description: 조직 생성 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Organization'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 생성
+      tags:
+      - organizations
+  /api/organizations/code/{code}:
+    get:
+      description: 조직 코드로 조직 정보를 조회합니다.
+      operationId: getOrganizationByCode
+      parameters:
+      - description: '조직 코드 (예: 0101)'
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Organization'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 상세 조회 (코드)
+      tags:
+      - organizations
+  /api/organizations/id/{organizationId}:
+    delete:
+      description: 조직을 삭제합니다. 하위 조직 또는 소속 사용자가 있으면 삭제 불가.
+      operationId: deleteOrganization
+      parameters:
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 삭제
+      tags:
+      - organizations
+    get:
+      description: 조직 ID로 조직 정보를 조회합니다.
+      operationId: getOrganizationByID
+      parameters:
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Organization'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 상세 조회 (ID)
+      tags:
+      - organizations
+    put:
+      consumes:
+      - application/json
+      description: 조직 정보를 수정합니다. 부모 변경 시 하위 조직 코드 자동 재생성.
+      operationId: updateOrganization
+      parameters:
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      - description: 조직 수정 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 수정
+      tags:
+      - organizations
+  /api/organizations/id/{organizationId}/users:
+    get:
+      description: 특정 조직에 소속된 사용자 목록을 조회합니다.
+      operationId: getOrganizationUsers
+      parameters:
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.User'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 소속 사용자 조회
+      tags:
+      - organizations
   /api/permissions/mciam:
     post:
       consumes:
@@ -5790,6 +6124,108 @@ paths:
       summary: Update user
       tags:
       - users
+  /api/users/{userId}/organizations:
+    get:
+      description: 사용자가 소속된 조직 목록을 조회합니다.
+      operationId: getUserOrganizations
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Organization'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자 소속 조직 조회
+      tags:
+      - organizations
+    post:
+      consumes:
+      - application/json
+      description: 사용자를 하나 이상의 조직에 할당합니다 (다중 소속 가능).
+      operationId: assignUserOrganizations
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 조직 할당 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignUserOrganizationsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자-조직 할당
+      tags:
+      - organizations
+  /api/users/{userId}/organizations/{organizationId}:
+    delete:
+      description: 사용자를 특정 조직에서 제거합니다.
+      operationId: removeUserOrganization
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자-조직 매핑 제거
+      tags:
+      - organizations
   /api/users/id/{userId}:
     get:
       consumes:
