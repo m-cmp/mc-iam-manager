@@ -73,6 +73,19 @@ type UpdateOrganizationRequest struct {
 	OrganizationCode string `json:"organization_code"` // 코드 수정 시 입력
 }
 
+// OrganizationSeedItem YAML 시드 데이터 항목
+type OrganizationSeedItem struct {
+	OrganizationCode string                 `yaml:"organization_code"`
+	Name             string                 `yaml:"name"`
+	Description      string                 `yaml:"description"`
+	Children         []OrganizationSeedItem `yaml:"children,omitempty"`
+}
+
+// OrganizationSeedData YAML 최상위 구조
+type OrganizationSeedData struct {
+	Organizations []OrganizationSeedItem `yaml:"organizations"`
+}
+
 // AssignUserOrganizationsRequest 사용자-조직 할당 요청
 type AssignUserOrganizationsRequest struct {
 	OrganizationIDs []uint `json:"organization_ids" validate:"required,min=1"`
