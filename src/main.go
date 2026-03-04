@@ -94,6 +94,10 @@ func main() {
 		&mcmpapi.McmpApiServiceMeta{},
 		&model.MciamPermission{},
 		&model.MciamRoleMciamPermission{},
+		&model.Organization{},
+		&model.UserOrganization{},
+		&model.GroupPlatformRole{},
+		&model.GroupWorkspaceRole{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
@@ -124,6 +128,11 @@ func main() {
 	cspAccountHandler := handler.NewCspAccountHandler(db)
 	cspIdpConfigHandler := handler.NewCspIdpConfigHandler(db)
 	cspPolicyHandler := handler.NewCspPolicyHandler(db)
+
+	// 조직 핸들러 초기화
+	organizationHandler := handler.NewOrganizationHandler(db)
+	// 그룹 역할 핸들러 초기화
+	groupRoleHandler := handler.NewGroupRoleHandler(db)
 
 	// Echo 인스턴스 생성
 	e := echo.New()
@@ -205,6 +214,7 @@ func main() {
 		setup.POST("/initial-menus", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
 		setup.POST("/initial-menus2", menuHandler.RegisterMenusFromBody, middleware.PlatformAdminMiddleware)
 		setup.GET("/initial-role-menu-permission", adminHandler.InitializeMenuPermissions, middleware.PlatformAdminMiddleware)
+		setup.POST("/initial-organizations", organizationHandler.SetupInitialOrganizations, middleware.PlatformAdminMiddleware)
 	}
 
 	// 워크스페이스 라우트
@@ -430,6 +440,52 @@ func main() {
 		cspIdpConfigs.POST("/id/:configId/activate", cspIdpConfigHandler.ActivateCspIdpConfig, middleware.PlatformAdminMiddleware)
 		cspIdpConfigs.POST("/id/:configId/deactivate", cspIdpConfigHandler.DeactivateCspIdpConfig, middleware.PlatformAdminMiddleware)
 	}
+
+	// 조직 관리 라우트 (platformAdmin 전용)
+	organizations := api.Group("/organizations", middleware.PlatformAdminMiddleware)
+	{
+		organizations.POST("", organizationHandler.CreateOrganization)
+		organizations.GET("", organizationHandler.GetOrganizations)
+		organizations.GET("/id/:organizationId", organizationHandler.GetOrganizationByID)
+		organizations.GET("/code/:code", organizationHandler.GetOrganizationByCode)
+		organizations.PUT("/id/:organizationId", organizationHandler.UpdateOrganization)
+		organizations.DELETE("/id/:organizationId", organizationHandler.DeleteOrganization)
+		organizations.GET("/id/:organizationId/users", organizationHandler.GetOrganizationUsers)
+	}
+
+	// 사용자-조직 라우트 (users 그룹에 추가, platformAdmin 전용)
+	users.POST("/id/:userId/organizations", organizationHandler.AssignUserOrganizations, middleware.PlatformAdminMiddleware)
+	users.GET("/id/:userId/organizations", organizationHandler.GetUserOrganizations, middleware.PlatformAdminMiddleware)
+	users.DELETE("/id/:userId/organizations/:organizationId", organizationHandler.RemoveUserOrganization, middleware.PlatformAdminMiddleware)
+
+	// 그룹 관리 라우트 (/api/groups - organizations의 별칭, platformAdmin 전용)
+	// 주의: organizationId 파라미터 이름 유지 (기존 핸들러 호환)
+	groups := api.Group("/groups", middleware.PlatformAdminMiddleware)
+	{
+		groups.POST("", organizationHandler.CreateOrganization)
+		groups.GET("", organizationHandler.GetOrganizations)
+		groups.GET("/id/:organizationId", organizationHandler.GetOrganizationByID)
+		groups.GET("/code/:code", organizationHandler.GetOrganizationByCode)
+		groups.PUT("/id/:organizationId", organizationHandler.UpdateOrganization)
+		groups.DELETE("/id/:organizationId", organizationHandler.DeleteOrganization)
+		groups.GET("/id/:organizationId/users", organizationHandler.GetOrganizationUsers)
+
+		// 그룹 플랫폼 역할 관리 (DB + Keycloak)
+		groups.POST("/id/:groupId/platform-roles", groupRoleHandler.AssignGroupPlatformRole)
+		groups.GET("/id/:groupId/platform-roles", groupRoleHandler.GetGroupPlatformRoles)
+		groups.DELETE("/id/:groupId/platform-roles/:roleId", groupRoleHandler.RemoveGroupPlatformRole)
+
+		// 그룹-워크스페이스 매핑 관리 (DB 전용)
+		groups.POST("/id/:groupId/workspaces", groupRoleHandler.AssignGroupWorkspace)
+		groups.GET("/id/:groupId/workspaces", groupRoleHandler.GetGroupWorkspaces)
+		groups.PUT("/id/:groupId/workspaces/:workspaceId", groupRoleHandler.UpdateGroupWorkspaceRole)
+		groups.DELETE("/id/:groupId/workspaces/:workspaceId", groupRoleHandler.RemoveGroupWorkspaceRole)
+	}
+
+	// 사용자-그룹 라우트 (Keycloak 동기화 포함, platformAdmin 전용)
+	users.POST("/id/:userId/groups", groupRoleHandler.AssignUserGroups, middleware.PlatformAdminMiddleware)
+	users.GET("/id/:userId/groups", organizationHandler.GetUserOrganizations, middleware.PlatformAdminMiddleware)
+	users.DELETE("/id/:userId/groups/:groupId", groupRoleHandler.RemoveUserFromGroup, middleware.PlatformAdminMiddleware)
 
 	// CSP 정책 관리 라우트
 	cspPolicies := api.Group("/csp-policies", middleware.PlatformRoleMiddleware(middleware.Read))
