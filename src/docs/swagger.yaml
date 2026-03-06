@@ -123,6 +123,23 @@ definitions:
       version:
         type: string
     type: object
+  model.AssignGroupPlatformRoleRequest:
+    properties:
+      role_id:
+        type: integer
+    required:
+    - role_id
+    type: object
+  model.AssignGroupWorkspaceRequest:
+    properties:
+      role_id:
+        type: integer
+      workspace_id:
+        type: integer
+    required:
+    - role_id
+    - workspace_id
+    type: object
   model.AssignRoleRequest:
     properties:
       roleId:
@@ -143,6 +160,16 @@ definitions:
       workspaceId:
         description: 워크스페이스 ID (문자열로 받음)
         type: string
+    type: object
+  model.AssignUserGroupsRequest:
+    properties:
+      group_ids:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - group_ids
     type: object
   model.AssignUserOrganizationsRequest:
     properties:
@@ -192,6 +219,17 @@ definitions:
     - AuthMethodOIDC
     - AuthMethodSAML
     - AuthMethodSecretKey
+  model.ChangeMyPasswordRequest:
+    properties:
+      currentPassword:
+        type: string
+      newPassword:
+        minLength: 8
+        type: string
+    required:
+    - currentPassword
+    - newPassword
+    type: object
   model.CreateCspAccountRequest:
     properties:
       account_info:
@@ -549,6 +587,36 @@ definitions:
       workspaceId:
         type: string
       workspaceName:
+        type: string
+    type: object
+  model.GroupPlatformRoleResponse:
+    properties:
+      created_at:
+        type: string
+      group_id:
+        type: integer
+      group_name:
+        type: string
+      role_id:
+        type: integer
+      role_name:
+        type: string
+    type: object
+  model.GroupWorkspaceRoleResponse:
+    properties:
+      created_at:
+        type: string
+      group_id:
+        type: integer
+      group_name:
+        type: string
+      role_id:
+        type: integer
+      role_name:
+        type: string
+      workspace_id:
+        type: integer
+      workspace_name:
         type: string
     type: object
   model.ImportApiFramework:
@@ -1049,6 +1117,13 @@ definitions:
       policy_doc:
         additionalProperties: true
         type: object
+    type: object
+  model.UpdateGroupWorkspaceRoleRequest:
+    properties:
+      role_id:
+        type: integer
+    required:
+    - role_id
     type: object
   model.UpdateOrganizationRequest:
     properties:
@@ -2588,6 +2663,288 @@ paths:
       summary: Sync CSP policies from cloud
       tags:
       - csp-policies
+  /api/groups/id/{groupId}/platform-roles:
+    get:
+      description: 그룹에 할당된 플랫폼 역할 목록을 조회합니다.
+      operationId: getGroupPlatformRoles
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.GroupPlatformRoleResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹 Platform Role 목록 조회
+      tags:
+      - groups
+    post:
+      consumes:
+      - application/json
+      description: 그룹에 플랫폼 역할을 할당합니다. DB + Keycloak 이중 관리.
+      operationId: assignGroupPlatformRole
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 역할 할당 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignGroupPlatformRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹에 Platform Role 할당
+      tags:
+      - groups
+  /api/groups/id/{groupId}/platform-roles/{roleId}:
+    delete:
+      description: 그룹에 할당된 플랫폼 역할을 해제합니다. DB + Keycloak 동시 제거.
+      operationId: removeGroupPlatformRole
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 역할 ID
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹 Platform Role 해제
+      tags:
+      - groups
+  /api/groups/id/{groupId}/workspaces:
+    get:
+      description: 그룹에 매핑된 워크스페이스 및 역할 목록을 조회합니다.
+      operationId: getGroupWorkspaces
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.GroupWorkspaceRoleResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹 워크스페이스 매핑 목록 조회
+      tags:
+      - groups
+    post:
+      consumes:
+      - application/json
+      description: 그룹을 워크스페이스에 매핑하고 역할을 지정합니다. DB 전용 관리.
+      operationId: assignGroupWorkspace
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 워크스페이스 매핑 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignGroupWorkspaceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹-워크스페이스 매핑
+      tags:
+      - groups
+  /api/groups/id/{groupId}/workspaces/{workspaceId}:
+    delete:
+      description: 그룹-워크스페이스 매핑을 제거합니다.
+      operationId: removeGroupWorkspaceRole
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 워크스페이스 ID
+        in: path
+        name: workspaceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹-워크스페이스 매핑 제거
+      tags:
+      - groups
+    put:
+      consumes:
+      - application/json
+      description: 그룹-워크스페이스 매핑의 역할을 변경합니다.
+      operationId: updateGroupWorkspaceRole
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 워크스페이스 ID
+        in: path
+        name: workspaceId
+        required: true
+        type: integer
+      - description: 역할 변경 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateGroupWorkspaceRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹 워크스페이스 역할 변경
+      tags:
+      - groups
   /api/initial-admin:
     post:
       consumes:
@@ -5949,6 +6306,30 @@ paths:
       summary: Check user roles
       tags:
       - admin
+  /api/setup/initial-organizations:
+    post:
+      description: YAML 시드 파일에서 기본 조직 구조(MZC + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.
+      operationId: setupInitialOrganizations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 기본 조직 초기화
+      tags:
+      - organizations
   /api/setup/initial-role-menu-permission:
     get:
       consumes:
@@ -6262,6 +6643,79 @@ paths:
       summary: Get user by ID
       tags:
       - users
+  /api/users/id/{userId}/groups:
+    post:
+      consumes:
+      - application/json
+      description: 사용자를 하나 이상의 그룹에 할당합니다. DB + Keycloak 그룹 동기화.
+      operationId: assignUserGroups
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 그룹 할당 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignUserGroupsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자를 그룹에 할당 (Keycloak 동기화 포함)
+      tags:
+      - groups
+  /api/users/id/{userId}/groups/{groupId}:
+    delete:
+      description: 사용자를 특정 그룹에서 제거합니다. DB + Keycloak 그룹 동기화.
+      operationId: removeUserFromGroup
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자를 그룹에서 제거 (Keycloak 동기화 포함)
+      tags:
+      - groups
   /api/users/id/{userId}/password:
     put:
       consumes:
@@ -6525,6 +6979,50 @@ paths:
       security:
       - BearerAuth: []
       summary: List all users
+      tags:
+      - users
+  /api/users/me/password:
+    put:
+      consumes:
+      - application/json
+      description: Change the authenticated user's own password. Requires current
+        password for verification.
+      operationId: changeMyPassword
+      parameters:
+      - description: Current and New Password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ChangeMyPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Change my password
       tags:
       - users
   /api/users/menus-tree/list:
