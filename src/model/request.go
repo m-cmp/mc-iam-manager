@@ -277,3 +277,9 @@ type SignupRequest struct {
 type ResetPasswordRequest struct {
 	NewPassword string `json:"newPassword" validate:"required,min=8"`
 }
+
+// ChangeMyPasswordRequest represents the user's own password change request
+type ChangeMyPasswordRequest struct {
+	CurrentPassword string `json:"currentPassword" validate:"required"`
+	NewPassword     string `json:"newPassword" validate:"required,min=8"`
+}
