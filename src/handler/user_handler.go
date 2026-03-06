@@ -338,6 +338,69 @@ func (h *UserHandler) ResetUserPassword(c echo.Context) error {
 	})
 }
 
+// ChangeMyPassword godoc
+// @Summary Change my password
+// @Description Change the authenticated user's own password. Requires current password for verification.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param request body model.ChangeMyPasswordRequest true "Current and New Password"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/me/password [put]
+// @Id changeMyPassword
+func (h *UserHandler) ChangeMyPassword(c echo.Context) error {
+	// 토큰에서 kcUserId 추출
+	kcUserIdVal := c.Get("kcUserId")
+	if kcUserIdVal == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+	kcUserID, ok := kcUserIdVal.(string)
+	if !ok || kcUserID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	// 요청 바인딩
+	var req model.ChangeMyPasswordRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	}
+
+	// 유효성 검증
+	if err := utils.ValidateStruct(req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error":  "Validation failed",
+			"fields": utils.FormatValidationErrorMap(err),
+		})
+	}
+
+	// 현재 패스워드 확인: Keycloak 로그인 시도
+	ks := service.NewKeycloakService()
+	user, err := h.userService.GetUserByKcID(c.Request().Context(), kcUserID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to retrieve user"})
+	}
+	_, err = ks.Login(c.Request().Context(), user.Username, req.CurrentPassword)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Current password is incorrect"})
+	}
+
+	// 새 패스워드 설정
+	err = h.userService.ResetUserPassword(c.Request().Context(), kcUserID, req.NewPassword)
+	if err != nil {
+		log.Printf("[ERROR] ChangeMyPassword failed: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to change password"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "Password successfully changed",
+	})
+}
+
 // UpdateUser godoc
 // @Summary Update user
 // @Description Update the details of an existing user.
