@@ -289,6 +289,38 @@ func (r *MenuRepository) CreateRoleMenuMappings(mappings []*model.RoleMenuMappin
 	return r.db.Create(mappings).Error
 }
 
+// CreateMenuWithRoleMappings 메뉴 생성과 역할 매핑을 하나의 트랜잭션으로 처리
+func (r *MenuRepository) CreateMenuWithRoleMappings(menu *model.Menu, roleIDs []uint) ([]*model.RoleMenuMapping, error) {
+	var createdMappings []*model.RoleMenuMapping
+
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		// 1. 메뉴 생성
+		if err := tx.Create(menu).Error; err != nil {
+			return fmt.Errorf("메뉴 생성 실패: %w", err)
+		}
+
+		// 2. 역할 매핑 생성 (중복 시 기존 레코드 반환)
+		for _, roleID := range roleIDs {
+			mapping := &model.RoleMenuMapping{
+				RoleID: roleID,
+				MenuID: menu.ID,
+			}
+			if err := tx.Where("role_id = ? AND menu_id = ?", roleID, menu.ID).
+				FirstOrCreate(mapping).Error; err != nil {
+				return fmt.Errorf("역할-메뉴 매핑 생성 실패 (roleId=%d): %w", roleID, err)
+			}
+			createdMappings = append(createdMappings, mapping)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return createdMappings, nil
+}
+
 // DeleteMapping 역할-메뉴 매핑 삭제
 func (r *MenuRepository) DeleteRoleMenuMapping(mappings []*model.RoleMenuMapping) error {
 	query := r.db.Delete(mappings)

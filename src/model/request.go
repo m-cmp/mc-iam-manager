@@ -124,6 +124,7 @@ type CreateMenuRequest struct {
 	IsAction    bool   `json:"isAction"`
 	Priority    string `json:"priority"`
 	MenuNumber  string `json:"menuNumber"`
+	RoleIDs     []uint `json:"roleIds,omitempty"` // 생성과 동시에 매핑할 역할 ID 목록 (platform_admin은 항상 자동 매핑)
 }
 type CreateMenuRequests struct {
 	Menus []CreateMenuRequest `json:"menus" validate:"required,dive"`
