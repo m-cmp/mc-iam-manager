@@ -283,13 +283,13 @@ func (s *MenuService) Create(req *model.CreateMenuRequest) error {
 
 // CreateWithRoleMappings 메뉴 생성 + 역할 매핑 (platform_admin 자동 포함)
 func (s *MenuService) CreateWithRoleMappings(req *model.CreateMenuRequest) (*model.CreateMenuResponse, error) {
-	// 1. platform_admin 역할 조회
-	adminRole, err := s.roleRepo.FindRoleByRoleName("platform_admin", constants.RoleTypePlatform)
+	// 1. admin(platform_admin) 역할 조회
+	adminRole, err := s.roleRepo.FindRoleByRoleName("admin", constants.RoleTypePlatform)
 	if err != nil {
-		return nil, fmt.Errorf("platform_admin 역할 조회 실패: %w", err)
+		return nil, fmt.Errorf("admin 역할 조회 실패: %w", err)
 	}
 	if adminRole == nil {
-		return nil, fmt.Errorf("platform_admin 역할을 찾을 수 없습니다")
+		return nil, fmt.Errorf("admin 역할을 찾을 수 없습니다")
 	}
 
 	// 2. 매핑할 역할 ID 목록 구성 (platform_admin 자동 포함, 중복 제거)
