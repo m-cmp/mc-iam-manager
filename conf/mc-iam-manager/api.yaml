@@ -971,6 +971,10 @@ serviceActions:
       method: delete
       resourcePath: /api/projects/unassign/workspaces
       description: "Workspace에서 Project 할당 해제"
+    changeMyPassword:
+      method: put
+      resourcePath: /api/users/me/password
+      description: "Change the authenticated user's own password. Requires current password for verification."
 
   mc-infra-manager:
     Lookupspeclist:
