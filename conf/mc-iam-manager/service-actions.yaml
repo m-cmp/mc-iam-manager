@@ -333,7 +333,7 @@ serviceActions:
         _meta:
             version: 0.3.0
             repository: https://github.com/m-cmp/mc-iam-manager
-            generatedAt: "2026-03-03T01:56:15Z"
+            generatedAt: "2026-03-11T06:09:51Z"
         ResetUserPassword:
             method: put
             resourcePath: /api/users/id/{userId}/password
@@ -370,6 +370,14 @@ serviceActions:
             method: post
             resourcePath: /api/projects/assign/workspaces
             description: 프로젝트에 워크스페이스를 연결합니다.
+        assignGroupPlatformRole:
+            method: post
+            resourcePath: /api/groups/id/{groupId}/platform-roles
+            description: 그룹에 플랫폼 역할을 할당합니다. DB + Keycloak 이중 관리.
+        assignGroupWorkspace:
+            method: post
+            resourcePath: /api/groups/id/{groupId}/workspaces
+            description: 그룹을 워크스페이스에 매핑하고 역할을 지정합니다. DB 전용 관리.
         assignMciamPermissionToRole:
             method: post
             resourcePath: /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}
@@ -382,6 +390,10 @@ serviceActions:
             method: post
             resourcePath: /api/roles/id/{roleId}/assign
             description: Assign a role to a user
+        assignUserGroups:
+            method: post
+            resourcePath: /api/users/id/{userId}/groups
+            description: 사용자를 하나 이상의 그룹에 할당합니다. DB + Keycloak 그룹 동기화.
         assignUserOrganizations:
             method: post
             resourcePath: /api/users/{userId}/organizations
@@ -394,6 +406,10 @@ serviceActions:
             method: post
             resourcePath: /api/csp-policies/attach
             description: Attach a CSP policy to a CSP role
+        changeMyPassword:
+            method: put
+            resourcePath: /api/users/me/password
+            description: Change the authenticated user's own password. Requires current password for verification.
         checkUserRoles:
             method: get
             resourcePath: /api/setup/check-user-roles
@@ -570,6 +586,14 @@ serviceActions:
             method: get
             resourcePath: /api/roles/csp-roles/id/:roleId
             description: Get a mapping between role and CSP role
+        getGroupPlatformRoles:
+            method: get
+            resourcePath: /api/groups/id/{groupId}/platform-roles
+            description: 그룹에 할당된 플랫폼 역할 목록을 조회합니다.
+        getGroupWorkspaces:
+            method: get
+            resourcePath: /api/groups/id/{groupId}/workspaces
+            description: 그룹에 매핑된 워크스페이스 및 역할 목록을 조회합니다.
         getMciamPermissionByID:
             method: get
             resourcePath: /api/permissions/mciam/id/{id}
@@ -914,6 +938,14 @@ serviceActions:
             method: delete
             resourcePath: /api/roles/unassign/csp-roles
             description: Delete a mapping between workspace role and CSP role
+        removeGroupPlatformRole:
+            method: delete
+            resourcePath: /api/groups/id/{groupId}/platform-roles/{roleId}
+            description: 그룹에 할당된 플랫폼 역할을 해제합니다. DB + Keycloak 동시 제거.
+        removeGroupWorkspaceRole:
+            method: delete
+            resourcePath: /api/groups/id/{groupId}/workspaces/{workspaceId}
+            description: 그룹-워크스페이스 매핑을 제거합니다.
         removeMciamPermissionFromRole:
             method: delete
             resourcePath: /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}
@@ -930,6 +962,10 @@ serviceActions:
             method: delete
             resourcePath: /api/roles/id/{roleId}/unassign
             description: Remove a role from a user
+        removeUserFromGroup:
+            method: delete
+            resourcePath: /api/users/id/{userId}/groups/{groupId}
+            description: 사용자를 특정 그룹에서 제거합니다. DB + Keycloak 그룹 동기화.
         removeUserFromWorkspace:
             method: delete
             resourcePath: /api/workspaces/{id}/users/{userId}
@@ -954,6 +990,10 @@ serviceActions:
             method: post
             resourcePath: /api/initial-admin
             description: Creates the initial platform admin user with necessary permissions. platform admin 생성인데
+        setupInitialOrganizations:
+            method: post
+            resourcePath: /api/setup/initial-organizations
+            description: YAML 시드 파일에서 기본 조직 구조(MZC + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.
         syncCspPolicies:
             method: post
             resourcePath: /api/csp-policies/sync
@@ -990,6 +1030,10 @@ serviceActions:
             method: put
             resourcePath: /api/roles/csp-roles/id/{roleId}
             description: Update role information
+        updateGroupWorkspaceRole:
+            method: put
+            resourcePath: /api/groups/id/{groupId}/workspaces/{workspaceId}
+            description: 그룹-워크스페이스 매핑의 역할을 변경합니다.
         updateMapping:
             method: put
             resourcePath: /api/mcmp-api-permission-action-mappings/permissions/{permissionId}/actions/{actionId}
