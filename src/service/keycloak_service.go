@@ -70,6 +70,8 @@ type KeycloakService interface {
 	CreateRealmRoleAndWait(ctx context.Context, roleName string) error
 	// RemoveRealmRoleFromUser removes a realm role from a user
 	RemoveRealmRoleFromUser(ctx context.Context, kcUserId, roleName string) error
+	// IsRealmRoleAssignedToUser checks if a realm role is already assigned to a user
+	IsRealmRoleAssignedToUser(ctx context.Context, kcUserId, roleName string) (bool, error)
 	// IssueWorkspaceTicket 워크스페이스 티켓을 발행합니다.
 	IssueWorkspaceTicket(ctx context.Context, kcUserId string, workspaceID uint) (string, map[string]interface{}, error)
 	// 기본 Role 정의
@@ -1552,6 +1554,30 @@ func (s *keycloakService) CreateRealmRoleAndWait(ctx context.Context, roleName s
 	}
 
 	return fmt.Errorf("realm role %s was not available after %d attempts", roleName, maxRetries)
+}
+
+// IsRealmRoleAssignedToUser checks if a specific realm role is assigned to the given user
+func (s *keycloakService) IsRealmRoleAssignedToUser(ctx context.Context, kcUserId, roleName string) (bool, error) {
+	if config.KC == nil || config.KC.Client == nil {
+		return false, fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	roles, err := config.KC.Client.GetRealmRolesByUserID(ctx, token.AccessToken, config.KC.Realm, kcUserId)
+	if err != nil {
+		return false, fmt.Errorf("failed to get realm roles for user %s: %w", kcUserId, err)
+	}
+
+	for _, role := range roles {
+		if role.Name != nil && *role.Name == roleName {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // AddRealmRoleToGroup adds a realm role to a Keycloak group (creates group if not exists)
