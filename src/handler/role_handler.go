@@ -1458,7 +1458,29 @@ func (h *RoleHandler) AssignPlatformRole(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 할당 확인 실패: %v", err)})
 	}
 	if isAssignedPlatformRole {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "이미 할당된 역할입니다"})
+		// DB에는 이미 있음 — Keycloak 동기화 상태 확인 (idempotent 처리)
+		isKcAssigned, err := h.keycloakService.IsRealmRoleAssignedToUser(c.Request().Context(), user.KcId, req.RoleName)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("키클로크 역할 확인 실패: %v", err)})
+		}
+		if isKcAssigned {
+			// DB + Keycloak 모두 할당됨 — idempotent 성공 반환
+			return c.JSON(http.StatusOK, map[string]string{"message": "플랫폼 역할이 성공적으로 할당되었습니다"})
+		}
+		// DB에는 있지만 Keycloak에 없음 — Keycloak 동기화
+		log.Printf("[WARN] Platform role in DB but missing in Keycloak for user %s, role %s — syncing", user.KcId, req.RoleName)
+		roleExists, err := h.keycloakService.CheckRealmRoleExists(c.Request().Context(), req.RoleName)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("키클로크 역할 확인 실패: %v", err)})
+		}
+		if !roleExists {
+			if err := h.keycloakService.CreateRealmRoleAndWait(c.Request().Context(), req.RoleName); err != nil {
+				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("키클로크 역할 생성 실패: %v", err)})
+			}
+		}
+		if err := h.keycloakService.AssignRealmRoleToUser(c.Request().Context(), user.KcId, req.RoleName); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("키클로크 역할 할당 실패: %v", err)})
+		}
 	} else {
 		// DB에 역할 할당
 		if err := h.roleService.AssignPlatformRole(userID, roleID); err != nil {
