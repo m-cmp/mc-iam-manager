@@ -144,6 +144,14 @@ func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 		}
 		platformRoleIDs = append(platformRoleIDs, strconv.FormatUint(uint64(role.ID), 10))
 	}
+	// JWT 역할이 DB에 없으면(예: platformAdmin) admin 역할로 자동 fallback
+	if len(platformRoleIDs) == 0 && len(userPlatformRoles) > 0 {
+		adminRole, err := h.roleService.GetRoleByName("admin", constants.RoleTypePlatform)
+		if err == nil && adminRole != nil {
+			c.Logger().Debug("Falling back to admin role for unrecognized platform roles: %v", userPlatformRoles)
+			platformRoleIDs = append(platformRoleIDs, strconv.FormatUint(uint64(adminRole.ID), 10))
+		}
+	}
 	req.RoleIDs = platformRoleIDs
 
 	menuList, err := h.menuService.MenuList(req)

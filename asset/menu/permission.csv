@@ -6,6 +6,8 @@ mc-web-console,companyinfo,TRUE,,,,
 mc-web-console,users,TRUE,,,,
 mc-web-console,approvals,TRUE,,,,
 mc-web-console,accesscontrols,TRUE,,,,
+mc-web-console,groups,TRUE,,,,
+mc-web-console,menus,TRUE,,,,
 mc-web-console,environment,TRUE,,,TRUE,TRUE
 mc-web-console,cloudsps,TRUE,,,TRUE,
 mc-web-console,cloudoverview,TRUE,,,TRUE,
