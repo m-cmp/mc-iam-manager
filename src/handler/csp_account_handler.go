@@ -196,9 +196,10 @@ func (h *CspAccountHandler) DeleteCspAccount(c echo.Context) error {
 // @Accept json
 // @Produce json
 // @Param accountId path string true "Account ID"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
+// @Failure 422 {object} map[string]interface{}
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/csp-accounts/id/{accountId}/validate [post]
@@ -213,10 +214,16 @@ func (h *CspAccountHandler) ValidateCspAccount(c echo.Context) error {
 		if err.Error() == fmt.Sprintf("CSP account not found with ID: %d", accountID) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Validation failed: %v", err)})
+		return c.JSON(http.StatusUnprocessableEntity, map[string]interface{}{
+			"message": fmt.Sprintf("Validation failed: %v", err),
+			"valid":   false,
+		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"message": "CSP account is valid"})
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "CSP account is valid",
+		"valid":   true,
+	})
 }
 
 // ActivateCspAccount godoc
