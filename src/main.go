@@ -494,6 +494,10 @@ func main() {
 	users.PUT("/id/:userId/groups", organizationHandler.ReplaceUserGroups, middleware.PlatformAdminMiddleware)
 	users.DELETE("/id/:userId/groups/:groupId", groupRoleHandler.RemoveUserFromGroup, middleware.PlatformAdminMiddleware)
 
+	// 사용자 유효 권한 조회 라우트 (그룹 기반 역할 상속 포함, platformAdmin 전용)
+	users.GET("/id/:userId/effective-platform-roles", groupRoleHandler.GetUserEffectivePlatformRoles, middleware.PlatformAdminMiddleware)
+	users.GET("/id/:userId/access-summary", groupRoleHandler.GetUserAccessSummary, middleware.PlatformAdminMiddleware)
+
 	// CSP 정책 관리 라우트
 	cspPolicies := api.Group("/csp-policies", middleware.PlatformRoleMiddleware(middleware.Read))
 	{
