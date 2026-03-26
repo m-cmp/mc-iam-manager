@@ -42,7 +42,7 @@ func (s *OrganizationService) CreateOrganization(req *model.CreateOrganizationRe
 		parent, err := s.orgRepo.FindByID(*req.ParentID)
 		if err != nil {
 			if errors.Is(err, repository.ErrOrganizationNotFound) {
-				return nil, fmt.Errorf("parent organization not found: %d", *req.ParentID)
+				return nil, fmt.Errorf("parent organization not found: %d: %w", *req.ParentID, repository.ErrOrganizationNotFound)
 			}
 			return nil, err
 		}
@@ -116,6 +116,11 @@ func (s *OrganizationService) GetOrganizations(tree bool) (interface{}, error) {
 
 	// 평면 목록을 Tree 구조로 변환
 	return buildOrganizationTree(flatList), nil
+}
+
+// SearchOrganizations name/code 필터로 조직 목록 검색 (평면 목록 반환)
+func (s *OrganizationService) SearchOrganizations(name, code string) ([]model.Organization, error) {
+	return s.orgRepo.FindByFilter(name, code)
 }
 
 // buildOrganizationTree 평면 목록을 Tree 구조로 변환 (내부 함수)
