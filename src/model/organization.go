@@ -91,6 +91,17 @@ type AssignUserOrganizationsRequest struct {
 	OrganizationIDs []uint `json:"organization_ids" validate:"required,min=1"`
 }
 
+// MoveOrganizationRequest 조직 이동 요청 (RQ-M2-UG-035)
+type MoveOrganizationRequest struct {
+	NewParentID *uint `json:"new_parent_id"` // nil = 최상위로 이동
+}
+
+// OrganizationDeletableResponse 조직 삭제 가능 여부 응답 (RQ-M2-UG-036)
+type OrganizationDeletableResponse struct {
+	Deletable bool   `json:"deletable"`
+	Reason    string `json:"reason,omitempty"`
+}
+
 // OrganizationResponse 조직 단건 응답
 type OrganizationResponse struct {
 	ID               uint      `json:"id"`
