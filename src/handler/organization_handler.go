@@ -86,16 +86,30 @@ func (h *OrganizationHandler) CreateOrganization(c echo.Context) error {
 
 // GetOrganizations godoc
 // @Summary 조직 목록 조회
-// @Description 전체 조직 목록을 조회합니다. tree=true이면 Tree 구조로 반환.
+// @Description 전체 조직 목록을 조회합니다. tree=true이면 Tree 구조로 반환. name/code로 검색 가능 (검색 시 tree 파라미터 무시).
 // @Tags organizations
 // @Produce json
 // @Param tree query bool false "Tree 구조 반환 여부 (기본: false)"
+// @Param name query string false "조직명 검색 (부분 일치, ILIKE)"
+// @Param code query string false "조직 코드 검색 (부분 일치, ILIKE)"
 // @Success 200 {array} model.OrganizationTree
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/organizations [get]
 // @Id listOrganizations
 func (h *OrganizationHandler) GetOrganizations(c echo.Context) error {
+	nameParam := c.QueryParam("name")
+	codeParam := c.QueryParam("code")
+
+	// 검색 파라미터가 있으면 검색 모드 (tree 무시)
+	if nameParam != "" || codeParam != "" {
+		result, err := h.orgService.SearchOrganizations(nameParam, codeParam)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusOK, result)
+	}
+
 	treeParam := c.QueryParam("tree")
 	tree := treeParam == "true"
 
@@ -322,7 +336,10 @@ func (h *OrganizationHandler) RemoveUserOrganization(c echo.Context) error {
 	}
 
 	if err := h.orgService.RemoveUserFromOrganization(uint(userID), uint(orgID)); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		if errors.Is(err, repository.ErrUserOrganizationNotFound) {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자가 해당 조직에 소속되어 있지 않습니다"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	return c.JSON(http.StatusOK, map[string]string{"message": "사용자가 조직에서 제거되었습니다."})
 }
