@@ -40,7 +40,7 @@ func (s *GroupRoleService) AssignGroupPlatformRole(ctx context.Context, groupID,
 	// 2. Role 이름 조회
 	var roleMaster model.RoleMaster
 	if err := s.db.First(&roleMaster, roleID).Error; err != nil {
-		return fmt.Errorf("role not found: %w", err)
+		return repository.ErrRoleMasterNotFound
 	}
 
 	// 3. DB에 저장
@@ -63,6 +63,14 @@ func (s *GroupRoleService) GetGroupPlatformRoles(groupID uint) ([]model.GroupPla
 	return s.groupRoleRepo.FindGroupPlatformRoles(groupID)
 }
 
+// GetAvailableGroupPlatformRoles 그룹에 미할당된 플랫폼 역할 목록 조회
+func (s *GroupRoleService) GetAvailableGroupPlatformRoles(groupID uint) ([]model.AvailablePlatformRoleResponse, error) {
+	if _, err := s.orgRepo.FindByID(groupID); err != nil {
+		return nil, err
+	}
+	return s.groupRoleRepo.FindAvailableGroupPlatformRoles(groupID)
+}
+
 // RemoveGroupPlatformRole 그룹에서 platform role 해제 (DB + Keycloak)
 func (s *GroupRoleService) RemoveGroupPlatformRole(ctx context.Context, groupID, roleID uint) error {
 	// 1. 그룹 조회
@@ -74,7 +82,7 @@ func (s *GroupRoleService) RemoveGroupPlatformRole(ctx context.Context, groupID,
 	// 2. Role 이름 조회
 	var roleMaster model.RoleMaster
 	if err := s.db.First(&roleMaster, roleID).Error; err != nil {
-		return fmt.Errorf("role not found: %w", err)
+		return repository.ErrRoleMasterNotFound
 	}
 
 	// 3. DB에서 삭제

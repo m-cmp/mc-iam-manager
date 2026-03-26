@@ -477,6 +477,7 @@ func main() {
 		// 그룹 플랫폼 역할 관리 (DB + Keycloak)
 		groups.POST("/id/:groupId/platform-roles", groupRoleHandler.AssignGroupPlatformRole)
 		groups.GET("/id/:groupId/platform-roles", groupRoleHandler.GetGroupPlatformRoles)
+		groups.GET("/id/:groupId/platform-roles/available", groupRoleHandler.GetAvailableGroupPlatformRoles)
 		groups.DELETE("/id/:groupId/platform-roles/:roleId", groupRoleHandler.RemoveGroupPlatformRole)
 
 		// 그룹-워크스페이스 매핑 관리 (DB 전용)
