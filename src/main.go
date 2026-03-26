@@ -486,6 +486,7 @@ func main() {
 	// 사용자-그룹 라우트 (Keycloak 동기화 포함, platformAdmin 전용)
 	users.POST("/id/:userId/groups", groupRoleHandler.AssignUserGroups, middleware.PlatformAdminMiddleware)
 	users.GET("/id/:userId/groups", organizationHandler.GetUserOrganizations, middleware.PlatformAdminMiddleware)
+	users.PUT("/id/:userId/groups", organizationHandler.ReplaceUserGroups, middleware.PlatformAdminMiddleware)
 	users.DELETE("/id/:userId/groups/:groupId", groupRoleHandler.RemoveUserFromGroup, middleware.PlatformAdminMiddleware)
 
 	// CSP 정책 관리 라우트

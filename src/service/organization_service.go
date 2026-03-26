@@ -279,9 +279,19 @@ func (s *OrganizationService) RemoveUserFromOrganization(userID, orgID uint) err
 	return s.orgRepo.RemoveUserFromOrganization(userID, orgID)
 }
 
-// GetUserOrganizations 사용자가 소속된 조직 목록 조회
-func (s *OrganizationService) GetUserOrganizations(userID uint) ([]model.Organization, error) {
+// GetUserOrganizations 사용자가 소속된 조직 목록 조회 (계층 정보 포함)
+func (s *OrganizationService) GetUserOrganizations(userID uint) ([]model.OrganizationTree, error) {
 	return s.orgRepo.FindUserOrganizations(userID)
+}
+
+// ReplaceUserOrganizations 사용자 조직 전체 교체 (기존 제거 후 신규 할당)
+func (s *OrganizationService) ReplaceUserOrganizations(userID uint, orgIDs []uint) error {
+	for _, orgID := range orgIDs {
+		if _, err := s.orgRepo.FindByID(orgID); err != nil {
+			return fmt.Errorf("organization not found: %d", orgID)
+		}
+	}
+	return s.orgRepo.ReplaceUserOrganizations(userID, orgIDs)
 }
 
 // GetOrganizationUsers 조직에 소속된 사용자 목록 조회
