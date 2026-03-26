@@ -477,11 +477,13 @@ func main() {
 		// 그룹 플랫폼 역할 관리 (DB + Keycloak)
 		groups.POST("/id/:groupId/platform-roles", groupRoleHandler.AssignGroupPlatformRole)
 		groups.GET("/id/:groupId/platform-roles", groupRoleHandler.GetGroupPlatformRoles)
+		groups.GET("/id/:groupId/platform-roles/available", groupRoleHandler.GetAvailableGroupPlatformRoles)
 		groups.DELETE("/id/:groupId/platform-roles/:roleId", groupRoleHandler.RemoveGroupPlatformRole)
 
 		// 그룹-워크스페이스 매핑 관리 (DB 전용)
 		groups.POST("/id/:groupId/workspaces", groupRoleHandler.AssignGroupWorkspace)
 		groups.GET("/id/:groupId/workspaces", groupRoleHandler.GetGroupWorkspaces)
+		groups.GET("/id/:groupId/workspaces/available", groupRoleHandler.GetAvailableGroupWorkspaces)
 		groups.PUT("/id/:groupId/workspaces/:workspaceId", groupRoleHandler.UpdateGroupWorkspaceRole)
 		groups.DELETE("/id/:groupId/workspaces/:workspaceId", groupRoleHandler.RemoveGroupWorkspaceRole)
 	}
