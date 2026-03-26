@@ -334,7 +334,11 @@ func main() {
 		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.PUT("/id/:userId/password", userHandler.ResetUserPassword, middleware.PlatformRoleMiddleware(middleware.Manage))
-		users.PUT("/me/password", userHandler.ChangeMyPassword) // 사용자 본인 패스워드 변경
+		users.PUT("/me/password", userHandler.ChangeMyPassword)                                            // 사용자 본인 패스워드 변경
+		users.PUT("/id/:userId/deactivate", userHandler.DeactivateUser, middleware.PlatformAdminMiddleware) // 사용자 계정 비활성화
+		users.PUT("/id/:userId/activate", userHandler.ActivateUser, middleware.PlatformAdminMiddleware)     // 사용자 계정 재활성화
+		users.POST("/me/withdrawal", userHandler.RequestWithdrawal)                                        // 탈퇴 신청
+		users.PUT("/id/:userId/withdraw", userHandler.ProcessWithdrawal, middleware.PlatformAdminMiddleware) // 탈퇴 처리
 
 		users.POST("/menus-tree/list", menuHandler.ListUserMenuTree)
 		users.POST("/menus/list", menuHandler.ListUserMenu)
