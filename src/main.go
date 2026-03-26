@@ -470,6 +470,9 @@ func main() {
 		groups.PUT("/id/:organizationId", organizationHandler.UpdateOrganization)
 		groups.DELETE("/id/:organizationId", organizationHandler.DeleteOrganization)
 		groups.GET("/id/:organizationId/users", organizationHandler.GetOrganizationUsers)
+		// 그룹 사용자 관리 (그룹 입장, Keycloak 동기화 포함)
+		groups.POST("/id/:groupId/users", groupRoleHandler.AssignGroupUsers)
+		groups.DELETE("/id/:groupId/users/:userId", groupRoleHandler.RemoveGroupUser)
 
 		// 그룹 플랫폼 역할 관리 (DB + Keycloak)
 		groups.POST("/id/:groupId/platform-roles", groupRoleHandler.AssignGroupPlatformRole)

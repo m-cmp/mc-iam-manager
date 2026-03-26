@@ -277,6 +277,85 @@ func (h *GroupRoleHandler) RemoveGroupWorkspaceRole(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "그룹-워크스페이스 매핑이 제거되었습니다."})
 }
 
+// AssignGroupUsers godoc
+// @Summary 그룹에 사용자 일괄 할당 (Keycloak 동기화 포함)
+// @Description 그룹에 사용자 목록을 일괄 할당합니다. DB + Keycloak 그룹 동기화.
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param groupId path int true "그룹 ID"
+// @Param body body model.AssignGroupUsersRequest true "사용자 일괄 할당 요청"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/groups/id/{groupId}/users [post]
+// @Id assignGroupUsers
+func (h *GroupRoleHandler) AssignGroupUsers(c echo.Context) error {
+	groupID, err := strconv.ParseUint(c.Param("groupId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid group ID"})
+	}
+
+	var req model.AssignGroupUsersRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	}
+	if err := c.Validate(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	if err := h.groupRoleService.AssignUsersToGroup(c.Request().Context(), uint(groupID), req.UserIDs); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrOrganizationNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "그룹을 찾을 수 없습니다"})
+		default:
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "사용자가 그룹에 할당되었습니다."})
+}
+
+// RemoveGroupUser godoc
+// @Summary 그룹에서 사용자 제거 (Keycloak 동기화 포함)
+// @Description 그룹에서 특정 사용자를 제거합니다. DB + Keycloak 그룹 동기화.
+// @Tags groups
+// @Produce json
+// @Param groupId path int true "그룹 ID"
+// @Param userId path int true "사용자 ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/groups/id/{groupId}/users/{userId} [delete]
+// @Id removeGroupUser
+func (h *GroupRoleHandler) RemoveGroupUser(c echo.Context) error {
+	groupID, err := strconv.ParseUint(c.Param("groupId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid group ID"})
+	}
+	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID"})
+	}
+
+	kcUserID := h.getUserKcID(uint(userID))
+
+	if err := h.groupRoleService.RemoveUserFromGroup(c.Request().Context(), uint(userID), uint(groupID), kcUserID); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrOrganizationNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "그룹을 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrUserOrganizationNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자가 해당 그룹에 소속되어 있지 않습니다"})
+		default:
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "사용자가 그룹에서 제거되었습니다."})
+}
+
 // AssignUserGroups godoc
 // @Summary 사용자를 그룹에 할당 (Keycloak 동기화 포함)
 // @Description 사용자를 하나 이상의 그룹에 할당합니다. DB + Keycloak 그룹 동기화.
