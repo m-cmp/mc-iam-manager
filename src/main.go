@@ -128,6 +128,7 @@ func main() {
 	cspAccountHandler := handler.NewCspAccountHandler(db)
 	cspIdpConfigHandler := handler.NewCspIdpConfigHandler(db)
 	cspPolicyHandler := handler.NewCspPolicyHandler(db)
+	cspIAMHandler := handler.NewCspIAMHandler(db)
 
 	// 조직 핸들러 초기화
 	organizationHandler := handler.NewOrganizationHandler(db)
@@ -507,6 +508,15 @@ func main() {
 		cspPolicies.POST("/attach", cspPolicyHandler.AttachPolicyToRole, middleware.PlatformAdminMiddleware)
 		cspPolicies.POST("/detach", cspPolicyHandler.DetachPolicyFromRole, middleware.PlatformAdminMiddleware)
 		cspPolicies.GET("/role/:roleId", cspPolicyHandler.GetRolePolicies)
+	}
+
+	// CSP IAM 직접 관리 라우트 (CSP IAM Role CRUD)
+	cspIAM := api.Group("/csp/iam", middleware.PlatformAdminMiddleware)
+	{
+		cspIAM.POST("/roles", cspIAMHandler.CreateIAMRole)
+		cspIAM.GET("/roles/:roleName", cspIAMHandler.GetIAMRole)
+		cspIAM.PUT("/roles/:roleName", cspIAMHandler.UpdateIAMRole)
+		cspIAM.DELETE("/roles/:roleName", cspIAMHandler.DeleteIAMRole)
 	}
 
 	// Swagger 문서 라우트
