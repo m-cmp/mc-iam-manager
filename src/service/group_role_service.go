@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -94,6 +95,22 @@ func (s *GroupRoleService) RemoveGroupPlatformRole(ctx context.Context, groupID,
 
 // AssignGroupWorkspace 그룹-워크스페이스 매핑 생성 (DB 전용)
 func (s *GroupRoleService) AssignGroupWorkspace(groupID, workspaceID, roleID uint) error {
+	// workspace 존재 여부 확인
+	var workspace model.Workspace
+	if err := s.db.First(&workspace, workspaceID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return repository.ErrWorkspaceNotFound
+		}
+		return fmt.Errorf("error checking workspace: %w", err)
+	}
+	// role 존재 여부 확인
+	var roleMaster model.RoleMaster
+	if err := s.db.First(&roleMaster, roleID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return repository.ErrRoleMasterNotFound
+		}
+		return fmt.Errorf("error checking role: %w", err)
+	}
 	return s.groupRoleRepo.CreateGroupWorkspaceRole(groupID, workspaceID, roleID)
 }
 
@@ -110,6 +127,11 @@ func (s *GroupRoleService) UpdateGroupWorkspaceRole(groupID, workspaceID, roleID
 // RemoveGroupWorkspaceRole 그룹-워크스페이스 매핑 제거
 func (s *GroupRoleService) RemoveGroupWorkspaceRole(groupID, workspaceID uint) error {
 	return s.groupRoleRepo.DeleteGroupWorkspaceRole(groupID, workspaceID)
+}
+
+// GetAvailableGroupWorkspaces 그룹에 미매핑된 워크스페이스 목록 조회
+func (s *GroupRoleService) GetAvailableGroupWorkspaces(groupID uint) ([]*model.Workspace, error) {
+	return s.groupRoleRepo.FindAvailableWorkspacesForGroup(groupID)
 }
 
 // --- User-Group (with Keycloak sync) ---

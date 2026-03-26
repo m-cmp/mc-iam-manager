@@ -479,6 +479,7 @@ func main() {
 		// 그룹-워크스페이스 매핑 관리 (DB 전용)
 		groups.POST("/id/:groupId/workspaces", groupRoleHandler.AssignGroupWorkspace)
 		groups.GET("/id/:groupId/workspaces", groupRoleHandler.GetGroupWorkspaces)
+		groups.GET("/id/:groupId/workspaces/available", groupRoleHandler.GetAvailableGroupWorkspaces)
 		groups.PUT("/id/:groupId/workspaces/:workspaceId", groupRoleHandler.UpdateGroupWorkspaceRole)
 		groups.DELETE("/id/:groupId/workspaces/:workspaceId", groupRoleHandler.RemoveGroupWorkspaceRole)
 	}

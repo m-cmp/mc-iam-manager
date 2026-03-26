@@ -149,6 +149,7 @@ func (h *GroupRoleHandler) RemoveGroupPlatformRole(c echo.Context) error {
 // @Param body body model.AssignGroupWorkspaceRequest true "워크스페이스 매핑 요청"
 // @Success 201 {object} map[string]string
 // @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Failure 409 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/groups/id/{groupId}/workspaces [post]
@@ -168,13 +169,43 @@ func (h *GroupRoleHandler) AssignGroupWorkspace(c echo.Context) error {
 	}
 
 	if err := h.groupRoleService.AssignGroupWorkspace(uint(groupID), req.WorkspaceID, req.RoleID); err != nil {
-		if errors.Is(err, repository.ErrGroupWorkspaceRoleDuplicate) {
+		switch {
+		case errors.Is(err, repository.ErrWorkspaceNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "워크스페이스를 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrRoleMasterNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "역할을 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrGroupWorkspaceRoleDuplicate):
 			return c.JSON(http.StatusConflict, map[string]string{"error": "이미 매핑된 워크스페이스입니다"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusCreated, map[string]string{"message": "그룹이 워크스페이스에 매핑되었습니다."})
+}
+
+// GetAvailableGroupWorkspaces godoc
+// @Summary 그룹에 미매핑된 워크스페이스 목록 조회
+// @Description 그룹에 아직 매핑되지 않은 워크스페이스 목록을 조회합니다.
+// @Tags groups
+// @Produce json
+// @Param groupId path int true "그룹 ID"
+// @Success 200 {array} model.Workspace
+// @Failure 400 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/groups/id/{groupId}/workspaces/available [get]
+// @Id getAvailableGroupWorkspaces
+func (h *GroupRoleHandler) GetAvailableGroupWorkspaces(c echo.Context) error {
+	groupID, err := strconv.ParseUint(c.Param("groupId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid group ID"})
+	}
+
+	workspaces, err := h.groupRoleService.GetAvailableGroupWorkspaces(uint(groupID))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, workspaces)
 }
 
 // GetGroupWorkspaces godoc

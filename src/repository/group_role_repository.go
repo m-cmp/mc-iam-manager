@@ -14,6 +14,7 @@ var (
 	ErrGroupPlatformRoleDuplicate  = errors.New("group platform role mapping already exists")
 	ErrGroupWorkspaceRoleNotFound  = errors.New("group workspace role mapping not found")
 	ErrGroupWorkspaceRoleDuplicate = errors.New("group workspace role mapping already exists")
+	ErrRoleMasterNotFound          = errors.New("role not found")
 )
 
 // GroupRoleRepository 그룹 역할 매핑 데이터 관리
@@ -128,6 +129,20 @@ func (r *GroupRoleRepository) UpdateGroupWorkspaceRole(groupID, workspaceID, rol
 		return ErrGroupWorkspaceRoleNotFound
 	}
 	return nil
+}
+
+// FindAvailableWorkspacesForGroup 그룹에 미매핑된 워크스페이스 목록 조회
+func (r *GroupRoleRepository) FindAvailableWorkspacesForGroup(groupID uint) ([]*model.Workspace, error) {
+	var workspaces []*model.Workspace
+	err := r.db.Where("id NOT IN (?)",
+		r.db.Table("mcmp_group_workspace_roles").
+			Select("workspace_id").
+			Where("group_id = ?", groupID),
+	).Find(&workspaces).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding available workspaces: %w", err)
+	}
+	return workspaces, nil
 }
 
 // DeleteGroupWorkspaceRole 그룹-워크스페이스 매핑 삭제
