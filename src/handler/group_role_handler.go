@@ -68,6 +68,8 @@ func (h *GroupRoleHandler) AssignGroupPlatformRole(c echo.Context) error {
 		switch {
 		case errors.Is(err, repository.ErrOrganizationNotFound):
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "그룹을 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrRoleMasterNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "플랫폼 역할을 찾을 수 없습니다"})
 		case errors.Is(err, repository.ErrGroupPlatformRoleDuplicate):
 			return c.JSON(http.StatusConflict, map[string]string{"error": "이미 할당된 역할입니다"})
 		default:
@@ -102,6 +104,34 @@ func (h *GroupRoleHandler) GetGroupPlatformRoles(c echo.Context) error {
 	return c.JSON(http.StatusOK, roles)
 }
 
+// GetAvailableGroupPlatformRoles godoc
+// @Summary 그룹에 미할당된 Platform Role 목록 조회
+// @Description 그룹에 아직 할당되지 않은 플랫폼 역할 목록을 조회합니다.
+// @Tags groups
+// @Produce json
+// @Param groupId path int true "그룹 ID"
+// @Success 200 {array} model.AvailablePlatformRoleResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/groups/id/{groupId}/platform-roles/available [get]
+// @Id getAvailableGroupPlatformRoles
+func (h *GroupRoleHandler) GetAvailableGroupPlatformRoles(c echo.Context) error {
+	groupID, err := strconv.ParseUint(c.Param("groupId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "그룹 ID가 올바르지 않습니다"})
+	}
+
+	roles, err := h.groupRoleService.GetAvailableGroupPlatformRoles(uint(groupID))
+	if err != nil {
+		if errors.Is(err, repository.ErrOrganizationNotFound) {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "그룹을 찾을 수 없습니다"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
+}
+
 // RemoveGroupPlatformRole godoc
 // @Summary 그룹 Platform Role 해제
 // @Description 그룹에 할당된 플랫폼 역할을 해제합니다. DB + Keycloak 동시 제거.
@@ -129,8 +159,10 @@ func (h *GroupRoleHandler) RemoveGroupPlatformRole(c echo.Context) error {
 		switch {
 		case errors.Is(err, repository.ErrOrganizationNotFound):
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "그룹을 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrRoleMasterNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "플랫폼 역할을 찾을 수 없습니다"})
 		case errors.Is(err, repository.ErrGroupPlatformRoleNotFound):
-			return c.JSON(http.StatusNotFound, map[string]string{"error": "할당된 역할을 찾을 수 없습니다"})
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "할당된 역할 매핑을 찾을 수 없습니다"})
 		default:
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
