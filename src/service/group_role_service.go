@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -40,6 +41,9 @@ func (s *GroupRoleService) AssignGroupPlatformRole(ctx context.Context, groupID,
 	// 2. Role 이름 조회
 	var roleMaster model.RoleMaster
 	if err := s.db.First(&roleMaster, roleID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return repository.ErrRoleMasterNotFound
+		}
 		return fmt.Errorf("role not found: %w", err)
 	}
 
@@ -63,6 +67,16 @@ func (s *GroupRoleService) GetGroupPlatformRoles(groupID uint) ([]model.GroupPla
 	return s.groupRoleRepo.FindGroupPlatformRoles(groupID)
 }
 
+// GetAvailablePlatformRoles 그룹에 할당되지 않은 플랫폼 역할 목록 조회
+func (s *GroupRoleService) GetAvailablePlatformRoles(groupID uint) ([]model.RoleMaster, error) {
+	return s.groupRoleRepo.FindAvailablePlatformRoles(groupID)
+}
+
+// GetAvailableWorkspaces 그룹에 매핑되지 않은 워크스페이스 목록 조회
+func (s *GroupRoleService) GetAvailableWorkspaces(groupID uint) ([]model.Workspace, error) {
+	return s.groupRoleRepo.FindAvailableWorkspaces(groupID)
+}
+
 // RemoveGroupPlatformRole 그룹에서 platform role 해제 (DB + Keycloak)
 func (s *GroupRoleService) RemoveGroupPlatformRole(ctx context.Context, groupID, roleID uint) error {
 	// 1. 그룹 조회
@@ -74,6 +88,9 @@ func (s *GroupRoleService) RemoveGroupPlatformRole(ctx context.Context, groupID,
 	// 2. Role 이름 조회
 	var roleMaster model.RoleMaster
 	if err := s.db.First(&roleMaster, roleID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return repository.ErrRoleMasterNotFound
+		}
 		return fmt.Errorf("role not found: %w", err)
 	}
 
@@ -93,7 +110,24 @@ func (s *GroupRoleService) RemoveGroupPlatformRole(ctx context.Context, groupID,
 // --- Workspace Role ---
 
 // AssignGroupWorkspace 그룹-워크스페이스 매핑 생성 (DB 전용)
+// workspace_id, role_id 존재 여부 pre-validation 포함
 func (s *GroupRoleService) AssignGroupWorkspace(groupID, workspaceID, roleID uint) error {
+	// workspace 존재 확인
+	var workspace model.Workspace
+	if err := s.db.First(&workspace, workspaceID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return repository.ErrWorkspaceNotFound
+		}
+		return err
+	}
+	// role 존재 확인
+	var roleMaster model.RoleMaster
+	if err := s.db.First(&roleMaster, roleID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return repository.ErrRoleMasterNotFound
+		}
+		return err
+	}
 	return s.groupRoleRepo.CreateGroupWorkspaceRole(groupID, workspaceID, roleID)
 }
 
