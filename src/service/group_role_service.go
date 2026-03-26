@@ -138,6 +138,36 @@ func (s *GroupRoleService) AssignUserToGroups(ctx context.Context, userID uint, 
 	return nil
 }
 
+// AssignUsersToGroup 그룹에 사용자 일괄 할당 (그룹 입장, DB + Keycloak 동기화)
+func (s *GroupRoleService) AssignUsersToGroup(ctx context.Context, groupID uint, userIDs []uint) error {
+	// 그룹 존재 확인
+	org, err := s.orgRepo.FindByID(groupID)
+	if err != nil {
+		return err
+	}
+
+	for _, userID := range userIDs {
+		// 사용자 KC ID 조회
+		var user model.User
+		if err := s.db.First(&user, userID).Error; err != nil {
+			return fmt.Errorf("user not found: %d", userID)
+		}
+
+		// DB 저장
+		if err := s.orgRepo.AssignUserToOrganizations(userID, []uint{groupID}); err != nil {
+			return fmt.Errorf("failed to assign user %d to group in DB: %w", userID, err)
+		}
+
+		// Keycloak 동기화
+		if user.KcId != "" {
+			if err := s.kcService.EnsureGroupExistsAndAssignUser(ctx, user.KcId, org.Name); err != nil {
+				return fmt.Errorf("failed to assign user %d to keycloak group '%s': %w", userID, org.Name, err)
+			}
+		}
+	}
+	return nil
+}
+
 // RemoveUserFromGroup 사용자를 그룹에서 제거 (DB + Keycloak 동기화)
 func (s *GroupRoleService) RemoveUserFromGroup(ctx context.Context, userID, groupID uint, kcUserID string) error {
 	// 그룹 조회
