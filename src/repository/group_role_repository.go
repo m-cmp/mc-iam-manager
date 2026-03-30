@@ -157,6 +157,39 @@ func (r *GroupRoleRepository) DeleteGroupWorkspaceRole(groupID, workspaceID uint
 	return nil
 }
 
+// FindAvailablePlatformRoles 그룹에 할당되지 않은 플랫폼 역할 목록 조회
+func (r *GroupRoleRepository) FindAvailablePlatformRoles(groupID uint) ([]model.RoleMaster, error) {
+	var roles []model.RoleMaster
+	err := r.db.Where("role_type = 'platform'").
+		Where("id NOT IN (?)",
+			r.db.Table("mcmp_group_platform_roles").
+				Select("role_id").
+				Where("group_id = ?", groupID),
+		).
+		Order("name ASC").
+		Find(&roles).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding available platform roles for group %d: %w", groupID, err)
+	}
+	return roles, nil
+}
+
+// FindAvailableWorkspaces 그룹에 매핑되지 않은 워크스페이스 목록 조회
+func (r *GroupRoleRepository) FindAvailableWorkspaces(groupID uint) ([]model.Workspace, error) {
+	var workspaces []model.Workspace
+	err := r.db.Where("id NOT IN (?)",
+		r.db.Table("mcmp_group_workspace_roles").
+			Select("workspace_id").
+			Where("group_id = ?", groupID),
+	).
+		Order("name ASC").
+		Find(&workspaces).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding available workspaces for group %d: %w", groupID, err)
+	}
+	return workspaces, nil
+}
+
 // isGroupDuplicateError unique constraint 위반 여부 확인 (PostgreSQL: 23505, SQLite: UNIQUE constraint failed)
 func isGroupDuplicateError(err error) bool {
 	return err != nil && (strings.Contains(err.Error(), "duplicate key") ||

@@ -19,6 +19,7 @@ var (
 	ErrOrganizationHasUsers      = errors.New("organization has assigned users")
 	ErrMaxOrganizationsPerLevel  = errors.New("maximum 99 organizations per level reached")
 	ErrCircularReference         = errors.New("circular reference detected")
+	ErrUserOrganizationNotFound  = errors.New("user is not assigned to this organization")
 )
 
 // OrganizationRepository 조직 데이터 관리
@@ -67,6 +68,22 @@ func (r *OrganizationRepository) FindAll() ([]model.Organization, error) {
 	var orgs []model.Organization
 	if err := r.db.Order("organization_code ASC").Find(&orgs).Error; err != nil {
 		return nil, fmt.Errorf("error finding all organizations: %w", err)
+	}
+	return orgs, nil
+}
+
+// FindByFilter name/code 검색 필터로 조직 목록 조회
+func (r *OrganizationRepository) FindByFilter(name, code string) ([]model.Organization, error) {
+	var orgs []model.Organization
+	q := r.db.Order("organization_code ASC")
+	if name != "" {
+		q = q.Where("name ILIKE ?", "%"+name+"%")
+	}
+	if code != "" {
+		q = q.Where("organization_code ILIKE ?", "%"+code+"%")
+	}
+	if err := q.Find(&orgs).Error; err != nil {
+		return nil, fmt.Errorf("error searching organizations: %w", err)
 	}
 	return orgs, nil
 }
@@ -357,7 +374,7 @@ func (r *OrganizationRepository) RemoveUserFromOrganization(userID, orgID uint) 
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return errors.New("user is not assigned to this organization")
+		return ErrUserOrganizationNotFound
 	}
 	return nil
 }
