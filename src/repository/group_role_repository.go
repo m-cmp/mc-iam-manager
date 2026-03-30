@@ -13,8 +13,8 @@ var (
 	ErrGroupPlatformRoleNotFound   = errors.New("group platform role mapping not found")
 	ErrGroupPlatformRoleDuplicate  = errors.New("group platform role mapping already exists")
 	ErrGroupWorkspaceRoleNotFound  = errors.New("group workspace role mapping not found")
-	ErrRoleMasterNotFound          = errors.New("role not found")
 	ErrGroupWorkspaceRoleDuplicate = errors.New("group workspace role mapping already exists")
+	ErrRoleMasterNotFound          = errors.New("role not found")
 )
 
 // GroupRoleRepository 그룹 역할 매핑 데이터 관리
@@ -131,6 +131,20 @@ func (r *GroupRoleRepository) UpdateGroupWorkspaceRole(groupID, workspaceID, rol
 	return nil
 }
 
+// FindAvailableWorkspacesForGroup 그룹에 미매핑된 워크스페이스 목록 조회
+func (r *GroupRoleRepository) FindAvailableWorkspacesForGroup(groupID uint) ([]*model.Workspace, error) {
+	var workspaces []*model.Workspace
+	err := r.db.Where("id NOT IN (?)",
+		r.db.Table("mcmp_group_workspace_roles").
+			Select("workspace_id").
+			Where("group_id = ?", groupID),
+	).Find(&workspaces).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding available workspaces: %w", err)
+	}
+	return workspaces, nil
+}
+
 // DeleteGroupWorkspaceRole 그룹-워크스페이스 매핑 삭제
 func (r *GroupRoleRepository) DeleteGroupWorkspaceRole(groupID, workspaceID uint) error {
 	result := r.db.Where("group_id = ? AND workspace_id = ?", groupID, workspaceID).Delete(&model.GroupWorkspaceRole{})
@@ -176,7 +190,9 @@ func (r *GroupRoleRepository) FindAvailableWorkspaces(groupID uint) ([]model.Wor
 	return workspaces, nil
 }
 
-// isGroupDuplicateError PostgreSQL unique constraint 위반 여부 확인
+// isGroupDuplicateError unique constraint 위반 여부 확인 (PostgreSQL: 23505, SQLite: UNIQUE constraint failed)
 func isGroupDuplicateError(err error) bool {
-	return err != nil && (strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "23505"))
+	return err != nil && (strings.Contains(err.Error(), "duplicate key") ||
+		strings.Contains(err.Error(), "23505") ||
+		strings.Contains(err.Error(), "UNIQUE constraint failed"))
 }
