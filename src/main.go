@@ -98,6 +98,7 @@ func main() {
 		&model.UserOrganization{},
 		&model.GroupPlatformRole{},
 		&model.GroupWorkspaceRole{},
+		&model.Company{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
@@ -133,6 +134,8 @@ func main() {
 	organizationHandler := handler.NewOrganizationHandler(db)
 	// 그룹 역할 핸들러 초기화
 	groupRoleHandler := handler.NewGroupRoleHandler(db)
+	// 회사 정보 핸들러 초기화
+	companyHandler := handler.NewCompanyHandler(db)
 
 	// Echo 인스턴스 생성
 	e := echo.New()
@@ -204,6 +207,16 @@ func main() {
 
 	// platform admin 생성. 권한체크 필요한데...
 	api.POST("/initial-admin", adminHandler.SetupInitialAdmin) // TODO : 초기 설정에서 직접 keycloak 호출하는 것으로 바꿔야 할 듯.
+
+	// 회사 정보 라우트 (싱글톤 — URL에 ID 없음)
+	company := api.Group("/company")
+	{
+		company.POST("", companyHandler.CreateCompany, middleware.PlatformAdminMiddleware)
+		company.GET("", companyHandler.GetCompany, middleware.PlatformRoleMiddleware(middleware.Read))
+		company.PUT("", companyHandler.UpdateCompany, middleware.PlatformAdminMiddleware)
+		company.DELETE("", companyHandler.DeactivateCompany, middleware.PlatformAdminMiddleware)
+		company.POST("/activate", companyHandler.ActivateCompany, middleware.PlatformAdminMiddleware)
+	}
 
 	// 관리자 setup 라우트
 	setup := api.Group("/setup", middleware.PlatformAdminMiddleware)
