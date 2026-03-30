@@ -439,8 +439,7 @@ func (r *RoleRepository) CreateWorkspaceRoleCspRoleMapping(req *model.CreateCspR
 		// csp role 저장
 		for _, cspRole := range req.CspRoles {
 			savedCspRole := model.CspRole{}
-			err := tx.Save(&cspRole).Scan(&savedCspRole)
-			if err != nil {
+			if err := tx.Save(&cspRole).Scan(&savedCspRole).Error; err != nil {
 				return fmt.Errorf("failed to create csp role: %w", err)
 			}
 

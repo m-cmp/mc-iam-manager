@@ -157,7 +157,9 @@ func (r *GroupRoleRepository) DeleteGroupWorkspaceRole(groupID, workspaceID uint
 	return nil
 }
 
-// isGroupDuplicateError PostgreSQL unique constraint 위반 여부 확인
+// isGroupDuplicateError unique constraint 위반 여부 확인 (PostgreSQL: 23505, SQLite: UNIQUE constraint failed)
 func isGroupDuplicateError(err error) bool {
-	return err != nil && (strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "23505"))
+	return err != nil && (strings.Contains(err.Error(), "duplicate key") ||
+		strings.Contains(err.Error(), "23505") ||
+		strings.Contains(err.Error(), "UNIQUE constraint failed"))
 }
