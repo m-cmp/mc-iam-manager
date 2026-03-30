@@ -68,6 +68,8 @@ func (h *GroupRoleHandler) AssignGroupPlatformRole(c echo.Context) error {
 		switch {
 		case errors.Is(err, repository.ErrOrganizationNotFound):
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "그룹을 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrRoleMasterNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "역할을 찾을 수 없습니다"})
 		case errors.Is(err, repository.ErrGroupPlatformRoleDuplicate):
 			return c.JSON(http.StatusConflict, map[string]string{"error": "이미 할당된 역할입니다"})
 		default:
@@ -102,6 +104,54 @@ func (h *GroupRoleHandler) GetGroupPlatformRoles(c echo.Context) error {
 	return c.JSON(http.StatusOK, roles)
 }
 
+// GetAvailableGroupPlatformRoles godoc
+// @Summary 그룹에 할당 가능한 Platform Role 목록 조회
+// @Description 그룹에 아직 할당되지 않은 플랫폼 역할 목록을 조회합니다.
+// @Tags groups
+// @Produce json
+// @Param groupId path int true "그룹 ID"
+// @Success 200 {array} model.RoleMaster
+// @Failure 400 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/groups/id/{groupId}/platform-roles/available [get]
+// @Id getAvailableGroupPlatformRoles
+func (h *GroupRoleHandler) GetAvailableGroupPlatformRoles(c echo.Context) error {
+	groupID, err := strconv.ParseUint(c.Param("groupId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid group ID"})
+	}
+
+	roles, err := h.groupRoleService.GetAvailablePlatformRoles(uint(groupID))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
+}
+
+// GetAvailableGroupWorkspaces godoc
+// @Summary 그룹에 매핑 가능한 워크스페이스 목록 조회
+// @Description 그룹에 아직 매핑되지 않은 워크스페이스 목록을 조회합니다.
+// @Tags groups
+// @Produce json
+// @Param groupId path int true "그룹 ID"
+// @Success 200 {array} model.Workspace
+// @Failure 400 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/groups/id/{groupId}/workspaces/available [get]
+// @Id getAvailableGroupWorkspaces
+func (h *GroupRoleHandler) GetAvailableGroupWorkspaces(c echo.Context) error {
+	groupID, err := strconv.ParseUint(c.Param("groupId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid group ID"})
+	}
+
+	workspaces, err := h.groupRoleService.GetAvailableWorkspaces(uint(groupID))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, workspaces)
+}
+
 // RemoveGroupPlatformRole godoc
 // @Summary 그룹 Platform Role 해제
 // @Description 그룹에 할당된 플랫폼 역할을 해제합니다. DB + Keycloak 동시 제거.
@@ -129,6 +179,8 @@ func (h *GroupRoleHandler) RemoveGroupPlatformRole(c echo.Context) error {
 		switch {
 		case errors.Is(err, repository.ErrOrganizationNotFound):
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "그룹을 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrRoleMasterNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "역할을 찾을 수 없습니다"})
 		case errors.Is(err, repository.ErrGroupPlatformRoleNotFound):
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "할당된 역할을 찾을 수 없습니다"})
 		default:
@@ -168,10 +220,16 @@ func (h *GroupRoleHandler) AssignGroupWorkspace(c echo.Context) error {
 	}
 
 	if err := h.groupRoleService.AssignGroupWorkspace(uint(groupID), req.WorkspaceID, req.RoleID); err != nil {
-		if errors.Is(err, repository.ErrGroupWorkspaceRoleDuplicate) {
+		switch {
+		case errors.Is(err, repository.ErrWorkspaceNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "워크스페이스를 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrRoleMasterNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "역할을 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrGroupWorkspaceRoleDuplicate):
 			return c.JSON(http.StatusConflict, map[string]string{"error": "이미 매핑된 워크스페이스입니다"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusCreated, map[string]string{"message": "그룹이 워크스페이스에 매핑되었습니다."})
@@ -275,6 +333,85 @@ func (h *GroupRoleHandler) RemoveGroupWorkspaceRole(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "그룹-워크스페이스 매핑이 제거되었습니다."})
+}
+
+// AssignGroupUsers godoc
+// @Summary 그룹에 사용자 일괄 할당 (Keycloak 동기화 포함)
+// @Description 그룹에 사용자 목록을 일괄 할당합니다. DB + Keycloak 그룹 동기화.
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param groupId path int true "그룹 ID"
+// @Param body body model.AssignGroupUsersRequest true "사용자 일괄 할당 요청"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/groups/id/{groupId}/users [post]
+// @Id assignGroupUsers
+func (h *GroupRoleHandler) AssignGroupUsers(c echo.Context) error {
+	groupID, err := strconv.ParseUint(c.Param("groupId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid group ID"})
+	}
+
+	var req model.AssignGroupUsersRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	}
+	if err := c.Validate(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	if err := h.groupRoleService.AssignUsersToGroup(c.Request().Context(), uint(groupID), req.UserIDs); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrOrganizationNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "그룹을 찾을 수 없습니다"})
+		default:
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "사용자가 그룹에 할당되었습니다."})
+}
+
+// RemoveGroupUser godoc
+// @Summary 그룹에서 사용자 제거 (Keycloak 동기화 포함)
+// @Description 그룹에서 특정 사용자를 제거합니다. DB + Keycloak 그룹 동기화.
+// @Tags groups
+// @Produce json
+// @Param groupId path int true "그룹 ID"
+// @Param userId path int true "사용자 ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/groups/id/{groupId}/users/{userId} [delete]
+// @Id removeGroupUser
+func (h *GroupRoleHandler) RemoveGroupUser(c echo.Context) error {
+	groupID, err := strconv.ParseUint(c.Param("groupId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid group ID"})
+	}
+	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID"})
+	}
+
+	kcUserID := h.getUserKcID(uint(userID))
+
+	if err := h.groupRoleService.RemoveUserFromGroup(c.Request().Context(), uint(userID), uint(groupID), kcUserID); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrOrganizationNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "그룹을 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrUserOrganizationNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자가 해당 그룹에 소속되어 있지 않습니다"})
+		default:
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "사용자가 그룹에서 제거되었습니다."})
 }
 
 // AssignUserGroups godoc
