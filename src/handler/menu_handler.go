@@ -218,7 +218,7 @@ func (h *MenuHandler) ListMenus(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /api/menus/tree/list [post]
+// @Router /api/menus/menus-tree/list [post]
 // @Id listMenusTree
 func (h *MenuHandler) ListMenusTree(c echo.Context) error {
 	// If this is an admin-only function, let middleware handle the check.
@@ -324,6 +324,11 @@ func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 	id := c.Param("menuId")
 	menu, err := h.menuService.GetMenuByID(&id)
 	if err != nil {
+		if err == repository.ErrMenuNotFound {
+			return c.JSON(http.StatusNotFound, map[string]string{
+				"error": "Menu not found",
+			})
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to find menu",
 		})
@@ -426,7 +431,9 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 	if menu.ResType != "" {
 		updates["res_type"] = menu.ResType
 	}
-	updates["is_action"] = menu.IsAction
+	if menu.IsAction != nil {
+		updates["is_action"] = *menu.IsAction
+	}
 	if menu.Priority != "" {
 		priorityInt, err := util.StringToUint(menu.Priority)
 		if err != nil {
@@ -492,6 +499,11 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 func (h *MenuHandler) DeleteMenu(c echo.Context) error {
 	id := c.Param("menuId")
 	if err := h.menuService.Delete(id); err != nil {
+		if err == repository.ErrMenuNotFound {
+			return c.JSON(http.StatusNotFound, map[string]string{
+				"error": "Menu not found",
+			})
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "메뉴 삭제에 실패했습니다",
 		})
@@ -654,21 +666,18 @@ func (h *MenuHandler) CreateMenusRolesMapping(c echo.Context) error {
 // @Router /api/menus/platform-roles [delete]
 // @Id deleteMenusRolesMapping
 func (h *MenuHandler) DeleteMenusRolesMapping(c echo.Context) error {
-	roleID := c.Param("roleId")
-	menuID := c.Param("menuId")
+	roleID := c.QueryParam("roleId")
+	menuID := c.QueryParam("menuId")
 
 	roleIDInt, err := util.StringToUint(roleID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid role ID"})
 	}
-
-	mappings := []*model.RoleMenuMapping{
-		{
-			RoleID: roleIDInt,
-			MenuID: menuID,
-		},
+	if menuID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "menuId is required"})
 	}
-	err = h.menuService.DeleteRoleMenuMapping(mappings)
+
+	err = h.menuService.DeleteRoleMenuMappingByRoleAndMenu(roleIDInt, menuID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
