@@ -21,12 +21,13 @@ var (
 
 // CspCredentialService CSP 임시 자격 증명 발급 조율 서비스
 type CspCredentialService struct {
-	db               *gorm.DB
-	userRepo         *repository.UserRepository       // To get user roles
-	mappingRepo      *repository.CspMappingRepository // To get CSP role mapping
-	awsCredService   AwsCredentialService             // To call AWS STS
-	gcpCredService   GcpCredentialService             // To call GCP WIF
-	keycloakService  KeycloakService                  // To get KcId from token
+	db                     *gorm.DB
+	userRepo               *repository.UserRepository       // To get user roles
+	mappingRepo            *repository.CspMappingRepository // To get CSP role mapping
+	awsCredService         AwsCredentialService             // To call AWS STS
+	gcpCredService         GcpCredentialService             // To call GCP WIF
+	alibabaCredService     AlibabaCredentialService         // To call Alibaba RAM STS
+	keycloakService        KeycloakService                  // To get KcId from token
 }
 
 // NewCspCredentialService 새 CspCredentialService 인스턴스 생성
@@ -35,14 +36,16 @@ func NewCspCredentialService(db *gorm.DB) *CspCredentialService {
 	mappingRepo := repository.NewCspMappingRepository(db)
 	awsCredService := NewAwsCredentialService()
 	gcpCredService := NewGcpCredentialService()
+	alibabaCredService := NewAlibabaCredentialService()
 	keycloakService := NewKeycloakService()
 	return &CspCredentialService{
-		db:              db,
-		userRepo:        userRepo,
-		mappingRepo:     mappingRepo,
-		awsCredService:  awsCredService,
-		gcpCredService:  gcpCredService,
-		keycloakService: keycloakService,
+		db:                 db,
+		userRepo:           userRepo,
+		mappingRepo:        mappingRepo,
+		awsCredService:     awsCredService,
+		gcpCredService:     gcpCredService,
+		alibabaCredService: alibabaCredService,
+		keycloakService:    keycloakService,
 	}
 }
 
@@ -149,6 +152,26 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 		}
 		log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate...")
 		return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.AccessToken)
+	case "alibaba":
+		if s.alibabaCredService == nil {
+			log.Printf("[CSP_CREDENTIAL] Error: Alibaba credential service is nil")
+			return nil, fmt.Errorf("Alibaba credential service is not initialized")
+		}
+		log.Printf("[CSP_CREDENTIAL] Getting SAML assertion for Alibaba...")
+		// idpArn = Alibaba SAML Provider ARN (acs:ram::accountId:saml-provider/...)
+		// roleArn = Alibaba RAM Role ARN (acs:ram::accountId:role/...)
+		// SAML client audience: cspRole.ExtendedConfig["saml_client_id"] 우선, 없으면 idpArn 사용
+		samlClientAudience := idpArn
+		if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {
+			samlClientAudience = extConfig
+		}
+		samlAssertion, err := s.keycloakService.GetSamlAssertionByServiceAccount(ctx, samlClientAudience)
+		if err != nil {
+			log.Printf("[CSP_CREDENTIAL] Error getting SAML assertion: %v", err)
+			return nil, fmt.Errorf("failed to get SAML assertion for Alibaba: %w", err)
+		}
+		log.Printf("[CSP_CREDENTIAL] Calling Alibaba AssumeRoleWithSAML...")
+		return s.alibabaCredService.AssumeRoleWithSAML(ctx, idpArn, roleArn, samlAssertion, region)
 	case "azure":
 		log.Printf("[CSP_CREDENTIAL] Error: Azure not supported yet")
 		// TODO: Implement Azure credential logic using azureCredService

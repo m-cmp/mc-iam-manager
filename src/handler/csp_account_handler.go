@@ -49,8 +49,8 @@ func (h *CspAccountHandler) CreateCspAccount(c echo.Context) error {
 	if req.CspType == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "CSP type is required"})
 	}
-	if req.CspType != "aws" && req.CspType != "gcp" && req.CspType != "azure" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid CSP type. Must be one of: aws, gcp, azure"})
+	if req.CspType != "aws" && req.CspType != "gcp" && req.CspType != "azure" && req.CspType != "alibaba" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid CSP type. Must be one of: aws, gcp, azure, alibaba"})
 	}
 
 	account, err := h.cspAccountService.CreateCspAccount(&req)
