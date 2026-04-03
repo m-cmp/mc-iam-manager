@@ -41,9 +41,9 @@ func (r *CspMappingRepository) FindCspRoleMappingsByRoleIDAndCspType(roleID uint
 	// 첫 번째 매핑을 반환하고 CspRoles 배열을 채움
 	targetMapping := mappings[0]
 
-	// CspRoles 배열을 채우기 위해 CspRole 정보를 조회
+	// CspRoles 배열을 채우기 위해 CspRole 정보를 조회 (CspIdpConfig 포함)
 	var cspRole model.CspRole
-	if err := r.db.Where("id = ?", targetMapping.CspRoleID).First(&cspRole).Error; err != nil {
+	if err := r.db.Preload("CspIdpConfig").Where("id = ?", targetMapping.CspRoleID).First(&cspRole).Error; err != nil {
 		if err != gorm.ErrRecordNotFound {
 			return nil, err
 		}
