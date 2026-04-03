@@ -17,8 +17,10 @@ type CspCredentialResponse struct {
 	SessionToken    string    `json:"sessionToken,omitempty"`     // AWS Session Token
 	AccessToken     string    `json:"accessToken,omitempty"`      // GCP OAuth2 Access Token
 	TokenType       string    `json:"tokenType,omitempty"`        // GCP Token Type (Bearer)
+	AccessKeySecret string    `json:"accessKeySecret,omitempty"`  // Alibaba STS Access Key Secret
+	SecurityToken   string    `json:"securityToken,omitempty"`    // Alibaba STS Security Token
 	Expiration      time.Time `json:"expiration"`                 // Expiration time
-	Region          string    `json:"region,omitempty"`           // Optional: AWS Region
+	Region          string    `json:"region,omitempty"`           // Optional: AWS/Alibaba Region
 }
 
 // TempCredential 임시 자격 증명 관리 테이블 모델
