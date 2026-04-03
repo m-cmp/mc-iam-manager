@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/golang-jwt/jwt/v5"
@@ -60,6 +61,8 @@ type KeycloakService interface {
 	GetImpersonationTokenByAdminToken(ctx context.Context, userID string, targetClientID string) (string, error)
 	// GetImpersonationTokenByServiceAccount: 서비스 계정을 이용해 특정 클라이언트에 로그인한 토큰을 발급
 	GetImpersonationTokenByServiceAccount(ctx context.Context) (*gocloak.JWT, error)
+	// GetSamlAssertionByServiceAccount: RFC 8693 토큰 교환으로 SAML2 assertion을 발급 (Alibaba SAML 연동용)
+	GetSamlAssertionByServiceAccount(ctx context.Context, samlClientAudience string) (string, error)
 	// AssignRealmRoleToUser assigns a realm role to a user
 	AssignRealmRoleToUser(ctx context.Context, kcUserId, roleName string) error
 	// CheckRealmRoleExists checks if a realm role exists
@@ -1272,6 +1275,76 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 	}
 
 	return token, nil
+}
+
+// GetSamlAssertionByServiceAccount: RFC 8693 토큰 교환으로 SAML2 assertion을 발급한다.
+// OIDC 클라이언트 client_credentials로 JWT를 먼저 발급한 후,
+// requested_token_type=urn:ietf:params:oauth:token-type:saml2 로 교환하여 SAML assertion 반환.
+// samlClientAudience: Keycloak에 등록된 SAML 클라이언트 ID (e.g., "mciam-alibaba-saml")
+func (s *keycloakService) GetSamlAssertionByServiceAccount(ctx context.Context, samlClientAudience string) (string, error) {
+	if config.KC == nil || config.KC.Client == nil {
+		return "", fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	clientName := config.KC.OIDCClientName
+	clientSecret := config.KC.OIDCClientSecret
+	if clientName == "" || clientSecret == "" {
+		return "", fmt.Errorf("OIDC client credentials not configured")
+	}
+
+	// Step 1: OIDC client_credentials로 access token 발급
+	oidcToken, err := config.KC.Client.LoginClient(ctx, clientName, clientSecret, config.KC.Realm)
+	if err != nil {
+		return "", fmt.Errorf("failed to get OIDC client token: %w", err)
+	}
+
+	// Step 2: RFC 8693 토큰 교환 — access token → SAML2 assertion
+	tokenURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/token", config.KC.Host, config.KC.Realm)
+
+	formData := url.Values{}
+	formData.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
+	formData.Set("client_id", clientName)
+	formData.Set("client_secret", clientSecret)
+	formData.Set("subject_token", oidcToken.AccessToken)
+	formData.Set("subject_token_type", "urn:ietf:params:oauth:token-type:access_token")
+	formData.Set("requested_token_type", "urn:ietf:params:oauth:token-type:saml2")
+	formData.Set("audience", samlClientAudience)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(formData.Encode()))
+	if err != nil {
+		return "", fmt.Errorf("failed to create SAML exchange request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("SAML token exchange request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read SAML exchange response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Keycloak SAML exchange returned HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	var tokenResp struct {
+		AccessToken     string `json:"access_token"`
+		IssuedTokenType string `json:"issued_token_type"`
+	}
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return "", fmt.Errorf("failed to parse SAML exchange response: %w", err)
+	}
+
+	if tokenResp.AccessToken == "" {
+		return "", fmt.Errorf("Keycloak returned empty SAML assertion")
+	}
+
+	log.Printf("[KEYCLOAK] SAML assertion exchange succeeded for audience: %s", samlClientAudience)
+	return tokenResp.AccessToken, nil
 }
 
 // AssignRealmRoleToUser assigns a realm role to a user
