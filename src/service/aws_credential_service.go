@@ -17,6 +17,7 @@ import (
 // AwsCredentialService defines operations for interacting with AWS STS.
 type AwsCredentialService interface {
 	AssumeRoleWithWebIdentity(ctx context.Context, roleArn, kcUserId, webIdentityToken, idpArn, region string) (*model.CspCredentialResponse, error)
+	AssumeRoleWithSAML(ctx context.Context, roleArn, principalArn, samlAssertion, region string) (*model.CspCredentialResponse, error)
 }
 
 // awsCredentialService implements AwsCredentialService.
@@ -89,4 +90,54 @@ func (s *awsCredentialService) AssumeRoleWithWebIdentity(ctx context.Context, ro
 	}
 
 	return response, nil
+}
+
+// AssumeRoleWithSAML assumes an IAM role using a SAML assertion.
+// principalArn is the SAML provider ARN (e.g., arn:aws:iam::ACCOUNT:saml-provider/NAME).
+// roleArn is the IAM role ARN to assume.
+// samlAssertion is the base64-encoded SAML assertion from the IdP.
+func (s *awsCredentialService) AssumeRoleWithSAML(ctx context.Context, roleArn, principalArn, samlAssertion, region string) (*model.CspCredentialResponse, error) {
+	log.Printf("[AWS_CREDENTIAL] Loading AWS configuration for SAML...")
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Printf("[AWS_CREDENTIAL] Unable to load AWS SDK config: %v", err)
+		return nil, fmt.Errorf("failed to load AWS configuration: %w", err)
+	}
+
+	if region != "" {
+		awsCfg.Region = region
+	} else if envRegion := os.Getenv("AWS_REGION"); envRegion != "" {
+		awsCfg.Region = envRegion
+	}
+	log.Printf("[AWS_CREDENTIAL] Using AWS Region: %s for SAML STS call", awsCfg.Region)
+
+	stsClient := sts.NewFromConfig(awsCfg)
+
+	input := &sts.AssumeRoleWithSAMLInput{
+		RoleArn:      &roleArn,
+		PrincipalArn: &principalArn,
+		SAMLAssertion: &samlAssertion,
+	}
+
+	log.Printf("[AWS_CREDENTIAL] Attempting AssumeRoleWithSAML for role %s with principal %s", roleArn, principalArn)
+	result, err := stsClient.AssumeRoleWithSAML(ctx, input)
+	if err != nil {
+		log.Printf("[AWS_CREDENTIAL] AWS AssumeRoleWithSAML failed for role %s: %v", roleArn, err)
+		return nil, fmt.Errorf("failed to assume AWS role via SAML %s: %w", roleArn, err)
+	}
+
+	if result.Credentials == nil {
+		return nil, fmt.Errorf("received nil credentials from AWS STS (SAML) for role %s", roleArn)
+	}
+
+	log.Printf("[AWS_CREDENTIAL] Successfully assumed role via SAML %s, Expiration: %s", roleArn, result.Credentials.Expiration.String())
+
+	return &model.CspCredentialResponse{
+		CspType:         "aws",
+		AccessKeyId:     *result.Credentials.AccessKeyId,
+		SecretAccessKey: *result.Credentials.SecretAccessKey,
+		SessionToken:    *result.Credentials.SessionToken,
+		Expiration:      *result.Credentials.Expiration,
+		Region:          awsCfg.Region,
+	}, nil
 }
