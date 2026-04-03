@@ -347,6 +347,7 @@ func main() {
 		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.PUT("/id/:userId/password", userHandler.ResetUserPassword, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.GET("/me", userHandler.GetMyInfo)                  // 사용자 본인 정보 조회
 		users.PUT("/me/password", userHandler.ChangeMyPassword) // 사용자 본인 패스워드 변경
 
 		users.POST("/menus-tree/list", menuHandler.ListUserMenuTree)
