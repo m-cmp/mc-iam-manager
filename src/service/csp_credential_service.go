@@ -21,13 +21,12 @@ var (
 
 // CspCredentialService CSP 임시 자격 증명 발급 조율 서비스
 type CspCredentialService struct {
-	db             *gorm.DB
-	userRepo       *repository.UserRepository       // To get user roles
-	mappingRepo    *repository.CspMappingRepository // To get CSP role mapping
-	awsCredService AwsCredentialService             // To call AWS STS
-	// gcpCredService GcpCredentialService             // For future GCP support
-	// azureCredService AzureCredentialService           // For future Azure support
-	keycloakService KeycloakService // To get KcId from token
+	db               *gorm.DB
+	userRepo         *repository.UserRepository       // To get user roles
+	mappingRepo      *repository.CspMappingRepository // To get CSP role mapping
+	awsCredService   AwsCredentialService             // To call AWS STS
+	gcpCredService   GcpCredentialService             // To call GCP WIF
+	keycloakService  KeycloakService                  // To get KcId from token
 }
 
 // NewCspCredentialService 새 CspCredentialService 인스턴스 생성
@@ -35,12 +34,14 @@ func NewCspCredentialService(db *gorm.DB) *CspCredentialService {
 	userRepo := repository.NewUserRepository(db)
 	mappingRepo := repository.NewCspMappingRepository(db)
 	awsCredService := NewAwsCredentialService()
+	gcpCredService := NewGcpCredentialService()
 	keycloakService := NewKeycloakService()
 	return &CspCredentialService{
 		db:              db,
 		userRepo:        userRepo,
 		mappingRepo:     mappingRepo,
 		awsCredService:  awsCredService,
+		gcpCredService:  gcpCredService,
 		keycloakService: keycloakService,
 	}
 }
@@ -142,8 +143,12 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 		log.Printf("[CSP_CREDENTIAL] Calling AWS AssumeRoleWithWebIdentity...")
 		return s.awsCredService.AssumeRoleWithWebIdentity(ctx, roleArn, kcUserId, impersonationToken.AccessToken, idpArn, region)
 	case "gcp":
-		log.Printf("[CSP_CREDENTIAL] Error: GCP not supported yet")
-		return nil, ErrUnsupportedCspType
+		if s.gcpCredService == nil {
+			log.Printf("[CSP_CREDENTIAL] Error: GCP credential service is nil")
+			return nil, fmt.Errorf("GCP credential service is not initialized")
+		}
+		log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate...")
+		return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.AccessToken)
 	case "azure":
 		log.Printf("[CSP_CREDENTIAL] Error: Azure not supported yet")
 		// TODO: Implement Azure credential logic using azureCredService
