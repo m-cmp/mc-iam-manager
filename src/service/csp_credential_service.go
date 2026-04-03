@@ -205,9 +205,14 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 		default:
 			return nil, ErrUnsupportedAuthMethod
 		}
-	case "azure":
-		log.Printf("[CSP_CREDENTIAL] Error: Azure not supported yet")
-		return nil, ErrUnsupportedCspType
+	case "azure", "tencent", "ibm", "ncp", "nhn", "kt", "openstack":
+		switch authMethod {
+		case model.AuthMethodSecretKey:
+			return getSecretKeyCredentials(cspType, targetCspRole.CspIdpConfig, region)
+		default:
+			log.Printf("[CSP_CREDENTIAL] %s: federation not yet implemented (authMethod=%s)", cspType, authMethod)
+			return nil, ErrUnsupportedAuthMethod
+		}
 	default:
 		log.Printf("[CSP_CREDENTIAL] Error: Unsupported CSP type: %s", cspType)
 		return nil, ErrUnsupportedCspType
