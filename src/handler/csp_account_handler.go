@@ -11,6 +11,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// validCspTypes 지원하는 CSP 타입 목록
+var validCspTypes = map[string]bool{
+	"aws": true, "gcp": true, "azure": true, "alibaba": true,
+	"tencent": true, "ibm": true, "ncp": true, "nhn": true,
+	"kt": true, "openstack": true,
+}
+
 // CspAccountHandler CSP 계정 관리 핸들러
 type CspAccountHandler struct {
 	cspAccountService *service.CspAccountService
@@ -49,8 +56,8 @@ func (h *CspAccountHandler) CreateCspAccount(c echo.Context) error {
 	if req.CspType == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "CSP type is required"})
 	}
-	if req.CspType != "aws" && req.CspType != "gcp" && req.CspType != "azure" && req.CspType != "alibaba" {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid CSP type. Must be one of: aws, gcp, azure, alibaba"})
+	if !validCspTypes[req.CspType] {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid CSP type. Must be one of: aws, gcp, azure, alibaba, tencent, ibm, ncp, nhn, kt, openstack"})
 	}
 
 	account, err := h.cspAccountService.CreateCspAccount(&req)

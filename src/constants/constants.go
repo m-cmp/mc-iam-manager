@@ -18,10 +18,16 @@ const (
 	AuthMethodOIDC AuthMethod = "OIDC"
 	AuthMethodSAML AuthMethod = "SAML"
 
-	CSPTypeAWS     CSPType = "aws"
-	CSPTypeGCP     CSPType = "gcp"
-	CSPTypeAzure   CSPType = "azure"
-	CSPTypeAlibaba CSPType = "alibaba"
+	CSPTypeAWS       CSPType = "aws"
+	CSPTypeGCP       CSPType = "gcp"
+	CSPTypeAzure     CSPType = "azure"
+	CSPTypeAlibaba   CSPType = "alibaba"
+	CSPTypeTencent   CSPType = "tencent"
+	CSPTypeIBM       CSPType = "ibm"
+	CSPTypeNCP       CSPType = "ncp"
+	CSPTypeNHN       CSPType = "nhn"
+	CSPTypeKT        CSPType = "kt"
+	CSPTypeOpenStack CSPType = "openstack"
 
 	CspRoleNamePrefix = "mciam-" // csp에 role을 추가할 때 접두사를 붙인다.
 )
