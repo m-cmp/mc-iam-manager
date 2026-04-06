@@ -15,8 +15,9 @@ const (
 	RoleTypeWorkspace IAMRoleType = "workspace" // 워크스페이스 역할
 	RoleTypeCSP       IAMRoleType = "csp"       // CSP 역할
 
-	AuthMethodOIDC AuthMethod = "OIDC"
-	AuthMethodSAML AuthMethod = "SAML"
+	AuthMethodOIDC      AuthMethod = "OIDC"
+	AuthMethodSAML      AuthMethod = "SAML"
+	AuthMethodSecretKey AuthMethod = "SECRET_KEY"
 
 	CSPTypeAWS       CSPType = "aws"
 	CSPTypeGCP       CSPType = "gcp"
