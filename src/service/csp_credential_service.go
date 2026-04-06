@@ -12,6 +12,16 @@ import (
 	"gorm.io/gorm"
 )
 
+// credUserRepo 테스트 주입을 위한 UserRepository 인터페이스
+type credUserRepo interface {
+	FindUserRoleInWorkspace(userID, workspaceID uint) (*model.UserWorkspaceRole, error)
+}
+
+// credMappingRepo 테스트 주입을 위한 CspMappingRepository 인터페이스
+type credMappingRepo interface {
+	FindCspRoleMappingsByRoleIDAndCspType(roleID uint, cspType string, authMethod string) (*model.RoleMasterCspRoleMapping, error)
+}
+
 var (
 	ErrUserNotFound           = errors.New("user not found")
 	ErrWorkspaceNotFound      = errors.New("workspace not found")
@@ -22,13 +32,15 @@ var (
 
 // CspCredentialService CSP 임시 자격 증명 발급 조율 서비스
 type CspCredentialService struct {
-	db                     *gorm.DB
-	userRepo               *repository.UserRepository       // To get user roles
-	mappingRepo            *repository.CspMappingRepository // To get CSP role mapping
-	awsCredService         AwsCredentialService             // To call AWS STS
-	gcpCredService         GcpCredentialService             // To call GCP WIF
-	alibabaCredService     AlibabaCredentialService         // To call Alibaba RAM STS
-	keycloakService        KeycloakService                  // To get KcId from token
+	db                 *gorm.DB
+	userRepo           *repository.UserRepository       // 프로덕션 용
+	mappingRepo        *repository.CspMappingRepository // 프로덕션 용
+	userRepoIface      credUserRepo                     // 테스트 주입용 (nil이면 userRepo 사용)
+	mappingRepoIface   credMappingRepo                  // 테스트 주입용 (nil이면 mappingRepo 사용)
+	awsCredService     AwsCredentialService
+	gcpCredService     GcpCredentialService
+	alibabaCredService AlibabaCredentialService
+	keycloakService    KeycloakService
 }
 
 // NewCspCredentialService 새 CspCredentialService 인스턴스 생성
@@ -48,6 +60,22 @@ func NewCspCredentialService(db *gorm.DB) *CspCredentialService {
 		alibabaCredService: alibabaCredService,
 		keycloakService:    keycloakService,
 	}
+}
+
+// resolveUserRepo 테스트 주입 우선, 없으면 프로덕션 repo 반환
+func (s *CspCredentialService) resolveUserRepo() credUserRepo {
+	if s.userRepoIface != nil {
+		return s.userRepoIface
+	}
+	return s.userRepo
+}
+
+// resolveMappingRepo 테스트 주입 우선, 없으면 프로덕션 repo 반환
+func (s *CspCredentialService) resolveMappingRepo() credMappingRepo {
+	if s.mappingRepoIface != nil {
+		return s.mappingRepoIface
+	}
+	return s.mappingRepo
 }
 
 // GetTemporaryCredentials 사용자의 워크스페이스 역할에 기반하여 CSP 임시 자격 증명 발급
@@ -74,7 +102,7 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 
 	// 1. Get User's Roles for the specified Workspace
 	log.Printf("[CSP_CREDENTIAL] Getting user roles for workspace...")
-	userWorkspaceRole, err := s.userRepo.FindUserRoleInWorkspace(userID, workspaceIDInt)
+	userWorkspaceRole, err := s.resolveUserRepo().FindUserRoleInWorkspace(userID, workspaceIDInt)
 	if err != nil {
 		log.Printf("[CSP_CREDENTIAL] Error finding user role in workspace: %v", err)
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
@@ -87,9 +115,9 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 	}
 	log.Printf("[CSP_CREDENTIAL] Found user workspace role - RoleID: %d", userWorkspaceRole.RoleID)
 
-	// 2. Find the first matching CSP role mapping
-	log.Printf("[CSP_CREDENTIAL] Finding CSP role mappings for role %d and csp type %s", userWorkspaceRole.RoleID, cspType)
-	targetMapping, err := s.mappingRepo.FindCspRoleMappingsByRoleIDAndCspType(userWorkspaceRole.RoleID, cspType)
+	// 2. Find the first matching CSP role mapping (authMethod 지정 시 해당 방식 매핑만 조회)
+	log.Printf("[CSP_CREDENTIAL] Finding CSP role mappings for role %d, csp type %s, authMethod %s", userWorkspaceRole.RoleID, cspType, req.AuthMethod)
+	targetMapping, err := s.resolveMappingRepo().FindCspRoleMappingsByRoleIDAndCspType(userWorkspaceRole.RoleID, cspType, req.AuthMethod)
 	if err != nil {
 		log.Printf("[CSP_CREDENTIAL] Error finding CSP role mapping for role %d: %v", userWorkspaceRole.RoleID, err)
 	}
