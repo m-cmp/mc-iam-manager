@@ -32,8 +32,12 @@ func NewWorkspaceInvitationService(db *gorm.DB) *WorkspaceInvitationService {
 // SendInvitation 워크스페이스 초대 발송
 func (s *WorkspaceInvitationService) SendInvitation(workspaceID, inviterUserID, inviteeUserID uint, roleID *uint) (*model.WorkspaceInvitation, error) {
 	// 워크스페이스 존재 확인
-	if _, err := s.workspaceRepo.FindWorkspaceByID(workspaceID); err != nil {
+	ws, err := s.workspaceRepo.FindWorkspaceByID(workspaceID)
+	if err != nil {
 		return nil, fmt.Errorf("workspace not found: %w", err)
+	}
+	if ws == nil {
+		return nil, fmt.Errorf("workspace not found")
 	}
 
 	// 초대 대상 사용자 존재 확인
