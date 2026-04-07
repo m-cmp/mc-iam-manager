@@ -162,10 +162,8 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 	}
 	if authMethod == "" {
 		switch cspType {
-		case "aws", "gcp":
+		case "aws", "gcp", "alibaba":
 			authMethod = model.AuthMethodOIDC
-		case "alibaba":
-			authMethod = model.AuthMethodSAML
 		}
 	}
 	log.Printf("[CSP_CREDENTIAL] Auth method resolved: cspType=%s, authMethod=%s", cspType, authMethod)
@@ -228,6 +226,14 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 		}
 	case "alibaba":
 		switch authMethod {
+		case model.AuthMethodOIDC:
+			impersonationToken, err := s.keycloakService.GetImpersonationTokenByServiceAccount(ctx)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting impersonation token for Alibaba: %v", err)
+				return nil, fmt.Errorf("failed to get impersonation token for Alibaba: %w", err)
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling Alibaba AssumeRoleWithOIDC...")
+			return s.alibabaCredService.AssumeRoleWithOIDC(ctx, idpArn, roleArn, impersonationToken.AccessToken, region)
 		case model.AuthMethodSAML:
 			samlClientAudience := idpArn
 			if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {

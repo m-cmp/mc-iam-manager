@@ -308,20 +308,37 @@ func TestGetTemporaryCredentials_Alibaba_SAML_Success(t *testing.T) {
 	assert.Equal(t, "alibaba", cred.CspType)
 }
 
-// TC-CRED-14: Alibaba OIDC — 미구현 → ErrUnsupportedAuthMethod
-func TestGetTemporaryCredentials_Alibaba_OIDC_Unsupported(t *testing.T) {
+// TC-CRED-14: Alibaba OIDC — 정상 발급
+func TestGetTemporaryCredentials_Alibaba_OIDC_Success(t *testing.T) {
+	svc := newCredServiceWithMocks(credServiceDeps{
+		aws:      &mockAwsCredService{},
+		gcp:      &mockGcpCredService{},
+		alibaba:  &mockAlibabaCredService{oidcResult: alibabaOidcCred},
+		kc:       oidcKC(),
+		userRepo: &mockUserRepoForCred{role: stdUserRole()},
+		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodOIDC, idpArn, roleArn, model.AuthMethodOIDC, nil)},
+	})
+
+	cred, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("alibaba", "OIDC"))
+	require.NoError(t, err)
+	assert.Equal(t, "STS_ALIBABA_OIDC", cred.AccessKeyId)
+	assert.Equal(t, "alibaba", cred.CspType)
+}
+
+// TC-CRED-14b: Alibaba OIDC — Keycloak 실패
+func TestGetTemporaryCredentials_Alibaba_OIDC_KeycloakFail(t *testing.T) {
 	svc := newCredServiceWithMocks(credServiceDeps{
 		aws:      &mockAwsCredService{},
 		gcp:      &mockGcpCredService{},
 		alibaba:  &mockAlibabaCredService{},
-		kc:       &mockKeycloakForCred{},
+		kc:       failOidcKC(),
 		userRepo: &mockUserRepoForCred{role: stdUserRole()},
 		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodOIDC, idpArn, roleArn, model.AuthMethodOIDC, nil)},
 	})
 
 	_, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("alibaba", "OIDC"))
 	require.Error(t, err)
-	assert.Equal(t, ErrUnsupportedAuthMethod, err)
+	assert.Contains(t, err.Error(), "failed to get impersonation token for Alibaba")
 }
 
 // ── Azure / 기타 ──────────────────────────────────────────────────────────────
