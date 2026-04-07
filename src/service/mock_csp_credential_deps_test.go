@@ -68,6 +68,39 @@ func (m *mockAlibabaCredService) AssumeRoleWithOIDC(_ context.Context, oidcProvi
 	return m.result, m.err
 }
 
+// ── Azure ─────────────────────────────────────────────────────────────────────
+
+type mockAzureCredService struct {
+	result *model.CspCredentialResponse
+	err    error
+}
+
+func (m *mockAzureCredService) GetTokenByFederatedCredential(_ context.Context, tenantID, clientID, keycloakJWT string) (*model.CspCredentialResponse, error) {
+	return m.result, m.err
+}
+
+// ── Tencent ───────────────────────────────────────────────────────────────────
+
+type mockTencentCredService struct {
+	result *model.CspCredentialResponse
+	err    error
+}
+
+func (m *mockTencentCredService) AssumeRoleWithSAML(_ context.Context, secretID, secretKey, roleArn, principalArn, samlAssertion, region string) (*model.CspCredentialResponse, error) {
+	return m.result, m.err
+}
+
+// ── IBM ───────────────────────────────────────────────────────────────────────
+
+type mockIbmCredService struct {
+	result *model.CspCredentialResponse
+	err    error
+}
+
+func (m *mockIbmCredService) GetTokenByTrustedProfile(_ context.Context, profileID, crToken string) (*model.CspCredentialResponse, error) {
+	return m.result, m.err
+}
+
 // ── UserRepository (필요한 메서드만) ─────────────────────────────────────────
 
 type mockUserRepoForCred struct {
@@ -132,12 +165,34 @@ var alibabaOidcCred = &model.CspCredentialResponse{
 	SecurityToken:   "alibaba_oidc_token",
 }
 
+var azureOidcCred = &model.CspCredentialResponse{
+	CspType:     "azure",
+	AccessToken: "azure_access_token",
+	TokenType:   "Bearer",
+}
+
+var tencentSamlCred = &model.CspCredentialResponse{
+	CspType:         "tencent",
+	AccessKeyId:     "STS_TENCENT",
+	SecretAccessKey: "tencent_secret",
+	SessionToken:    "tencent_token",
+}
+
+var ibmOidcCred = &model.CspCredentialResponse{
+	CspType:     "ibm",
+	AccessToken: "ibm_access_token",
+	TokenType:   "Bearer",
+}
+
 // ── 헬퍼: CspCredentialService 생성 ──────────────────────────────────────────
 
 type credServiceDeps struct {
 	aws      *mockAwsCredService
 	gcp      *mockGcpCredService
 	alibaba  *mockAlibabaCredService
+	azure    *mockAzureCredService
+	tencent  *mockTencentCredService
+	ibm      *mockIbmCredService
 	kc       KeycloakService // 인터페이스 — mockKeycloakService 또는 mockKeycloakForCred 모두 허용
 	userRepo *mockUserRepoForCred
 	mapRepo  *mockCspMappingRepo
@@ -148,6 +203,9 @@ func newCredServiceWithMocks(deps credServiceDeps) *CspCredentialService {
 		awsCredService:     deps.aws,
 		gcpCredService:     deps.gcp,
 		alibabaCredService: deps.alibaba,
+		azureCredService:   deps.azure,
+		tencentCredService: deps.tencent,
+		ibmCredService:     deps.ibm,
 		keycloakService:    deps.kc,
 		userRepoIface:      deps.userRepo,
 		mappingRepoIface:   deps.mapRepo,

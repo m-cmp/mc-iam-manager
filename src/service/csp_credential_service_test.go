@@ -341,7 +341,7 @@ func TestGetTemporaryCredentials_Alibaba_OIDC_KeycloakFail(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get impersonation token for Alibaba")
 }
 
-// ── Azure / 기타 ──────────────────────────────────────────────────────────────
+// ── Azure ─────────────────────────────────────────────────────────────────────
 
 // TC-CRED-15: Azure SECRET_KEY — 정상 반환
 func TestGetTemporaryCredentials_Azure_SecretKey_Success(t *testing.T) {
@@ -353,6 +353,9 @@ func TestGetTemporaryCredentials_Azure_SecretKey_Success(t *testing.T) {
 		aws:      &mockAwsCredService{},
 		gcp:      &mockGcpCredService{},
 		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  &mockTencentCredService{},
+		ibm:      &mockIbmCredService{},
 		kc:       &mockKeycloakForCred{},
 		userRepo: &mockUserRepoForCred{role: stdUserRole()},
 		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodSecretKey, idpArn, roleArn, model.AuthMethodSecretKey, config)},
@@ -363,30 +366,172 @@ func TestGetTemporaryCredentials_Azure_SecretKey_Success(t *testing.T) {
 	assert.Equal(t, "azure_client_id", cred.AccessKeyId)
 }
 
-// TC-CRED-16: Azure OIDC — 미구현 → ErrUnsupportedAuthMethod
-func TestGetTemporaryCredentials_Azure_OIDC_Unsupported(t *testing.T) {
+// TC-CRED-16: Azure OIDC — 정상 발급
+func TestGetTemporaryCredentials_Azure_OIDC_Success(t *testing.T) {
+	config := map[string]string{
+		"tenant_id": "my-tenant-id",
+		"client_id": "my-client-id",
+	}
 	svc := newCredServiceWithMocks(credServiceDeps{
 		aws:      &mockAwsCredService{},
 		gcp:      &mockGcpCredService{},
 		alibaba:  &mockAlibabaCredService{},
-		kc:       &mockKeycloakForCred{},
+		azure:    &mockAzureCredService{result: azureOidcCred},
+		tencent:  &mockTencentCredService{},
+		ibm:      &mockIbmCredService{},
+		kc:       oidcKC(),
+		userRepo: &mockUserRepoForCred{role: stdUserRole()},
+		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodOIDC, idpArn, roleArn, model.AuthMethodOIDC, config)},
+	})
+
+	cred, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("azure", "OIDC"))
+	require.NoError(t, err)
+	assert.Equal(t, "azure_access_token", cred.AccessToken)
+	assert.Equal(t, "azure", cred.CspType)
+}
+
+// TC-CRED-16b: Azure OIDC — config 누락 → 에러
+func TestGetTemporaryCredentials_Azure_OIDC_MissingConfig(t *testing.T) {
+	svc := newCredServiceWithMocks(credServiceDeps{
+		aws:      &mockAwsCredService{},
+		gcp:      &mockGcpCredService{},
+		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  &mockTencentCredService{},
+		ibm:      &mockIbmCredService{},
+		kc:       oidcKC(),
 		userRepo: &mockUserRepoForCred{role: stdUserRole()},
 		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodOIDC, idpArn, roleArn, model.AuthMethodOIDC, nil)},
 	})
 
 	_, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("azure", "OIDC"))
 	require.Error(t, err)
-	assert.Equal(t, ErrUnsupportedAuthMethod, err)
+	assert.Contains(t, err.Error(), "Azure OIDC requires tenant_id and client_id")
+}
+
+// TC-CRED-16c: Azure OIDC — Keycloak 실패
+func TestGetTemporaryCredentials_Azure_OIDC_KeycloakFail(t *testing.T) {
+	config := map[string]string{
+		"tenant_id": "my-tenant-id",
+		"client_id": "my-client-id",
+	}
+	svc := newCredServiceWithMocks(credServiceDeps{
+		aws:      &mockAwsCredService{},
+		gcp:      &mockGcpCredService{},
+		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  &mockTencentCredService{},
+		ibm:      &mockIbmCredService{},
+		kc:       failOidcKC(),
+		userRepo: &mockUserRepoForCred{role: stdUserRole()},
+		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodOIDC, idpArn, roleArn, model.AuthMethodOIDC, config)},
+	})
+
+	_, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("azure", "OIDC"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get impersonation token for Azure")
+}
+
+// ── Tencent ───────────────────────────────────────────────────────────────────
+
+// TC-CRED-17: Tencent SAML — 정상 발급
+func TestGetTemporaryCredentials_Tencent_SAML_Success(t *testing.T) {
+	config := map[string]string{
+		"secret_id":  "my-secret-id",
+		"secret_key": "my-secret-key",
+	}
+	svc := newCredServiceWithMocks(credServiceDeps{
+		aws:      &mockAwsCredService{},
+		gcp:      &mockGcpCredService{},
+		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  &mockTencentCredService{result: tencentSamlCred},
+		ibm:      &mockIbmCredService{},
+		kc:       samlKC(),
+		userRepo: &mockUserRepoForCred{role: stdUserRole()},
+		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodSAML, idpArn, roleArn, model.AuthMethodSAML, config)},
+	})
+
+	cred, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("tencent", "SAML"))
+	require.NoError(t, err)
+	assert.Equal(t, "STS_TENCENT", cred.AccessKeyId)
+	assert.Equal(t, "tencent", cred.CspType)
+}
+
+// TC-CRED-17b: Tencent SAML — config 누락 → 에러
+func TestGetTemporaryCredentials_Tencent_SAML_MissingConfig(t *testing.T) {
+	svc := newCredServiceWithMocks(credServiceDeps{
+		aws:      &mockAwsCredService{},
+		gcp:      &mockGcpCredService{},
+		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  &mockTencentCredService{},
+		ibm:      &mockIbmCredService{},
+		kc:       samlKC(),
+		userRepo: &mockUserRepoForCred{role: stdUserRole()},
+		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodSAML, idpArn, roleArn, model.AuthMethodSAML, nil)},
+	})
+
+	_, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("tencent", "SAML"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Tencent SAML requires secret_id and secret_key")
+}
+
+// ── IBM ───────────────────────────────────────────────────────────────────────
+
+// TC-CRED-18: IBM OIDC — 정상 발급
+func TestGetTemporaryCredentials_IBM_OIDC_Success(t *testing.T) {
+	config := map[string]string{
+		"profile_id": "Profile-xxxx-yyyy-zzzz",
+	}
+	svc := newCredServiceWithMocks(credServiceDeps{
+		aws:      &mockAwsCredService{},
+		gcp:      &mockGcpCredService{},
+		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  &mockTencentCredService{},
+		ibm:      &mockIbmCredService{result: ibmOidcCred},
+		kc:       oidcKC(),
+		userRepo: &mockUserRepoForCred{role: stdUserRole()},
+		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodOIDC, idpArn, roleArn, model.AuthMethodOIDC, config)},
+	})
+
+	cred, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("ibm", "OIDC"))
+	require.NoError(t, err)
+	assert.Equal(t, "ibm_access_token", cred.AccessToken)
+	assert.Equal(t, "ibm", cred.CspType)
+}
+
+// TC-CRED-18b: IBM OIDC — config 누락 → 에러
+func TestGetTemporaryCredentials_IBM_OIDC_MissingConfig(t *testing.T) {
+	svc := newCredServiceWithMocks(credServiceDeps{
+		aws:      &mockAwsCredService{},
+		gcp:      &mockGcpCredService{},
+		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  &mockTencentCredService{},
+		ibm:      &mockIbmCredService{},
+		kc:       oidcKC(),
+		userRepo: &mockUserRepoForCred{role: stdUserRole()},
+		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodOIDC, idpArn, roleArn, model.AuthMethodOIDC, nil)},
+	})
+
+	_, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("ibm", "OIDC"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "IBM OIDC requires profile_id")
 }
 
 // ── 에러 경로 ─────────────────────────────────────────────────────────────────
 
-// TC-CRED-17: 워크스페이스에 역할 없음
+// TC-CRED-19: 워크스페이스에 역할 없음
 func TestGetTemporaryCredentials_NoWorkspaceRole(t *testing.T) {
 	svc := newCredServiceWithMocks(credServiceDeps{
 		aws:      &mockAwsCredService{},
 		gcp:      &mockGcpCredService{},
 		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  &mockTencentCredService{},
+		ibm:      &mockIbmCredService{},
 		kc:       &mockKeycloakForCred{},
 		userRepo: &mockUserRepoForCred{role: nil}, // 역할 없음
 		mapRepo:  &mockCspMappingRepo{},
@@ -397,12 +542,15 @@ func TestGetTemporaryCredentials_NoWorkspaceRole(t *testing.T) {
 	assert.Contains(t, err.Error(), "no role assigned")
 }
 
-// TC-CRED-18: CSP 역할 매핑 없음 → ErrNoCspRoleMappingFound
+// TC-CRED-20: CSP 역할 매핑 없음 → ErrNoCspRoleMappingFound
 func TestGetTemporaryCredentials_NoCspRoleMapping(t *testing.T) {
 	svc := newCredServiceWithMocks(credServiceDeps{
 		aws:      &mockAwsCredService{},
 		gcp:      &mockGcpCredService{},
 		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  &mockTencentCredService{},
+		ibm:      &mockIbmCredService{},
 		kc:       &mockKeycloakForCred{},
 		userRepo: &mockUserRepoForCred{role: stdUserRole()},
 		mapRepo:  &mockCspMappingRepo{mapping: nil}, // 매핑 없음
@@ -413,12 +561,15 @@ func TestGetTemporaryCredentials_NoCspRoleMapping(t *testing.T) {
 	assert.Equal(t, ErrNoCspRoleMappingFound, err)
 }
 
-// TC-CRED-19: 미지원 CSP 타입 → ErrUnsupportedCspType
+// TC-CRED-21: 미지원 CSP 타입 → ErrUnsupportedCspType
 func TestGetTemporaryCredentials_UnsupportedCspType(t *testing.T) {
 	svc := newCredServiceWithMocks(credServiceDeps{
 		aws:      &mockAwsCredService{},
 		gcp:      &mockGcpCredService{},
 		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  &mockTencentCredService{},
+		ibm:      &mockIbmCredService{},
 		kc:       &mockKeycloakForCred{},
 		userRepo: &mockUserRepoForCred{role: stdUserRole()},
 		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodOIDC, idpArn, roleArn, model.AuthMethodOIDC, nil)},
