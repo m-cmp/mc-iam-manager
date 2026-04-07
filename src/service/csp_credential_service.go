@@ -207,8 +207,20 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 				log.Printf("[CSP_CREDENTIAL] Error getting impersonation token: %v", err)
 				return nil, fmt.Errorf("failed to get impersonation token: %w", err)
 			}
-			log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate...")
-			return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.AccessToken)
+			log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate (OIDC)...")
+			return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.AccessToken, "jwt")
+		case model.AuthMethodSAML:
+			samlClientAudience := idpArn
+			if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {
+				samlClientAudience = extConfig
+			}
+			samlAssertion, err := s.keycloakService.GetSamlAssertionByServiceAccount(ctx, samlClientAudience)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting SAML assertion for GCP: %v", err)
+				return nil, fmt.Errorf("failed to get SAML assertion for GCP: %w", err)
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate (SAML)...")
+			return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, samlAssertion, "saml2")
 		case model.AuthMethodSecretKey:
 			return getSecretKeyCredentials(cspType, targetCspRole.CspIdpConfig, region)
 		default:

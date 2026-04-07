@@ -256,19 +256,37 @@ func TestGetTemporaryCredentials_GCP_SecretKey_Success(t *testing.T) {
 }
 
 // TC-CRED-12: GCP SAML — 미구현 → ErrUnsupportedAuthMethod
-func TestGetTemporaryCredentials_GCP_SAML_Unsupported(t *testing.T) {
+// TC-CRED-11 (updated): GCP SAML — 정상 발급 (Phase 1 구현)
+func TestGetTemporaryCredentials_GCP_SAML_Success(t *testing.T) {
+	svc := newCredServiceWithMocks(credServiceDeps{
+		aws:      &mockAwsCredService{},
+		gcp:      &mockGcpCredService{result: gcpSamlCred},
+		alibaba:  &mockAlibabaCredService{},
+		kc:       samlKC(),
+		userRepo: &mockUserRepoForCred{role: stdUserRole()},
+		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodSAML, idpArn, roleArn, model.AuthMethodSAML, nil)},
+	})
+
+	cred, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("gcp", "SAML"))
+	require.NoError(t, err)
+	assert.Equal(t, "gcp_saml_access_token", cred.AccessToken)
+	assert.Equal(t, "gcp", cred.CspType)
+}
+
+// TC-CRED-11b: GCP SAML — Keycloak SAML assertion 실패 → 에러 전파
+func TestGetTemporaryCredentials_GCP_SAML_KeycloakFail(t *testing.T) {
 	svc := newCredServiceWithMocks(credServiceDeps{
 		aws:      &mockAwsCredService{},
 		gcp:      &mockGcpCredService{},
 		alibaba:  &mockAlibabaCredService{},
-		kc:       &mockKeycloakForCred{},
+		kc:       failSamlKC(),
 		userRepo: &mockUserRepoForCred{role: stdUserRole()},
 		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodSAML, idpArn, roleArn, model.AuthMethodSAML, nil)},
 	})
 
 	_, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("gcp", "SAML"))
 	require.Error(t, err)
-	assert.Equal(t, ErrUnsupportedAuthMethod, err)
+	assert.Contains(t, err.Error(), "failed to get SAML assertion for GCP")
 }
 
 // ── Alibaba SAML ──────────────────────────────────────────────────────────────
