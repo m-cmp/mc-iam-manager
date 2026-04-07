@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -1277,10 +1278,16 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 	return token, nil
 }
 
-// GetSamlAssertionByServiceAccount: RFC 8693 토큰 교환으로 SAML2 assertion을 발급한다.
-// OIDC 클라이언트 client_credentials로 JWT를 먼저 발급한 후,
-// requested_token_type=urn:ietf:params:oauth:token-type:saml2 로 교환하여 SAML assertion 반환.
-// samlClientAudience: Keycloak에 등록된 SAML 클라이언트 ID (e.g., "mciam-alibaba-saml")
+// GetSamlAssertionByServiceAccount: RFC 8693 토큰 교환으로 SAML2 assertion을 발급하고
+// AWS STS AssumeRoleWithSAML에 전달할 수 있는 base64-encoded SAMLResponse를 반환한다.
+//
+// 내부 흐름:
+//  1. platform admin 계정으로 password grant → UserSession 포함 JWT 발급
+//  2. RFC 8693 token exchange → base64url-encoded SAML Assertion 획득
+//  3. Assertion XML을 SAMLResponse로 래핑
+//  4. standard base64 인코딩하여 반환
+//
+// samlClientAudience: Keycloak에 등록된 SAML 클라이언트 ID (e.g., "urn:amazon:webservices")
 func (s *keycloakService) GetSamlAssertionByServiceAccount(ctx context.Context, samlClientAudience string) (string, error) {
 	if config.KC == nil || config.KC.Client == nil {
 		return "", fmt.Errorf("keycloak configuration not initialized")
@@ -1292,20 +1299,27 @@ func (s *keycloakService) GetSamlAssertionByServiceAccount(ctx context.Context, 
 		return "", fmt.Errorf("OIDC client credentials not configured")
 	}
 
-	// Step 1: OIDC client_credentials로 access token 발급
-	oidcToken, err := config.KC.Client.LoginClient(ctx, clientName, clientSecret, config.KC.Realm)
-	if err != nil {
-		return "", fmt.Errorf("failed to get OIDC client token: %w", err)
+	// Step 1: password grant으로 UserSession 포함 token 발급
+	// client_credentials는 UserSession을 생성하지 않아 SAML token exchange가 실패함.
+	platformAdminID := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_ID")
+	platformAdminPW := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_PASSWORD")
+	if platformAdminID == "" || platformAdminPW == "" {
+		return "", fmt.Errorf("platform admin credentials not configured (MC_IAM_MANAGER_PLATFORMADMIN_ID/PASSWORD required for SAML exchange)")
 	}
 
-	// Step 2: RFC 8693 토큰 교환 — access token → SAML2 assertion
+	userToken, err := config.KC.Client.Login(ctx, clientName, clientSecret, config.KC.Realm, platformAdminID, platformAdminPW)
+	if err != nil {
+		return "", fmt.Errorf("failed to get user token for SAML exchange: %w", err)
+	}
+
+	// Step 2: RFC 8693 토큰 교환 — access token → SAML2 assertion (base64url)
 	tokenURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/token", config.KC.Host, config.KC.Realm)
 
 	formData := url.Values{}
 	formData.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
 	formData.Set("client_id", clientName)
 	formData.Set("client_secret", clientSecret)
-	formData.Set("subject_token", oidcToken.AccessToken)
+	formData.Set("subject_token", userToken.AccessToken)
 	formData.Set("subject_token_type", "urn:ietf:params:oauth:token-type:access_token")
 	formData.Set("requested_token_type", "urn:ietf:params:oauth:token-type:saml2")
 	formData.Set("audience", samlClientAudience)
@@ -1343,8 +1357,48 @@ func (s *keycloakService) GetSamlAssertionByServiceAccount(ctx context.Context, 
 		return "", fmt.Errorf("Keycloak returned empty SAML assertion")
 	}
 
+	// Step 3: base64url assertion → XML 디코딩
+	assertionXML, err := decodeBase64URLToString(tokenResp.AccessToken)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode SAML assertion from Keycloak: %w", err)
+	}
+
+	// Step 4: SAMLResponse 래핑 + standard base64 인코딩
+	// AWS STS AssumeRoleWithSAML은 SAMLResponse 래퍼가 포함된 base64를 요구함
+	samlResponseXML := buildSAMLResponse(assertionXML)
+	samlResponseB64 := base64.StdEncoding.EncodeToString([]byte(samlResponseXML))
+
 	log.Printf("[KEYCLOAK] SAML assertion exchange succeeded for audience: %s", samlClientAudience)
-	return tokenResp.AccessToken, nil
+	return samlResponseB64, nil
+}
+
+// decodeBase64URLToString base64url (Keycloak token exchange 반환값) → UTF-8 문자열 디코딩
+func decodeBase64URLToString(b64url string) (string, error) {
+	// base64url → standard base64
+	b64 := strings.ReplaceAll(b64url, "-", "+")
+	b64 = strings.ReplaceAll(b64, "_", "/")
+	// 패딩 추가
+	switch len(b64) % 4 {
+	case 2:
+		b64 += "=="
+	case 3:
+		b64 += "="
+	}
+	decoded, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return "", fmt.Errorf("base64 decode failed: %w", err)
+	}
+	return string(decoded), nil
+}
+
+// buildSAMLResponse Keycloak SAML Assertion XML을 SAMLResponse로 래핑
+// AWS STS는 samlp:Response 래퍼가 포함된 SAMLAssertion을 요구함
+func buildSAMLResponse(assertionXML string) string {
+	return `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_samlresponse" Version="2.0" IssueInstant="` +
+		time.Now().UTC().Format("2006-01-02T15:04:05Z") +
+		`"><samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>` +
+		assertionXML +
+		`</samlp:Response>`
 }
 
 // AssignRealmRoleToUser assigns a realm role to a user
