@@ -24,6 +24,18 @@ func (m *mockAwsCredService) AssumeRoleWithWebIdentity(_ context.Context, roleAr
 func (m *mockAwsCredService) AssumeRoleWithSAML(_ context.Context, roleArn, principalArn, samlAssertion, region string) (*model.CspCredentialResponse, error) {
 	return m.samlResult, m.samlErr
 }
+func (m *mockAwsCredService) CheckOIDCProvider(_ context.Context, oidcProviderArn string) (string, error) {
+	return "", nil
+}
+func (m *mockAwsCredService) CheckSAMLProvider(_ context.Context, samlProviderArn string) (string, error) {
+	return "", nil
+}
+func (m *mockAwsCredService) CheckRoleTrust(_ context.Context, roleArn, expectedAction, expectedProviderArn string) (string, error) {
+	return "", nil
+}
+func (m *mockAwsCredService) CheckCallerIdentity(_ context.Context, accessKeyID, secretKey string) (string, error) {
+	return "", nil
+}
 
 // ── GCP ──────────────────────────────────────────────────────────────────────
 

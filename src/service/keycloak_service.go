@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -90,6 +91,8 @@ type KeycloakService interface {
 	AddRealmRoleToGroup(ctx context.Context, groupName, roleName string) error
 	// RemoveRealmRoleFromGroup removes a realm role from a Keycloak group
 	RemoveRealmRoleFromGroup(ctx context.Context, groupName, roleName string) error
+	// CheckSAMLClientConfig Keycloak SAML 클라이언트 존재 및 protocol mapper 구성 확인
+	CheckSAMLClientConfig(ctx context.Context, clientID string) (string, error)
 }
 
 // keycloakService is now stateless, methods directly use config.KC
@@ -1800,4 +1803,92 @@ func (s *keycloakService) RemoveRealmRoleFromGroup(ctx context.Context, groupNam
 
 	log.Printf("Successfully removed realm role '%s' from Keycloak group '%s'", roleName, groupName)
 	return nil
+}
+
+// kcProtocolMapperForService Keycloak protocol mapper 응답 구조체 (service 패키지 내)
+type kcProtocolMapperForService struct {
+	ID             string            `json:"id"`
+	Name           string            `json:"name"`
+	ProtocolMapper string            `json:"protocolMapper"`
+	Config         map[string]string `json:"config"`
+}
+
+// CheckSAMLClientConfig Keycloak SAML 클라이언트 존재 및 protocol mapper 구성 확인
+// AWS SAML 연동에 필요한 클라이언트와 Role attribute mapper가 설정되어 있는지 검증한다.
+func (s *keycloakService) CheckSAMLClientConfig(ctx context.Context, clientID string) (string, error) {
+	adminToken, err := config.KC.LoginAdmin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("Keycloak admin 로그인 실패: %v", err)
+	}
+
+	realm := config.KC.Realm
+	kcHost := config.KC.Host
+
+	// 1. 클라이언트 존재 확인
+	clientsURL := fmt.Sprintf("%s/admin/realms/%s/clients?clientId=%s", kcHost, realm, clientID)
+	clientsResp, err := kcAdminGetRequest(ctx, clientsURL, adminToken.AccessToken)
+	if err != nil {
+		return "", fmt.Errorf("Keycloak 클라이언트 조회 실패: %v", err)
+	}
+
+	var clients []map[string]interface{}
+	if err := json.Unmarshal(clientsResp, &clients); err != nil || len(clients) == 0 {
+		return "", fmt.Errorf("SAML 클라이언트 '%s' 없음 — Keycloak에 SAML 클라이언트 생성 필요 (KEYCLOAK-AWS-SAML-SETUP.md 참조)", clientID)
+	}
+	kcClientID, ok := clients[0]["id"].(string)
+	if !ok || kcClientID == "" {
+		return "", fmt.Errorf("SAML 클라이언트 ID 파싱 실패")
+	}
+
+	// 2. Protocol mappers 확인
+	mappersURL := fmt.Sprintf("%s/admin/realms/%s/clients/%s/protocol-mappers/models", kcHost, realm, kcClientID)
+	mappersResp, err := kcAdminGetRequest(ctx, mappersURL, adminToken.AccessToken)
+	if err != nil {
+		return "", fmt.Errorf("Protocol mapper 조회 실패: %v", err)
+	}
+
+	var mappers []kcProtocolMapperForService
+	if err := json.Unmarshal(mappersResp, &mappers); err != nil {
+		return "", fmt.Errorf("Protocol mapper 파싱 실패: %v", err)
+	}
+
+	// Role attribute mapper 확인 (AWS SAML Role 전달용)
+	hasRoleMapper := false
+	for _, m := range mappers {
+		if m.ProtocolMapper == "saml-role-list-mapper" || m.ProtocolMapper == "saml-hardcode-attribute-mapper" {
+			attrName := m.Config["attribute.name"]
+			if strings.Contains(attrName, "aws.amazon.com/SAML/Attributes/Role") ||
+				m.ProtocolMapper == "saml-role-list-mapper" {
+				hasRoleMapper = true
+				break
+			}
+		}
+	}
+	if !hasRoleMapper {
+		return "", fmt.Errorf("Role attribute mapper 없음 — saml-role-list-mapper 또는 saml-hardcode-attribute-mapper에 https://aws.amazon.com/SAML/Attributes/Role 설정 필요")
+	}
+
+	mapperNames := make([]string, 0, len(mappers))
+	for _, m := range mappers {
+		mapperNames = append(mapperNames, m.Name)
+	}
+	return fmt.Sprintf("클라이언트 '%s' 존재, mappers=%v", clientID, mapperNames), nil
+}
+
+// kcAdminGetRequest Keycloak Admin API GET 요청 헬퍼 (service 패키지 내)
+func kcAdminGetRequest(ctx context.Context, url, token string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	return io.ReadAll(resp.Body)
 }
