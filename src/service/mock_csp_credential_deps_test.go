@@ -44,7 +44,7 @@ type mockGcpCredService struct {
 	err    error
 }
 
-func (m *mockGcpCredService) ExchangeTokenAndImpersonate(_ context.Context, wif, sa, token string) (*model.CspCredentialResponse, error) {
+func (m *mockGcpCredService) ExchangeTokenAndImpersonate(_ context.Context, wif, sa, token, tokenType string) (*model.CspCredentialResponse, error) {
 	return m.result, m.err
 }
 
@@ -100,6 +100,12 @@ var awsSamlCred = &model.CspCredentialResponse{
 var gcpOidcCred = &model.CspCredentialResponse{
 	CspType:     "gcp",
 	AccessToken: "gcp_access_token",
+	TokenType:   "Bearer",
+}
+
+var gcpSamlCred = &model.CspCredentialResponse{
+	CspType:     "gcp",
+	AccessToken: "gcp_saml_access_token",
 	TokenType:   "Bearer",
 }
 
