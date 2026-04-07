@@ -51,11 +51,20 @@ func (m *mockGcpCredService) ExchangeTokenAndImpersonate(_ context.Context, wif,
 // ── Alibaba ──────────────────────────────────────────────────────────────────
 
 type mockAlibabaCredService struct {
-	result *model.CspCredentialResponse
-	err    error
+	result    *model.CspCredentialResponse
+	err       error
+	oidcResult *model.CspCredentialResponse
+	oidcErr    error
 }
 
 func (m *mockAlibabaCredService) AssumeRoleWithSAML(_ context.Context, samlProviderArn, roleArn, samlAssertion, region string) (*model.CspCredentialResponse, error) {
+	return m.result, m.err
+}
+
+func (m *mockAlibabaCredService) AssumeRoleWithOIDC(_ context.Context, oidcProviderArn, roleArn, oidcToken, region string) (*model.CspCredentialResponse, error) {
+	if m.oidcResult != nil || m.oidcErr != nil {
+		return m.oidcResult, m.oidcErr
+	}
 	return m.result, m.err
 }
 
@@ -114,6 +123,13 @@ var alibabaSamlCred = &model.CspCredentialResponse{
 	AccessKeyId:     "STS_ALIBABA",
 	SecretAccessKey: "alibaba_secret",
 	SecurityToken:   "alibaba_token",
+}
+
+var alibabaOidcCred = &model.CspCredentialResponse{
+	CspType:         "alibaba",
+	AccessKeyId:     "STS_ALIBABA_OIDC",
+	SecretAccessKey: "alibaba_oidc_secret",
+	SecurityToken:   "alibaba_oidc_token",
 }
 
 // ── 헬퍼: CspCredentialService 생성 ──────────────────────────────────────────
