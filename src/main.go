@@ -129,6 +129,7 @@ func main() {
 	cspAccountHandler := handler.NewCspAccountHandler(db)
 	cspIdpConfigHandler := handler.NewCspIdpConfigHandler(db)
 	cspPolicyHandler := handler.NewCspPolicyHandler(db)
+	cspValidationHandler := handler.NewCspValidationHandler(db)
 
 	// 조직 핸들러 초기화
 	organizationHandler := handler.NewOrganizationHandler(db)
@@ -242,6 +243,7 @@ func main() {
 
 		workspaces.POST("/workspace-ticket", authHandler.WorkspaceTicket) // 1개 워크스페이스에 대한 티켓 설정
 		workspaces.POST("/temporary-credentials", cspCredentialHandler.GetTemporaryCredentials)
+		workspaces.POST("/credentials/validate", cspValidationHandler.ValidateCredentials)
 
 		workspaces.POST("/users/list", workspaceHandler.ListWorkspaceUsers)                                                                    // workspace의 사용자 목록 조회
 		workspaces.POST("/users-roles/list", workspaceHandler.ListWorkspaceUsersAndRoles, middleware.PlatformRoleMiddleware(middleware.Write)) // workspace와 사용자 및 role 조회
@@ -454,6 +456,8 @@ func main() {
 		cspIdpConfigs.POST("/id/:configId/test", cspIdpConfigHandler.TestCspIdpConnection, middleware.PlatformAdminMiddleware)
 		cspIdpConfigs.POST("/id/:configId/activate", cspIdpConfigHandler.ActivateCspIdpConfig, middleware.PlatformAdminMiddleware)
 		cspIdpConfigs.POST("/id/:configId/deactivate", cspIdpConfigHandler.DeactivateCspIdpConfig, middleware.PlatformAdminMiddleware)
+		cspIdpConfigs.GET("/summary", cspIdpConfigHandler.GetCspIdpSummary)
+		cspIdpConfigs.POST("/health-check", cspIdpConfigHandler.BulkHealthCheck, middleware.PlatformAdminMiddleware)
 	}
 
 	// 조직 관리 라우트 (platformAdmin 전용)

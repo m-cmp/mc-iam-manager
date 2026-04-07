@@ -12,22 +12,35 @@ import (
 	"gorm.io/gorm"
 )
 
+// credUserRepo 테스트 주입을 위한 UserRepository 인터페이스
+type credUserRepo interface {
+	FindUserRoleInWorkspace(userID, workspaceID uint) (*model.UserWorkspaceRole, error)
+}
+
+// credMappingRepo 테스트 주입을 위한 CspMappingRepository 인터페이스
+type credMappingRepo interface {
+	FindCspRoleMappingsByRoleIDAndCspType(roleID uint, cspType string, authMethod string) (*model.RoleMasterCspRoleMapping, error)
+}
+
 var (
-	ErrUserNotFound          = errors.New("user not found")
-	ErrWorkspaceNotFound     = errors.New("workspace not found")
-	ErrNoCspRoleMappingFound = errors.New("no suitable CSP role mapping found for the user's roles in this workspace")
-	ErrUnsupportedCspType    = errors.New("unsupported CSP type requested")
+	ErrUserNotFound           = errors.New("user not found")
+	ErrWorkspaceNotFound      = errors.New("workspace not found")
+	ErrNoCspRoleMappingFound  = errors.New("no suitable CSP role mapping found for the user's roles in this workspace")
+	ErrUnsupportedCspType     = errors.New("unsupported CSP type requested")
+	ErrUnsupportedAuthMethod  = errors.New("unsupported auth method for this CSP type")
 )
 
 // CspCredentialService CSP 임시 자격 증명 발급 조율 서비스
 type CspCredentialService struct {
-	db                     *gorm.DB
-	userRepo               *repository.UserRepository       // To get user roles
-	mappingRepo            *repository.CspMappingRepository // To get CSP role mapping
-	awsCredService         AwsCredentialService             // To call AWS STS
-	gcpCredService         GcpCredentialService             // To call GCP WIF
-	alibabaCredService     AlibabaCredentialService         // To call Alibaba RAM STS
-	keycloakService        KeycloakService                  // To get KcId from token
+	db                 *gorm.DB
+	userRepo           *repository.UserRepository       // 프로덕션 용
+	mappingRepo        *repository.CspMappingRepository // 프로덕션 용
+	userRepoIface      credUserRepo                     // 테스트 주입용 (nil이면 userRepo 사용)
+	mappingRepoIface   credMappingRepo                  // 테스트 주입용 (nil이면 mappingRepo 사용)
+	awsCredService     AwsCredentialService
+	gcpCredService     GcpCredentialService
+	alibabaCredService AlibabaCredentialService
+	keycloakService    KeycloakService
 }
 
 // NewCspCredentialService 새 CspCredentialService 인스턴스 생성
@@ -47,6 +60,22 @@ func NewCspCredentialService(db *gorm.DB) *CspCredentialService {
 		alibabaCredService: alibabaCredService,
 		keycloakService:    keycloakService,
 	}
+}
+
+// resolveUserRepo 테스트 주입 우선, 없으면 프로덕션 repo 반환
+func (s *CspCredentialService) resolveUserRepo() credUserRepo {
+	if s.userRepoIface != nil {
+		return s.userRepoIface
+	}
+	return s.userRepo
+}
+
+// resolveMappingRepo 테스트 주입 우선, 없으면 프로덕션 repo 반환
+func (s *CspCredentialService) resolveMappingRepo() credMappingRepo {
+	if s.mappingRepoIface != nil {
+		return s.mappingRepoIface
+	}
+	return s.mappingRepo
 }
 
 // GetTemporaryCredentials 사용자의 워크스페이스 역할에 기반하여 CSP 임시 자격 증명 발급
@@ -73,7 +102,7 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 
 	// 1. Get User's Roles for the specified Workspace
 	log.Printf("[CSP_CREDENTIAL] Getting user roles for workspace...")
-	userWorkspaceRole, err := s.userRepo.FindUserRoleInWorkspace(userID, workspaceIDInt)
+	userWorkspaceRole, err := s.resolveUserRepo().FindUserRoleInWorkspace(userID, workspaceIDInt)
 	if err != nil {
 		log.Printf("[CSP_CREDENTIAL] Error finding user role in workspace: %v", err)
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
@@ -86,9 +115,9 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 	}
 	log.Printf("[CSP_CREDENTIAL] Found user workspace role - RoleID: %d", userWorkspaceRole.RoleID)
 
-	// 2. Find the first matching CSP role mapping
-	log.Printf("[CSP_CREDENTIAL] Finding CSP role mappings for role %d and csp type %s", userWorkspaceRole.RoleID, cspType)
-	targetMapping, err := s.mappingRepo.FindCspRoleMappingsByRoleIDAndCspType(userWorkspaceRole.RoleID, cspType)
+	// 2. Find the first matching CSP role mapping (authMethod 지정 시 해당 방식 매핑만 조회)
+	log.Printf("[CSP_CREDENTIAL] Finding CSP role mappings for role %d, csp type %s, authMethod %s", userWorkspaceRole.RoleID, cspType, req.AuthMethod)
+	targetMapping, err := s.resolveMappingRepo().FindCspRoleMappingsByRoleIDAndCspType(userWorkspaceRole.RoleID, cspType, req.AuthMethod)
 	if err != nil {
 		log.Printf("[CSP_CREDENTIAL] Error finding CSP role mapping for role %d: %v", userWorkspaceRole.RoleID, err)
 	}
@@ -126,60 +155,114 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 	}
 	log.Printf("[CSP_CREDENTIAL] Role ARN: %s", roleArn)
 
-	// 5. Get impersonation token for the OIDC client
-	log.Printf("[CSP_CREDENTIAL] Getting impersonation token...")
-	impersonationToken, err := s.keycloakService.GetImpersonationTokenByServiceAccount(ctx)
-	if err != nil {
-		log.Printf("[CSP_CREDENTIAL] Error getting impersonation token: %v", err)
-		return nil, fmt.Errorf("failed to get impersonation token: %w", err)
+	// 5. Determine auth method from CspIdpConfig (with backward-compat defaults)
+	authMethod := model.AuthMethodType("")
+	if targetCspRole.CspIdpConfig != nil {
+		authMethod = targetCspRole.CspIdpConfig.AuthMethod
 	}
-	log.Printf("[CSP_CREDENTIAL] Successfully got impersonation token: %v", impersonationToken)
+	if authMethod == "" {
+		switch cspType {
+		case "aws", "gcp":
+			authMethod = model.AuthMethodOIDC
+		case "alibaba":
+			authMethod = model.AuthMethodSAML
+		}
+	}
+	log.Printf("[CSP_CREDENTIAL] Auth method resolved: cspType=%s, authMethod=%s", cspType, authMethod)
 
-	// 6. Use the impersonation token to get AWS credentials
-	log.Printf("[CSP_CREDENTIAL] Processing credentials for CSP type: %s", cspType)
+	// 6. Dispatch by (cspType, authMethod)
 	switch cspType {
 	case "aws":
-		if s.awsCredService == nil {
-			log.Printf("[CSP_CREDENTIAL] Error: AWS credential service is nil")
-			return nil, fmt.Errorf("AWS credential service is not initialized")
+		switch authMethod {
+		case model.AuthMethodOIDC:
+			impersonationToken, err := s.keycloakService.GetImpersonationTokenByServiceAccount(ctx)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting impersonation token: %v", err)
+				return nil, fmt.Errorf("failed to get impersonation token: %w", err)
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling AWS AssumeRoleWithWebIdentity...")
+			return s.awsCredService.AssumeRoleWithWebIdentity(ctx, roleArn, kcUserId, impersonationToken.AccessToken, idpArn, region)
+		case model.AuthMethodSAML:
+			samlClientAudience := idpArn
+			if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {
+				samlClientAudience = extConfig
+			}
+			samlAssertion, err := s.keycloakService.GetSamlAssertionByServiceAccount(ctx, samlClientAudience)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting SAML assertion for AWS: %v", err)
+				return nil, fmt.Errorf("failed to get SAML assertion for AWS: %w", err)
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling AWS AssumeRoleWithSAML...")
+			return s.awsCredService.AssumeRoleWithSAML(ctx, roleArn, idpArn, samlAssertion, region)
+		case model.AuthMethodSecretKey:
+			return getSecretKeyCredentials(cspType, targetCspRole.CspIdpConfig, region)
+		default:
+			return nil, ErrUnsupportedAuthMethod
 		}
-		log.Printf("[CSP_CREDENTIAL] Calling AWS AssumeRoleWithWebIdentity...")
-		return s.awsCredService.AssumeRoleWithWebIdentity(ctx, roleArn, kcUserId, impersonationToken.AccessToken, idpArn, region)
 	case "gcp":
-		if s.gcpCredService == nil {
-			log.Printf("[CSP_CREDENTIAL] Error: GCP credential service is nil")
-			return nil, fmt.Errorf("GCP credential service is not initialized")
+		switch authMethod {
+		case model.AuthMethodOIDC:
+			impersonationToken, err := s.keycloakService.GetImpersonationTokenByServiceAccount(ctx)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting impersonation token: %v", err)
+				return nil, fmt.Errorf("failed to get impersonation token: %w", err)
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate...")
+			return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.AccessToken)
+		case model.AuthMethodSecretKey:
+			return getSecretKeyCredentials(cspType, targetCspRole.CspIdpConfig, region)
+		default:
+			return nil, ErrUnsupportedAuthMethod
 		}
-		log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate...")
-		return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.AccessToken)
 	case "alibaba":
-		if s.alibabaCredService == nil {
-			log.Printf("[CSP_CREDENTIAL] Error: Alibaba credential service is nil")
-			return nil, fmt.Errorf("Alibaba credential service is not initialized")
+		switch authMethod {
+		case model.AuthMethodSAML:
+			samlClientAudience := idpArn
+			if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {
+				samlClientAudience = extConfig
+			}
+			samlAssertion, err := s.keycloakService.GetSamlAssertionByServiceAccount(ctx, samlClientAudience)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting SAML assertion for Alibaba: %v", err)
+				return nil, fmt.Errorf("failed to get SAML assertion for Alibaba: %w", err)
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling Alibaba AssumeRoleWithSAML...")
+			return s.alibabaCredService.AssumeRoleWithSAML(ctx, idpArn, roleArn, samlAssertion, region)
+		case model.AuthMethodSecretKey:
+			return getSecretKeyCredentials(cspType, targetCspRole.CspIdpConfig, region)
+		default:
+			return nil, ErrUnsupportedAuthMethod
 		}
-		log.Printf("[CSP_CREDENTIAL] Getting SAML assertion for Alibaba...")
-		// idpArn = Alibaba SAML Provider ARN (acs:ram::accountId:saml-provider/...)
-		// roleArn = Alibaba RAM Role ARN (acs:ram::accountId:role/...)
-		// SAML client audience: cspRole.ExtendedConfig["saml_client_id"] 우선, 없으면 idpArn 사용
-		samlClientAudience := idpArn
-		if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {
-			samlClientAudience = extConfig
+	case "azure", "tencent", "ibm", "ncp", "nhn", "kt", "openstack":
+		switch authMethod {
+		case model.AuthMethodSecretKey:
+			return getSecretKeyCredentials(cspType, targetCspRole.CspIdpConfig, region)
+		default:
+			log.Printf("[CSP_CREDENTIAL] %s: federation not yet implemented (authMethod=%s)", cspType, authMethod)
+			return nil, ErrUnsupportedAuthMethod
 		}
-		samlAssertion, err := s.keycloakService.GetSamlAssertionByServiceAccount(ctx, samlClientAudience)
-		if err != nil {
-			log.Printf("[CSP_CREDENTIAL] Error getting SAML assertion: %v", err)
-			return nil, fmt.Errorf("failed to get SAML assertion for Alibaba: %w", err)
-		}
-		log.Printf("[CSP_CREDENTIAL] Calling Alibaba AssumeRoleWithSAML...")
-		return s.alibabaCredService.AssumeRoleWithSAML(ctx, idpArn, roleArn, samlAssertion, region)
-	case "azure":
-		log.Printf("[CSP_CREDENTIAL] Error: Azure not supported yet")
-		// TODO: Implement Azure credential logic using azureCredService
-		return nil, ErrUnsupportedCspType
 	default:
 		log.Printf("[CSP_CREDENTIAL] Error: Unsupported CSP type: %s", cspType)
 		return nil, ErrUnsupportedCspType
 	}
+}
+
+// getSecretKeyCredentials SECRET_KEY 방식: CspIdpConfig에 저장된 키를 직접 반환
+func getSecretKeyCredentials(cspType string, idpConfig *model.CspIdpConfig, region string) (*model.CspCredentialResponse, error) {
+	if idpConfig == nil {
+		return nil, fmt.Errorf("IDP config is not set for SECRET_KEY authentication")
+	}
+	accessKeyID := idpConfig.GetAccessKeyID()
+	secretAccessKey := idpConfig.GetSecretAccessKey()
+	if accessKeyID == "" || secretAccessKey == "" {
+		return nil, fmt.Errorf("access_key_id or secret_access_key is not configured in IDP config")
+	}
+	return &model.CspCredentialResponse{
+		CspType:         cspType,
+		AccessKeyId:     accessKeyID,
+		SecretAccessKey: secretAccessKey,
+		Region:          region,
+	}, nil
 }
 
 // GetUserWorkspaceRoles 사용자의 워크스페이스 역할 목록 조회
