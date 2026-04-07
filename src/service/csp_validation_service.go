@@ -2,32 +2,36 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 
-	aws "github.com/aws/aws-sdk-go-v2/aws"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/iam"
-	"github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/util"
 	"gorm.io/gorm"
 )
 
+// valUserRepo 테스트 주입을 위한 UserRepository 인터페이스
+type valUserRepo interface {
+	FindUserRoleInWorkspace(userID, workspaceID uint) (*model.UserWorkspaceRole, error)
+}
+
+// valMappingRepo 테스트 주입을 위한 CspMappingRepository 인터페이스
+type valMappingRepo interface {
+	FindCspRoleMappingsByRoleIDAndCspType(roleID uint, cspType string, authMethod string) (*model.RoleMasterCspRoleMapping, error)
+}
+
 // CspValidationService CSP 인증 설정 단계별 검증 서비스
 type CspValidationService struct {
-	db              *gorm.DB
-	userRepo        *repository.UserRepository
-	mappingRepo     *repository.CspMappingRepository
-	keycloakService KeycloakService
-	awsCredService  AwsCredentialService
+	db               *gorm.DB
+	userRepo         *repository.UserRepository
+	mappingRepo      *repository.CspMappingRepository
+	userRepoIface    valUserRepo    // 테스트 주입용 (nil이면 userRepo 사용)
+	mappingRepoIface valMappingRepo // 테스트 주입용 (nil이면 mappingRepo 사용)
+	keycloakService  KeycloakService
+	awsCredService   AwsCredentialService
 }
 
 // NewCspValidationService 새 CspValidationService 인스턴스 생성
@@ -39,6 +43,22 @@ func NewCspValidationService(db *gorm.DB) *CspValidationService {
 		keycloakService: NewKeycloakService(),
 		awsCredService:  NewAwsCredentialService(),
 	}
+}
+
+// resolveUserRepo 테스트 주입 우선, 없으면 프로덕션 repo 반환
+func (s *CspValidationService) resolveUserRepo() valUserRepo {
+	if s.userRepoIface != nil {
+		return s.userRepoIface
+	}
+	return s.userRepo
+}
+
+// resolveMappingRepo 테스트 주입 우선, 없으면 프로덕션 repo 반환
+func (s *CspValidationService) resolveMappingRepo() valMappingRepo {
+	if s.mappingRepoIface != nil {
+		return s.mappingRepoIface
+	}
+	return s.mappingRepo
 }
 
 // buildSteps CSP×AuthMethod별 전체 단계를 skipped 초기 상태로 반환
@@ -167,11 +187,11 @@ func (s *CspValidationService) validateAWSWithOIDC(ctx context.Context, userID u
 	// Step 1: DB 매핑 조회
 	var mapping *model.RoleMasterCspRoleMapping
 	if !stepRunner(steps, 0, func() (string, error) {
-		userRole, err := s.userRepo.FindUserRoleInWorkspace(userID, workspaceID)
+		userRole, err := s.resolveUserRepo().FindUserRoleInWorkspace(userID, workspaceID)
 		if err != nil || userRole == nil {
 			return "", fmt.Errorf("워크스페이스 역할 없음 — DB에 auth_method=OIDC 매핑 추가 필요")
 		}
-		m, err := s.mappingRepo.FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
+		m, err := s.resolveMappingRepo().FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
 		if err != nil || m == nil {
 			return "", fmt.Errorf("OIDC 매핑 없음 — mcmp_role_csp_role_mappings에 auth_method=OIDC 레코드 추가 필요")
 		}
@@ -212,30 +232,18 @@ func (s *CspValidationService) validateAWSWithOIDC(ctx context.Context, userID u
 		return buildFailedResponse(cspType, authMethod, 3, steps), nil
 	}
 
-	// Step 4: AWS OIDC Provider 확인 (degraded: IAM 권한 없으면 skipped 처리)
-	stepRunner(steps, 3, func() (string, error) {
-		return checkAWSOIDCProvider(ctx, idpArn)
-	})
-	if steps[3].Status == model.ValidationStepFailed {
-		if strings.Contains(steps[3].Detail, "IAM 읽기 권한 없음") {
-			steps[3].Status = model.ValidationStepSkipped
-			steps[3].Detail = "IAM 읽기 권한 없음 — 이 단계를 건너뜁니다 (degraded mode)"
-		} else {
-			return buildFailedResponse(cspType, authMethod, 4, steps), nil
-		}
+	// Step 4: AWS OIDC Provider 확인
+	if !stepRunner(steps, 3, func() (string, error) {
+		return s.awsCredService.CheckOIDCProvider(ctx, idpArn)
+	}) {
+		return buildFailedResponse(cspType, authMethod, 4, steps), nil
 	}
 
-	// Step 5: IAM Role WebIdentity Trust 확인 (degraded)
-	stepRunner(steps, 4, func() (string, error) {
-		return checkAWSRoleTrust(ctx, roleArn, "sts:AssumeRoleWithWebIdentity", idpArn)
-	})
-	if steps[4].Status == model.ValidationStepFailed {
-		if strings.Contains(steps[4].Detail, "IAM 읽기 권한 없음") {
-			steps[4].Status = model.ValidationStepSkipped
-			steps[4].Detail = "IAM 읽기 권한 없음 — 이 단계를 건너뜁니다 (degraded mode)"
-		} else {
-			return buildFailedResponse(cspType, authMethod, 5, steps), nil
-		}
+	// Step 5: IAM Role WebIdentity Trust 확인
+	if !stepRunner(steps, 4, func() (string, error) {
+		return s.awsCredService.CheckRoleTrust(ctx, roleArn, "sts:AssumeRoleWithWebIdentity", idpArn)
+	}) {
+		return buildFailedResponse(cspType, authMethod, 5, steps), nil
 	}
 
 	// Step 6: 임시자격증명 발급
@@ -274,11 +282,11 @@ func (s *CspValidationService) validateAWSWithSAML(ctx context.Context, userID u
 	// Step 1: DB 매핑 조회
 	var mapping *model.RoleMasterCspRoleMapping
 	if !stepRunner(steps, 0, func() (string, error) {
-		userRole, err := s.userRepo.FindUserRoleInWorkspace(userID, workspaceID)
+		userRole, err := s.resolveUserRepo().FindUserRoleInWorkspace(userID, workspaceID)
 		if err != nil || userRole == nil {
 			return "", fmt.Errorf("워크스페이스 역할 없음 — DB에 auth_method=SAML 매핑 추가 필요")
 		}
-		m, err := s.mappingRepo.FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
+		m, err := s.resolveMappingRepo().FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
 		if err != nil || m == nil {
 			return "", fmt.Errorf("SAML 매핑 없음 — mcmp_role_csp_role_mappings에 auth_method=SAML 레코드 추가 필요")
 		}
@@ -314,7 +322,7 @@ func (s *CspValidationService) validateAWSWithSAML(ctx context.Context, userID u
 		kcSamlClientID = "urn:amazon:webservices"
 	}
 	if !stepRunner(steps, 2, func() (string, error) {
-		return checkKeycloakSAMLClient(ctx, kcSamlClientID)
+		return s.keycloakService.CheckSAMLClientConfig(ctx, kcSamlClientID)
 	}) {
 		return buildFailedResponse(cspType, authMethod, 3, steps), nil
 	}
@@ -335,30 +343,18 @@ func (s *CspValidationService) validateAWSWithSAML(ctx context.Context, userID u
 		return buildFailedResponse(cspType, authMethod, 4, steps), nil
 	}
 
-	// Step 5: AWS SAML Provider 확인 (degraded: IAM 권한 없으면 skipped 처리)
-	stepRunner(steps, 4, func() (string, error) {
-		return checkAWSSAMLProvider(ctx, principalArn)
-	})
-	if steps[4].Status == model.ValidationStepFailed {
-		if strings.Contains(steps[4].Detail, "IAM 읽기 권한 없음") {
-			steps[4].Status = model.ValidationStepSkipped
-			steps[4].Detail = "IAM 읽기 권한 없음 — 이 단계를 건너뜁니다 (degraded mode)"
-		} else {
-			return buildFailedResponse(cspType, authMethod, 5, steps), nil
-		}
+	// Step 5: AWS SAML Provider 확인
+	if !stepRunner(steps, 4, func() (string, error) {
+		return s.awsCredService.CheckSAMLProvider(ctx, principalArn)
+	}) {
+		return buildFailedResponse(cspType, authMethod, 5, steps), nil
 	}
 
-	// Step 6: IAM Role SAML Trust 확인 (degraded)
-	stepRunner(steps, 5, func() (string, error) {
-		return checkAWSRoleTrust(ctx, roleArn, "sts:AssumeRoleWithSAML", principalArn)
-	})
-	if steps[5].Status == model.ValidationStepFailed {
-		if strings.Contains(steps[5].Detail, "IAM 읽기 권한 없음") {
-			steps[5].Status = model.ValidationStepSkipped
-			steps[5].Detail = "IAM 읽기 권한 없음 — 이 단계를 건너뜁니다 (degraded mode)"
-		} else {
-			return buildFailedResponse(cspType, authMethod, 6, steps), nil
-		}
+	// Step 6: IAM Role SAML Trust 확인
+	if !stepRunner(steps, 5, func() (string, error) {
+		return s.awsCredService.CheckRoleTrust(ctx, roleArn, "sts:AssumeRoleWithSAML", principalArn)
+	}) {
+		return buildFailedResponse(cspType, authMethod, 6, steps), nil
 	}
 
 	// Step 7: 임시자격증명 발급
@@ -397,11 +393,11 @@ func (s *CspValidationService) validateAWSWithSecretKey(ctx context.Context, use
 	// Step 1: DB 매핑 조회
 	var mapping *model.RoleMasterCspRoleMapping
 	if !stepRunner(steps, 0, func() (string, error) {
-		userRole, err := s.userRepo.FindUserRoleInWorkspace(userID, workspaceID)
+		userRole, err := s.resolveUserRepo().FindUserRoleInWorkspace(userID, workspaceID)
 		if err != nil || userRole == nil {
 			return "", fmt.Errorf("워크스페이스 역할 없음")
 		}
-		m, err := s.mappingRepo.FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
+		m, err := s.resolveMappingRepo().FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
 		if err != nil || m == nil {
 			return "", fmt.Errorf("SECRET_KEY 매핑 없음 — mcmp_role_csp_role_mappings에 auth_method=SECRET_KEY 레코드 추가 필요")
 		}
@@ -430,7 +426,7 @@ func (s *CspValidationService) validateAWSWithSecretKey(ctx context.Context, use
 
 	// Step 3: AWS 연결 확인 (GetCallerIdentity)
 	if !stepRunner(steps, 2, func() (string, error) {
-		return checkAWSCallerIdentity(ctx, accessKeyID, secretKey)
+		return s.awsCredService.CheckCallerIdentity(ctx, accessKeyID, secretKey)
 	}) {
 		return buildFailedResponse(cspType, authMethod, 3, steps), nil
 	}
@@ -450,11 +446,11 @@ func (s *CspValidationService) validateGCPWithOIDC(ctx context.Context, userID u
 	// Step 1: DB 매핑 조회
 	var mapping *model.RoleMasterCspRoleMapping
 	if !stepRunner(steps, 0, func() (string, error) {
-		userRole, err := s.userRepo.FindUserRoleInWorkspace(userID, workspaceID)
+		userRole, err := s.resolveUserRepo().FindUserRoleInWorkspace(userID, workspaceID)
 		if err != nil || userRole == nil {
 			return "", fmt.Errorf("워크스페이스 역할 없음")
 		}
-		m, err := s.mappingRepo.FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
+		m, err := s.resolveMappingRepo().FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
 		if err != nil || m == nil {
 			return "", fmt.Errorf("GCP OIDC 매핑 없음 — auth_method=OIDC, csp_type=gcp 레코드 추가 필요")
 		}
@@ -533,203 +529,6 @@ func (s *CspValidationService) validateGCPWithOIDC(ctx context.Context, userID u
 		Steps:       steps,
 		Credentials: credSummary,
 	}, nil
-}
-
-// --- AWS IAM 확인 헬퍼 ---
-
-// checkAWSOIDCProvider AWS OIDC Provider 존재 및 audience 확인
-func checkAWSOIDCProvider(ctx context.Context, oidcProviderArn string) (string, error) {
-	cfg, err := newAWSIAMConfig(ctx)
-	if err != nil {
-		return "", fmt.Errorf("IAM 읽기 권한 없음 (degraded mode) — %v", err)
-	}
-	iamClient := iam.NewFromConfig(cfg)
-	result, err := iamClient.GetOpenIDConnectProvider(ctx, &iam.GetOpenIDConnectProviderInput{
-		OpenIDConnectProviderArn: &oidcProviderArn,
-	})
-	if err != nil {
-		return "", fmt.Errorf("OIDC Provider 없음: %v — AWS IAM에 Keycloak issuer URL로 OIDC Provider 생성 필요", err)
-	}
-	audiences := make([]string, len(result.ClientIDList))
-	copy(audiences, result.ClientIDList)
-	return fmt.Sprintf("OIDC Provider 존재 확인, audiences=%v", audiences), nil
-}
-
-// checkAWSSAMLProvider AWS SAML Provider 존재 확인
-func checkAWSSAMLProvider(ctx context.Context, samlProviderArn string) (string, error) {
-	cfg, err := newAWSIAMConfig(ctx)
-	if err != nil {
-		return "", fmt.Errorf("IAM 읽기 권한 없음 (degraded mode) — %v", err)
-	}
-	iamClient := iam.NewFromConfig(cfg)
-	_, err = iamClient.GetSAMLProvider(ctx, &iam.GetSAMLProviderInput{
-		SAMLProviderArn: &samlProviderArn,
-	})
-	if err != nil {
-		return "", fmt.Errorf("SAML Provider 없음: %v — AWS IAM에 Keycloak 메타데이터로 SAML Provider 생성 필요", err)
-	}
-	return fmt.Sprintf("SAML Provider 존재 확인: %s", samlProviderArn), nil
-}
-
-// checkAWSRoleTrust AWS IAM Role Trust Policy 확인
-func checkAWSRoleTrust(ctx context.Context, roleArn, requiredAction, requiredPrincipal string) (string, error) {
-	cfg, err := newAWSIAMConfig(ctx)
-	if err != nil {
-		return "", fmt.Errorf("IAM 읽기 권한 없음 (degraded mode) — %v", err)
-	}
-
-	// ARN에서 role name 추출 (arn:aws:iam::ACCOUNT:role/ROLE_NAME)
-	parts := strings.Split(roleArn, "/")
-	if len(parts) < 2 {
-		return "", fmt.Errorf("roleArn 형식 오류: %s", roleArn)
-	}
-	roleName := parts[len(parts)-1]
-
-	iamClient := iam.NewFromConfig(cfg)
-	result, err := iamClient.GetRole(ctx, &iam.GetRoleInput{
-		RoleName: &roleName,
-	})
-	if err != nil {
-		return "", fmt.Errorf("IAM Role 조회 실패: %v — Role ARN 확인 필요", err)
-	}
-
-	trustDoc := ""
-	if result.Role.AssumeRolePolicyDocument != nil {
-		trustDoc = *result.Role.AssumeRolePolicyDocument
-	}
-
-	if !strings.Contains(trustDoc, requiredAction) {
-		return "", fmt.Errorf("Trust Policy에 %s 없음 — IAM Role Trust Relationship에 %s 추가 필요", requiredAction, requiredAction)
-	}
-	return fmt.Sprintf("Trust Policy에 %s 확인 완료", requiredAction), nil
-}
-
-// checkAWSCallerIdentity SECRET_KEY 연결 확인
-func checkAWSCallerIdentity(ctx context.Context, accessKeyID, secretKey string) (string, error) {
-	_, err := awsconfig.LoadDefaultConfig(ctx,
-		awsconfig.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(accessKeyID, secretKey, ""),
-		),
-	)
-	if err != nil {
-		return "", fmt.Errorf("AWS 설정 로드 실패: %v", err)
-	}
-
-	stsEndpoint := os.Getenv("TEMPORARY_SECURITY_CREDENTIALS_ENDPOINT_AWS")
-	if stsEndpoint == "" {
-		stsEndpoint = "https://sts.amazonaws.com"
-	}
-
-	// STS GetCallerIdentity — 자격증명이 유효한지 확인 (unsigned 요청으로 403 여부 확인)
-	req, _ := http.NewRequestWithContext(ctx, "GET", stsEndpoint+"?Action=GetCallerIdentity&Version=2011-06-15", nil)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("AWS STS 연결 실패: %v — 네트워크 또는 STS endpoint 확인", err)
-	}
-	defer resp.Body.Close()
-	// unsigned 요청은 AuthFailure(403)를 반환하는데, 이건 키가 아닌 서명 문제
-	// 실제 키 유효성은 SDK signed call로만 확인 가능 — 여기서는 연결 가능 여부만 확인
-	return fmt.Sprintf("AWS STS 연결 확인 완료 (StatusCode=%d)", resp.StatusCode), nil
-}
-
-// newAWSIAMConfig IAM 읽기용 AWS 설정 로드 — 자격증명 없으면 오류 반환
-func newAWSIAMConfig(ctx context.Context) (aws.Config, error) {
-	cfg, err := awsconfig.LoadDefaultConfig(ctx)
-	if err != nil {
-		return aws.Config{}, fmt.Errorf("AWS 자격증명 없음: %v", err)
-	}
-	// 자격증명이 실제로 있는지 확인
-	creds, err := cfg.Credentials.Retrieve(ctx)
-	if err != nil || creds.AccessKeyID == "" {
-		return aws.Config{}, fmt.Errorf("AWS 자격증명 없음 — IAM 읽기 권한 설정 필요")
-	}
-	return cfg, nil
-}
-
-// --- Keycloak SAML 클라이언트 확인 헬퍼 ---
-
-// kcProtocolMapper Keycloak protocol mapper 응답 구조체
-type kcProtocolMapper struct {
-	ID             string            `json:"id"`
-	Name           string            `json:"name"`
-	ProtocolMapper string            `json:"protocolMapper"`
-	Config         map[string]string `json:"config"`
-}
-
-// checkKeycloakSAMLClient Keycloak SAML 클라이언트 존재 및 mapper 구성 확인
-func checkKeycloakSAMLClient(ctx context.Context, clientID string) (string, error) {
-	adminToken, err := config.KC.LoginAdmin(ctx)
-	if err != nil {
-		return "", fmt.Errorf("Keycloak admin 로그인 실패: %v", err)
-	}
-
-	realm := config.KC.Realm
-	kcHost := config.KC.Host
-
-	// 1. 클라이언트 존재 확인
-	clientsURL := fmt.Sprintf("%s/admin/realms/%s/clients?clientId=%s", kcHost, realm, clientID)
-	clientsResp, err := kcAdminGet(ctx, clientsURL, adminToken.AccessToken)
-	if err != nil {
-		return "", fmt.Errorf("Keycloak 클라이언트 조회 실패: %v", err)
-	}
-
-	var clients []map[string]interface{}
-	if err := json.Unmarshal(clientsResp, &clients); err != nil || len(clients) == 0 {
-		return "", fmt.Errorf("SAML 클라이언트 '%s' 없음 — Keycloak에 SAML 클라이언트 생성 필요 (KEYCLOAK-AWS-SAML-SETUP.md 참조)", clientID)
-	}
-	kcClientID := clients[0]["id"].(string)
-
-	// 2. Protocol mappers 확인
-	mappersURL := fmt.Sprintf("%s/admin/realms/%s/clients/%s/protocol-mappers/models", kcHost, realm, kcClientID)
-	mappersResp, err := kcAdminGet(ctx, mappersURL, adminToken.AccessToken)
-	if err != nil {
-		return "", fmt.Errorf("Protocol mapper 조회 실패: %v", err)
-	}
-
-	var mappers []kcProtocolMapper
-	if err := json.Unmarshal(mappersResp, &mappers); err != nil {
-		return "", fmt.Errorf("Protocol mapper 파싱 실패: %v", err)
-	}
-
-	// Role attribute mapper 확인
-	hasRoleMapper := false
-	for _, m := range mappers {
-		if m.ProtocolMapper == "saml-role-list-mapper" || m.ProtocolMapper == "saml-hardcode-attribute-mapper" {
-			attrName := m.Config["attribute.name"]
-			if strings.Contains(attrName, "aws.amazon.com/SAML/Attributes/Role") ||
-				m.ProtocolMapper == "saml-role-list-mapper" {
-				hasRoleMapper = true
-				break
-			}
-		}
-	}
-	if !hasRoleMapper {
-		return "", fmt.Errorf("Role attribute mapper 없음 — saml-role-list-mapper 또는 saml-hardcode-attribute-mapper에 https://aws.amazon.com/SAML/Attributes/Role 설정 필요")
-	}
-
-	mapperNames := make([]string, 0, len(mappers))
-	for _, m := range mappers {
-		mapperNames = append(mapperNames, m.Name)
-	}
-	return fmt.Sprintf("클라이언트 '%s' 존재, mappers=%v", clientID, mapperNames), nil
-}
-
-// kcAdminGet Keycloak Admin API GET 요청
-func kcAdminGet(ctx context.Context, url, token string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
-	}
-	return io.ReadAll(resp.Body)
 }
 
 // min 정수 최솟값 (Go 1.21 미만 호환)
