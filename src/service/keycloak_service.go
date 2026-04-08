@@ -1852,20 +1852,16 @@ func (s *keycloakService) CheckSAMLClientConfig(ctx context.Context, clientID st
 		return "", fmt.Errorf("Protocol mapper 파싱 실패: %v", err)
 	}
 
-	// Role attribute mapper 확인 (AWS SAML Role 전달용)
+	// Role attribute mapper 확인 (CSP SAML Role 전달용)
 	hasRoleMapper := false
 	for _, m := range mappers {
 		if m.ProtocolMapper == "saml-role-list-mapper" || m.ProtocolMapper == "saml-hardcode-attribute-mapper" {
-			attrName := m.Config["attribute.name"]
-			if strings.Contains(attrName, "aws.amazon.com/SAML/Attributes/Role") ||
-				m.ProtocolMapper == "saml-role-list-mapper" {
-				hasRoleMapper = true
-				break
-			}
+			hasRoleMapper = true
+			break
 		}
 	}
 	if !hasRoleMapper {
-		return "", fmt.Errorf("Role attribute mapper 없음 — saml-role-list-mapper 또는 saml-hardcode-attribute-mapper에 https://aws.amazon.com/SAML/Attributes/Role 설정 필요")
+		return "", fmt.Errorf("Role attribute mapper 없음 — saml-role-list-mapper 또는 saml-hardcode-attribute-mapper 설정 필요")
 	}
 
 	mapperNames := make([]string, 0, len(mappers))

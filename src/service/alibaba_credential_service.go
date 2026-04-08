@@ -89,6 +89,8 @@ func (s *alibabaCredentialService) AssumeRoleWithSAML(
 	formData.Set("SAMLAssertion", samlAssertion)
 	formData.Set("RoleSessionName", sessionName)
 	formData.Set("Format", "JSON")
+	formData.Set("Timestamp", time.Now().UTC().Format("2006-01-02T15:04:05Z"))
+	formData.Set("SignatureNonce", fmt.Sprintf("%d", time.Now().UnixNano()))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, alibabaStsEndpoint, strings.NewReader(formData.Encode()))
 	if err != nil {
