@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -183,14 +184,42 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 			log.Printf("[CSP_CREDENTIAL] Calling AWS AssumeRoleWithWebIdentity...")
 			return s.awsCredService.AssumeRoleWithWebIdentity(ctx, roleArn, kcUserId, impersonationToken.AccessToken, idpArn, region)
 		case model.AuthMethodSAML:
+			// === 사전 체크 게이트: DB / Keycloak / CSP 설정 상태 확인 ===
+
+			// Check 1: DB — extended_config.saml_client_id 등록 여부
 			samlClientAudience := idpArn
 			if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {
 				samlClientAudience = extConfig
+			} else {
+				defaultClientID := os.Getenv("SAML_CLIENT_ID_AWS")
+				return nil, fmt.Errorf("[설정 누락: DB] CspRole(id=%d)에 saml_client_id 미등록. "+
+					"조치: UPDATE mcmp_role_csp_roles SET extended_config='{\"saml_client_id\":\"%s\"}' WHERE id=%d",
+					targetCspRole.ID, defaultClientID, targetCspRole.ID)
 			}
+			log.Printf("[CSP_CREDENTIAL] Check 1 PASS: saml_client_id=%s (CspRole %d)", samlClientAudience, targetCspRole.ID)
+
+			// Check 2: Keycloak — SAML 클라이언트 존재 확인
+			if _, err := s.keycloakService.CheckSAMLClientConfig(ctx, samlClientAudience); err != nil {
+				return nil, fmt.Errorf("[설정 누락: Keycloak] SAML 클라이언트 '%s' 확인 실패: %w. "+
+					"조치: (1) Keycloak Clients에서 '%s' SAML 클라이언트 등록 "+
+					"(2) token-exchange permission에서 mciam-oidc-Client policy 연결",
+					samlClientAudience, err, samlClientAudience)
+			}
+			log.Printf("[CSP_CREDENTIAL] Check 2 PASS: Keycloak SAML client '%s' 확인", samlClientAudience)
+
+			// Check 3: CSP — AWS SAML Provider 존재 확인 (IAM 읽기 권한 있을 때만 검증, 없으면 경고 후 진행)
+			if _, err := s.awsCredService.CheckSAMLProvider(ctx, idpArn); err != nil {
+				log.Printf("[CSP_CREDENTIAL] Check 3 WARN: AWS SAML Provider 확인 불가 (IAM 읽기 권한 미보유) — idpArn=%s, err=%v. "+
+					"미등록 시 조치: AWS IAM → Identity providers에서 SAML Provider 등록 및 Keycloak metadata XML 업로드", idpArn, err)
+			} else {
+				log.Printf("[CSP_CREDENTIAL] Check 3 PASS: AWS SAML Provider '%s' 확인", idpArn)
+			}
+
+			// 모든 체크 통과 — SAML Assertion 발급 및 STS 호출
 			samlAssertion, err := s.keycloakService.GetSamlAssertionByServiceAccount(ctx, samlClientAudience)
 			if err != nil {
 				log.Printf("[CSP_CREDENTIAL] Error getting SAML assertion for AWS: %v", err)
-				return nil, fmt.Errorf("failed to get SAML assertion for AWS: %w", err)
+				return nil, fmt.Errorf("SAML Assertion 발급 실패: %w", err)
 			}
 			log.Printf("[CSP_CREDENTIAL] Calling AWS AssumeRoleWithSAML...")
 			return s.awsCredService.AssumeRoleWithSAML(ctx, roleArn, idpArn, samlAssertion, region)
@@ -217,14 +246,37 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 	case "alibaba":
 		switch authMethod {
 		case model.AuthMethodSAML:
+			// === 사전 체크 게이트: DB / Keycloak / CSP 설정 상태 확인 ===
+
+			// Check 1: DB — extended_config.saml_client_id 등록 여부
 			samlClientAudience := idpArn
 			if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {
 				samlClientAudience = extConfig
+			} else {
+				defaultClientID := os.Getenv("SAML_CLIENT_ID_ALIBABA")
+				return nil, fmt.Errorf("[설정 누락: DB] CspRole(id=%d)에 saml_client_id 미등록. "+
+					"조치: UPDATE mcmp_role_csp_roles SET extended_config='{\"saml_client_id\":\"%s\"}' WHERE id=%d",
+					targetCspRole.ID, defaultClientID, targetCspRole.ID)
 			}
+			log.Printf("[CSP_CREDENTIAL] Check 1 PASS: saml_client_id=%s (CspRole %d)", samlClientAudience, targetCspRole.ID)
+
+			// Check 2: Keycloak — SAML 클라이언트 존재 확인
+			if _, err := s.keycloakService.CheckSAMLClientConfig(ctx, samlClientAudience); err != nil {
+				return nil, fmt.Errorf("[설정 누락: Keycloak] SAML 클라이언트 '%s' 확인 실패: %w. "+
+					"조치: (1) Keycloak Clients에서 '%s' SAML 클라이언트 등록 "+
+					"(2) token-exchange permission에서 mciam-oidc-Client policy 연결",
+					samlClientAudience, err, samlClientAudience)
+			}
+			log.Printf("[CSP_CREDENTIAL] Check 2 PASS: Keycloak SAML client '%s' 확인", samlClientAudience)
+
+			// Check 3: CSP — Alibaba SAML Provider 존재 확인 (미구현 시 경고 로그 후 진행)
+			log.Printf("[CSP_CREDENTIAL] Check 3 SKIP: Alibaba SAML Provider 확인 미구현 — idpArn=%s", idpArn)
+
+			// 모든 체크 통과 — SAML Assertion 발급 및 STS 호출
 			samlAssertion, err := s.keycloakService.GetSamlAssertionByServiceAccount(ctx, samlClientAudience)
 			if err != nil {
 				log.Printf("[CSP_CREDENTIAL] Error getting SAML assertion for Alibaba: %v", err)
-				return nil, fmt.Errorf("failed to get SAML assertion for Alibaba: %w", err)
+				return nil, fmt.Errorf("SAML Assertion 발급 실패: %w", err)
 			}
 			log.Printf("[CSP_CREDENTIAL] Calling Alibaba AssumeRoleWithSAML...")
 			return s.alibabaCredService.AssumeRoleWithSAML(ctx, idpArn, roleArn, samlAssertion, region)

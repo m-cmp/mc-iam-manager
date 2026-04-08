@@ -315,11 +315,10 @@ func (s *CspValidationService) validateAWSWithSAML(ctx context.Context, userID u
 	}
 
 	// Step 3: Keycloak SAML 클라이언트 확인
-	// AWS SAML 클라이언트 ID는 urn:amazon:webservices (AWS 규약)
-	// extendedConfig["saml_client_id"]가 없으면 urn:amazon:webservices로 조회
+	// AWS SAML 클라이언트 ID: extendedConfig["saml_client_id"] 우선, 없으면 SAML_CLIENT_ID_AWS 환경변수 사용
 	kcSamlClientID := samlClientAudience
 	if cspType == "aws" && !strings.Contains(kcSamlClientID, "urn:amazon") {
-		kcSamlClientID = "urn:amazon:webservices"
+		kcSamlClientID = os.Getenv("SAML_CLIENT_ID_AWS")
 	}
 	if !stepRunner(steps, 2, func() (string, error) {
 		return s.keycloakService.CheckSAMLClientConfig(ctx, kcSamlClientID)
