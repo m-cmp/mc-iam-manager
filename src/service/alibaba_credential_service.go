@@ -178,6 +178,7 @@ func (s *alibabaCredentialService) AssumeRoleWithOIDC(
 
 	formData := url.Values{}
 	formData.Set("Action", "AssumeRoleWithOIDC")
+	formData.Set("Timestamp", time.Now().UTC().Format("2006-01-02T15:04:05Z"))
 	formData.Set("Version", alibabaStsVersion)
 	formData.Set("RoleArn", roleArn)
 	formData.Set("OIDCProviderArn", oidcProviderArn)

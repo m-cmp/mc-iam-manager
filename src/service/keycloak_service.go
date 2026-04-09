@@ -1317,8 +1317,8 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 	log.Printf("[DEBUG] Impersonation clientSecret: %s", clientSecret)
 	log.Printf("[DEBUG] Impersonation realm: %s", config.KC.Realm)
 
-	// 서비스 계정으로 로그인
-	//token, err := config.KC.Client.LoginClient(ctx, clientID, clientSecret, config.KC.Realm)
+	// 서비스 계정으로 로그인 (openid scope 포함 → id_token 발급)
+	// Alibaba STS AssumeRoleWithOIDC는 단일 aud 문자열의 id_token을 요구함
 	token, err := config.KC.Client.LoginClient(ctx, clientName, clientSecret, config.KC.Realm, "openid")
 	if err != nil {
 		return nil, fmt.Errorf("failed to login with service account: %w", err)
