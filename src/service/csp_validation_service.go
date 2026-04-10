@@ -507,7 +507,7 @@ func (s *CspValidationService) validateGCPWithOIDC(ctx context.Context, userID u
 	}
 
 	if !stepRunner(steps, 5, func() (string, error) {
-		creds, err := gcpCredService.ExchangeTokenAndImpersonate(ctx, wifProvider, saEmail, accessToken)
+		creds, err := gcpCredService.ExchangeTokenAndImpersonate(ctx, wifProvider, saEmail, accessToken, "jwt")
 		if err != nil {
 			return "", fmt.Errorf("GCP 자격증명 발급 실패: %v — WIF Pool/Provider 설정 또는 SA 권한 확인", err)
 		}

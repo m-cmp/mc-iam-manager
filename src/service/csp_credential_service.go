@@ -33,15 +33,18 @@ var (
 
 // CspCredentialService CSP 임시 자격 증명 발급 조율 서비스
 type CspCredentialService struct {
-	db                 *gorm.DB
-	userRepo           *repository.UserRepository       // 프로덕션 용
-	mappingRepo        *repository.CspMappingRepository // 프로덕션 용
-	userRepoIface      credUserRepo                     // 테스트 주입용 (nil이면 userRepo 사용)
-	mappingRepoIface   credMappingRepo                  // 테스트 주입용 (nil이면 mappingRepo 사용)
-	awsCredService     AwsCredentialService
-	gcpCredService     GcpCredentialService
-	alibabaCredService AlibabaCredentialService
-	keycloakService    KeycloakService
+	db                  *gorm.DB
+	userRepo            *repository.UserRepository       // 프로덕션 용
+	mappingRepo         *repository.CspMappingRepository // 프로덕션 용
+	userRepoIface       credUserRepo                     // 테스트 주입용 (nil이면 userRepo 사용)
+	mappingRepoIface    credMappingRepo                  // 테스트 주입용 (nil이면 mappingRepo 사용)
+	awsCredService      AwsCredentialService
+	gcpCredService      GcpCredentialService
+	alibabaCredService  AlibabaCredentialService
+	azureCredService    AzureCredentialService
+	tencentCredService  TencentCredentialService
+	ibmCredService      IbmCredentialService
+	keycloakService     KeycloakService
 }
 
 // NewCspCredentialService 새 CspCredentialService 인스턴스 생성
@@ -51,6 +54,9 @@ func NewCspCredentialService(db *gorm.DB) *CspCredentialService {
 	awsCredService := NewAwsCredentialService()
 	gcpCredService := NewGcpCredentialService()
 	alibabaCredService := NewAlibabaCredentialService()
+	azureCredService := NewAzureCredentialService()
+	tencentCredService := NewTencentCredentialService()
+	ibmCredService := NewIbmCredentialService()
 	keycloakService := NewKeycloakService()
 	return &CspCredentialService{
 		db:                 db,
@@ -59,6 +65,9 @@ func NewCspCredentialService(db *gorm.DB) *CspCredentialService {
 		awsCredService:     awsCredService,
 		gcpCredService:     gcpCredService,
 		alibabaCredService: alibabaCredService,
+		azureCredService:   azureCredService,
+		tencentCredService: tencentCredService,
+		ibmCredService:     ibmCredService,
 		keycloakService:    keycloakService,
 	}
 }
@@ -163,10 +172,8 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 	}
 	if authMethod == "" {
 		switch cspType {
-		case "aws", "gcp":
+		case "aws", "gcp", "alibaba":
 			authMethod = model.AuthMethodOIDC
-		case "alibaba":
-			authMethod = model.AuthMethodSAML
 		}
 	}
 	log.Printf("[CSP_CREDENTIAL] Auth method resolved: cspType=%s, authMethod=%s", cspType, authMethod)
@@ -236,8 +243,20 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 				log.Printf("[CSP_CREDENTIAL] Error getting impersonation token: %v", err)
 				return nil, fmt.Errorf("failed to get impersonation token: %w", err)
 			}
-			log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate...")
-			return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.AccessToken)
+			log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate (OIDC)...")
+			return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.AccessToken, "jwt")
+		case model.AuthMethodSAML:
+			samlClientAudience := idpArn
+			if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {
+				samlClientAudience = extConfig
+			}
+			samlAssertion, err := s.keycloakService.GetSamlAssertionByServiceAccount(ctx, samlClientAudience)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting SAML assertion for GCP: %v", err)
+				return nil, fmt.Errorf("failed to get SAML assertion for GCP: %w", err)
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate (SAML)...")
+			return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, samlAssertion, "saml2")
 		case model.AuthMethodSecretKey:
 			return getSecretKeyCredentials(cspType, targetCspRole.CspIdpConfig, region)
 		default:
@@ -245,6 +264,14 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 		}
 	case "alibaba":
 		switch authMethod {
+		case model.AuthMethodOIDC:
+			impersonationToken, err := s.keycloakService.GetImpersonationTokenByServiceAccount(ctx)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting impersonation token for Alibaba: %v", err)
+				return nil, fmt.Errorf("failed to get impersonation token for Alibaba: %w", err)
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling Alibaba AssumeRoleWithOIDC...")
+			return s.alibabaCredService.AssumeRoleWithOIDC(ctx, idpArn, roleArn, impersonationToken.AccessToken, region)
 		case model.AuthMethodSAML:
 			// === 사전 체크 게이트: DB / Keycloak / CSP 설정 상태 확인 ===
 
@@ -285,7 +312,81 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 		default:
 			return nil, ErrUnsupportedAuthMethod
 		}
-	case "azure", "tencent", "ibm", "ncp", "nhn", "kt", "openstack":
+	case "azure":
+		switch authMethod {
+		case model.AuthMethodOIDC:
+			tenantID := ""
+			clientID := ""
+			if targetCspRole.CspIdpConfig != nil {
+				tenantID = targetCspRole.CspIdpConfig.Config["tenant_id"]
+				clientID = targetCspRole.CspIdpConfig.Config["client_id"]
+			}
+			if tenantID == "" || clientID == "" {
+				return nil, fmt.Errorf("Azure OIDC requires tenant_id and client_id in CspIdpConfig")
+			}
+			impersonationToken, err := s.keycloakService.GetImpersonationTokenByServiceAccount(ctx)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting impersonation token for Azure: %v", err)
+				return nil, fmt.Errorf("failed to get impersonation token for Azure: %w", err)
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling Azure GetTokenByFederatedCredential...")
+			return s.azureCredService.GetTokenByFederatedCredential(ctx, tenantID, clientID, impersonationToken.AccessToken)
+		case model.AuthMethodSecretKey:
+			return getSecretKeyCredentials(cspType, targetCspRole.CspIdpConfig, region)
+		default:
+			return nil, ErrUnsupportedAuthMethod
+		}
+	case "tencent":
+		switch authMethod {
+		case model.AuthMethodSAML:
+			secretID := ""
+			secretKey := ""
+			if targetCspRole.CspIdpConfig != nil {
+				secretID = targetCspRole.CspIdpConfig.Config["secret_id"]
+				secretKey = targetCspRole.CspIdpConfig.Config["secret_key"]
+			}
+			if secretID == "" || secretKey == "" {
+				return nil, fmt.Errorf("Tencent SAML requires secret_id and secret_key in CspIdpConfig")
+			}
+			samlClientAudience := idpArn
+			if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {
+				samlClientAudience = extConfig
+			}
+			samlAssertion, err := s.keycloakService.GetSamlAssertionByServiceAccount(ctx, samlClientAudience)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting SAML assertion for Tencent: %v", err)
+				return nil, fmt.Errorf("failed to get SAML assertion for Tencent: %w", err)
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling Tencent AssumeRoleWithSAML...")
+			return s.tencentCredService.AssumeRoleWithSAML(ctx, secretID, secretKey, roleArn, idpArn, samlAssertion, region)
+		case model.AuthMethodSecretKey:
+			return getSecretKeyCredentials(cspType, targetCspRole.CspIdpConfig, region)
+		default:
+			return nil, ErrUnsupportedAuthMethod
+		}
+	case "ibm":
+		switch authMethod {
+		case model.AuthMethodOIDC:
+			profileID := ""
+			if targetCspRole.CspIdpConfig != nil {
+				profileID = targetCspRole.CspIdpConfig.Config["profile_id"]
+			}
+			if profileID == "" {
+				return nil, fmt.Errorf("IBM OIDC requires profile_id in CspIdpConfig")
+			}
+			impersonationToken, err := s.keycloakService.GetImpersonationTokenByServiceAccount(ctx)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting impersonation token for IBM: %v", err)
+				return nil, fmt.Errorf("failed to get impersonation token for IBM: %w", err)
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling IBM GetTokenByTrustedProfile...")
+			return s.ibmCredService.GetTokenByTrustedProfile(ctx, profileID, impersonationToken.AccessToken)
+		case model.AuthMethodSecretKey:
+			return getSecretKeyCredentials(cspType, targetCspRole.CspIdpConfig, region)
+		default:
+			return nil, ErrUnsupportedAuthMethod
+		}
+	case "ncp", "nhn", "kt", "openstack":
 		switch authMethod {
 		case model.AuthMethodSecretKey:
 			return getSecretKeyCredentials(cspType, targetCspRole.CspIdpConfig, region)

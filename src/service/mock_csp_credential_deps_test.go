@@ -44,18 +44,60 @@ type mockGcpCredService struct {
 	err    error
 }
 
-func (m *mockGcpCredService) ExchangeTokenAndImpersonate(_ context.Context, wif, sa, token string) (*model.CspCredentialResponse, error) {
+func (m *mockGcpCredService) ExchangeTokenAndImpersonate(_ context.Context, wif, sa, token, tokenType string) (*model.CspCredentialResponse, error) {
 	return m.result, m.err
 }
 
 // ── Alibaba ──────────────────────────────────────────────────────────────────
 
 type mockAlibabaCredService struct {
+	result    *model.CspCredentialResponse
+	err       error
+	oidcResult *model.CspCredentialResponse
+	oidcErr    error
+}
+
+func (m *mockAlibabaCredService) AssumeRoleWithSAML(_ context.Context, samlProviderArn, roleArn, samlAssertion, region string) (*model.CspCredentialResponse, error) {
+	return m.result, m.err
+}
+
+func (m *mockAlibabaCredService) AssumeRoleWithOIDC(_ context.Context, oidcProviderArn, roleArn, oidcToken, region string) (*model.CspCredentialResponse, error) {
+	if m.oidcResult != nil || m.oidcErr != nil {
+		return m.oidcResult, m.oidcErr
+	}
+	return m.result, m.err
+}
+
+// ── Azure ─────────────────────────────────────────────────────────────────────
+
+type mockAzureCredService struct {
 	result *model.CspCredentialResponse
 	err    error
 }
 
-func (m *mockAlibabaCredService) AssumeRoleWithSAML(_ context.Context, samlProviderArn, roleArn, samlAssertion, region string) (*model.CspCredentialResponse, error) {
+func (m *mockAzureCredService) GetTokenByFederatedCredential(_ context.Context, tenantID, clientID, keycloakJWT string) (*model.CspCredentialResponse, error) {
+	return m.result, m.err
+}
+
+// ── Tencent ───────────────────────────────────────────────────────────────────
+
+type mockTencentCredService struct {
+	result *model.CspCredentialResponse
+	err    error
+}
+
+func (m *mockTencentCredService) AssumeRoleWithSAML(_ context.Context, secretID, secretKey, roleArn, principalArn, samlAssertion, region string) (*model.CspCredentialResponse, error) {
+	return m.result, m.err
+}
+
+// ── IBM ───────────────────────────────────────────────────────────────────────
+
+type mockIbmCredService struct {
+	result *model.CspCredentialResponse
+	err    error
+}
+
+func (m *mockIbmCredService) GetTokenByTrustedProfile(_ context.Context, profileID, crToken string) (*model.CspCredentialResponse, error) {
 	return m.result, m.err
 }
 
@@ -103,11 +145,43 @@ var gcpOidcCred = &model.CspCredentialResponse{
 	TokenType:   "Bearer",
 }
 
+var gcpSamlCred = &model.CspCredentialResponse{
+	CspType:     "gcp",
+	AccessToken: "gcp_saml_access_token",
+	TokenType:   "Bearer",
+}
+
 var alibabaSamlCred = &model.CspCredentialResponse{
 	CspType:         "alibaba",
 	AccessKeyId:     "STS_ALIBABA",
 	SecretAccessKey: "alibaba_secret",
 	SecurityToken:   "alibaba_token",
+}
+
+var alibabaOidcCred = &model.CspCredentialResponse{
+	CspType:         "alibaba",
+	AccessKeyId:     "STS_ALIBABA_OIDC",
+	SecretAccessKey: "alibaba_oidc_secret",
+	SecurityToken:   "alibaba_oidc_token",
+}
+
+var azureOidcCred = &model.CspCredentialResponse{
+	CspType:     "azure",
+	AccessToken: "azure_access_token",
+	TokenType:   "Bearer",
+}
+
+var tencentSamlCred = &model.CspCredentialResponse{
+	CspType:         "tencent",
+	AccessKeyId:     "STS_TENCENT",
+	SecretAccessKey: "tencent_secret",
+	SessionToken:    "tencent_token",
+}
+
+var ibmOidcCred = &model.CspCredentialResponse{
+	CspType:     "ibm",
+	AccessToken: "ibm_access_token",
+	TokenType:   "Bearer",
 }
 
 // ── 헬퍼: CspCredentialService 생성 ──────────────────────────────────────────
@@ -116,6 +190,9 @@ type credServiceDeps struct {
 	aws      *mockAwsCredService
 	gcp      *mockGcpCredService
 	alibaba  *mockAlibabaCredService
+	azure    *mockAzureCredService
+	tencent  *mockTencentCredService
+	ibm      *mockIbmCredService
 	kc       KeycloakService // 인터페이스 — mockKeycloakService 또는 mockKeycloakForCred 모두 허용
 	userRepo *mockUserRepoForCred
 	mapRepo  *mockCspMappingRepo
@@ -126,6 +203,9 @@ func newCredServiceWithMocks(deps credServiceDeps) *CspCredentialService {
 		awsCredService:     deps.aws,
 		gcpCredService:     deps.gcp,
 		alibabaCredService: deps.alibaba,
+		azureCredService:   deps.azure,
+		tencentCredService: deps.tencent,
+		ibmCredService:     deps.ibm,
 		keycloakService:    deps.kc,
 		userRepoIface:      deps.userRepo,
 		mappingRepoIface:   deps.mapRepo,
