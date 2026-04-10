@@ -21,7 +21,8 @@ type GcpCredentialService interface {
 		ctx context.Context,
 		wifProviderResourceName string,
 		serviceAccountEmail string,
-		webIdentityToken string,
+		subjectToken string,
+		subjectTokenType string, // "jwt" (OIDC) or "saml2" (SAML)
 	) (*model.CspCredentialResponse, error)
 }
 
@@ -60,12 +61,13 @@ func (s *gcpCredentialService) ExchangeTokenAndImpersonate(
 	ctx context.Context,
 	wifProviderResourceName string,
 	serviceAccountEmail string,
-	webIdentityToken string,
+	subjectToken string,
+	subjectTokenType string,
 ) (*model.CspCredentialResponse, error) {
-	log.Printf("[GCP_CREDENTIAL] Starting WIF token exchange for SA: %s", serviceAccountEmail)
+	log.Printf("[GCP_CREDENTIAL] Starting WIF token exchange for SA: %s (tokenType: %s)", serviceAccountEmail, subjectTokenType)
 
-	// Step 1: Exchange Keycloak JWT for GCP federated access token via GCP STS
-	federatedToken, err := s.exchangeToken(ctx, wifProviderResourceName, webIdentityToken)
+	// Step 1: Exchange Keycloak token for GCP federated access token via GCP STS
+	federatedToken, err := s.exchangeToken(ctx, wifProviderResourceName, subjectToken, subjectTokenType)
 	if err != nil {
 		log.Printf("[GCP_CREDENTIAL] STS token exchange failed: %v", err)
 		return nil, fmt.Errorf("GCP STS token exchange failed: %w", err)
@@ -88,14 +90,20 @@ func (s *gcpCredentialService) ExchangeTokenAndImpersonate(
 	}, nil
 }
 
-// exchangeToken calls GCP STS to exchange a Keycloak JWT for a federated access token.
-func (s *gcpCredentialService) exchangeToken(ctx context.Context, audience, webIdentityToken string) (string, error) {
+// exchangeToken calls GCP STS to exchange a subject token for a federated access token.
+// subjectTokenType: "jwt" for OIDC, "saml2" for SAML2 assertion.
+func (s *gcpCredentialService) exchangeToken(ctx context.Context, audience, subjectToken, subjectTokenType string) (string, error) {
 	stsURL := "https://sts.googleapis.com/v1/token"
+
+	tokenTypeURN := "urn:ietf:params:oauth:token-type:jwt"
+	if subjectTokenType == "saml2" {
+		tokenTypeURN = "urn:ietf:params:oauth:token-type:saml2"
+	}
 
 	formData := url.Values{}
 	formData.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
-	formData.Set("subject_token", webIdentityToken)
-	formData.Set("subject_token_type", "urn:ietf:params:oauth:token-type:jwt")
+	formData.Set("subject_token", subjectToken)
+	formData.Set("subject_token_type", tokenTypeURN)
 	formData.Set("requested_token_type", "urn:ietf:params:oauth:token-type:access_token")
 	formData.Set("audience", audience)
 	formData.Set("scope", "https://www.googleapis.com/auth/cloud-platform")
