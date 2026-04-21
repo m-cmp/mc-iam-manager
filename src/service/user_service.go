@@ -227,10 +227,11 @@ func (s *UserService) UpdateUser(ctx context.Context, user *model.User) error {
 
 // --- Public Service Methods ---
 
-// ListUsers retrieves all users, merging data from Keycloak and the local DB.
-func (s *UserService) ListUsers(ctx context.Context) ([]model.User, error) {
+// ListUsers retrieves users, merging data from Keycloak and the local DB.
+// enabled nil = all users, true = active only, false = disabled (pending approval) only.
+func (s *UserService) ListUsers(ctx context.Context, enabled *bool) ([]model.User, error) {
 	ks := NewKeycloakService() // Create KeycloakService instance when needed
-	kcUsers, err := ks.GetUsers(ctx)
+	kcUsers, err := ks.GetUsers(ctx, enabled)
 	if err != nil {
 		return nil, err
 	}
