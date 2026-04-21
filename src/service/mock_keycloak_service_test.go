@@ -20,7 +20,7 @@ func (m *mockKeycloakService) GetUser(ctx context.Context, kcId string) (*gocloa
 func (m *mockKeycloakService) GetUserByUsername(ctx context.Context, username string) (*gocloak.User, error) {
 	return nil, nil
 }
-func (m *mockKeycloakService) GetUsers(ctx context.Context) ([]*gocloak.User, error) {
+func (m *mockKeycloakService) GetUsers(ctx context.Context, enabled *bool) ([]*gocloak.User, error) {
 	return nil, nil
 }
 func (m *mockKeycloakService) CreateUser(ctx context.Context, user *model.User) (string, error) {
