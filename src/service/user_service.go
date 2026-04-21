@@ -20,6 +20,20 @@ import (
 // 	ErrUserNotFound = errors.New("user not found")
 // )
 
+func ptrStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func ptrBool(b *bool) bool {
+	if b == nil {
+		return false
+	}
+	return *b
+}
+
 type UserService struct {
 	db                *gorm.DB
 	userRepo          *repository.UserRepository
@@ -259,11 +273,11 @@ func (s *UserService) ListUsers(ctx context.Context, enabled *bool) ([]model.Use
 			if kcUser != nil && kcUser.ID != nil {
 				result = append(result, model.User{
 					KcId:      *kcUser.ID,
-					Username:  *kcUser.Username,
-					Email:     *kcUser.Email,
-					FirstName: *kcUser.FirstName,
-					LastName:  *kcUser.LastName,
-					Enabled:   *kcUser.Enabled,
+					Username:  ptrStr(kcUser.Username),
+					Email:     ptrStr(kcUser.Email),
+					FirstName: ptrStr(kcUser.FirstName),
+					LastName:  ptrStr(kcUser.LastName),
+					Enabled:   ptrBool(kcUser.Enabled),
 				})
 			}
 		}
@@ -284,11 +298,11 @@ func (s *UserService) ListUsers(ctx context.Context, enabled *bool) ([]model.Use
 
 		mergedUser := model.User{
 			KcId:      kcID,
-			Username:  *kcUser.Username,
-			Email:     *kcUser.Email,
-			FirstName: *kcUser.FirstName,
-			LastName:  *kcUser.LastName,
-			Enabled:   *kcUser.Enabled,
+			Username:  ptrStr(kcUser.Username),
+			Email:     ptrStr(kcUser.Email),
+			FirstName: ptrStr(kcUser.FirstName),
+			LastName:  ptrStr(kcUser.LastName),
+			Enabled:   ptrBool(kcUser.Enabled),
 		}
 
 		if dbUser, dbExists := userMap[kcID]; dbExists {
