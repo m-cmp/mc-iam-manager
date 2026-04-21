@@ -65,29 +65,37 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 	}
 }
 
+// UserListRequest is the optional request body for ListUsers.
+type UserListRequest struct {
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
 // ListUsers godoc
 // @Summary List all users
-// @Description Retrieve a list of all users.
+// @Description Retrieve a list of users. Optionally filter by Keycloak enabled status (true=active, false=pending approval).
 // @Tags users
 // @Accept json
 // @Produce json
+// @Param request body handler.UserListRequest false "Optional filter"
 // @Success 200 {array} model.User
+// @Failure 403 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/list [post]
 // @Id listUsers
 func (h *UserHandler) ListUsers(c echo.Context) error {
-	// --- Role validation (Admin or platformAdmin) ---
-	requiredRoles := []string{"admin", "platformAdmin"} // todo : shouldn't this be checked in middleware?
-	// Use the helper function that reads roles from context
+	requiredRoles := []string{"admin", "platformAdmin"}
 	if !checkRoleFromContext(c, requiredRoles) {
 		fmt.Printf("[INFO] ListUsers: Permission denied. User does not have required roles: %v\n", requiredRoles)
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Required role not found"})
 	}
-	fmt.Printf("[DEBUG] ListUsers: Permission granted.\n")
-	// --- Role validation end ---
 
-	users, err := h.userService.ListUsers(c.Request().Context())
+	var req UserListRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	users, err := h.userService.ListUsers(c.Request().Context(), req.Enabled)
 	if err != nil {
 		fmt.Printf("[ERROR] ListUsers: Error from userService.ListUsers: %v\n", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to retrieve user list"})
