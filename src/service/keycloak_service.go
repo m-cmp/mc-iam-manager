@@ -28,7 +28,7 @@ type KeycloakService interface {
 	KeycloakAdminLogin(ctx context.Context) (*gocloak.JWT, error)
 	GetUser(ctx context.Context, kcId string) (*gocloak.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*gocloak.User, error)
-	GetUsers(ctx context.Context) ([]*gocloak.User, error)
+	GetUsers(ctx context.Context, enabled *bool) ([]*gocloak.User, error)
 	CreateUser(ctx context.Context, user *model.User) (string, error)
 	UpdateUser(ctx context.Context, user *model.User) error
 	DeleteUser(ctx context.Context, kcId string) error
@@ -160,8 +160,8 @@ func (s *keycloakService) GetUserByUsername(ctx context.Context, username string
 	return users[0], nil
 }
 
-// GetUsers retrieves all users from Keycloak.
-func (s *keycloakService) GetUsers(ctx context.Context) ([]*gocloak.User, error) {
+// GetUsers retrieves users from Keycloak, optionally filtered by enabled status.
+func (s *keycloakService) GetUsers(ctx context.Context, enabled *bool) ([]*gocloak.User, error) {
 	// Directly use config.KC
 	if config.KC == nil || config.KC.Client == nil {
 		return nil, fmt.Errorf("keycloak configuration not initialized")
@@ -170,8 +170,10 @@ func (s *keycloakService) GetUsers(ctx context.Context) ([]*gocloak.User, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin token: %w", err)
 	}
-	// Consider pagination for large numbers of users
 	getUsersParams := gocloak.GetUsersParams{}
+	if enabled != nil {
+		getUsersParams.Enabled = enabled
+	}
 	kcUsers, err := config.KC.Client.GetUsers(ctx, token.AccessToken, config.KC.Realm, getUsersParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users from keycloak: %w", err)
