@@ -279,8 +279,8 @@ func (s *OrganizationService) RemoveUserFromOrganization(userID, orgID uint) err
 	return s.orgRepo.RemoveUserFromOrganization(userID, orgID)
 }
 
-// GetUserOrganizations 사용자가 소속된 조직 목록 조회
-func (s *OrganizationService) GetUserOrganizations(userID uint) ([]model.Organization, error) {
+// GetUserOrganizations 사용자가 소속된 조직 목록 조회 (계층 정보 포함)
+func (s *OrganizationService) GetUserOrganizations(userID uint) ([]model.OrganizationTree, error) {
 	return s.orgRepo.FindUserOrganizations(userID)
 }
 
