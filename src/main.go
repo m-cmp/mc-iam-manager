@@ -98,6 +98,7 @@ func main() {
 		&model.UserOrganization{},
 		&model.GroupPlatformRole{},
 		&model.GroupWorkspaceRole{},
+		&model.WorkspaceInvitation{},
 		&model.Company{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
@@ -114,6 +115,7 @@ func main() {
 	userHandler := handler.NewUserHandler(db)
 	menuHandler := handler.NewMenuHandler(db)
 	workspaceHandler := handler.NewWorkspaceHandler(db)
+	workspaceInvitationHandler := handler.NewWorkspaceInvitationHandler(db)
 
 	projectHandler := handler.NewProjectHandler(db)
 
@@ -260,6 +262,10 @@ func main() {
 		workspaces.POST("/assign/projects", workspaceHandler.AddProjectToWorkspace, middleware.PlatformAdminMiddleware)
 		workspaces.DELETE("/unassign/projects", workspaceHandler.RemoveProjectFromWorkspace, middleware.PlatformAdminMiddleware)
 
+		// 워크스페이스 초대 (RQ-M6-WS-036)
+		workspaces.POST("/id/:wsId/invitations", workspaceInvitationHandler.SendInvitation)
+		workspaces.GET("/id/:wsId/invitations", workspaceInvitationHandler.ListWorkspaceInvitations)
+
 	}
 
 	// 프로젝트 라우트 : workspace ticket과 workspaceId가 있으면 됨.
@@ -365,6 +371,19 @@ func main() {
 		users.GET("/id/:userId/workspaces/roles/list", userHandler.GetUserWorkspaceAndWorkspaceRolesByUserID, middleware.PlatformRoleMiddleware(middleware.Read))
 		users.GET("/id/:userId/workspaces/id/:workspaceId/roles/list", userHandler.GetUserWorkspaceAndWorkspaceRolesByUserIDAndWorkspaceID, middleware.PlatformRoleMiddleware(middleware.Read))
 
+		// 내 초대 목록/수락/거절 (RQ-M6-WS-037)
+		users.GET("/me/invitations", workspaceInvitationHandler.ListMyInvitations)
+		users.PUT("/me/invitations/:invitationId/accept", workspaceInvitationHandler.AcceptInvitation)
+		users.PUT("/me/invitations/:invitationId/reject", workspaceInvitationHandler.RejectInvitation)
+
+	}
+
+	// 초대 관리 라우트 (관리자) (RQ-M6-WS-038)
+	invitations := api.Group("/invitations")
+	{
+		invitations.GET("", workspaceInvitationHandler.ListAllInvitations, middleware.PlatformRoleMiddleware(middleware.Write))
+		invitations.PUT("/:invitationId/approve", workspaceInvitationHandler.ApproveInvitation, middleware.PlatformRoleMiddleware(middleware.Write))
+		invitations.PUT("/:invitationId/reject", workspaceInvitationHandler.RejectInvitationByAdmin, middleware.PlatformRoleMiddleware(middleware.Write))
 	}
 
 	// 메뉴 라우트
