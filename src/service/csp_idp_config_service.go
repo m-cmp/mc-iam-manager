@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -501,5 +503,108 @@ func (s *CspIdpConfigService) assumeRoleWithSecretKey(ctx context.Context, idpCo
 		IssuedAt:        time.Now(),
 		ExpiresAt:       *result.Credentials.Expiration,
 		IsActive:        true,
+	}, nil
+}
+
+// GetIdpSummary CSP 계정별 IDP 설정 현황 요약 조회
+func (s *CspIdpConfigService) GetIdpSummary() ([]model.CspIdpSummary, error) {
+	rows, err := s.cspIdpConfigRepo.GetSummary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get IDP summary: %w", err)
+	}
+
+	summaries := make([]model.CspIdpSummary, len(rows))
+	for i, row := range rows {
+		summaries[i] = model.CspIdpSummary{
+			CspAccountID:   row.CspAccountID,
+			CspAccountName: row.CspAccountName,
+			CspType:        row.CspType,
+			TotalCount:     row.TotalCount,
+			ActiveCount:    row.ActiveCount,
+			MethodCounts: map[string]int{
+				"OIDC":       row.OidcCount,
+				"SAML":       row.SamlCount,
+				"SECRET_KEY": row.SecretKeyCount,
+			},
+		}
+	}
+	return summaries, nil
+}
+
+// BulkHealthCheck 활성 IDP 설정 전체 연결 상태 일괄 확인
+func (s *CspIdpConfigService) BulkHealthCheck(filter *model.BulkHealthCheckRequest) (*model.BulkHealthCheckResponse, error) {
+	isActive := true
+	listFilter := &model.CspIdpConfigFilter{IsActive: &isActive}
+	if filter != nil && filter.CspAccountID != nil {
+		listFilter.CspAccountID = filter.CspAccountID
+	}
+
+	configs, err := s.cspIdpConfigRepo.List(listFilter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list active IDP configs: %w", err)
+	}
+
+	results := make([]model.HealthCheckResult, len(configs))
+	var wg sync.WaitGroup
+
+	for i, cfg := range configs {
+		wg.Add(1)
+		go func(i int, cfg *model.CspIdpConfig) {
+			defer wg.Done()
+
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			checkedAt := time.Now().UTC().Format(time.RFC3339)
+			cspType := ""
+			if cfg.CspAccount != nil {
+				cspType = cfg.CspAccount.CspType
+			}
+
+			err := s.TestConnection(ctx, cfg.ID)
+			if err != nil {
+				status := "FAILED"
+				if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+					status = "TIMEOUT"
+				}
+				results[i] = model.HealthCheckResult{
+					ConfigID:   cfg.ID,
+					ConfigName: cfg.Name,
+					CspType:    cspType,
+					AuthMethod: string(cfg.AuthMethod),
+					Status:     status,
+					ErrorMsg:   err.Error(),
+					CheckedAt:  checkedAt,
+				}
+				return
+			}
+
+			results[i] = model.HealthCheckResult{
+				ConfigID:   cfg.ID,
+				ConfigName: cfg.Name,
+				CspType:    cspType,
+				AuthMethod: string(cfg.AuthMethod),
+				Status:     "CONNECTED",
+				CheckedAt:  checkedAt,
+			}
+		}(i, cfg)
+	}
+	wg.Wait()
+
+	connectedCount := 0
+	failedCount := 0
+	for _, r := range results {
+		if r.Status == "CONNECTED" {
+			connectedCount++
+		} else {
+			failedCount++
+		}
+	}
+
+	return &model.BulkHealthCheckResponse{
+		TotalCount:     len(configs),
+		ConnectedCount: connectedCount,
+		FailedCount:    failedCount,
+		Results:        results,
 	}, nil
 }
