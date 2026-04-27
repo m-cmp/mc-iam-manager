@@ -739,34 +739,23 @@ func (h *RoleHandler) ListWorkspaceRoles(c echo.Context) error {
 }
 
 // @Summary List csp roles
-// @Description Get a list of all csp roles
+// @Description Get a list of all csp roles stored in the database
 // @Tags roles
 // @Accept json
 // @Produce json
-// @Success 200 {array} model.RoleMaster
+// @Success 200 {array} model.CspRole
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/roles/csp/list [post]
 // @Id listCSPRoles
 func (h *RoleHandler) ListCSPRoles(c echo.Context) error {
-	var req model.RoleFilterRequest
-	if err := c.Bind(&req); err != nil {
-		log.Printf("Error ListCspRoles : %v", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
-	}
-
-	// Only query CSP roles
-	if req.RoleTypes == nil {
-		req.RoleTypes = []constants.IAMRoleType{constants.RoleTypeCSP}
-	}
-
-	roles, err := h.roleService.ListRoles(&req)
+	roles, err := h.cspRoleService.ListCspRolesFromDB()
 	if err != nil {
-		log.Printf("Failed to retrieve role list: %v", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve role list: %v", err)})
+		log.Printf("Failed to retrieve CSP role list: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve CSP role list: %v", err)})
 	}
 
-	log.Printf("Successfully retrieved role list - number of roles: %d", len(roles))
+	log.Printf("Successfully retrieved CSP role list - number of roles: %d", len(roles))
 	return c.JSON(http.StatusOK, roles)
 }
 

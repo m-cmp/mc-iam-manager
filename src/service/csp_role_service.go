@@ -43,7 +43,7 @@ func NewCspRoleService(db *gorm.DB, keycloakService KeycloakService) *CspRoleSer
 	}
 }
 
-// GetAllCSPRoles 모든 CSP 역할을 조회합니다.
+// GetAllCSPRoles 모든 CSP 역할을 조회합니다. (AWS API live 조회)
 func (s *CspRoleService) GetAllCSPRoles(ctx context.Context, cspType string) ([]*model.CspRole, error) {
 	roles, err := s.cspRoleRepo.FindAll()
 	if err != nil {
@@ -52,6 +52,11 @@ func (s *CspRoleService) GetAllCSPRoles(ctx context.Context, cspType string) ([]
 	}
 
 	return roles, nil
+}
+
+// ListCspRolesFromDB DB에 저장된 모든 CspRole 레코드를 조회합니다.
+func (s *CspRoleService) ListCspRolesFromDB() ([]*model.CspRole, error) {
+	return s.cspRoleRepo.FindAllFromDB()
 }
 
 // CSP 역할 목록 중 MCIAM_ 접두사를 가진 역할만 조회합니다.
@@ -74,12 +79,12 @@ func (s *CspRoleService) CreateCspRole(req *model.CreateCspRoleRequest) (*model.
 		req.CspRoleName = constants.CspRoleNamePrefix + req.CspRoleName
 	}
 
-	// 2. DB 중복 확인
+	// 2. DB 중복 확인 — status="failed" 레코드는 재시도 허용
 	existing, err := s.cspRoleRepo.GetCspRoleByName(req.CspRoleName, req.CspType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing CSP role: %w", err)
 	}
-	if existing != nil {
+	if existing != nil && existing.Status != "failed" {
 		return existing, nil
 	}
 
@@ -130,10 +135,14 @@ func (s *CspRoleService) createAwsIamRole(req *model.CreateCspRoleRequest) (*mod
 	}
 	awsIamClient := iam.NewFromConfig(awsCfg)
 
-	// 3. DB에 초기 레코드 생성
+	// 3. DB에 초기 레코드 생성 (failed 레코드 재사용)
+	existingFailed, _ := s.cspRoleRepo.GetCspRoleByName(req.CspRoleName, req.CspType)
 	newRole := &model.CspRole{
 		Name:    req.CspRoleName,
 		CspType: req.CspType,
+	}
+	if existingFailed != nil && existingFailed.Status == "failed" {
+		newRole.ID = existingFailed.ID
 	}
 
 	// AWS에서 역할 존재 여부 확인
@@ -146,8 +155,14 @@ func (s *CspRoleService) createAwsIamRole(req *model.CreateCspRoleRequest) (*mod
 		newRole.Status = "creating"
 	}
 
-	if err := s.cspRoleRepo.CreateCspRoleRecord(newRole); err != nil {
-		return nil, fmt.Errorf("failed to create CSP role in database: %v", err)
+	if newRole.ID == 0 {
+		if err := s.cspRoleRepo.CreateCspRoleRecord(newRole); err != nil {
+			return nil, fmt.Errorf("failed to create CSP role in database: %v", err)
+		}
+	} else {
+		if err := s.cspRoleRepo.UpdateCspRoleRecord(newRole); err != nil {
+			return nil, fmt.Errorf("failed to update failed CSP role record: %v", err)
+		}
 	}
 
 	if newRole.Status == "creating" {
@@ -334,9 +349,12 @@ func getAwsAssumeRolePolicyDocument(role *model.CspRole) (string, error) {
 		return "", fmt.Errorf("AWS_ACCOUNT_ID environment variable is not set")
 	}
 
+	externalURL := strings.TrimPrefix(strings.TrimPrefix(mciamConfig.KC.ExternalURL, "https://"), "http://")
+	externalURL = strings.TrimSuffix(externalURL, "/")
+
 	values := awsPolicyValues{
 		AccountID:        accountID,
-		KeycloakHostname: mciamConfig.KC.Host,
+		KeycloakHostname: externalURL + "/realms/" + mciamConfig.KC.Realm,
 		Audience:         oidcClientID,
 	}
 
