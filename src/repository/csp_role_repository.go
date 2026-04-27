@@ -300,6 +300,15 @@ func (r *CspRoleRepository) GetCSPRolePermissions(roleID string) ([]string, erro
 }
 
 // GetRole 역할 정보 조회
+// FindAllFromDB DB에 저장된 모든 CspRole 레코드를 조회합니다.
+func (r *CspRoleRepository) FindAllFromDB() ([]*model.CspRole, error) {
+	var roles []*model.CspRole
+	if err := r.db.Order("id").Find(&roles).Error; err != nil {
+		return nil, fmt.Errorf("failed to list CSP roles from DB: %w", err)
+	}
+	return roles, nil
+}
+
 func (r *CspRoleRepository) GetRoleByID(cspRoleId uint) (*model.CspRole, error) {
 	var role model.CspRole
 	if err := r.db.Where("id = ?", cspRoleId).First(&role).Error; err != nil {

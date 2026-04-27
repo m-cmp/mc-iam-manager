@@ -19,6 +19,7 @@ import (
 type KeycloakConfig struct {
 	Realm       string
 	Host        string
+	ExternalURL string
 	Client      *gocloak.GoCloak
 	adminToken  *gocloak.JWT
 	tokenExpiry time.Time
@@ -41,6 +42,13 @@ func InitKeycloak() error {
 		return fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_HOST is not set")
 	}
 	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_HOST: %s\n", host)
+
+	externalURL := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_EXTERNAL_URL")
+	if externalURL == "" {
+		log.Printf("[WARN] MC_IAM_MANAGER_KEYCLOAK_EXTERNAL_URL not set, falling back to Host: %s", host)
+		externalURL = host
+	}
+	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_EXTERNAL_URL: %s\n", externalURL)
 
 	realm := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_REALM")
 	if realm == "" {
@@ -93,10 +101,11 @@ func InitKeycloak() error {
 	client := gocloak.NewClient(host)
 
 	KC = &KeycloakConfig{
-		Realm:      realm,
-		Host:       host,
-		Client:     client,
-		ClientName: clientName,
+		Realm:       realm,
+		Host:        host,
+		ExternalURL: externalURL,
+		Client:      client,
+		ClientName:  clientName,
 		// ClientID:         clientID,
 		ClientSecret:     clientSecret,
 		OIDCClientID:     oidcClientID,
