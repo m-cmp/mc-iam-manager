@@ -108,3 +108,22 @@ type UpdateCspAccountRequest struct {
 	IsActive    *bool             `json:"is_active"`
 	Description string            `json:"description"`
 }
+
+// CspAccountValidationResult 개별 CspRole(provider+method) 검증 결과
+type CspAccountValidationResult struct {
+	CspRoleID   uint   `json:"csp_role_id"`
+	CspRoleName string `json:"csp_role_name"`
+	CspType     string `json:"csp_type"`
+	AuthMethod  string `json:"auth_method"`
+	Valid       bool   `json:"valid"`
+	Detail      string `json:"detail,omitempty"`
+	Error       string `json:"error,omitempty"`
+}
+
+// CspAccountValidationResponse CSP 계정 인프라 검증 응답
+type CspAccountValidationResponse struct {
+	AccountID   uint                         `json:"account_id"`
+	AccountName string                       `json:"account_name"`
+	CspType     string                       `json:"csp_type"`
+	Results     []CspAccountValidationResult `json:"results"`
+}
