@@ -281,6 +281,78 @@ func (s *MenuService) Create(req *model.CreateMenuRequest) error {
 	return s.menuRepo.CreateMenu(req)
 }
 
+// CreateWithRoleMappings 메뉴 생성 + 역할 매핑 (platform_admin 자동 포함)
+func (s *MenuService) CreateWithRoleMappings(req *model.CreateMenuRequest) (*model.CreateMenuResponse, error) {
+	// 1. admin(platform_admin) 역할 조회
+	adminRole, err := s.roleRepo.FindRoleByRoleName("admin", constants.RoleTypePlatform)
+	if err != nil {
+		return nil, fmt.Errorf("admin 역할 조회 실패: %w", err)
+	}
+	if adminRole == nil {
+		return nil, fmt.Errorf("admin 역할을 찾을 수 없습니다")
+	}
+
+	// 2. 매핑할 역할 ID 목록 구성 (platform_admin 자동 포함, 중복 제거)
+	roleIDSet := map[uint]struct{}{adminRole.ID: {}}
+	for _, rid := range req.RoleIDs {
+		roleIDSet[rid] = struct{}{}
+	}
+
+	// 3. 요청 roleID 유효성 확인 (admin 제외)
+	for rid := range roleIDSet {
+		if rid == adminRole.ID {
+			continue
+		}
+		role, err := s.roleRepo.FindRoleByRoleID(rid, constants.IAMRoleType(""))
+		if err != nil {
+			return nil, fmt.Errorf("역할 조회 실패 (roleId=%d): %w", rid, err)
+		}
+		if role == nil {
+			return nil, fmt.Errorf("존재하지 않는 역할 ID입니다: %d", rid)
+		}
+	}
+
+	// 4. 중복 제거된 역할 ID 슬라이스 생성
+	finalRoleIDs := make([]uint, 0, len(roleIDSet))
+	for rid := range roleIDSet {
+		finalRoleIDs = append(finalRoleIDs, rid)
+	}
+
+	// 5. Menu 객체 생성
+	priorityInt, err := util.StringToUint(req.Priority)
+	if err != nil {
+		return nil, fmt.Errorf("잘못된 priority 값: %w", err)
+	}
+	menuNumberInt, err := util.StringToUint(req.MenuNumber)
+	if err != nil {
+		return nil, fmt.Errorf("잘못된 menuNumber 값: %w", err)
+	}
+	isAction := false
+	if req.IsAction != nil {
+		isAction = *req.IsAction
+	}
+	menu := &model.Menu{
+		ID:          req.ID,
+		ParentID:    req.ParentID,
+		DisplayName: req.DisplayName,
+		ResType:     req.ResType,
+		IsAction:    isAction,
+		Priority:    priorityInt,
+		MenuNumber:  menuNumberInt,
+	}
+
+	// 6. 트랜잭션: 메뉴 생성 + 역할 매핑
+	mappings, err := s.menuRepo.CreateMenuWithRoleMappings(menu, finalRoleIDs)
+	if err != nil {
+		return nil, fmt.Errorf("메뉴 생성 및 역할 매핑 실패: %w", err)
+	}
+
+	return &model.CreateMenuResponse{
+		Menu:         menu,
+		RoleMappings: mappings,
+	}, nil
+}
+
 // Update 메뉴 정보 부분 업데이트
 func (s *MenuService) Update(id string, updates map[string]interface{}) error {
 	// TODO: 필요한 비즈니스 로직 추가 (예: 유효성 검사, 업데이트 가능 필드 제한 등)
@@ -296,8 +368,7 @@ func (s *MenuService) Update(id string, updates map[string]interface{}) error {
 
 // Delete 메뉴 삭제
 func (s *MenuService) Delete(id string) error {
-	// TODO: 필요한 비즈니스 로직 추가 (예: 하위 메뉴 처리 등)
-	return s.menuRepo.DeleteMenu(id)
+	return s.menuRepo.DeleteMenuWithChildren(id)
 }
 
 // LoadAndRegisterMenusFromYAML YAML 파일에서 메뉴를 로드하여 DB에 등록(Upsert)
@@ -640,6 +711,11 @@ func (s *MenuService) CreateRoleMenuMappings(mappings []*model.RoleMenuMapping) 
 // DeleteRoleMenuMapping 플랫폼 역할-메뉴 매핑 삭제
 func (s *MenuService) DeleteRoleMenuMapping(mappings []*model.RoleMenuMapping) error {
 	return s.menuRepo.DeleteRoleMenuMapping(mappings)
+}
+
+// DeleteRoleMenuMappingByRoleAndMenu role_id + menu_id 조건으로 매핑 삭제
+func (s *MenuService) DeleteRoleMenuMappingByRoleAndMenu(roleID uint, menuID string) error {
+	return s.menuRepo.DeleteRoleMenuMappingByRoleAndMenu(roleID, menuID)
 }
 
 // 해당 role 과 매핑된 메뉴 삭제

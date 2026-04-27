@@ -5,10 +5,10 @@ version: '3.8'
 networks:
   mc-iam-manager-network:
     external: true
-    name: mc-iam-manager_mc-iam-manager-network
+    name: mcc_mc-iam-manager-network
   mc-infra-manager-network:
     external: true
-    name: mc-iam-manager_mc-infra-manager-network
+    name: mcc_mc-infra-manager-network
 
 services:
   # Dev 환경용 mc-iam-manager 소스 컨테이너
@@ -38,11 +38,13 @@ services:
       DATABASE_URL: postgres://${MC_IAM_MANAGER_DATABASE_USER}:${MC_IAM_MANAGER_DATABASE_PASSWORD}@mc-iam-manager-db:5432/${MC_IAM_MANAGER_DATABASE_NAME}?sslmode=disable
       
       # Keycloak 설정 - Release 브랜치의 로컬 Keycloak 컨테이너 사용
-      MC_IAM_MANAGER_KEYCLOAK_HOST: http://mc-iam-manager-kc:8080
+      MC_IAM_MANAGER_KEYCLOAK_HOST: http://mc-iam-manager-kc:8080/auth
       MC_IAM_MANAGER_KEYCLOAK_DOMAIN: mc-iam-manager-kc
       MC_IAM_MANAGER_KEYCLOAK_PORT: 8080
       MC_IAM_MANAGER_KEYCLOAK_REALM: ${MC_IAM_MANAGER_KEYCLOAK_REALM}
-      MC_IAM_MANAGER_KEYCLOAK_CLIENT_PATH: mc-iam-manager-kc/realms/${MC_IAM_MANAGER_KEYCLOAK_REALM}
+      MC_IAM_MANAGER_KEYCLOAK_CLIENT_PATH: ${MC_IAM_MANAGER_KEYCLOAK_EXTERNAL_DOMAIN:-localhost}/auth/realms/${MC_IAM_MANAGER_KEYCLOAK_REALM}
+      MC_IAM_MANAGER_KEYCLOAK_EXTERNAL_DOMAIN: ${MC_IAM_MANAGER_KEYCLOAK_EXTERNAL_DOMAIN}
+      MC_IAM_MANAGER_KEYCLOAK_EXTERNAL_URL: https://${MC_IAM_MANAGER_KEYCLOAK_EXTERNAL_DOMAIN}/auth
       MC_IAM_MANAGER_KEYCLOAK_ADMIN: ${MC_IAM_MANAGER_KEYCLOAK_ADMIN}
       MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD: ${MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD}
       MC_IAM_MANAGER_KEYCLOAK_DATABASE_NAME: ${MC_IAM_MANAGER_KEYCLOAK_DATABASE_NAME}
@@ -63,6 +65,14 @@ services:
       MC_IAM_MANAGER_PLATFORMADMIN_LASTNAME: ${MC_IAM_MANAGER_PLATFORMADMIN_LASTNAME}
       MC_IAM_MANAGER_PLATFORMADMIN_EMAIL: ${MC_IAM_MANAGER_PLATFORMADMIN_EMAIL}
       
+      # OIDC 클라이언트 설정 (Keycloak 실제 시크릿으로 override)
+      MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME: ${MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME}
+      MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID: ${MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID}
+      MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET: gaT6UdbCga0MZHvXdg01VKd2OnaMteTB
+      # AWS CSP 설정
+      AWS_ACCOUNT_ID: ${AWS_ACCOUNT_ID}
+      CSP_ROLE_PREFIX: ${CSP_ROLE_PREFIX}
+
       # MC-INFRA-MANAGER 설정
       MCINFRAMANAGER: ${MCINFRAMANAGER}
       MCINFRAMANAGER_APIUSERNAME: ${MCINFRAMANAGER_APIUSERNAME}
@@ -78,4 +88,3 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-

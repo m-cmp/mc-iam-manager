@@ -20,6 +20,20 @@ import (
 // 	ErrUserNotFound = errors.New("user not found")
 // )
 
+func ptrStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func ptrBool(b *bool) bool {
+	if b == nil {
+		return false
+	}
+	return *b
+}
+
 type UserService struct {
 	db                *gorm.DB
 	userRepo          *repository.UserRepository
@@ -153,6 +167,32 @@ func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
 	return nil
 }
 
+// SignupUser creates a user in pending state (enabled=false)
+func (s *UserService) SignupUser(ctx context.Context, req *model.SignupRequest) (string, error) {
+	ks := NewKeycloakService()
+
+	// Keycloak에 pending 상태로 사용자 생성
+	kcId, err := ks.CreatePendingUser(ctx, req)
+	if err != nil {
+		return "", err
+	}
+
+	// 로컬 DB에도 사용자 동기화 (승인 전에도 DB 레코드 생성)
+	_, err = s.SyncUser(ctx, kcId)
+	if err != nil {
+		log.Printf("Warning: User created in Keycloak but not synced to DB: %v", err)
+		// DB 동기화 실패는 경고만 하고 계속 진행 (Keycloak에는 생성됨)
+	}
+
+	return kcId, nil
+}
+
+// ResetUserPassword resets a user's password
+func (s *UserService) ResetUserPassword(ctx context.Context, kcUserID, newPassword string) error {
+	ks := NewKeycloakService()
+	return ks.ResetPassword(ctx, kcUserID, newPassword)
+}
+
 // CreateUser creates a user in Keycloak and the local DB.
 // Keycloak 에 있는 유저가 DB에 등록되어 있지 않은 경우
 func (s *UserService) SyncUserByKeycloak(ctx context.Context, user *model.User) error {
@@ -201,10 +241,11 @@ func (s *UserService) UpdateUser(ctx context.Context, user *model.User) error {
 
 // --- Public Service Methods ---
 
-// ListUsers retrieves all users, merging data from Keycloak and the local DB.
-func (s *UserService) ListUsers(ctx context.Context) ([]model.User, error) {
+// ListUsers retrieves users, merging data from Keycloak and the local DB.
+// enabled nil = all users, true = active only, false = disabled (pending approval) only.
+func (s *UserService) ListUsers(ctx context.Context, enabled *bool) ([]model.User, error) {
 	ks := NewKeycloakService() // Create KeycloakService instance when needed
-	kcUsers, err := ks.GetUsers(ctx)
+	kcUsers, err := ks.GetUsers(ctx, enabled)
 	if err != nil {
 		return nil, err
 	}
@@ -232,11 +273,11 @@ func (s *UserService) ListUsers(ctx context.Context) ([]model.User, error) {
 			if kcUser != nil && kcUser.ID != nil {
 				result = append(result, model.User{
 					KcId:      *kcUser.ID,
-					Username:  *kcUser.Username,
-					Email:     *kcUser.Email,
-					FirstName: *kcUser.FirstName,
-					LastName:  *kcUser.LastName,
-					Enabled:   *kcUser.Enabled,
+					Username:  ptrStr(kcUser.Username),
+					Email:     ptrStr(kcUser.Email),
+					FirstName: ptrStr(kcUser.FirstName),
+					LastName:  ptrStr(kcUser.LastName),
+					Enabled:   ptrBool(kcUser.Enabled),
 				})
 			}
 		}
@@ -257,11 +298,11 @@ func (s *UserService) ListUsers(ctx context.Context) ([]model.User, error) {
 
 		mergedUser := model.User{
 			KcId:      kcID,
-			Username:  *kcUser.Username,
-			Email:     *kcUser.Email,
-			FirstName: *kcUser.FirstName,
-			LastName:  *kcUser.LastName,
-			Enabled:   *kcUser.Enabled,
+			Username:  ptrStr(kcUser.Username),
+			Email:     ptrStr(kcUser.Email),
+			FirstName: ptrStr(kcUser.FirstName),
+			LastName:  ptrStr(kcUser.LastName),
+			Enabled:   ptrBool(kcUser.Enabled),
 		}
 
 		if dbUser, dbExists := userMap[kcID]; dbExists {
@@ -467,6 +508,84 @@ func (s *UserService) GetUserIDByKcID(ctx context.Context, kcUserID string) (uin
 	}
 
 	return syncedUser.ID, nil
+}
+
+// DeactivateUser 사용자 계정 비활성화 (ACTIVE → INACTIVE)
+func (s *UserService) DeactivateUser(ctx context.Context, userID uint, requestorKcID string) error {
+	user, err := s.userRepo.FindUserByID(userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+	if user.KcId == requestorKcID {
+		return fmt.Errorf("cannot deactivate yourself")
+	}
+	if user.Status == model.UserStatusInactive {
+		return fmt.Errorf("user is already inactive")
+	}
+	ks := NewKeycloakService()
+	if err := ks.DisableUser(ctx, user.KcId); err != nil {
+		return fmt.Errorf("failed to disable user in keycloak: %w", err)
+	}
+	if err := s.userRepo.UpdateStatus(userID, model.UserStatusInactive); err != nil {
+		return fmt.Errorf("failed to update user status in db: %w", err)
+	}
+	return nil
+}
+
+// ActivateUser 사용자 계정 재활성화 (INACTIVE → ACTIVE)
+func (s *UserService) ActivateUser(ctx context.Context, userID uint) error {
+	user, err := s.userRepo.FindUserByID(userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+	if user.Status != model.UserStatusInactive {
+		return fmt.Errorf("user is not inactive")
+	}
+	ks := NewKeycloakService()
+	if err := ks.EnableUser(ctx, user.KcId); err != nil {
+		return fmt.Errorf("failed to enable user in keycloak: %w", err)
+	}
+	if err := s.userRepo.UpdateStatus(userID, model.UserStatusActive); err != nil {
+		return fmt.Errorf("failed to update user status in db: %w", err)
+	}
+	return nil
+}
+
+// RequestWithdrawal 현재 사용자 탈퇴 신청 (ACTIVE → WITHDRAWAL_REQUESTED)
+func (s *UserService) RequestWithdrawal(ctx context.Context, kcUserID string) error {
+	user, err := s.userRepo.FindByKcID(kcUserID)
+	if err != nil || user == nil {
+		return fmt.Errorf("user not found")
+	}
+	if user.Status != model.UserStatusActive {
+		return fmt.Errorf("only active users can request withdrawal")
+	}
+	if err := s.userRepo.UpdateStatus(user.ID, model.UserStatusWithdrawalRequested); err != nil {
+		return fmt.Errorf("failed to request withdrawal: %w", err)
+	}
+	return nil
+}
+
+// ProcessWithdrawal 탈퇴 최종 처리 (WITHDRAWAL_REQUESTED → WITHDRAWN)
+func (s *UserService) ProcessWithdrawal(ctx context.Context, userID uint) error {
+	user, err := s.userRepo.FindUserByID(userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+	if user.Status != model.UserStatusWithdrawalRequested {
+		return fmt.Errorf("user has not requested withdrawal")
+	}
+	if err := s.userRepo.DeleteAllRoleMappings(userID); err != nil {
+		return fmt.Errorf("failed to remove role mappings: %w", err)
+	}
+	ks := NewKeycloakService()
+	if err := ks.DisableUser(ctx, user.KcId); err != nil {
+		return fmt.Errorf("failed to disable user in keycloak: %w", err)
+	}
+	if err := s.userRepo.UpdateStatus(userID, model.UserStatusWithdrawn); err != nil {
+		return fmt.Errorf("failed to update user status in db: %w", err)
+	}
+	return nil
 }
 
 // getValidToken (Keep as is, assuming tokenRepo is initialized if needed)

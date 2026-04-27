@@ -46,3 +46,9 @@ type RoleMenuMapping struct {
 func (RoleMenuMapping) TableName() string {
 	return "mcmp_role_menu_mappings"
 }
+
+// CreateMenuResponse 메뉴 생성 응답 (메뉴 + 역할 매핑 포함)
+type CreateMenuResponse struct {
+	Menu         *Menu              `json:"menu"`
+	RoleMappings []*RoleMenuMapping `json:"roleMappings"`
+}

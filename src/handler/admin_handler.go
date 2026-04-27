@@ -19,21 +19,25 @@ import (
 
 // AdminHandler 관리자 API 핸들러
 type AdminHandler struct {
-	keycloakService  service.KeycloakService
-	userService      service.UserService
-	roleService      service.RoleService
-	workspaceService service.WorkspaceService
-	menuService      service.MenuService
+	keycloakService      service.KeycloakService
+	userService          service.UserService
+	roleService          service.RoleService
+	workspaceService     service.WorkspaceService
+	menuService          service.MenuService
+	organizationService  *service.OrganizationService
+	companyService       *service.CompanyService
 }
 
 // NewAdminHandler 새 AdminHandler 인스턴스 생성
 func NewAdminHandler(db *gorm.DB) *AdminHandler {
 	return &AdminHandler{
-		keycloakService:  service.NewKeycloakService(),
-		userService:      *service.NewUserService(db),
-		roleService:      *service.NewRoleService(db),
-		workspaceService: *service.NewWorkspaceService(db),
-		menuService:      *service.NewMenuService(db),
+		keycloakService:     service.NewKeycloakService(),
+		userService:         *service.NewUserService(db),
+		roleService:         *service.NewRoleService(db),
+		workspaceService:    *service.NewWorkspaceService(db),
+		menuService:         *service.NewMenuService(db),
+		organizationService: service.NewOrganizationService(db),
+		companyService:      service.NewCompanyService(db),
 	}
 }
 
@@ -180,6 +184,17 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 		// 	Error:   true,
 		// 	Message: "Failed to initialize menu permissions",
 		// })
+	}
+
+	// 기본 조직 등록
+	err = h.organizationService.LoadAndRegisterOrganizationsFromYAML("")
+	if err != nil {
+		log.Printf("[ERROR] Register default organizations failed: %v", err)
+	}
+
+	// 기본 회사 생성 (COMP-006: 이미 존재하면 skip, 실패해도 non-fatal)
+	if err := h.companyService.CreateDefaultCompany(); err != nil {
+		log.Printf("[WARNING] Failed to create default company: %v", err)
 	}
 
 	// Platform Admin 역할에 모든 메뉴 매핑 추가 : 메뉴 목록 조회에 구현되어 있음.

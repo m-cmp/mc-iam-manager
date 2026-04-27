@@ -90,16 +90,17 @@ type WorkspaceFilterRequest struct {
 }
 
 type CreateCspRoleRequest struct {
-	ID            string `json:"id,omitempty"`
-	CspRoleName   string `json:"cspRoleName",omitempty"` // csp의 RoleName. 여러 role이 있기때문에 csp에 정의한 role로 구분하기 위해 사용
-	Description   string `json:"description,omitempty"`
-	CspType       string `json:"cspType,omitempty"`
-	IdpIdentifier string `json:"idpIdentifier,omitempty"`
-	IamIdentifier string `json:"iamIdentifier,omitempty"`
-	Status        string `json:"status,omitempty"`
-	Path          string `json:"path,omitempty"`
-	IamRoleId     string `json:"iamRoleId,omitempty"`
-	Tags          []Tag  `json:"tags,omitempty" gorm:"-"`
+	ID            string               `json:"id,omitempty"`
+	CspRoleName   string               `json:"cspRoleName,omitempty"` // csp의 RoleName. 여러 role이 있기때문에 csp에 정의한 role로 구분하기 위해 사용
+	Description   string               `json:"description,omitempty"`
+	CspType       string               `json:"cspType,omitempty"`
+	AuthMethod    constants.AuthMethod `json:"authMethod,omitempty"` // 인증방식 (OIDC/SAML/SECRET_KEY), 미지정 시 OIDC 기본값
+	IdpIdentifier string               `json:"idpIdentifier,omitempty"`
+	IamIdentifier string               `json:"iamIdentifier,omitempty"`
+	Status        string               `json:"status,omitempty"`
+	Path          string               `json:"path,omitempty"`
+	IamRoleId     string               `json:"iamRoleId,omitempty"`
+	Tags          []Tag                `json:"tags,omitempty" gorm:"-"`
 }
 
 // CreateCspRolesRequest 복수 CSP 역할 생성 요청 구조체
@@ -121,9 +122,10 @@ type CreateMenuRequest struct {
 	ParentID    string `json:"parentId,omitempty"`
 	DisplayName string `json:"displayName"`
 	ResType     string `json:"resType"`
-	IsAction    bool   `json:"isAction"`
+	IsAction    *bool  `json:"isAction"`
 	Priority    string `json:"priority"`
 	MenuNumber  string `json:"menuNumber"`
+	RoleIDs     []uint `json:"roleIds,omitempty"` // 생성과 동시에 매핑할 역할 ID 목록 (platform_admin은 항상 자동 매핑)
 }
 type CreateMenuRequests struct {
 	Menus []CreateMenuRequest `json:"menus" validate:"required,dive"`
@@ -262,4 +264,85 @@ type ImportApiResponse struct {
 	SuccessCount     int                        `json:"successCount"`     // Number of successfully imported frameworks
 	FailureCount     int                        `json:"failureCount"`     // Number of failed frameworks
 	FrameworkResults []ImportApiFrameworkResult `json:"frameworkResults"` // Detailed results for each framework
+}
+
+// SignupRequest represents the signup form data
+type SignupRequest struct {
+	Email        string `json:"email" validate:"required,email"`
+	Password     string `json:"password" validate:"required,min=8"`
+	FirstName    string `json:"firstName" validate:"required"`
+	LastName     string `json:"lastName" validate:"required"`
+	Organization string `json:"organization,omitempty"` // 선택 필드
+}
+
+// ResetPasswordRequest represents the password reset request
+type ResetPasswordRequest struct {
+	NewPassword string `json:"newPassword" validate:"required,min=8"`
+}
+
+// ChangeMyPasswordRequest represents the user's own password change request
+type ChangeMyPasswordRequest struct {
+	CurrentPassword string `json:"currentPassword" validate:"required"`
+	NewPassword     string `json:"newPassword" validate:"required,min=8"`
+}
+
+// ProjectSyncApplyRequest POST /api/setup/projects/sync request body
+type ProjectSyncApplyRequest struct {
+	WorkspaceID string   `json:"workspaceId" validate:"required"`
+	NsIds       []string `json:"nsIds" validate:"required"`
+}
+
+// ProjectSyncDiffMissingItem namespace exists in infra but has no local project
+type ProjectSyncDiffMissingItem struct {
+	NsId        string `json:"nsId"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// ProjectSyncDiffUnassignedItem local project exists but is not assigned to any workspace
+type ProjectSyncDiffUnassignedItem struct {
+	ID          uint   `json:"id"`
+	NsId        string `json:"nsId"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// ProjectSyncDiffResponse GET /api/setup/projects/sync-diff response
+type ProjectSyncDiffResponse struct {
+	MissingProjects    []ProjectSyncDiffMissingItem    `json:"missingProjects"`
+	UnassignedProjects []ProjectSyncDiffUnassignedItem `json:"unassignedProjects"`
+}
+
+// ProjectSyncApplyCreatedItem newly created project during sync apply
+type ProjectSyncApplyCreatedItem struct {
+	ID   uint   `json:"id"`
+	NsId string `json:"nsId"`
+	Name string `json:"name"`
+}
+
+// ProjectSyncApplyAssignedItem existing project that was assigned to workspace
+type ProjectSyncApplyAssignedItem struct {
+	ID   uint   `json:"id"`
+	NsId string `json:"nsId"`
+	Name string `json:"name"`
+}
+
+// ProjectSyncApplySkippedItem namespace skipped during sync apply
+type ProjectSyncApplySkippedItem struct {
+	NsId   string `json:"nsId"`
+	Reason string `json:"reason"`
+}
+
+// ProjectSyncApplyFailedItem namespace where sync apply failed
+type ProjectSyncApplyFailedItem struct {
+	NsId  string `json:"nsId"`
+	Error string `json:"error"`
+}
+
+// ProjectSyncApplyResponse POST /api/setup/projects/sync response
+type ProjectSyncApplyResponse struct {
+	Created  []ProjectSyncApplyCreatedItem  `json:"created"`
+	Assigned []ProjectSyncApplyAssignedItem `json:"assigned"`
+	Skipped  []ProjectSyncApplySkippedItem  `json:"skipped"`
+	Failed   []ProjectSyncApplyFailedItem   `json:"failed"`
 }

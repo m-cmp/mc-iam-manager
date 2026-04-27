@@ -374,8 +374,10 @@ func (r *RoleRepository) CreateRoleCspRoleMapping(req *model.CreateRoleMasterCsp
 		return fmt.Errorf("잘못된 CSP 역할 ID 형식: %w", err)
 	}
 
-	// TODO :authMethod 는 default로 할지 아니면 선택하는 로직 추가 필요. 우선은 OIDC로 고정. TODO : 선택하는 로직 추가 필요
-	req.AuthMethod = constants.AuthMethodOIDC
+	// AuthMethod 미지정 시 OIDC 기본값
+	if req.AuthMethod == "" {
+		req.AuthMethod = constants.AuthMethodOIDC
+	}
 
 	// 중복 체크 - 카운트로 확인
 	var count int64
@@ -439,8 +441,7 @@ func (r *RoleRepository) CreateWorkspaceRoleCspRoleMapping(req *model.CreateCspR
 		// csp role 저장
 		for _, cspRole := range req.CspRoles {
 			savedCspRole := model.CspRole{}
-			err := tx.Save(&cspRole).Scan(&savedCspRole)
-			if err != nil {
+			if err := tx.Save(&cspRole).Scan(&savedCspRole).Error; err != nil {
 				return fmt.Errorf("failed to create csp role: %w", err)
 			}
 
@@ -1103,6 +1104,47 @@ func (r *RoleRepository) FindRoleMasterMappings(req *model.FilterRoleMasterMappi
 	}
 
 	return result, nil
+}
+
+// FindEffectivePlatformRoles 사용자의 유효 플랫폼 역할 목록 조회 (직접 할당 + 그룹 상속 통합, 중복 제거)
+func (r *RoleRepository) FindEffectivePlatformRoles(userID uint) ([]model.RoleMaster, error) {
+	var roles []model.RoleMaster
+	err := r.db.Raw(`
+		SELECT DISTINCT rm.*
+		FROM mcmp_role_masters rm
+		WHERE rm.id IN (
+			SELECT role_id FROM mcmp_user_platform_roles WHERE user_id = ?
+			UNION
+			SELECT gpr.role_id FROM mcmp_group_platform_roles gpr
+			JOIN mcmp_user_organizations uo ON uo.organization_id = gpr.group_id
+			WHERE uo.user_id = ?
+		)
+	`, userID, userID).Scan(&roles).Error
+	if err != nil {
+		return nil, err
+	}
+	return roles, nil
+}
+
+// FindEffectiveWorkspaceRoles 사용자의 유효 워크스페이스 역할 목록 조회 (직접 할당 + 그룹 상속 통합, 중복 제거)
+func (r *RoleRepository) FindEffectiveWorkspaceRoles(userID uint) ([]model.EffectiveWorkspaceRole, error) {
+	var roles []model.EffectiveWorkspaceRole
+	err := r.db.Raw(`
+		SELECT DISTINCT uwr.workspace_id, w.name AS workspace_name, uwr.role_id, rm.name AS role_name
+		FROM (
+			SELECT workspace_id, role_id FROM mcmp_user_workspace_roles WHERE user_id = ?
+			UNION
+			SELECT gwr.workspace_id, gwr.role_id FROM mcmp_group_workspace_roles gwr
+			JOIN mcmp_user_organizations uo ON uo.organization_id = gwr.group_id
+			WHERE uo.user_id = ?
+		) uwr
+		JOIN mcmp_workspaces w ON w.id = uwr.workspace_id
+		JOIN mcmp_role_masters rm ON rm.id = uwr.role_id
+	`, userID, userID).Scan(&roles).Error
+	if err != nil {
+		return nil, err
+	}
+	return roles, nil
 }
 
 // containsRoleType roleTypes 슬라이스에 특정 roleType이 포함되어 있는지 확인
