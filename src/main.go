@@ -227,6 +227,8 @@ func main() {
 	{
 		setup.GET("/check-user-roles", adminHandler.CheckUserRoles)
 		setup.POST("/sync-projects", projectHandler.SyncProjects)
+		setup.GET("/projects/sync-diff", projectHandler.GetProjectSyncDiff)
+		setup.POST("/projects/sync", projectHandler.ApplyProjectSync)
 		setup.POST("/sync-mcmp-apis", mcmpApiHandler.SyncMcmpAPIs)
 		setup.POST("/initial-menus", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
 		setup.POST("/initial-menus2", menuHandler.RegisterMenusFromBody, middleware.PlatformAdminMiddleware)
