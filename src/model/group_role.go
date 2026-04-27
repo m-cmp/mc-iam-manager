@@ -71,6 +71,13 @@ type GroupWorkspaceRoleResponse struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
+// AvailablePlatformRoleResponse 미할당 플랫폼 역할 응답
+type AvailablePlatformRoleResponse struct {
+	RoleID      uint   `json:"role_id"`
+	RoleName    string `json:"role_name"`
+	Description string `json:"description"`
+}
+
 // AssignUserGroupsRequest 사용자-그룹 할당 요청 (group_ids 사용)
 type AssignUserGroupsRequest struct {
 	GroupIDs []uint `json:"group_ids" validate:"required,min=1"`

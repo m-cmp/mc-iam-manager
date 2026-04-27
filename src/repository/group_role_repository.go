@@ -71,6 +71,24 @@ func (r *GroupRoleRepository) FindGroupPlatformRoleByRoleID(groupID, roleID uint
 	return &record, nil
 }
 
+// FindAvailableGroupPlatformRoles 그룹에 미할당된 플랫폼 역할 목록 조회
+func (r *GroupRoleRepository) FindAvailableGroupPlatformRoles(groupID uint) ([]model.AvailablePlatformRoleResponse, error) {
+	results := make([]model.AvailablePlatformRoleResponse, 0)
+	err := r.db.Table("mcmp_role_masters rm").
+		Select("rm.id as role_id, rm.name as role_name, rm.description").
+		Where("rm.role_type = 'platform'").
+		Where("rm.id NOT IN (?)",
+			r.db.Table("mcmp_group_platform_roles").
+				Select("role_id").
+				Where("group_id = ?", groupID),
+		).
+		Scan(&results).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding available platform roles: %w", err)
+	}
+	return results, nil
+}
+
 // DeleteGroupPlatformRole 그룹-플랫폼 역할 매핑 삭제
 func (r *GroupRoleRepository) DeleteGroupPlatformRole(groupID, roleID uint) error {
 	result := r.db.Where("group_id = ? AND role_id = ?", groupID, roleID).Delete(&model.GroupPlatformRole{})
