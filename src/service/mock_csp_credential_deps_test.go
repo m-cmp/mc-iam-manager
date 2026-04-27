@@ -61,7 +61,7 @@ func (m *mockAlibabaCredService) AssumeRoleWithSAML(_ context.Context, samlProvi
 	return m.result, m.err
 }
 
-func (m *mockAlibabaCredService) AssumeRoleWithOIDC(_ context.Context, oidcProviderArn, roleArn, oidcToken, region string) (*model.CspCredentialResponse, error) {
+func (m *mockAlibabaCredService) AssumeRoleWithOIDC(_ context.Context, oidcProviderArn, roleArn, oidcToken, region, audience string) (*model.CspCredentialResponse, error) {
 	if m.oidcResult != nil || m.oidcErr != nil {
 		return m.oidcResult, m.oidcErr
 	}

@@ -11,10 +11,10 @@ package service
 //        MC_IAM_MANAGER_KEYCLOAK_ADMIN, MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD
 //        MC_IAM_MANAGER_KEYCLOAK_CLIENT_NAME, MC_IAM_MANAGER_KEYCLOAK_CLIENT_SECRET
 //        MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME, MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET
-//   AWS: IT_AWS_OIDC_PROVIDER_ARN, IT_AWS_OIDC_ROLE_ARN (IAM read 권한 보유 role)
-//        IT_AWS_SAML_PROVIDER_ARN, IT_AWS_SAML_ROLE_ARN
-//        IT_AWS_ACCESS_KEY_ID, IT_AWS_SECRET_ACCESS_KEY (SECRET_KEY 테스트용)
-//        IT_KC_SAML_CLIENT_ID (기본값: urn:amazon:webservices)
+//   AWS: TEST_AWS_OIDC_PROVIDER_ARN, TEST_AWS_OIDC_ROLE_ARN (IAM read 권한 보유 role)
+//        TEST_AWS_SAML_PROVIDER_ARN, TEST_AWS_SAML_ROLE_ARN
+//        TEST_AWS_ACCESS_KEY_ID, TEST_AWS_SECRET_ACCESS_KEY (SECRET_KEY 테스트용)
+//        TEST_KC_SAML_CLIENT_ID (기본값: urn:amazon:webservices)
 
 import (
 	"context"
@@ -66,7 +66,7 @@ func TestIntegrationCheckSAMLClientConfig_Exists(t *testing.T) {
 
 	svc := NewKeycloakService()
 	ctx := context.Background()
-	clientID := envOrDefault("IT_KC_SAML_CLIENT_ID", "urn:amazon:webservices")
+	clientID := envOrDefault("TEST_KC_SAML_CLIENT_ID", "urn:amazon:webservices")
 
 	detail, err := svc.CheckSAMLClientConfig(ctx, clientID)
 
@@ -97,10 +97,10 @@ func TestIntegrationAWSOIDC_IAMRead(t *testing.T) {
 	skipIfNotIntegration(t)
 	initKCForIntegration(t)
 
-	oidcProviderArn := os.Getenv("IT_AWS_OIDC_PROVIDER_ARN")
-	roleArn := os.Getenv("IT_AWS_OIDC_ROLE_ARN")
+	oidcProviderArn := os.Getenv("TEST_AWS_OIDC_PROVIDER_ARN")
+	roleArn := os.Getenv("TEST_AWS_OIDC_ROLE_ARN")
 	if oidcProviderArn == "" || roleArn == "" {
-		t.Skip("IT_AWS_OIDC_PROVIDER_ARN / IT_AWS_OIDC_ROLE_ARN 미설정 — 건너뜁니다")
+		t.Skip("TEST_AWS_OIDC_PROVIDER_ARN / TEST_AWS_OIDC_ROLE_ARN 미설정 — 건너뜁니다")
 	}
 
 	ctx := context.Background()
@@ -149,10 +149,10 @@ func TestIntegrationAWSOIDC_IAMRead(t *testing.T) {
 func TestIntegrationAWSSecretKey_GetCallerIdentity(t *testing.T) {
 	skipIfNotIntegration(t)
 
-	accessKeyID := os.Getenv("IT_AWS_ACCESS_KEY_ID")
-	secretKey := os.Getenv("IT_AWS_SECRET_ACCESS_KEY")
+	accessKeyID := os.Getenv("TEST_AWS_ACCESS_KEY_ID")
+	secretKey := os.Getenv("TEST_AWS_SECRET_ACCESS_KEY")
 	if accessKeyID == "" || secretKey == "" {
-		t.Skip("IT_AWS_ACCESS_KEY_ID / IT_AWS_SECRET_ACCESS_KEY 미설정 — 건너뜁니다")
+		t.Skip("TEST_AWS_ACCESS_KEY_ID / TEST_AWS_SECRET_ACCESS_KEY 미설정 — 건너뜁니다")
 	}
 
 	ctx := context.Background()
@@ -186,11 +186,11 @@ func TestIntegrationValidateCredentials_AWSOIDC_FullFlow(t *testing.T) {
 	skipIfNotIntegration(t)
 	initKCForIntegration(t)
 
-	oidcProviderArn := os.Getenv("IT_AWS_OIDC_PROVIDER_ARN")
-	roleArn := os.Getenv("IT_AWS_OIDC_ROLE_ARN")
-	workspaceID := envOrDefault("IT_WORKSPACE_ID", "1")
+	oidcProviderArn := os.Getenv("TEST_AWS_OIDC_PROVIDER_ARN")
+	roleArn := os.Getenv("TEST_AWS_OIDC_ROLE_ARN")
+	workspaceID := envOrDefault("TEST_WORKSPACE_ID", "1")
 	if oidcProviderArn == "" || roleArn == "" {
-		t.Skip("IT_AWS_OIDC_PROVIDER_ARN / IT_AWS_OIDC_ROLE_ARN 미설정 — 건너뜁니다")
+		t.Skip("TEST_AWS_OIDC_PROVIDER_ARN / TEST_AWS_OIDC_ROLE_ARN 미설정 — 건너뜁니다")
 	}
 
 	mapping := buildValMapping("OIDC", oidcProviderArn, roleArn)
@@ -225,10 +225,10 @@ func TestIntegrationValidateCredentials_AWSOIDC_FullFlow(t *testing.T) {
 func TestIntegrationAWSSTS_DirectSDKCall(t *testing.T) {
 	skipIfNotIntegration(t)
 
-	accessKeyID := os.Getenv("IT_AWS_ACCESS_KEY_ID")
-	secretKey := os.Getenv("IT_AWS_SECRET_ACCESS_KEY")
+	accessKeyID := os.Getenv("TEST_AWS_ACCESS_KEY_ID")
+	secretKey := os.Getenv("TEST_AWS_SECRET_ACCESS_KEY")
 	if accessKeyID == "" || secretKey == "" {
-		t.Skip("IT_AWS_ACCESS_KEY_ID / IT_AWS_SECRET_ACCESS_KEY 미설정 — 건너뜁니다")
+		t.Skip("TEST_AWS_ACCESS_KEY_ID / TEST_AWS_SECRET_ACCESS_KEY 미설정 — 건너뜁니다")
 	}
 
 	ctx := context.Background()
