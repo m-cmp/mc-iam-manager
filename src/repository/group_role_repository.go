@@ -208,6 +208,141 @@ func (r *GroupRoleRepository) FindAvailableWorkspaces(groupID uint) ([]model.Wor
 	return workspaces, nil
 }
 
+// FindEffectivePlatformRolesByUserID 사용자의 유효 플랫폼 역할 목록 조회 (직접 + 그룹 상속, 중복 제거)
+func (r *GroupRoleRepository) FindEffectivePlatformRolesByUserID(userID uint) ([]model.EffectivePlatformRoleItem, error) {
+	type rawRow struct {
+		RoleID      uint
+		RoleName    string
+		Description string
+		Source      string
+	}
+
+	var directRows []rawRow
+	err := r.db.Raw(`
+		SELECT rm.id as role_id, rm.name as role_name, rm.description, 'direct' as source
+		FROM mcmp_user_platform_roles upr
+		JOIN mcmp_role_masters rm ON rm.id = upr.role_id
+		WHERE upr.user_id = ?
+	`, userID).Scan(&directRows).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding direct platform roles for user %d: %w", userID, err)
+	}
+
+	var groupRows []rawRow
+	err = r.db.Raw(`
+		SELECT rm.id as role_id, rm.name as role_name, rm.description,
+		       'group:' || o.name as source
+		FROM mcmp_user_organizations uo
+		JOIN mcmp_group_platform_roles gpr ON gpr.group_id = uo.organization_id
+		JOIN mcmp_role_masters rm ON rm.id = gpr.role_id
+		JOIN mcmp_organizations o ON o.id = uo.organization_id
+		WHERE uo.user_id = ?
+	`, userID).Scan(&groupRows).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding group-inherited platform roles for user %d: %w", userID, err)
+	}
+
+	seenRoleIDs := make(map[uint]bool)
+	results := make([]model.EffectivePlatformRoleItem, 0, len(directRows)+len(groupRows))
+
+	for _, row := range directRows {
+		if !seenRoleIDs[row.RoleID] {
+			seenRoleIDs[row.RoleID] = true
+			results = append(results, model.EffectivePlatformRoleItem{
+				RoleID:      row.RoleID,
+				RoleName:    row.RoleName,
+				Description: row.Description,
+				Source:      row.Source,
+			})
+		}
+	}
+	for _, row := range groupRows {
+		if !seenRoleIDs[row.RoleID] {
+			seenRoleIDs[row.RoleID] = true
+			results = append(results, model.EffectivePlatformRoleItem{
+				RoleID:      row.RoleID,
+				RoleName:    row.RoleName,
+				Description: row.Description,
+				Source:      row.Source,
+			})
+		}
+	}
+
+	return results, nil
+}
+
+// FindDirectPlatformRolesByUserID 사용자의 직접 할당 플랫폼 역할 목록 조회
+func (r *GroupRoleRepository) FindDirectPlatformRolesByUserID(userID uint) ([]model.PlatformRoleSimple, error) {
+	var results []model.PlatformRoleSimple
+	err := r.db.Raw(`
+		SELECT rm.id as role_id, rm.name as role_name, rm.description
+		FROM mcmp_user_platform_roles upr
+		JOIN mcmp_role_masters rm ON rm.id = upr.role_id
+		WHERE upr.user_id = ?
+		ORDER BY rm.name ASC
+	`, userID).Scan(&results).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding direct platform roles for user %d: %w", userID, err)
+	}
+	if results == nil {
+		results = []model.PlatformRoleSimple{}
+	}
+	return results, nil
+}
+
+// FindUserGroupsWithRoles 사용자의 그룹 목록과 각 그룹에 할당된 플랫폼 역할 조회
+func (r *GroupRoleRepository) FindUserGroupsWithRoles(userID uint) ([]model.GroupAccessInfo, error) {
+	type groupRoleRow struct {
+		GroupID     uint
+		GroupName   string
+		RoleID      uint
+		RoleName    string
+		Description string
+	}
+
+	var rows []groupRoleRow
+	err := r.db.Raw(`
+		SELECT o.id as group_id, o.name as group_name,
+		       rm.id as role_id, rm.name as role_name, rm.description
+		FROM mcmp_user_organizations uo
+		JOIN mcmp_organizations o ON o.id = uo.organization_id
+		LEFT JOIN mcmp_group_platform_roles gpr ON gpr.group_id = uo.organization_id
+		LEFT JOIN mcmp_role_masters rm ON rm.id = gpr.role_id
+		WHERE uo.user_id = ?
+		ORDER BY o.name ASC, rm.name ASC
+	`, userID).Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding groups with roles for user %d: %w", userID, err)
+	}
+
+	groupMap := make(map[uint]*model.GroupAccessInfo)
+	groupOrder := make([]uint, 0)
+
+	for _, row := range rows {
+		if _, exists := groupMap[row.GroupID]; !exists {
+			groupMap[row.GroupID] = &model.GroupAccessInfo{
+				GroupID:   row.GroupID,
+				GroupName: row.GroupName,
+				Roles:     []model.PlatformRoleSimple{},
+			}
+			groupOrder = append(groupOrder, row.GroupID)
+		}
+		if row.RoleID != 0 {
+			groupMap[row.GroupID].Roles = append(groupMap[row.GroupID].Roles, model.PlatformRoleSimple{
+				RoleID:      row.RoleID,
+				RoleName:    row.RoleName,
+				Description: row.Description,
+			})
+		}
+	}
+
+	results := make([]model.GroupAccessInfo, 0, len(groupOrder))
+	for _, gid := range groupOrder {
+		results = append(results, *groupMap[gid])
+	}
+	return results, nil
+}
+
 // isGroupDuplicateError unique constraint 위반 여부 확인 (PostgreSQL: 23505, SQLite: UNIQUE constraint failed)
 func isGroupDuplicateError(err error) bool {
 	return err != nil && (strings.Contains(err.Error(), "duplicate key") ||
