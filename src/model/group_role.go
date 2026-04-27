@@ -87,3 +87,32 @@ type AssignUserGroupsRequest struct {
 type AssignGroupUsersRequest struct {
 	UserIDs []uint `json:"user_ids" validate:"required,min=1"`
 }
+
+// PlatformRoleSimple 플랫폼 역할 간단 정보
+type PlatformRoleSimple struct {
+	RoleID      uint   `json:"role_id"`
+	RoleName    string `json:"role_name"`
+	Description string `json:"description"`
+}
+
+// EffectivePlatformRoleItem 유효 플랫폼 역할 항목 (직접 + 그룹 상속)
+type EffectivePlatformRoleItem struct {
+	RoleID      uint   `json:"role_id"`
+	RoleName    string `json:"role_name"`
+	Description string `json:"description"`
+	Source      string `json:"source"` // "direct" 또는 "group:{groupName}"
+}
+
+// GroupAccessInfo 그룹 접근 정보 (그룹 기본 정보 + 할당된 역할 목록)
+type GroupAccessInfo struct {
+	GroupID   uint                 `json:"group_id"`
+	GroupName string               `json:"group_name"`
+	Roles     []PlatformRoleSimple `json:"roles"`
+}
+
+// UserAccessSummaryResponse 사용자 접근 권한 요약 응답
+type UserAccessSummaryResponse struct {
+	UserID      uint              `json:"user_id"`
+	DirectRoles []PlatformRoleSimple `json:"direct_roles"`
+	Groups      []GroupAccessInfo `json:"groups"`
+}
