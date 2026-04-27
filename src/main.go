@@ -491,11 +491,19 @@ func main() {
 	{
 		organizations.POST("", organizationHandler.CreateOrganization)
 		organizations.GET("", organizationHandler.GetOrganizations)
+		// 트리 조회 (RQ-M2-UG-034)
+		organizations.GET("/tree", organizationHandler.GetOrganizationTree)
 		organizations.GET("/id/:organizationId", organizationHandler.GetOrganizationByID)
 		organizations.GET("/code/:code", organizationHandler.GetOrganizationByCode)
 		organizations.PUT("/id/:organizationId", organizationHandler.UpdateOrganization)
 		organizations.DELETE("/id/:organizationId", organizationHandler.DeleteOrganization)
 		organizations.GET("/id/:organizationId/users", organizationHandler.GetOrganizationUsers)
+		// 하위 트리 조회 (RQ-M2-UG-034)
+		organizations.GET("/id/:organizationId/subtree", organizationHandler.GetOrganizationSubtree)
+		// 조직 이동 (RQ-M2-UG-035)
+		organizations.PUT("/id/:organizationId/move", organizationHandler.MoveOrganization)
+		// 삭제 가능 여부 확인 (RQ-M2-UG-036)
+		organizations.GET("/id/:organizationId/deletable", organizationHandler.GetOrganizationDeletable)
 	}
 
 	// 사용자-조직 라우트 (users 그룹에 추가, platformAdmin 전용)
