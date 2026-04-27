@@ -102,6 +102,11 @@ type OrganizationDeletableResponse struct {
 	Reason    string `json:"reason,omitempty"`
 }
 
+// ReplaceUserGroupsRequest 사용자 그룹 전체 교체 요청
+type ReplaceUserGroupsRequest struct {
+	GroupIDs []uint `json:"groupIds"`
+}
+
 // OrganizationResponse 조직 단건 응답
 type OrganizationResponse struct {
 	ID               uint      `json:"id"`

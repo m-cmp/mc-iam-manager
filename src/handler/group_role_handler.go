@@ -182,7 +182,7 @@ func (h *GroupRoleHandler) RemoveGroupPlatformRole(c echo.Context) error {
 		case errors.Is(err, repository.ErrRoleMasterNotFound):
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "역할을 찾을 수 없습니다"})
 		case errors.Is(err, repository.ErrGroupPlatformRoleNotFound):
-			return c.JSON(http.StatusNotFound, map[string]string{"error": "할당된 역할을 찾을 수 없습니다"})
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "할당된 역할 매핑을 찾을 수 없습니다"})
 		default:
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
@@ -485,4 +485,52 @@ func (h *GroupRoleHandler) RemoveUserFromGroup(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "사용자가 그룹에서 제거되었습니다."})
+}
+
+// GetUserEffectivePlatformRoles godoc
+// @Summary 사용자 유효 플랫폼 역할 목록 조회 (직접 + 그룹 상속)
+// @Description 사용자에게 직접 할당된 역할과 소속 그룹을 통해 상속된 역할을 중복 제거하여 반환합니다.
+// @Tags users
+// @Produce json
+// @Param userId path int true "사용자 ID"
+// @Success 200 {array} model.EffectivePlatformRoleItem
+// @Failure 400 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/id/{userId}/effective-platform-roles [get]
+// @Id getUserEffectivePlatformRoles
+func (h *GroupRoleHandler) GetUserEffectivePlatformRoles(c echo.Context) error {
+	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID"})
+	}
+
+	roles, err := h.groupRoleService.GetEffectivePlatformRoles(uint(userID))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
+}
+
+// GetUserAccessSummary godoc
+// @Summary 사용자 접근 권한 요약 조회
+// @Description 사용자의 직접 할당 플랫폼 역할, 소속 그룹 목록, 그룹 기반 역할을 통합 조회합니다.
+// @Tags users
+// @Produce json
+// @Param userId path int true "사용자 ID"
+// @Success 200 {object} model.UserAccessSummaryResponse
+// @Failure 400 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/id/{userId}/access-summary [get]
+// @Id getUserAccessSummary
+func (h *GroupRoleHandler) GetUserAccessSummary(c echo.Context) error {
+	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID"})
+	}
+
+	summary, err := h.groupRoleService.GetUserAccessSummary(uint(userID))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, summary)
 }

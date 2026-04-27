@@ -65,29 +65,37 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 	}
 }
 
+// UserListRequest is the optional request body for ListUsers.
+type UserListRequest struct {
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
 // ListUsers godoc
 // @Summary List all users
-// @Description Retrieve a list of all users.
+// @Description Retrieve a list of users. Optionally filter by Keycloak enabled status (true=active, false=pending approval).
 // @Tags users
 // @Accept json
 // @Produce json
+// @Param request body handler.UserListRequest false "Optional filter"
 // @Success 200 {array} model.User
+// @Failure 403 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/list [post]
 // @Id listUsers
 func (h *UserHandler) ListUsers(c echo.Context) error {
-	// --- Role validation (Admin or platformAdmin) ---
-	requiredRoles := []string{"admin", "platformAdmin"} // todo : shouldn't this be checked in middleware?
-	// Use the helper function that reads roles from context
+	requiredRoles := []string{"admin", "platformAdmin"}
 	if !checkRoleFromContext(c, requiredRoles) {
 		fmt.Printf("[INFO] ListUsers: Permission denied. User does not have required roles: %v\n", requiredRoles)
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Required role not found"})
 	}
-	fmt.Printf("[DEBUG] ListUsers: Permission granted.\n")
-	// --- Role validation end ---
 
-	users, err := h.userService.ListUsers(c.Request().Context())
+	var req UserListRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	users, err := h.userService.ListUsers(c.Request().Context(), req.Enabled)
 	if err != nil {
 		fmt.Printf("[ERROR] ListUsers: Error from userService.ListUsers: %v\n", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to retrieve user list"})
@@ -428,6 +436,72 @@ func (h *UserHandler) ChangeMyPassword(c echo.Context) error {
 		"success": true,
 		"message": "Password successfully changed",
 	})
+}
+
+// GetMyPlatformRoles godoc
+// @Summary 내 유효 플랫폼 역할 목록 조회
+// @Description 현재 로그인한 사용자에게 실제로 적용되는 플랫폼 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을 통합하여 반환합니다.
+// @Tags users
+// @Produce json
+// @Success 200 {array} model.RoleMaster
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/me/platform-roles [get]
+// @Id getMyPlatformRoles
+func (h *UserHandler) GetMyPlatformRoles(c echo.Context) error {
+	kcUserIdVal := c.Get("kcUserId")
+	if kcUserIdVal == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+	kcUserID, ok := kcUserIdVal.(string)
+	if !ok || kcUserID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	user, err := h.userService.GetUserByKcID(c.Request().Context(), kcUserID)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
+	}
+
+	roles, err := h.roleService.GetEffectivePlatformRoles(user.ID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
+}
+
+// GetMyWorkspaceRoles godoc
+// @Summary 내 유효 워크스페이스 역할 목록 조회
+// @Description 현재 로그인한 사용자에게 실제로 적용되는 워크스페이스별 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을 통합하여 반환합니다.
+// @Tags users
+// @Produce json
+// @Success 200 {array} model.EffectiveWorkspaceRole
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/me/workspace-roles [get]
+// @Id getMyWorkspaceRoles
+func (h *UserHandler) GetMyWorkspaceRoles(c echo.Context) error {
+	kcUserIdVal := c.Get("kcUserId")
+	if kcUserIdVal == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+	kcUserID, ok := kcUserIdVal.(string)
+	if !ok || kcUserID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	user, err := h.userService.GetUserByKcID(c.Request().Context(), kcUserID)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
+	}
+
+	roles, err := h.roleService.GetEffectiveWorkspaceRoles(user.ID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
 }
 
 // UpdateUser godoc

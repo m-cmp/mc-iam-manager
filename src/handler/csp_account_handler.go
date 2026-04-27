@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -198,15 +199,15 @@ func (h *CspAccountHandler) DeleteCspAccount(c echo.Context) error {
 
 // ValidateCspAccount godoc
 // @Summary Validate CSP account
-// @Description Validate CSP account configuration
+// @Description Validate CSP account by checking actual CSP infrastructure (IDP provider existence, role trust policy, or credential validity) for each linked CspRole
 // @Tags csp-accounts
 // @Accept json
 // @Produce json
 // @Param accountId path string true "Account ID"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} model.CspAccountValidationResponse
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Failure 503 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/csp-accounts/id/{accountId}/validate [post]
 // @Id validateCspAccount
@@ -216,14 +217,22 @@ func (h *CspAccountHandler) ValidateCspAccount(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid account ID"})
 	}
 
-	if err := h.cspAccountService.ValidateCspAccount(accountID); err != nil {
-		if err.Error() == fmt.Sprintf("CSP account not found with ID: %d", accountID) {
-			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+	result, err := h.cspAccountService.ValidateCspAccount(c.Request().Context(), accountID)
+	if err != nil {
+		msg := err.Error()
+		if strings.Contains(msg, "not found") {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": msg})
 		}
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Validation failed: %v", err)})
+		if strings.Contains(msg, "no CSP roles") {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": msg})
+		}
+		if c.Request().Context().Err() != nil {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "CSP validation timeout"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": msg})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"message": "CSP account is valid"})
+	return c.JSON(http.StatusOK, result)
 }
 
 // ActivateCspAccount godoc
