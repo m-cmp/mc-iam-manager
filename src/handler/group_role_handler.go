@@ -201,6 +201,7 @@ func (h *GroupRoleHandler) RemoveGroupPlatformRole(c echo.Context) error {
 // @Param body body model.AssignGroupWorkspaceRequest true "워크스페이스 매핑 요청"
 // @Success 201 {object} map[string]string
 // @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Failure 409 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/groups/id/{groupId}/workspaces [post]
