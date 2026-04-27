@@ -178,3 +178,39 @@ func (r *CspIdpConfigRepository) CountByAccountID(accountID uint) (int64, error)
 	}
 	return count, nil
 }
+
+// CspIdpSummaryRow GetSummary 집계 결과 행
+type CspIdpSummaryRow struct {
+	CspAccountID   uint   `gorm:"column:csp_account_id"`
+	CspAccountName string `gorm:"column:csp_account_name"`
+	CspType        string `gorm:"column:csp_type"`
+	TotalCount     int    `gorm:"column:total_count"`
+	ActiveCount    int    `gorm:"column:active_count"`
+	OidcCount      int    `gorm:"column:oidc_count"`
+	SamlCount      int    `gorm:"column:saml_count"`
+	SecretKeyCount int    `gorm:"column:secret_key_count"`
+}
+
+// GetSummary CSP 계정별 IDP 설정 현황 집계 조회
+func (r *CspIdpConfigRepository) GetSummary() ([]CspIdpSummaryRow, error) {
+	var rows []CspIdpSummaryRow
+	sql := `
+		SELECT
+			c.id AS csp_account_id,
+			c.name AS csp_account_name,
+			c.csp_type,
+			COUNT(i.id) AS total_count,
+			COUNT(CASE WHEN i.is_active THEN 1 END) AS active_count,
+			COUNT(CASE WHEN i.auth_method = 'OIDC' THEN 1 END) AS oidc_count,
+			COUNT(CASE WHEN i.auth_method = 'SAML' THEN 1 END) AS saml_count,
+			COUNT(CASE WHEN i.auth_method = 'SECRET_KEY' THEN 1 END) AS secret_key_count
+		FROM mcmp_csp_accounts c
+		LEFT JOIN mcmp_csp_idp_configs i ON i.csp_account_id = c.id
+		GROUP BY c.id, c.name, c.csp_type
+		ORDER BY c.id
+	`
+	if err := r.db.Raw(sql).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("failed to get CSP IDP config summary: %w", err)
+	}
+	return rows, nil
+}
