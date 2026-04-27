@@ -1106,6 +1106,47 @@ func (r *RoleRepository) FindRoleMasterMappings(req *model.FilterRoleMasterMappi
 	return result, nil
 }
 
+// FindEffectivePlatformRoles 사용자의 유효 플랫폼 역할 목록 조회 (직접 할당 + 그룹 상속 통합, 중복 제거)
+func (r *RoleRepository) FindEffectivePlatformRoles(userID uint) ([]model.RoleMaster, error) {
+	var roles []model.RoleMaster
+	err := r.db.Raw(`
+		SELECT DISTINCT rm.*
+		FROM mcmp_role_masters rm
+		WHERE rm.id IN (
+			SELECT role_id FROM mcmp_user_platform_roles WHERE user_id = ?
+			UNION
+			SELECT gpr.role_id FROM mcmp_group_platform_roles gpr
+			JOIN mcmp_user_organizations uo ON uo.organization_id = gpr.group_id
+			WHERE uo.user_id = ?
+		)
+	`, userID, userID).Scan(&roles).Error
+	if err != nil {
+		return nil, err
+	}
+	return roles, nil
+}
+
+// FindEffectiveWorkspaceRoles 사용자의 유효 워크스페이스 역할 목록 조회 (직접 할당 + 그룹 상속 통합, 중복 제거)
+func (r *RoleRepository) FindEffectiveWorkspaceRoles(userID uint) ([]model.EffectiveWorkspaceRole, error) {
+	var roles []model.EffectiveWorkspaceRole
+	err := r.db.Raw(`
+		SELECT DISTINCT uwr.workspace_id, w.name AS workspace_name, uwr.role_id, rm.name AS role_name
+		FROM (
+			SELECT workspace_id, role_id FROM mcmp_user_workspace_roles WHERE user_id = ?
+			UNION
+			SELECT gwr.workspace_id, gwr.role_id FROM mcmp_group_workspace_roles gwr
+			JOIN mcmp_user_organizations uo ON uo.organization_id = gwr.group_id
+			WHERE uo.user_id = ?
+		) uwr
+		JOIN mcmp_workspaces w ON w.id = uwr.workspace_id
+		JOIN mcmp_role_masters rm ON rm.id = uwr.role_id
+	`, userID, userID).Scan(&roles).Error
+	if err != nil {
+		return nil, err
+	}
+	return roles, nil
+}
+
 // containsRoleType roleTypes 슬라이스에 특정 roleType이 포함되어 있는지 확인
 func containsRoleType(roleTypes []constants.IAMRoleType, roleType constants.IAMRoleType) bool {
 	for _, rt := range roleTypes {

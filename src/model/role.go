@@ -102,3 +102,11 @@ type RoleMasterMapping struct {
 	UserWorkspaceRoles        []UserWorkspaceRole        `json:"user_workspace_roles" gorm:"-"`
 	RoleMasterCspRoleMappings []RoleMasterCspRoleMapping `json:"role_master_csp_role_mappings" gorm:"-"`
 }
+
+// EffectiveWorkspaceRole 사용자의 유효 워크스페이스 역할 응답 (직접 할당 + 그룹 상속 통합)
+type EffectiveWorkspaceRole struct {
+	WorkspaceID   uint   `json:"workspace_id"`
+	WorkspaceName string `json:"workspace_name"`
+	RoleID        uint   `json:"role_id"`
+	RoleName      string `json:"role_name"`
+}

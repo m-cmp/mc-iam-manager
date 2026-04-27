@@ -324,13 +324,18 @@ func getAwsAssumeRolePolicyDocument(role *model.CspRole) (string, error) {
 		]
 	}`
 
-	oidcClientID := os.Getenv("KEYCLOAK_OIDC_CLIENT_ID")
+	oidcClientID := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID")
 	if oidcClientID == "" {
-		return "", fmt.Errorf("KEYCLOAK_OIDC_CLIENT environment variable is not set")
+		return "", fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID environment variable is not set")
+	}
+
+	accountID := os.Getenv("AWS_ACCOUNT_ID")
+	if accountID == "" {
+		return "", fmt.Errorf("AWS_ACCOUNT_ID environment variable is not set")
 	}
 
 	values := awsPolicyValues{
-		AccountID:        "050864702683",
+		AccountID:        accountID,
 		KeycloakHostname: mciamConfig.KC.Host,
 		Audience:         oidcClientID,
 	}
