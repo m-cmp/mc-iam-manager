@@ -1273,7 +1273,7 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 
 	// 서비스 계정으로 로그인
 	//token, err := config.KC.Client.LoginClient(ctx, clientID, clientSecret, config.KC.Realm)
-	token, err := config.KC.Client.LoginClient(ctx, clientName, clientSecret, config.KC.Realm)
+	token, err := config.KC.Client.LoginClient(ctx, clientName, clientSecret, config.KC.Realm, "openid")
 	if err != nil {
 		return nil, fmt.Errorf("failed to login with service account: %w", err)
 	}
