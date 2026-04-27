@@ -6,9 +6,10 @@ import (
 	"errors"
 
 	// "errors"        // Remove unused import
-	"fmt" // Add fmt import for errors
-	"log" // Add log import
-	"os"  // Import os package to read environment variables
+	"fmt"     // Add fmt import for errors
+	"log"     // Add log import
+	"os"      // Import os package to read environment variables
+	"strings" // Add strings import for string operations
 
 	// "net/http"      // Remove unused import
 
@@ -45,7 +46,8 @@ func NewProjectService(db *gorm.DB) *ProjectService {
 }
 
 // Create 프로젝트 생성 (mc-infra-manager 호출 및 DB 저장)
-func (s *ProjectService) Create(ctx context.Context, project *model.Project) error {
+// workspaceID is optional: if 0, assigns to default workspace; otherwise assigns to specified workspace
+func (s *ProjectService) Create(ctx context.Context, project *model.Project, workspaceID ...uint) error {
 	// 이름 중복 체크
 	existingProject, err := s.projectRepo.FindProjectByProjectName(project.Name)
 	if err == nil && existingProject != nil {
@@ -54,6 +56,51 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 	if err != nil && err.Error() != "project not found" {
 		return err
 	}
+
+	// Step 0: Determine target workspace (specified or default) and validate BEFORE calling mc-infra-manager
+	var targetWorkspace *model.Workspace
+	var targetWorkspaceID uint
+
+	if len(workspaceID) > 0 && workspaceID[0] != 0 {
+		// Workspace specified, verify it exists
+		targetWorkspaceID = workspaceID[0]
+		targetWorkspace, err = s.workspaceRepo.FindWorkspaceByID(targetWorkspaceID)
+		if err != nil || targetWorkspace == nil {
+			log.Printf("Error finding specified workspace %d: %v", targetWorkspaceID, err)
+			return fmt.Errorf("workspace not found")
+		}
+		log.Printf("Validated specified workspace: %s (ID: %d)", targetWorkspace.Name, targetWorkspace.ID)
+	} else {
+		// No workspace specified, use default
+		defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
+		if defaultWsName == "" {
+			defaultWsName = "default"
+			log.Printf("DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
+		}
+		log.Printf("Using default workspace name: %s", defaultWsName)
+		targetWorkspace, err = s.workspaceRepo.FindWorkspaceByName(defaultWsName)
+		if err != nil {
+			if err.Error() == "workspace not found" {
+				// Default workspace doesn't exist, create it
+				log.Printf("Default workspace '%s' not found. Creating it...", defaultWsName)
+				newWorkspace := &model.Workspace{
+					Name:        defaultWsName,
+					Description: "Default workspace for automatically synced projects",
+				}
+				if err := s.workspaceRepo.CreateWorkspace(newWorkspace); err != nil {
+					log.Printf("Error creating default workspace '%s': %v", defaultWsName, err)
+					return fmt.Errorf("failed to create default workspace: %w", err)
+				}
+				log.Printf("Successfully created default workspace '%s'", defaultWsName)
+				targetWorkspace = newWorkspace
+			} else {
+				log.Printf("Error finding default workspace '%s': %v. Cannot assign projects.", defaultWsName, err)
+				return fmt.Errorf("failed to find or create default workspace: %w", err)
+			}
+		}
+		targetWorkspaceID = targetWorkspace.ID
+	}
+	log.Printf("Workspace validation complete. Will assign project to workspace: %s (ID: %d)", targetWorkspace.Name, targetWorkspaceID)
 
 	log.Printf("Attempting to create namespace in mc-infra-manager for project: %s", project.Name)
 
@@ -68,38 +115,31 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 		"name":        project.Name,
 		"description": project.Description,
 	}
-	// bodyBytes, err := json.Marshal(nsRequestBody) // Don't marshal here
-	// if err != nil {
-	// 	log.Printf("Error marshalling request body for PostNs: %v", err)
-	// 	return fmt.Errorf("failed to marshal request body for PostNs: %w", err)
-	// }
 
 	callReq := &model.McmpApiCallRequest{
 		ServiceName: "mc-infra-manager",
-		ActionName:  "Postns", // Corrected action name based on previous analysis
+		ActionName:  "Postns",
 		RequestParams: model.McmpApiRequestParams{
-			Body: nsRequestBody, // Pass the original map directly
+			Body: nsRequestBody,
 		},
 	}
 
 	log.Printf("About to call mcmpApiService.McmpApiCall with service: %+v", s.mcmpApiService)
-	statusCode, respBody, serviceVersion, calledURL, err := s.mcmpApiService.McmpApiCall(ctx, callReq) // Get new return values
+	statusCode, respBody, serviceVersion, calledURL, err := s.mcmpApiService.McmpApiCall(ctx, callReq)
 	if err != nil {
-		// Include version and URL in the error message
 		log.Printf("Error calling %s(v%s) %s (URL: %s): %v (status code: %d)", callReq.ServiceName, serviceVersion, callReq.ActionName, calledURL, err, statusCode)
 		return fmt.Errorf("failed to call %s(v%s) %s (URL: %s): %w (status code: %d)", callReq.ServiceName, serviceVersion, callReq.ActionName, calledURL, err, statusCode)
 	}
 	if statusCode < 200 || statusCode >= 300 {
-		// Include version and URL in the error message
 		log.Printf("%s(v%s) %s call failed (URL: %s): status code %d, response: %s", callReq.ServiceName, serviceVersion, callReq.ActionName, calledURL, statusCode, string(respBody))
 		var errorResp map[string]interface{}
-		errMsg := fmt.Sprintf("%s(v%s) %s call failed with status code %d (URL: %s)", callReq.ServiceName, serviceVersion, callReq.ActionName, statusCode, calledURL) // Base error message
+		errMsg := fmt.Sprintf("%s(v%s) %s call failed with status code %d (URL: %s)", callReq.ServiceName, serviceVersion, callReq.ActionName, statusCode, calledURL)
 		if json.Unmarshal(respBody, &errorResp) == nil {
 			if msg, ok := errorResp["message"].(string); ok {
-				errMsg = fmt.Sprintf("%s(v%s) error: %s (URL: %s, Status: %d)", callReq.ServiceName, serviceVersion, msg, calledURL, statusCode) // More specific message if possible
+				errMsg = fmt.Sprintf("%s(v%s) error: %s (URL: %s, Status: %d)", callReq.ServiceName, serviceVersion, msg, calledURL, statusCode)
 			}
 		}
-		return errors.New(errMsg) // Return as a simple error for now, or wrap if needed
+		return errors.New(errMsg)
 	}
 
 	// Extract NsId from response
@@ -124,49 +164,34 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project) err
 
 	// 2. Create project in local DB
 	if err := s.projectRepo.CreateProject(project); err != nil {
-		return err // Return DB creation error
+		return err
 	}
 
-	// 3. Assign to default workspace
-	defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
-	if defaultWsName == "" {
-		defaultWsName = "default"
-		log.Printf("DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
+	// 3. Assign project to target workspace (already validated above)
+	if err := s.projectRepo.AddProjectWorkspaceAssociation(project.ID, targetWorkspaceID); err != nil {
+		log.Printf("Error assigning project %d to workspace %d: %v", project.ID, targetWorkspaceID, err)
+		return nil // Project created but assignment failed
 	}
-	log.Printf("Using workspace name: %s", defaultWsName)
-	defaultWs, err := s.workspaceRepo.FindWorkspaceByName(defaultWsName)
-	if err != nil {
-		if err.Error() == "workspace not found" {
-			// Default workspace doesn't exist, create it
-			log.Printf("Default workspace '%s' not found. Creating it...", defaultWsName)
-			newWorkspace := &model.Workspace{
-				Name:        defaultWsName,
-				Description: "Default workspace for automatically synced projects",
-			}
-			if err := s.workspaceRepo.CreateWorkspace(newWorkspace); err != nil {
-				log.Printf("Error creating default workspace '%s': %v", defaultWsName, err)
-				return fmt.Errorf("failed to create default workspace: %w", err)
-			}
-			log.Printf("Successfully created default workspace '%s'", defaultWsName)
-			defaultWs = newWorkspace
-		} else {
-			log.Printf("Error finding default workspace '%s': %v. Cannot assign projects.", defaultWsName, err)
-			return fmt.Errorf("failed to find or create default workspace: %w", err)
-		}
-	}
-	if err := s.projectRepo.AddProjectWorkspaceAssociation(project.ID, defaultWs.ID); err != nil {
-		log.Printf("Error assigning project %d to default workspace %d: %v", project.ID, defaultWs.ID, err)
-		// Log a warning, but the project creation was successful.
-		return nil // Or return fmt.Errorf("failed to assign project to default workspace: %w", err)
-	}
-	log.Printf("Successfully assigned project %d to default workspace %d", project.ID, defaultWs.ID)
+	log.Printf("Successfully assigned project %d to workspace %d (%s)", project.ID, targetWorkspaceID, targetWorkspace.Name)
 
-	return nil // Project created and assigned (or assignment failed but logged)
+	return nil
 }
 
 // List 모든 프로젝트 조회
 func (s *ProjectService) ListProjects(req *model.ProjectFilterRequest) ([]*model.Project, error) {
 	return s.projectRepo.FindProjects(req)
+}
+
+// GetProjectWorkspaces 프로젝트에 할당된 workspace 목록 조회
+func (s *ProjectService) GetProjectWorkspaces(projectID uint) ([]*model.Workspace, error) {
+	// 프로젝트 존재 여부 확인
+	_, err := s.projectRepo.FindProjectByProjectID(projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 할당된 workspace 목록 조회
+	return s.projectRepo.FindAssignedWorkspaces(projectID)
 }
 
 // GetByID ID로 프로젝트 조회
@@ -191,10 +216,54 @@ func (s *ProjectService) UpdateProject(id uint, updates map[string]interface{}) 
 
 // Delete 프로젝트 삭제
 func (s *ProjectService) DeleteProject(id uint) error {
-	_, err := s.projectRepo.FindProjectByProjectID(id)
+	// 1. 프로젝트 존재 여부 확인
+	project, err := s.projectRepo.FindProjectByProjectID(id)
 	if err != nil {
 		return err
 	}
+
+	// 2. 워크스페이스 할당 확인
+	workspaces, err := s.projectRepo.FindAssignedWorkspaces(id)
+	if err != nil {
+		return fmt.Errorf("워크스페이스 할당 확인 실패: %v", err)
+	}
+
+	// 3. 할당된 워크스페이스가 있으면 삭제 불가
+	if len(workspaces) > 0 {
+		workspaceNames := make([]string, len(workspaces))
+		for i, ws := range workspaces {
+			workspaceNames[i] = ws.Name
+		}
+		return fmt.Errorf("프로젝트가 워크스페이스에 할당되어 있습니다: %s. 먼저 모든 워크스페이스에서 할당을 해제하세요",
+			strings.Join(workspaceNames, ", "))
+	}
+
+	// 4. mc-infra-manager namespace 삭제
+	if project.NsId != "" {
+		ctx := context.Background()
+		callReq := &model.McmpApiCallRequest{
+			ServiceName: "mc-infra-manager",
+			ActionName:  "DeleteNs",
+			RequestParams: model.McmpApiRequestParams{
+				PathParams: map[string]string{
+					"nsId": project.NsId,
+				},
+			},
+		}
+
+		statusCode, respBody, _, _, err := s.mcmpApiService.McmpApiCall(ctx, callReq)
+		if err != nil {
+			log.Printf("Warning: failed to delete namespace %s from mc-infra-manager: %v", project.NsId, err)
+			// 계속 진행 (DB 정리는 수행)
+		} else if statusCode < 200 || statusCode >= 300 {
+			log.Printf("Warning: mc-infra-manager DeleteNs failed (status %d): %s", statusCode, string(respBody))
+			// 계속 진행 (DB 정리는 수행)
+		} else {
+			log.Printf("Successfully deleted namespace %s from mc-infra-manager", project.NsId)
+		}
+	}
+
+	// 5. DB에서 프로젝트 삭제
 	return s.projectRepo.DeleteProject(id)
 }
 

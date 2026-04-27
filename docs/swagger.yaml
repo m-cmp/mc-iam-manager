@@ -1,5 +1,41 @@
 basePath: /api/v1
 definitions:
+  constants.AuthMethod:
+    enum:
+    - OIDC
+    - SAML
+    type: string
+    x-enum-varnames:
+    - AuthMethodOIDC
+    - AuthMethodSAML
+  constants.CSPType:
+    enum:
+    - aws
+    - gcp
+    - azure
+    type: string
+    x-enum-varnames:
+    - CSPTypeAWS
+    - CSPTypeGCP
+    - CSPTypeAzure
+  constants.IAMRoleType:
+    enum:
+    - platform
+    - workspace
+    - csp
+    type: string
+    x-enum-comments:
+      RoleTypeCSP: CSP 역할
+      RoleTypePlatform: 플랫폼 역할
+      RoleTypeWorkspace: 워크스페이스 역할
+    x-enum-descriptions:
+    - 플랫폼 역할
+    - 워크스페이스 역할
+    - CSP 역할
+    x-enum-varnames:
+    - RoleTypePlatform
+    - RoleTypeWorkspace
+    - RoleTypeCSP
   idp.UserLogin:
     properties:
       id:
@@ -7,15 +43,26 @@ definitions:
       password:
         type: string
     type: object
-  mcmpapi.ApiQueryParam:
+  mcmpapi.McmpApiAction:
     properties:
-      key:
+      actionName:
         type: string
-      value:
+      createdAt:
         type: string
-    required:
-    - key
-    - value
+      description:
+        type: string
+      id:
+        description: Auto-incrementing primary key
+        type: integer
+      method:
+        type: string
+      resourcePath:
+        type: string
+      serviceName:
+        description: Foreign key reference (indexed)
+        type: string
+      updatedAt:
+        type: string
     type: object
   mcmpapi.McmpApiAuthInfo:
     properties:
@@ -25,22 +72,6 @@ definitions:
         type: string
       username:
         type: string
-    type: object
-  mcmpapi.McmpApiCallRequest:
-    properties:
-      actionName:
-        description: Target action name (operationId)
-        type: string
-      requestParams:
-        allOf:
-        - $ref: '#/definitions/mcmpapi.McmpApiRequestParams'
-        description: Parameters for the external API call
-      serviceName:
-        description: Target service name
-        type: string
-    required:
-    - actionName
-    - serviceName
     type: object
   mcmpapi.McmpApiDefinitions:
     properties:
@@ -57,21 +88,20 @@ definitions:
         description: Use renamed ServiceDefinition
         type: object
     type: object
-  mcmpapi.McmpApiRequestParams:
+  mcmpapi.McmpApiPermissionActionMapping:
     properties:
-      body:
-        description: Request body (accept any JSON structure) - Changed from json.RawMessage
-          for swag compatibility
-      pathParams:
-        additionalProperties:
-          type: string
-        description: Parameters to replace in the resource path (e.g., {userId})
-        type: object
-      queryParams:
-        additionalProperties:
-          type: string
-        description: Parameters to append as query string (?key=value)
-        type: object
+      actionID:
+        type: integer
+      actionName:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      permissionID:
+        type: string
+      updatedAt:
+        type: string
     type: object
   mcmpapi.McmpApiServiceAction:
     properties:
@@ -93,23 +123,261 @@ definitions:
       version:
         type: string
     type: object
-  mcmpapi.ServiceApiCallRequest:
-    type: object
-  model.Menu:
+  model.AssignRoleRequest:
     properties:
-      display_name:
+      roleId:
+        description: 역할 ID (문자열로 받음)
+        type: string
+      roleName:
+        description: 역할명
+        type: string
+      roleType:
+        description: 역할 타입 (platform/workspace)
+        type: string
+      userId:
+        description: 사용자 ID (문자열로 받음)
+        type: string
+      username:
+        description: 사용자명
+        type: string
+      workspaceId:
+        description: 워크스페이스 ID (문자열로 받음)
+        type: string
+    type: object
+  model.AssignWorkspaceRoleRequest:
+    properties:
+      roleId:
+        description: 역할 ID (문자열로 받음)
+        type: string
+      roleName:
+        description: 역할명
+        type: string
+      userId:
+        description: 사용자 ID (문자열로 받음)
+        type: string
+      username:
+        description: 사용자명
+        type: string
+      workspaceId:
+        description: 워크스페이스 ID (문자열로 받음)
+        type: string
+    type: object
+  model.CreateCspRoleRequest:
+    properties:
+      cspRoleName:
+        description: csp의 RoleName. 여러 role이 있기때문에 csp에 정의한 role로 구분하기 위해 사용
+        type: string
+      cspType:
+        type: string
+      description:
+        type: string
+      iamIdentifier:
+        type: string
+      iamRoleId:
         type: string
       id:
         type: string
-      is_action:
-        type: boolean
-      menu_number:
+      idpIdentifier:
+        type: string
+      path:
+        type: string
+      status:
+        type: string
+      tags:
+        items:
+          $ref: '#/definitions/model.Tag'
+        type: array
+    type: object
+  model.CreateCspRolesRequest:
+    properties:
+      cspRoles:
+        items:
+          $ref: '#/definitions/model.CreateCspRoleRequest'
+        type: array
+    required:
+    - cspRoles
+    type: object
+  model.CreateMenuMappingRequest:
+    properties:
+      menuIds:
+        items:
+          type: string
+        type: array
+      roleId:
+        type: string
+    required:
+    - menuIds
+    - roleId
+    type: object
+  model.CreateRoleRequest:
+    properties:
+      cspRoles:
+        items:
+          $ref: '#/definitions/model.CreateCspRoleRequest'
+        type: array
+      description:
+        type: string
+      menuIds:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      parentId:
         type: integer
-      parent_id:
+      roleTypes:
+        description: RoleTypes   []constants.IAMRoleType `json:"roleTypes" validate:"required,dive,oneof=platform
+          workspace csp"`
+        items:
+          $ref: '#/definitions/constants.IAMRoleType'
+        type: array
+    required:
+    - name
+    type: object
+  model.CspRole:
+    properties:
+      create_date:
+        type: string
+      created_at:
+        type: string
+      csp_type:
+        type: string
+      deleted_at:
+        type: string
+      description:
+        type: string
+      iam_identifier:
+        type: string
+      iam_role_id:
+        type: string
+      id:
+        type: integer
+      idp_identifier:
+        type: string
+      max_session_duration:
+        type: integer
+      name:
+        type: string
+      path:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+      permissions_boundary:
+        type: string
+      role_last_used:
+        $ref: '#/definitions/model.RoleLastUsed'
+      status:
+        type: string
+      tags:
+        items:
+          $ref: '#/definitions/model.Tag'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  model.FilterRoleMasterMappingRequest:
+    properties:
+      authMethod:
+        type: string
+      cspRoleId:
+        type: string
+      cspRoleName:
+        type: string
+      cspType:
+        type: string
+      projectId:
+        type: string
+      projectName:
+        type: string
+      roleId:
+        type: string
+      roleTypes:
+        items:
+          $ref: '#/definitions/constants.IAMRoleType'
+        type: array
+      userId:
+        type: string
+      username:
+        type: string
+      workspaceId:
+        type: string
+      workspaceName:
+        type: string
+    type: object
+  model.MciamPermission:
+    properties:
+      action:
+        description: e.g., create, read, update, delete
+        type: string
+      createdAt:
+        description: Match DB schema
+        type: string
+      description:
+        type: string
+      frameworkId:
+        description: FK to mcmp_resource_types.framework_id
+        type: string
+      id:
+        description: 'Format: <framework_id>:<resource_type_id>:<action>'
+        type: string
+      name:
+        type: string
+      resourceTypeId:
+        description: FK to mcmp_resource_types.id
+        type: string
+      updatedAt:
+        description: Match DB schema
+        type: string
+    type: object
+  model.McmpApiCallRequest:
+    properties:
+      actionName:
+        description: Target action name (operationId)
+        type: string
+      requestParams:
+        allOf:
+        - $ref: '#/definitions/model.McmpApiRequestParams'
+        description: Parameters for the external API call
+      serviceName:
+        description: Target service name
+        type: string
+    required:
+    - actionName
+    - serviceName
+    type: object
+  model.McmpApiRequestParams:
+    properties:
+      body:
+        description: Request body (accept any JSON structure) - Changed from json.RawMessage
+          for swag compatibility
+      pathParams:
+        additionalProperties:
+          type: string
+        description: Parameters to replace in the resource path (e.g., {userId})
+        type: object
+      queryParams:
+        additionalProperties:
+          type: string
+        description: Parameters to append as query string (?key=value)
+        type: object
+    type: object
+  model.Menu:
+    properties:
+      displayName:
+        type: string
+      id:
+        type: string
+      isAction:
+        type: boolean
+      menuNumber:
+        type: integer
+      parentId:
         type: string
       priority:
         type: integer
-      res_type:
+      resType:
         type: string
     type: object
   model.MenuTreeNode:
@@ -119,48 +387,19 @@ definitions:
         items:
           $ref: '#/definitions/model.MenuTreeNode'
         type: array
-      display_name:
+      displayName:
         type: string
       id:
         type: string
-      is_action:
+      isAction:
         type: boolean
-      menu_number:
+      menuNumber:
         type: integer
-      parent_id:
+      parentId:
         type: string
       priority:
         type: integer
-      res_type:
-        type: string
-    type: object
-  model.Permission:
-    properties:
-      created_at:
-        type: string
-      description:
-        description: Increased size to match roles
-        type: string
-      id:
-        description: Changed to string
-        type: string
-      name:
-        description: Assuming Name column exists or needs to be added
-        type: string
-      updated_at:
-        type: string
-    type: object
-  model.PlatformRole:
-    properties:
-      created_at:
-        type: string
-      description:
-        type: string
-      id:
-        type: integer
-      name:
-        type: string
-      updated_at:
+      resType:
         type: string
     type: object
   model.Project:
@@ -183,6 +422,146 @@ definitions:
         items:
           $ref: '#/definitions/model.Workspace'
         type: array
+    type: object
+  model.ResourceType:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      frameworkId:
+        description: Identifier of the framework (e.g., "mc-iam-manager", "mc-infra-manager")
+        type: string
+      id:
+        description: Unique identifier within the framework (e.g., "workspace", "vm")
+        type: string
+      name:
+        description: Display name (e.g., "Workspace", "Virtual Machine")
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.Response:
+    properties:
+      error:
+        type: boolean
+      message:
+        type: string
+    type: object
+  model.RoleLastUsed:
+    properties:
+      last_used_date:
+        type: string
+      region:
+        type: string
+    type: object
+  model.RoleMaster:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/model.RoleMaster'
+        type: array
+      created_at:
+        type: string
+      csp_role_mappings:
+        items:
+          $ref: '#/definitions/model.RoleMasterCspRoleMapping'
+        type: array
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      parent:
+        $ref: '#/definitions/model.RoleMaster'
+      parent_id:
+        type: integer
+      predefined:
+        type: boolean
+      role_subs:
+        items:
+          $ref: '#/definitions/model.RoleSub'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  model.RoleMasterCspRoleMapping:
+    properties:
+      auth_method:
+        $ref: '#/definitions/constants.AuthMethod'
+      createdAt:
+        type: string
+      cspRoles:
+        description: 서비스 레이어에서 조합
+        items:
+          $ref: '#/definitions/model.CspRole'
+        type: array
+      description:
+        type: string
+      roleId:
+        type: integer
+    type: object
+  model.RoleMasterCspRoleMappingRequest:
+    properties:
+      authMethod:
+        $ref: '#/definitions/constants.AuthMethod'
+      cspRoleId:
+        type: string
+      cspType:
+        $ref: '#/definitions/constants.CSPType'
+      description:
+        type: string
+      roleId:
+        type: string
+    type: object
+  model.RoleMasterMapping:
+    properties:
+      role_id:
+        type: integer
+      role_master_csp_role_mappings:
+        items:
+          $ref: '#/definitions/model.RoleMasterCspRoleMapping'
+        type: array
+      role_name:
+        type: string
+      user_platform_roles:
+        items:
+          $ref: '#/definitions/model.UserPlatformRole'
+        type: array
+      user_workspace_roles:
+        items:
+          $ref: '#/definitions/model.UserWorkspaceRole'
+        type: array
+    type: object
+  model.RoleSub:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      role_id:
+        type: integer
+      role_type:
+        $ref: '#/definitions/constants.IAMRoleType'
+      updated_at:
+        type: string
+    type: object
+  model.SetupInitialAdminRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  model.Tag:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
     type: object
   model.User:
     properties:
@@ -209,9 +588,9 @@ definitions:
         description: Ignore LastName for DB
         type: string
       platform_roles:
-        description: 관계 정의 (Foreign Key는 DB ID인 'ID' 필드를 참조해야 함)
+        description: 관계 정의
         items:
-          $ref: '#/definitions/model.PlatformRole'
+          $ref: '#/definitions/model.RoleMaster'
         type: array
       updated_at:
         type: string
@@ -219,10 +598,56 @@ definitions:
         description: Keycloak 정보
         type: string
       workspace_roles:
-        description: Changed foreignKey to ID
         items:
-          $ref: '#/definitions/model.WorkspaceRole'
+          $ref: '#/definitions/model.RoleMaster'
         type: array
+    type: object
+  model.UserPlatformRole:
+    properties:
+      created_at:
+        type: string
+      role_id:
+        type: integer
+      user_id:
+        type: integer
+      username:
+        description: 사용자 정보 (JOIN으로 가져올 필드들)
+        type: string
+    type: object
+  model.UserStatusRequest:
+    properties:
+      id:
+        description: DB에 저장되는 정보 (mcmp_users 테이블)
+        type: string
+      kc_id:
+        description: Keycloak User ID
+        type: string
+      status:
+        description: 사용자 상태
+        type: string
+    type: object
+  model.UserWorkspaceRole:
+    properties:
+      created_at:
+        type: string
+      role:
+        $ref: '#/definitions/model.RoleMaster'
+      role_id:
+        type: integer
+      role_name:
+        type: string
+      user:
+        $ref: '#/definitions/model.User'
+      user_id:
+        type: integer
+      username:
+        type: string
+      workspace:
+        $ref: '#/definitions/model.Workspace'
+      workspace_id:
+        type: integer
+      workspace_name:
+        type: string
     type: object
   model.Workspace:
     properties:
@@ -235,14 +660,13 @@ definitions:
       name:
         type: string
       projects:
-        description: M:N relationship
         items:
           $ref: '#/definitions/model.Project'
         type: array
       updated_at:
         type: string
     type: object
-  model.WorkspaceRole:
+  model.WorkspaceWithUsersAndRoles:
     properties:
       created_at:
         type: string
@@ -251,68 +675,544 @@ definitions:
       id:
         type: integer
       name:
-        description: 이름은 고유해야 함
         type: string
       updated_at:
         type: string
-    type: object
-  service.HealthStatus:
-    properties:
-      db_connection:
-        type: string
-      keycloak_admin_login:
-        type: string
-      keycloak_client_check:
-        type: string
-      keycloak_realm_check:
-        type: string
-      mcmp_actions_count:
-        type: integer
-      mcmp_services_count:
-        type: integer
-      menus_count:
-        type: integer
-      platform_roles_count:
-        type: integer
-      workspace_roles_count:
-        type: integer
-    type: object
-  service.UserWithRoles:
-    properties:
-      roles:
+      users:
         items:
-          $ref: '#/definitions/model.WorkspaceRole'
+          $ref: '#/definitions/model.UserWorkspaceRole'
         type: array
-      user:
-        $ref: '#/definitions/model.User'
     type: object
-  service.WorkspaceRoleInfo:
-    properties:
-      role:
-        $ref: '#/definitions/model.WorkspaceRole'
-      workspace:
-        $ref: '#/definitions/model.Workspace'
-    type: object
-host: localhost:3000
+host: localhost
 info:
   contact: {}
   description: MC IAM Manager API Documentation
   title: MC IAM Manager API
   version: "1.0"
 paths:
-  /api/call:
+  /api/auth/certs:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve authentication certificates for MC-IAM-Manager to be used
+        in target frameworks for token validation.
+      operationId: mciamAuthCerts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get authentication certificates
+      tags:
+      - auth
+  /api/auth/login:
     post:
       consumes:
       - application/json
-      description: Executes a defined MCMP API action with query parameters and a
-        request body.
+      description: Authenticate user and issue JWT token.
+      operationId: mciamLogin
       parameters:
-      - description: Generic API Call Request
+      - description: Login Credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/idp.UserLogin'
+      produces:
+      - application/json
+      responses: {}
+      summary: User login
+      tags:
+      - auth
+  /api/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Invalidate the user's refresh token and log out.
+      operationId: mciamLogout
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Logout user
+      tags:
+      - auth
+  /api/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh JWT access token using a valid refresh token.
+      operationId: mciamRefreshToken
+      parameters:
+      - description: Refresh token
+        in: body
+        name: refresh_token
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: New token information
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: Bad Request'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Refresh access token
+      tags:
+      - auth
+  /api/auth/temp-credential-csps:
+    get:
+      consumes:
+      - application/json
+      description: Get temporary credential provider information for AWS and GCP
+      operationId: mciamGetTempCredentialProviders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: CSP temporary credential information
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get temporary credential CSP information
+      tags:
+      - auth
+  /api/auth/validate:
+    post:
+      consumes:
+      - application/json
+      description: Validate the current access token and refresh if expired
+      operationId: mciamValidateToken
+      parameters:
+      - description: Refresh token
+        in: body
+        name: refresh_token
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token validation result with new token if refreshed
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: Bad Request'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Validate access token
+      tags:
+      - auth
+  /api/csp-credentials:
+    get:
+      consumes:
+      - application/json
+      description: 모든 CSP 인증 정보 목록을 조회합니다
+      operationId: mciamListCredentials
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: CSP 인증 정보 목록 조회
+      tags:
+      - csp-credentials
+    post:
+      consumes:
+      - application/json
+      description: 새로운 CSP 인증 정보를 생성합니다
+      operationId: mciamCreateCredential
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: 새 CSP 인증 정보 생성
+      tags:
+      - csp-credentials
+  /api/csp-credentials/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: CSP 인증 정보를 삭제합니다
+      operationId: mciamDeleteCredential
+      parameters:
+      - description: Credential ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Credential not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: CSP 인증 정보 삭제
+      tags:
+      - csp-credentials
+    get:
+      consumes:
+      - application/json
+      description: 특정 CSP 인증 정보를 ID로 조회합니다
+      operationId: mciamGetCredentialByID
+      parameters:
+      - description: Credential ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "404":
+          description: 'error: Credential not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: CSP 인증 정보 ID로 조회
+      tags:
+      - csp-credentials
+    put:
+      consumes:
+      - application/json
+      description: CSP 인증 정보를 업데이트합니다
+      operationId: mciamUpdateCredential
+      parameters:
+      - description: Credential ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "404":
+          description: 'error: Credential not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: CSP 인증 정보 업데이트
+      tags:
+      - csp-credentials
+  /api/initial-admin:
+    post:
+      consumes:
+      - application/json
+      description: Creates the initial platform admin user with necessary permissions.
+        platform admin 생성인데
+      operationId: setupInitialAdmin
+      parameters:
+      - description: Setup Initial Admin Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SetupInitialAdminRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Response'
+      summary: Setup initial platform admin
+      tags:
+      - admin
+  /api/mcmp-api-permission-action-mappings:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new mapping between a permission and an API action
+      operationId: createMcmpApiPermissionActionMapping
+      parameters:
+      - description: Mapping to create
+        in: body
+        name: mapping
+        required: true
+        schema:
+          $ref: '#/definitions/mcmpapi.McmpApiPermissionActionMapping'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: Create permission-action mapping
+      tags:
+      - mcmp-api-permission-action-mappings
+  /api/mcmp-api-permission-action-mappings/actions/{actionId}/permissions:
+    get:
+      consumes:
+      - application/json
+      description: Returns all permissions mapped to a specific API action
+      operationId: listPermissionsByActionID
+      parameters:
+      - description: Action ID
+        in: path
+        name: actionId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+      summary: Get permissions by action ID
+      tags:
+      - mcmp-api-permission-action-mappings
+  /api/mcmp-api-permission-action-mappings/actions/list:
+    post:
+      consumes:
+      - application/json
+      description: Returns all workspace actions mapped to a specific permission
+      operationId: listWorkspaceActionsByPermissionID
+      parameters:
+      - description: Permission ID
+        in: path
+        name: permissionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mcmpapi.McmpApiAction'
+            type: array
+      summary: Get workspace actions by permission ID
+      tags:
+      - mcmp-api-permission-action-mappings
+  /api/mcmp-api-permission-action-mappings/list:
+    post:
+      consumes:
+      - application/json
+      description: Returns all platform actions mapped to a specific permission
+      operationId: listPlatformActions
+      parameters:
+      - description: Permission ID
+        in: path
+        name: permissionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mcmpapi.McmpApiAction'
+            type: array
+      summary: List platform actions by permission ID
+      tags:
+      - mcmp-api-permission-action-mappings
+  /api/mcmp-api-permission-action-mappings/permissions/{permissionId}/actions/{actionId}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a mapping between a permission and an API action
+      operationId: deleteMapping
+      parameters:
+      - description: Permission ID
+        in: path
+        name: permissionId
+        required: true
+        type: string
+      - description: Action ID
+        in: path
+        name: actionId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: Delete permission-action mapping
+      tags:
+      - mcmp-api-permission-action-mappings
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing mapping between a permission and an API action
+      operationId: updateMapping
+      parameters:
+      - description: Permission ID
+        in: path
+        name: permissionId
+        required: true
+        type: string
+      - description: Action ID
+        in: path
+        name: actionId
+        required: true
+        type: integer
+      - description: Updated mapping
+        in: body
+        name: mapping
+        required: true
+        schema:
+          $ref: '#/definitions/mcmpapi.McmpApiPermissionActionMapping'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update permission-action mapping
+      tags:
+      - mcmp-api-permission-action-mappings
+  /api/mcmp-api-permission-action-mappings/platforms/id/{permissionId}/actions:
+    get:
+      consumes:
+      - application/json
+      description: Returns all platform actions mapped to a specific permission
+      operationId: getPlatformActionsByPermissionID
+      parameters:
+      - description: Permission ID
+        in: path
+        name: permissionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mcmpapi.McmpApiAction'
+            type: array
+      summary: Get platform actions by permission ID
+      tags:
+      - mcmp-api-permission-action-mappings
+  /api/mcmp-apis/list:
+    post:
+      consumes:
+      - application/json
+      description: Retrieves all MCMP API service and action definitions currently
+        stored in the database.
+      operationId: listServicesAndActions
+      parameters:
+      - description: Filter by service name
+        in: query
+        name: serviceName
+        type: string
+      - description: Filter by action name (operationId)
+        in: query
+        name: actionName
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved API definitions
+          schema:
+            $ref: '#/definitions/mcmpapi.McmpApiDefinitions'
+        "500":
+          description: 'message: Failed to retrieve API definitions'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get All Stored MCMP API Definitions
+      tags:
+      - McmpAPI
+  /api/mcmp-apis/mcmpApiCall:
+    post:
+      consumes:
+      - application/json
+      description: Executes a defined MCMP API action with parameters structured in
+        McmpApiCallRequest.
+      operationId: mcmpApiCall
+      parameters:
+      - description: API Call Request
         in: body
         name: callRequest
         required: true
         schema:
-          $ref: '#/definitions/mcmpapi.ServiceApiCallRequest'
+          $ref: '#/definitions/model.McmpApiCallRequest'
       produces:
       - application/json
       responses:
@@ -346,386 +1246,16 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Call an external MCMP API action (Generic Request)
+      summary: Call an external MCMP API action (Structured Request)
       tags:
       - McmpAPI
-  /api/permissions:
-    get:
-      consumes:
-      - application/json
-      description: 모든 권한 목록을 조회합니다.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/model.Permission'
-            type: array
-      summary: 권한 목록 조회
-      tags:
-      - permissions
-    post:
-      consumes:
-      - application/json
-      description: 새로운 권한을 생성합니다.
-      parameters:
-      - description: 권한 정보
-        in: body
-        name: permission
-        required: true
-        schema:
-          $ref: '#/definitions/model.Permission'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/model.Permission'
-      summary: 권한 생성
-      tags:
-      - permissions
-  /api/permissions/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: 권한을 삭제합니다.
-      parameters:
-      - description: 권한 ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      summary: 권한 삭제
-      tags:
-      - permissions
-    get:
-      consumes:
-      - application/json
-      description: ID로 특정 권한을 조회합니다.
-      parameters:
-      - description: 권한 ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.Permission'
-      summary: ID로 권한 조회
-      tags:
-      - permissions
-    put:
-      consumes:
-      - application/json
-      description: 기존 권한을 수정합니다.
-      parameters:
-      - description: 권한 ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: 권한 정보
-        in: body
-        name: permission
-        required: true
-        schema:
-          $ref: '#/definitions/model.Permission'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.Permission'
-      summary: 권한 수정
-      tags:
-      - permissions
-  /api/platform-roles:
-    get:
-      consumes:
-      - application/json
-      description: 모든 플랫폼 역할을 조회합니다.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/model.PlatformRole'
-            type: array
-      summary: 플랫폼 역할 목록 조회
-      tags:
-      - platform-roles
-    post:
-      consumes:
-      - application/json
-      description: 새로운 플랫폼 역할을 생성합니다.
-      parameters:
-      - description: Platform Role
-        in: body
-        name: role
-        required: true
-        schema:
-          $ref: '#/definitions/model.PlatformRole'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/model.PlatformRole'
-      summary: 플랫폼 역할 생성
-      tags:
-      - platform-roles
-  /api/platform-roles/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: 플랫폼 역할을 삭제합니다.
-      parameters:
-      - description: Platform Role ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      summary: 플랫폼 역할 삭제
-      tags:
-      - platform-roles
-    get:
-      consumes:
-      - application/json
-      description: ID로 플랫폼 역할을 조회합니다.
-      parameters:
-      - description: Platform Role ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.PlatformRole'
-      summary: 플랫폼 역할 조회
-      tags:
-      - platform-roles
-    put:
-      consumes:
-      - application/json
-      description: 기존 플랫폼 역할을 수정합니다.
-      parameters:
-      - description: Platform Role ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Platform Role
-        in: body
-        name: role
-        required: true
-        schema:
-          $ref: '#/definitions/model.PlatformRole'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.PlatformRole'
-      summary: 플랫폼 역할 수정
-      tags:
-      - platform-roles
-  /api/roles/{roleType}/{roleId}/permissions:
-    get:
-      consumes:
-      - application/json
-      description: 특정 역할의 권한 목록을 조회합니다.
-      parameters:
-      - description: 역할 타입 ('platform' or 'workspace')
-        in: path
-        name: roleType
-        required: true
-        type: string
-      - description: 역할 ID
-        in: path
-        name: roleId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/model.Permission'
-            type: array
-      summary: 역할의 권한 목록 조회
-      tags:
-      - permissions
-  /api/roles/{roleType}/{roleId}/permissions/{permissionId}:
-    delete:
-      consumes:
-      - application/json
-      description: 역할에서 권한을 제거합니다.
-      parameters:
-      - description: 역할 타입 ('platform' or 'workspace')
-        in: path
-        name: roleType
-        required: true
-        type: string
-      - description: 역할 ID
-        in: path
-        name: roleId
-        required: true
-        type: integer
-      - description: 권한 ID
-        in: path
-        name: permissionId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      summary: 역할에서 권한 제거
-      tags:
-      - permissions
-    post:
-      consumes:
-      - application/json
-      description: 역할에 권한을 할당합니다.
-      parameters:
-      - description: 역할 타입 ('platform' or 'workspace')
-        in: path
-        name: roleType
-        required: true
-        type: string
-      - description: 역할 ID
-        in: path
-        name: roleId
-        required: true
-        type: integer
-      - description: 권한 ID
-        in: path
-        name: permissionId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-      summary: 역할에 권한 할당
-      tags:
-      - permissions
-  /auth/login:
-    post:
-      consumes:
-      - application/json
-      description: 사용자 ID와 비밀번호로 로그인하여 JWT 토큰을 발급받습니다.
-      parameters:
-      - description: 로그인 정보 (Id, Password)
-        in: body
-        name: login
-        required: true
-        schema:
-          $ref: '#/definitions/idp.UserLogin'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 로그인 성공 및 토큰 정보 (gocloak.JWT 구조체와 유사)
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: 'error: 잘못된 요청 형식'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: 'error: 인증 실패 (자격 증명 오류)'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: 'error: 계정이 비활성화되었거나 승인 대기 중입니다'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류 (Keycloak 통신, DB 동기화 등)'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: 로그인
-      tags:
-      - auth
-  /mcmp-apis:
-    get:
-      consumes:
-      - application/json
-      description: Retrieves all MCMP API service and action definitions currently
-        stored in the database.
-      parameters:
-      - description: Filter by service name
-        in: query
-        name: serviceName
-        type: string
-      - description: Filter by action name (operationId)
-        in: query
-        name: actionName
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Successfully retrieved API definitions
-          schema:
-            $ref: '#/definitions/mcmpapi.McmpApiDefinitions'
-        "500":
-          description: 'message: Failed to retrieve API definitions'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get All Stored MCMP API Definitions
-      tags:
-      - McmpAPI
-  /mcmp-apis/{serviceName}:
+  /api/mcmp-apis/name/{serviceName}:
     put:
       consumes:
       - application/json
       description: Updates specific fields (e.g., BaseURL, Auth info) of an MCMP API
         service definition identified by its name. Cannot update name or version.
+      operationId: UpdateFrameworkService
       parameters:
       - description: Service Name to update
         in: path
@@ -771,12 +1301,13 @@ paths:
       summary: Update MCMP API Service Definition
       tags:
       - McmpAPI
-  /mcmp-apis/{serviceName}/versions/{version}/activate:
+  /api/mcmp-apis/name/{serviceName}/versions/{version}/activate:
     put:
       consumes:
       - application/json
       description: Sets the specified version of an MCMP API service as the active
         one.
+      operationId: setActiveVersion
       parameters:
       - description: Service Name
         in: path
@@ -816,73 +1347,24 @@ paths:
       summary: Set Active Version for a Service
       tags:
       - McmpAPI
-  /mcmp-apis/call:
-    post:
-      consumes:
-      - application/json
-      description: Executes a defined MCMP API action with parameters structured in
-        McmpApiCallRequest.
-      parameters:
-      - description: API Call Request
-        in: body
-        name: callRequest
-        required: true
-        schema:
-          $ref: '#/definitions/mcmpapi.McmpApiCallRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: External API Response (structure depends on the called API)
-          schema:
-            type: object
-        "400":
-          description: 'error: Invalid request body or parameters'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: 'error: Service or action not found'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: Internal server error or failed to call external API'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "503":
-          description: 'error: External API unavailable'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Call an external MCMP API action (Structured Request)
-      tags:
-      - McmpAPI
-  /mcmp-apis/sync:
+  /api/mcmp-apis/syncMcmpAPIs:
     post:
       consumes:
       - application/json
       description: Triggers the synchronization of MCMP API definitions from the configured
         YAML URL to the database.
+      operationId: syncMcmpAPIs
       produces:
       - application/json
       responses:
         "200":
-          description: 'message: Successfully triggered MCMP API sync" // Updated
-            message'
+          description: 'message: Successfully triggered MCMP API sync'
           schema:
             additionalProperties:
               type: string
             type: object
         "500":
-          description: 'message: Failed to trigger MCMP API sync" // Updated message'
+          description: 'message: Failed to trigger MCMP API sync'
           schema:
             additionalProperties:
               type: string
@@ -891,11 +1373,12 @@ paths:
       - BearerAuth: []
       summary: Sync MCMP API Definitions
       tags:
-      - McmpAPI // Updated tag
-  /mcmp-apis/test/mc-infra-manager/getallns:
+      - McmpAPI
+  /api/mcmp-apis/test/mc-infra-manager/getallns:
     get:
       description: Calls the GetAllNs action of the mc-infra-manager service via the
         CallApi service.
+      operationId: testCallGetAllNs
       produces:
       - application/json
       responses:
@@ -933,41 +1416,12 @@ paths:
       tags:
       - McmpAPI
       - Test
-  /menus:
-    get:
-      consumes:
-      - application/json
-      description: 현재 로그인한 사용자의 Platform Role에 따라 접근 가능한 메뉴 목록을 트리 구조로 조회합니다.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/model.MenuTreeNode'
-            type: array
-        "401":
-          description: 'error: Unauthorized'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 현재 사용자의 메뉴 트리 조회
-      tags:
-      - menus
+  /api/menus:
     post:
       consumes:
       - application/json
-      description: 새로운 메뉴를 생성합니다
+      description: Create a new menu
+      operationId: createMenu
       parameters:
       - description: Menu Info
         in: body
@@ -984,14 +1438,15 @@ paths:
             $ref: '#/definitions/model.Menu'
       security:
       - BearerAuth: []
-      summary: 새 메뉴 생성
+      summary: Create new menu
       tags:
       - menus
-  /menus/{id}:
+  /api/menus/id/{menuId}:
     delete:
       consumes:
       - application/json
-      description: 메뉴를 삭제합니다
+      description: Delete a menu
+      operationId: deleteMenu
       parameters:
       - description: Menu ID
         in: path
@@ -1005,17 +1460,18 @@ paths:
           description: No Content
       security:
       - BearerAuth: []
-      summary: 메뉴 삭제
+      summary: Delete menu
       tags:
       - menus
-    get:
+    post:
       consumes:
       - application/json
-      description: 특정 메뉴를 ID로 조회합니다
+      description: Get menu details by ID
+      operationId: getMenuByID
       parameters:
       - description: Menu ID
         in: path
-        name: id
+        name: menuId
         required: true
         type: string
       produces:
@@ -1027,13 +1483,14 @@ paths:
             $ref: '#/definitions/model.Menu'
       security:
       - BearerAuth: []
-      summary: 메뉴 ID로 조회
+      summary: Get menu by ID
       tags:
       - menus
     put:
       consumes:
       - application/json
-      description: 메뉴 정보를 업데이트합니다
+      description: Update menu information
+      operationId: updateMenu
       parameters:
       - description: Menu ID
         in: path
@@ -1055,14 +1512,15 @@ paths:
             $ref: '#/definitions/model.Menu'
       security:
       - BearerAuth: []
-      summary: 메뉴 정보 업데이트
+      summary: Update menu information
       tags:
       - menus
-  /menus/all:
-    get:
+  /api/menus/list:
+    post:
       consumes:
       - application/json
-      description: 모든 메뉴 목록을 트리 구조로 조회합니다. 관리자 권한이 필요합니다.
+      description: List all menus as a tree structure. Admin permission required.
+      operationId: listMenus
       produces:
       - application/json
       responses:
@@ -1092,15 +1550,170 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: 모든 메뉴 트리 조회 (관리자용)
+      summary: List all menus
       tags:
       - menus
-  /menus/register-from-body:
+  /api/menus/platform-roles:
+    delete:
+      consumes:
+      - application/json
+      description: Delete the mapping between a platform role and a menu.
+      operationId: deleteMenusRolesMapping
+      parameters:
+      - description: Platform Role ID
+        in: query
+        name: roleId
+        type: string
+      - description: Menu ID
+        in: query
+        name: menuId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Menu mapping deleted successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: platform role and menu ID are required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete platform role-menu mapping
+      tags:
+      - menus
+    post:
+      consumes:
+      - application/json
+      description: Create a new menu mapping
+      operationId: createMenusRolesMapping
+      parameters:
+      - description: Menu Mapping
+        in: body
+        name: mapping
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateMenuMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create menu mapping
+      tags:
+      - menu
+  /api/menus/platform-roles/list:
+    post:
+      consumes:
+      - application/json
+      description: List menus mapped to a specific platform role.
+      operationId: listMappedMenusByRole
+      parameters:
+      - description: Platform Role ID
+        in: query
+        name: roleId
+        type: string
+      - description: Menu ID
+        in: query
+        name: menuId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Menu'
+            type: array
+        "400":
+          description: 'error: platform role is required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List menus mapped to platform role
+      tags:
+      - menus
+  /api/menus/setup/initial-menus:
+    post:
+      consumes:
+      - application/json
+      description: Register or update menus from a local YAML file specified by the
+        filePath query parameter, or from the MCWEBCONSOLE_MENUYAML URL in .env if
+        not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.
+      operationId: registerMenusFromYAML
+      parameters:
+      - description: YAML file path (optional, uses .env URL or default local path
+          if not provided)
+        in: query
+        name: filePath
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Successfully registered menus from YAML'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 실패 메시지'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Register/Update menus from YAML file or URL
+      tags:
+      - menus
+  /api/menus/setup/initial-menus2:
     post:
       consumes:
       - text/plain
-      description: 요청 본문에 포함된 YAML 텍스트를 파싱하여 메뉴를 데이터베이스에 등록하거나 업데이트합니다. Content-Type은
-        text/plain, text/yaml, application/yaml 등을 권장합니다.
+      description: 'Parse YAML text in the request body and register or update menus
+        in the database. Recommended Content-Type: text/plain, text/yaml, application/yaml.'
+      operationId: registerMenusFromBody
       parameters:
       - description: Menu definitions in YAML format (must contain 'menus:' root key)
         example: '"menus:\n  - id: new-item\n    parentid: dashboard\n    displayname:
@@ -1134,45 +1747,15 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: 요청 본문의 YAML 내용으로 메뉴 등록/업데이트
+      summary: Register/Update menus from YAML in request body
       tags:
       - menus
-  /menus/register-from-yaml:
+  /api/menus/tree/list:
     post:
       consumes:
       - application/json
-      description: filePath 쿼리 파라미터로 지정된 로컬 YAML 파일 또는 파라미터가 없을 경우 .env 파일의 MCWEBCONSOLE_MENUYAML
-        URL에서 메뉴를 가져와 데이터베이스에 등록/업데이트합니다. URL에서 가져올 경우 asset/menu/menu.yaml에 저장됩니다.
-      parameters:
-      - description: YAML 파일 경로 (선택 사항, 없으면 .env의 URL 또는 기본 로컬 경로 사용)
-        in: query
-        name: filePath
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 'message: Successfully registered menus from YAML'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 실패 메시지'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: YAML 파일 또는 URL에서 메뉴 등록/업데이트
-      tags:
-      - menus
-  /projects:
-    get:
-      consumes:
-      - application/json
-      description: 모든 프로젝트 목록을 조회합니다 (연결된 워크스페이스 정보 포함).
+      description: List all menus as a tree structure. Admin permission required.
+      operationId: listMenusTree
       produces:
       - application/json
       responses:
@@ -1180,8 +1763,20 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/model.Project'
+              $ref: '#/definitions/model.MenuTreeNode'
             type: array
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: 'error: 서버 내부 오류'
           schema:
@@ -1190,15 +1785,223 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: 모든 프로젝트 조회
+      summary: List all menus Tree
       tags:
-      - projects
+      - menus
+  /api/menus/user-menu-tree:
+    get:
+      consumes:
+      - application/json
+      description: Get menu tree based on user's platform roles
+      operationId: getUserMenuTree
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.MenuTreeNode'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user menu tree by platform roles
+      tags:
+      - menus
+  /api/permissions/mciam:
     post:
       consumes:
       - application/json
-      description: 새로운 프로젝트를 생성합니다.
+      description: Create a new permission with the specified information.
+      operationId: createMciamPermission
       parameters:
-      - description: 프로젝트 정보 (ID, CreatedAt, UpdatedAt, Workspaces 제외)
+      - description: Permission Info
+        in: body
+        name: permission
+        required: true
+        schema:
+          $ref: '#/definitions/model.MciamPermission'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.MciamPermission'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create new permission
+      tags:
+      - permissions
+  /api/permissions/mciam/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a permission by its ID.
+      operationId: deleteMciamPermission
+      parameters:
+      - description: Permission ID
+        in: path
+        name: permissionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete permission
+      tags:
+      - permissions
+    put:
+      consumes:
+      - application/json
+      description: Update the details of an existing permission.
+      operationId: updateMciamPermission
+      parameters:
+      - description: Permission ID
+        in: path
+        name: permissionId
+        required: true
+        type: string
+      - description: Permission Info
+        in: body
+        name: permission
+        required: true
+        schema:
+          $ref: '#/definitions/model.MciamPermission'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.MciamPermission'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update permission
+      tags:
+      - permissions
+  /api/permissions/mciam/id/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve permission details by permission ID.
+      operationId: getMciamPermissionByID
+      parameters:
+      - description: Permission ID
+        in: path
+        name: permissionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.MciamPermission'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get permission by ID
+      tags:
+      - permissions
+  /api/permissions/mciam/list:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve a list of all permissions.
+      operationId: listMciamPermissions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.MciamPermission'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all permissions
+      tags:
+      - permissions
+  /api/projects:
+    post:
+      consumes:
+      - application/json
+      description: Create a new project with the specified information.
+      operationId: createProject
+      parameters:
+      - description: Project Info
         in: body
         name: project
         required: true
@@ -1212,71 +2015,108 @@ paths:
           schema:
             $ref: '#/definitions/model.Project'
         "400":
-          description: 'error: 잘못된 요청 형식'
+          description: Bad Request
           schema:
             additionalProperties:
               type: string
             type: object
         "500":
-          description: 'error: 서버 내부 오류'
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
       security:
       - BearerAuth: []
-      summary: 프로젝트 생성
+      summary: Create new project
       tags:
       - projects
-  /projects/{id}:
+  /api/projects/{id}:
     delete:
       consumes:
       - application/json
-      description: 프로젝트를 삭제합니다. 연결된 워크스페이스와의 관계도 해제됩니다.
+      description: Delete a project by its ID.
+      operationId: deleteProject
       parameters:
-      - description: 프로젝트 ID
+      - description: Project ID
         in: path
-        name: id
+        name: projectId
         required: true
-        type: integer
+        type: string
       produces:
       - application/json
       responses:
         "204":
           description: No Content
-        "400":
-          description: 'error: 잘못된 프로젝트 ID'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
         "404":
-          description: 'error: 프로젝트를 찾을 수 없습니다'
+          description: Not Found
           schema:
             additionalProperties:
               type: string
             type: object
         "500":
-          description: 'error: 서버 내부 오류'
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
       security:
       - BearerAuth: []
-      summary: 프로젝트 삭제
+      summary: Delete project
       tags:
       - projects
     get:
       consumes:
       - application/json
-      description: ID로 특정 프로젝트를 조회합니다 (연결된 워크스페이스 정보 포함).
+      description: Retrieve project details by project ID.
+      operationId: getProjectByID
       parameters:
-      - description: 프로젝트 ID
+      - description: Project ID
         in: path
-        name: id
+        name: projectId
         required: true
-        type: integer
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Project'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get project by ID
+      tags:
+      - projects
+    put:
+      consumes:
+      - application/json
+      description: Update the details of an existing project.
+      operationId: updateProject
+      parameters:
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: string
+      - description: Project Info
+        in: body
+        name: project
+        required: true
+        schema:
+          $ref: '#/definitions/model.Project'
       produces:
       - application/json
       responses:
@@ -1285,116 +2125,34 @@ paths:
           schema:
             $ref: '#/definitions/model.Project'
         "400":
-          description: 'error: 잘못된 프로젝트 ID'
+          description: Bad Request
           schema:
             additionalProperties:
               type: string
             type: object
         "404":
-          description: 'error: 프로젝트를 찾을 수 없습니다'
+          description: Not Found
           schema:
             additionalProperties:
               type: string
             type: object
         "500":
-          description: 'error: 서버 내부 오류'
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
       security:
       - BearerAuth: []
-      summary: ID로 프로젝트 조회
+      summary: Update project
       tags:
       - projects
-    put:
-      consumes:
-      - application/json
-      description: 기존 프로젝트 정보를 부분적으로 수정합니다.
-      parameters:
-      - description: 프로젝트 ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: '수정할 필드와 값 (예: {\'
-        in: body
-        name: updates
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 업데이트된 프로젝트 정보
-          schema:
-            $ref: '#/definitions/model.Project'
-        "400":
-          description: 'error: 잘못된 요청 형식 또는 ID'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: 'error: 프로젝트를 찾을 수 없습니다'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 프로젝트 수정
-      tags:
-      - projects
-  /projects/{id}/workspaces/{workspaceId}:
-    delete:
-      consumes:
-      - application/json
-      description: 특정 프로젝트에서 워크스페이스 연결을 해제합니다.
-      parameters:
-      - description: 프로젝트 ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: 워크스페이스 ID
-        in: path
-        name: workspaceId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: 'error: 잘못된 ID 형식'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 프로젝트에서 워크스페이스 연결 해제
-      tags:
-      - projects
+  /api/projects/{id}/workspaces/{workspaceId}:
     post:
       consumes:
       - application/json
-      description: 특정 프로젝트에 워크스페이스를 연결합니다.
+      description: 프로젝트에 워크스페이스를 연결합니다.
+      operationId: addWorkspaceToProject
       parameters:
       - description: 프로젝트 ID
         in: path
@@ -1434,13 +2192,40 @@ paths:
       summary: 프로젝트에 워크스페이스 연결
       tags:
       - projects
-  /projects/name/{name}:
+  /api/projects/list:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve a list of all projects.
+      operationId: listProjects
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Project'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all projects
+      tags:
+      - projects
+  /api/projects/name/{projectName}:
     get:
       consumes:
       - application/json
-      description: 이름으로 특정 프로젝트를 조회합니다 (연결된 워크스페이스 정보 포함).
+      description: Get project details by name
+      operationId: getProjectByName
       parameters:
-      - description: 프로젝트 이름
+      - description: Project Name
         in: path
         name: name
         required: true
@@ -1453,88 +2238,48 @@ paths:
           schema:
             $ref: '#/definitions/model.Project'
         "404":
-          description: 'error: 프로젝트를 찾을 수 없습니다'
+          description: Not Found
           schema:
             additionalProperties:
               type: string
             type: object
         "500":
-          description: 'error: 서버 내부 오류'
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
       security:
       - BearerAuth: []
-      summary: 이름으로 프로젝트 조회
+      summary: Get project by name
       tags:
       - projects
-  /readyz:
-    get:
-      description: 애플리케이션의 준비 상태를 확인합니다. status=detail 쿼리 파라미터로 상세 상태를 확인할 수 있습니다.
+  /api/resource-types/cloud-resources:
+    post:
+      consumes:
+      - application/json
+      description: 새로운 리소스 타입을 생성합니다
+      operationId: createResourceType
       parameters:
-      - description: 상세 상태 확인 여부 ('detail')
-        in: query
-        name: status
-        type: string
+      - description: Resource Type Info
+        in: body
+        name: resourceType
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResourceType'
       produces:
       - application/json
       responses:
-        "200":
-          description: 상세 상태 정보 (status=detail)
+        "201":
+          description: Created
           schema:
-            $ref: '#/definitions/service.HealthStatus'
-        "503":
-          description: 상세 상태 확인 중 오류 발생 시
-          schema:
-            $ref: '#/definitions/service.HealthStatus'
-      summary: 애플리케이션 준비 상태 확인
-      tags:
-      - Health
-  /user/workspaces:
-    get:
-      description: 현재 로그인한 사용자가 접근 가능한 워크스페이스 및 각 워크스페이스에서의 역할 목록을 조회합니다.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 성공 시 워크스페이스 및 역할 정보 목록 반환
-          schema:
-            items:
-              $ref: '#/definitions/service.WorkspaceRoleInfo'
-            type: array
-        "401":
-          description: 'error: Unauthorized'
+            $ref: '#/definitions/model.ResourceType'
+        "400":
+          description: 'error: Invalid request'
           schema:
             additionalProperties:
               type: string
             type: object
-        "500":
-          description: 'error: 서버 내부 오류'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 내 워크스페이스 및 역할 목록 조회
-      tags:
-      - users
-      - workspaces
-      - roles
-      - me
-  /users:
-    get:
-      description: 모든 사용자 목록을 조회합니다. 'admin' 또는 'platformAdmin' 역할이 필요합니다.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 성공 시 사용자 목록 반환
-          schema:
-            items:
-              $ref: '#/definitions/model.User'
-            type: array
         "401":
           description: 'error: Unauthorized'
           schema:
@@ -1542,44 +2287,24 @@ paths:
               type: string
             type: object
         "403":
-          description: 'error: Forbidden (권한 부족)'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
+          description: 'error: Forbidden'
           schema:
             additionalProperties:
               type: string
             type: object
       security:
       - BearerAuth: []
-      summary: 사용자 목록 조회 (관리자용)
+      summary: Cloud에서 관리되는 Resource(vm, nlb, k8s 등의 그룹) 새 리소스 타입 생성
       tags:
-      - users
-    post:
-      responses: {}
-      security:
-      - BearerAuth: []
-  /users/{id}:
-    put:
-      parameters:
-      - description: User DB ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      responses: {}
-      security:
-      - BearerAuth: []
-  /users/{id}/approve:
-    post:
+      - resource-types
+  /api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId:
+    delete:
       consumes:
       - application/json
-      description: 지정된 사용자를 활성화하고 시스템 사용을 승인합니다. 'admin' 또는 'platformadmin' 역할이 필요합니다.
+      description: 리소스 타입을 삭제합니다
+      operationId: deleteResourceType
       parameters:
-      - description: 사용자 Keycloak ID
+      - description: Resource Type ID
         in: path
         name: id
         required: true
@@ -1589,8 +2314,96 @@ paths:
       responses:
         "204":
           description: No Content
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Resource Type not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 리소스 타입 삭제
+      tags:
+      - resource-types
+    get:
+      consumes:
+      - application/json
+      description: 특정 리소스 타입을 ID로 조회합니다
+      operationId: getCloudResourceTypeByID
+      parameters:
+      - description: Resource Type ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ResourceType'
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Resource Type not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 리소스 타입 ID로 조회
+      tags:
+      - resource-types
+    put:
+      consumes:
+      - application/json
+      description: 리소스 타입 정보를 업데이트합니다
+      operationId: updateResourceType
+      parameters:
+      - description: Resource Type ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Resource Type Info
+        in: body
+        name: resourceType
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResourceType'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ResourceType'
         "400":
-          description: 'error: 잘못된 사용자 ID'
+          description: 'error: Invalid request'
           schema:
             additionalProperties:
               type: string
@@ -1602,27 +2415,1868 @@ paths:
               type: string
             type: object
         "403":
-          description: 'error: Forbidden (권한 부족)'
+          description: 'error: Forbidden'
           schema:
             additionalProperties:
               type: string
             type: object
-        "500":
-          description: 'error: 서버 내부 오류'
+        "404":
+          description: 'error: Resource Type not found'
           schema:
             additionalProperties:
               type: string
             type: object
       security:
       - BearerAuth: []
-      summary: 사용자 승인 (관리자용)
+      summary: 리소스 타입 업데이트
       tags:
-      - users
-  /workspaces:
+      - resource-types
+  /api/resource-types/cloud-resources/list:
+    post:
+      consumes:
+      - application/json
+      description: 모든 리소스 타입 목록을 조회합니다
+      operationId: listCloudResourceTypes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.ResourceType'
+            type: array
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 리소스 타입 목록 조회
+      tags:
+      - resource-types
+  /api/roles:
+    post:
+      consumes:
+      - application/json
+      description: Create a new role
+      operationId: createRole
+      parameters:
+      - description: Role Info
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.RoleMaster'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create role
+      tags:
+      - roles
+  /api/roles/{roleType}/{roleId}/mciam-permissions:
     get:
       consumes:
       - application/json
-      description: 모든 워크스페이스 목록을 조회합니다 (연결된 프로젝트 정보 포함).
+      description: 특정 역할의 MC-IAM 권한 ID 목록을 조회합니다.
+      operationId: getRoleMciamPermissions
+      parameters:
+      - description: 역할 타입 ('platform' or 'workspace')
+        in: path
+        name: roleType
+        required: true
+        type: string
+      - description: 역할 ID
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 권한 ID 목록
+          schema:
+            items:
+              type: string
+            type: array
+      summary: 역할의 MC-IAM 권한 목록 조회 - Renamed
+      tags:
+      - roles
+      - mciam-permissions
+  /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}:
+    delete:
+      consumes:
+      - application/json
+      description: 역할에서 MC-IAM 권한을 제거합니다.
+      operationId: removeMciamPermissionFromRole
+      parameters:
+      - description: 역할 타입 ('platform' or 'workspace')
+        in: path
+        name: roleType
+        required: true
+        type: string
+      - description: 역할 ID
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      - description: MC-IAM 권한 ID
+        in: path
+        name: permissionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: 역할에서 MC-IAM 권한 제거 - Renamed
+      tags:
+      - roles
+      - mciam-permissions
+    post:
+      consumes:
+      - application/json
+      description: 역할에 MC-IAM 권한을 할당합니다.
+      operationId: assignMciamPermissionToRole
+      parameters:
+      - description: 역할 타입 ('platform' or 'workspace')
+        in: path
+        name: roleType
+        required: true
+        type: string
+      - description: 역할 ID
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      - description: MC-IAM 권한 ID
+        in: path
+        name: permissionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      summary: 역할에 MC-IAM 권한 할당 - Renamed
+      tags:
+      - roles
+      - mciam-permissions
+  /api/roles/assign/platform-role:
+    post:
+      consumes:
+      - application/json
+      description: Assign a platform role to a user
+      operationId: assignPlatformRole
+      parameters:
+      - description: Platform Role Assignment Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign platform role
+      tags:
+      - roles
+  /api/roles/assign/workspace-role:
+    post:
+      consumes:
+      - application/json
+      description: Assign a workspace role to a user
+      operationId: assignWorkspaceRole
+      parameters:
+      - description: Workspace Role Assignment Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignWorkspaceRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign workspace role
+      tags:
+      - roles
+  /api/roles/csp:
+    post:
+      consumes:
+      - application/json
+      description: Create a new csp role
+      operationId: createCspRole
+      parameters:
+      - description: CSP Role Creation Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create csp role
+      tags:
+      - roles
+  /api/roles/csp-roles:
+    post:
+      consumes:
+      - application/json
+      description: Create a new mapping between role and CSP role
+      operationId: addCspRoleMappings
+      parameters:
+      - description: Mapping Info
+        in: body
+        name: mapping
+        required: true
+        schema:
+          $ref: '#/definitions/model.RoleMasterCspRoleMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.RoleMasterCspRoleMappingRequest'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create role-CSP role mapping
+      tags:
+      - roles
+  /api/roles/csp-roles/batch:
+    post:
+      consumes:
+      - application/json
+      description: Create multiple new csp roles
+      operationId: createCspRoles
+      parameters:
+      - description: Multiple CSP Role Creation Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateCspRolesRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/model.CspRole'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create multiple csp roles
+      tags:
+      - roles
+  /api/roles/csp-roles/id/:roleId:
+    get:
+      consumes:
+      - application/json
+      description: Get a mapping between role and CSP role
+      operationId: getCspRoleMappingByRoleId
+      parameters:
+      - description: Mapping Info
+        in: body
+        name: mapping
+        required: true
+        schema:
+          $ref: '#/definitions/model.RoleMasterCspRoleMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMasterCspRoleMappingRequest'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get role-CSP role mapping
+      tags:
+      - roles
+  /api/roles/csp-roles/id/{roleId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a role
+      operationId: deleteCspRole
+      parameters:
+      - description: Role ID
+        in: path
+        name: roleId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete csp role
+      tags:
+      - roles
+    put:
+      consumes:
+      - application/json
+      description: Update role information
+      operationId: updateCspRole
+      parameters:
+      - description: Role ID
+        in: path
+        name: roleId
+        required: true
+        type: string
+      - description: Role Info
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMaster'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update csp role
+      tags:
+      - roles
+  /api/roles/csp-roles/list:
+    post:
+      consumes:
+      - application/json
+      description: Get a mapping between role and CSP role
+      operationId: listCspRoleMappings
+      parameters:
+      - description: Mapping Info
+        in: body
+        name: mapping
+        required: true
+        schema:
+          $ref: '#/definitions/model.RoleMasterCspRoleMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMasterCspRoleMappingRequest'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get role-CSP role mapping
+      tags:
+      - roles
+  /api/roles/csp/id/{roleId}:
+    get:
+      consumes:
+      - application/json
+      description: Get csp role details by ID
+      operationId: getCspRoleByID
+      parameters:
+      - description: CSP Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMaster'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get csp role by ID
+      tags:
+      - roles
+  /api/roles/csp/list:
+    post:
+      consumes:
+      - application/json
+      description: Get a list of all csp roles
+      operationId: listCSPRoles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMaster'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List csp roles
+      tags:
+      - roles
+  /api/roles/csp/name/{roleName}:
+    get:
+      consumes:
+      - application/json
+      description: Get csp role details by Name
+      operationId: getCspRoleByName
+      parameters:
+      - description: CSP Role Name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMaster'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get csp role by Name
+      tags:
+      - roles
+  /api/roles/id/{roleId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a role by its name.
+      operationId: deleteRole
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete role
+      tags:
+      - roles
+    get:
+      consumes:
+      - application/json
+      description: Get role details by ID
+      operationId: getRoleByRoleID
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMaster'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get role by ID
+      tags:
+      - roles
+    put:
+      consumes:
+      - application/json
+      description: Update the details of an existing role.
+      operationId: updateRole
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role Info
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMaster'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update role
+      tags:
+      - roles
+  /api/roles/id/{roleId}/assign:
+    post:
+      consumes:
+      - application/json
+      description: Assign a role to a user
+      operationId: assignRole
+      parameters:
+      - description: Role Assignment Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign role
+      tags:
+      - roles
+  /api/roles/id/{roleId}/unassign:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a role from a user
+      operationId: removeRole
+      parameters:
+      - description: Role Removal Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove role
+      tags:
+      - roles
+  /api/roles/list:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve a list of all roles.
+      operationId: listRoles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMaster'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all roles
+      tags:
+      - roles
+  /api/roles/mappings/csp-roles/list:
+    post:
+      consumes:
+      - application/json
+      description: List users by csp role
+      operationId: listUsersByCspRole
+      parameters:
+      - description: Filter Role Master Mapping Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.FilterRoleMasterMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMasterMapping'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List users by csp role
+      tags:
+      - roles
+  /api/roles/mappings/list:
+    post:
+      consumes:
+      - application/json
+      description: List role master mappings
+      operationId: listRoleMasterMappings
+      parameters:
+      - description: Filter Role Master Mapping Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.FilterRoleMasterMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMasterMapping'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List role master mappings
+      tags:
+      - roles
+  /api/roles/mappings/platform-roles/users/list:
+    post:
+      consumes:
+      - application/json
+      description: List users by platform role
+      operationId: listUsersByPlatformRole
+      parameters:
+      - description: Filter Role Master Mapping Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.FilterRoleMasterMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMasterMapping'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List users by platform role
+      tags:
+      - roles
+  /api/roles/mappings/role/id/:roleId:
+    get:
+      consumes:
+      - application/json
+      description: Get role master mappings
+      operationId: getRoleMasterMappings
+      parameters:
+      - description: Filter Role Master Mapping Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.FilterRoleMasterMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMasterMapping'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get role master mappings
+      tags:
+      - roles
+  /api/roles/mappings/workspace-roles/users/list:
+    post:
+      consumes:
+      - application/json
+      description: List users by workspace role
+      operationId: listUsersByWorkspaceRole
+      parameters:
+      - description: Filter Role Master Mapping Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.FilterRoleMasterMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMasterMapping'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List users by workspace role
+      tags:
+      - roles
+  /api/roles/menu-roles/list:
+    post:
+      consumes:
+      - application/json
+      description: Get a list of all menu roles
+      operationId: listPlatformRoles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMaster'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List menu roles
+      tags:
+      - roles
+  /api/roles/name/{roleName}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve role details by role name.
+      operationId: getRoleByRoleName
+      parameters:
+      - description: Role name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMaster'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get role by Name
+      tags:
+      - roles
+  /api/roles/platform-roles:
+    post:
+      consumes:
+      - application/json
+      description: Create a new menu role
+      operationId: createPlatformRole
+      parameters:
+      - description: Menu Role Creation Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create menu role
+      tags:
+      - roles
+  /api/roles/platform-roles/id/{roleId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a platform role
+      operationId: deletePlatformRole
+      parameters:
+      - description: Platform Role ID
+        in: path
+        name: roleId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete platform role
+      tags:
+      - roles
+    get:
+      consumes:
+      - application/json
+      description: Get platform role details by ID
+      operationId: getPlatformRoleByID
+      parameters:
+      - description: Platform Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMaster'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get platform role by ID
+      tags:
+      - roles
+  /api/roles/platform-roles/name/{roleName}:
+    get:
+      consumes:
+      - application/json
+      description: Get menu role details by Name
+      operationId: getPlatformRoleByName
+      parameters:
+      - description: Menu Role Name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMaster'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get menu role by Name
+      tags:
+      - roles
+  /api/roles/unassign/csp-roles:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a mapping between workspace role and CSP role
+      operationId: removeCspRoleMappings
+      parameters:
+      - description: Mapping Info
+        in: body
+        name: mapping
+        required: true
+        schema:
+          $ref: '#/definitions/model.RoleMasterCspRoleMappingRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete workspace role-CSP role mapping
+      tags:
+      - roles
+  /api/roles/unassign/platform-role:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a platform role from a user
+      operationId: removePlatformRole
+      parameters:
+      - description: Platform Role Removal Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove platform role
+      tags:
+      - roles
+  /api/roles/unassign/workspace-role:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a workspace role from a user
+      operationId: removeWorkspaceRole
+      parameters:
+      - description: Workspace Role Removal Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove workspace role
+      tags:
+      - roles
+  /api/roles/workspace-roles:
+    post:
+      consumes:
+      - application/json
+      description: Create a new workspace role
+      operationId: createWorkspaceRole
+      parameters:
+      - description: Workspace Role Creation Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create workspace role
+      tags:
+      - roles
+  /api/roles/workspace-roles/id/{roleId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a workspace role
+      operationId: deleteWorkspaceRole
+      parameters:
+      - description: Workspace Role ID
+        in: path
+        name: roleId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete workspace role
+      tags:
+      - roles
+    get:
+      consumes:
+      - application/json
+      description: Get workspace role details by ID
+      operationId: getWorkspaceRoleByID
+      parameters:
+      - description: Workspace Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMaster'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get workspace role by ID
+      tags:
+      - roles
+  /api/roles/workspace-roles/list:
+    post:
+      consumes:
+      - application/json
+      description: Get a list of all workspace roles
+      operationId: listWorkspaceRoles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMaster'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List workspace roles
+      tags:
+      - roles
+  /api/roles/workspace-roles/name/{roleName}:
+    get:
+      consumes:
+      - application/json
+      description: Get workspace role details by Name
+      operationId: getWorkspaceRoleByName
+      parameters:
+      - description: Workspace Role Name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RoleMaster'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get workspace role by Name
+      tags:
+      - roles
+  /api/setup/check-user-roles:
+    get:
+      consumes:
+      - application/json
+      description: Check all roles assigned to a user. 특정 유저가 가진 role 목록을 조회합니다.
+      operationId: checkUserRoles
+      parameters:
+      - description: Username to check roles
+        in: query
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Response'
+      summary: Check user roles
+      tags:
+      - admin
+  /api/setup/initial-role-menu-permission:
+    get:
+      consumes:
+      - application/json
+      description: CSV 파일을 읽어서 메뉴 권한을 초기화합니다
+      operationId: initializeMenuPermissions
+      parameters:
+      - description: CSV file path (optional, uses default if not provided)
+        in: query
+        name: filePath
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Response'
+      security:
+      - BearerAuth: []
+      summary: Initialize menu permissions from CSV
+      tags:
+      - admin
+  /api/setup/sync-projects:
+    post:
+      consumes:
+      - application/json
+      description: mc-infra-manager의 네임스페이스 목록을 조회하여 로컬 DB에 없는 프로젝트를 추가합니다.
+      operationId: syncProjects
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Project synchronization successful'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류 또는 동기화 실패'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: mc-infra-manager와 프로젝트 동기화
+      tags:
+      - projects
+  /api/users:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user with the specified information.
+      operationId: createUser
+      parameters:
+      - description: User Info
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.User'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.User'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create new user
+      tags:
+      - users
+  /api/users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a user by their ID.
+      operationId: deleteUser
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update the details of an existing user.
+      operationId: updateUser
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User Info
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.User'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - users
+  /api/users/id/{userId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve user details by user ID.
+      operationId: getUserByID
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.User'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user by ID
+      tags:
+      - users
+  /api/users/id/{userId}/status:
+    post:
+      consumes:
+      - application/json
+      description: Update user status (active/inactive)
+      operationId: updateUserStatus
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User Status
+        in: body
+        name: status
+        required: true
+        schema:
+          $ref: '#/definitions/model.UserStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.User'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update user status
+      tags:
+      - users
+  /api/users/id/{userId}/workspaces/id/{workspaceId}/roles/list:
+    get:
+      consumes:
+      - application/json
+      description: Get workspaces and roles for a specific user and workspace
+      operationId: getUserWorkspaceAndWorkspaceRolesByUserIDAndWorkspaceID
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Workspace ID
+        in: path
+        name: workspaceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.UserWorkspaceRole'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user workspace and workspace roles by user ID and workspace ID
+      tags:
+      - users
+  /api/users/id/{userId}/workspaces/list:
+    get:
+      consumes:
+      - application/json
+      description: Get workspaces for a specific user
+      operationId: getUserWorkspacesByUserID
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -1633,6 +4287,132 @@ paths:
               $ref: '#/definitions/model.Workspace'
             type: array
         "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user workspaces by user ID
+      tags:
+      - users
+  /api/users/id/{userId}/workspaces/roles/list:
+    get:
+      consumes:
+      - application/json
+      description: Get workspaces and roles for a specific user
+      operationId: getUserWorkspaceAndWorkspaceRolesByUserID
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.UserWorkspaceRole'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user workspace and workspace roles by user ID
+      tags:
+      - users
+  /api/users/kc/{kcUserId}:
+    get:
+      consumes:
+      - application/json
+      description: Get user details by KcID
+      operationId: getUserByKcID
+      parameters:
+      - description: User KcID
+        in: path
+        name: kcUserId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.User'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user by KcID
+      tags:
+      - users
+  /api/users/list:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve a list of all users.
+      operationId: listUsers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.User'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all users
+      tags:
+      - users
+  /api/users/menus-tree/list:
+    post:
+      consumes:
+      - application/json
+      description: Get the menu tree accessible to the current user's platform role.
+      operationId: listUserMenuTree
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.MenuTreeNode'
+            type: array
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
           description: 'error: 서버 내부 오류'
           schema:
             additionalProperties:
@@ -1640,15 +4420,155 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: 모든 워크스페이스 조회
+      summary: Get current user's menu tree
       tags:
-      - workspaces
+      - menus
+  /api/users/menus/list:
     post:
       consumes:
       - application/json
-      description: 새로운 워크스페이스를 생성합니다.
+      description: Get the menu list accessible to the current user's platform role.
+      operationId: listUserMenu
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Menu'
+            type: array
+      summary: Get current user's menu list
+      tags:
+      - menus
+  /api/users/name/{username}:
+    get:
+      consumes:
+      - application/json
+      description: Get user details by username
+      operationId: getUserByUsername
       parameters:
-      - description: 워크스페이스 정보 (ID, CreatedAt, UpdatedAt, Projects 제외)
+      - description: Username
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.User'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user by username
+      tags:
+      - users
+  /api/users/workspaces/id/{workspaceId}/projects/list:
+    get:
+      consumes:
+      - application/json
+      description: List projects for the current user
+      operationId: listUserProjectsByWorkspace
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: workspaceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Project'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List user projects by workspace
+      tags:
+      - users
+  /api/users/workspaces/list:
+    post:
+      consumes:
+      - application/json
+      description: List workspaces for the current user
+      operationId: listUserWorkspaces
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Workspace'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List user workspaces
+      tags:
+      - users
+  /api/users/workspaces/roles/list:
+    post:
+      consumes:
+      - application/json
+      description: List workspaces and roles for the current user
+      operationId: listUserWorkspaceAndWorkspaceRoles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMaster'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List user workspace and roles
+      tags:
+      - users
+  /api/workspaces:
+    post:
+      consumes:
+      - application/json
+      description: Create a new workspace with the specified information.
+      operationId: createWorkspace
+      parameters:
+      - description: Workspace Info
         in: body
         name: workspace
         required: true
@@ -1662,71 +4582,138 @@ paths:
           schema:
             $ref: '#/definitions/model.Workspace'
         "400":
-          description: 'error: 잘못된 요청 형식'
+          description: Bad Request
           schema:
             additionalProperties:
               type: string
             type: object
         "500":
-          description: 'error: 서버 내부 오류'
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
       security:
       - BearerAuth: []
-      summary: 워크스페이스 생성
+      summary: Create new workspace
       tags:
       - workspaces
-  /workspaces/{id}:
-    delete:
+  /api/workspaces/{id}/users:
+    post:
       consumes:
       - application/json
-      description: 워크스페이스를 삭제합니다. 연결된 프로젝트와의 관계도 해제됩니다.
+      description: Add a user to a workspace
+      operationId: addUserToWorkspace
       parameters:
-      - description: 워크스페이스 ID
+      - description: Workspace ID
         in: path
         name: id
         required: true
-        type: integer
+        type: string
+      - description: User Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignRoleRequest'
       produces:
       - application/json
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "400":
-          description: 'error: 잘못된 워크스페이스 ID'
+          description: Bad Request
           schema:
             additionalProperties:
               type: string
             type: object
         "404":
-          description: 'error: 워크스페이스를 찾을 수 없습니다'
+          description: Not Found
           schema:
             additionalProperties:
               type: string
             type: object
         "500":
-          description: 'error: 서버 내부 오류'
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
       security:
       - BearerAuth: []
-      summary: 워크스페이스 삭제
+      summary: Add user to workspace
       tags:
       - workspaces
-    get:
+  /api/workspaces/{id}/users/{userId}:
+    delete:
       consumes:
       - application/json
-      description: ID로 특정 워크스페이스를 조회합니다 (연결된 프로젝트 정보 포함).
+      description: Remove a user from a workspace
+      operationId: removeUserFromWorkspace
       parameters:
-      - description: 워크스페이스 ID
+      - description: Workspace ID
         in: path
         name: id
         required: true
-        type: integer
+        type: string
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove user from workspace
+      tags:
+      - workspaces
+  /api/workspaces/assign/projects:
+    post:
+      consumes:
+      - application/json
+      description: Add a project to a workspace
+      operationId: addProjectToWorkspace
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Project ID
+        in: path
+        name: projectId
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -1735,366 +4722,77 @@ paths:
           schema:
             $ref: '#/definitions/model.Workspace'
         "400":
-          description: 'error: 잘못된 워크스페이스 ID'
+          description: 'error: Invalid request'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
           schema:
             additionalProperties:
               type: string
             type: object
         "404":
-          description: 'error: 워크스페이스를 찾을 수 없습니다'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
+          description: 'error: Workspace or Project not found'
           schema:
             additionalProperties:
               type: string
             type: object
       security:
       - BearerAuth: []
-      summary: ID로 워크스페이스 조회
+      summary: Add project to workspace
       tags:
       - workspaces
-    put:
-      consumes:
-      - application/json
-      description: 기존 워크스페이스 정보를 부분적으로 수정합니다.
-      parameters:
-      - description: 워크스페이스 ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: '수정할 필드와 값 (예: {\'
-        in: body
-        name: updates
-        required: true
-        schema:
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 업데이트된 워크스페이스 정보
-          schema:
-            $ref: '#/definitions/model.Workspace'
-        "400":
-          description: 'error: 잘못된 요청 형식 또는 ID'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: 'error: 워크스페이스를 찾을 수 없습니다'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 워크스페이스 수정
-      tags:
-      - workspaces
-  /workspaces/{id}/projects:
-    get:
-      consumes:
-      - application/json
-      description: 특정 워크스페이스 ID에 연결된 모든 프로젝트 목록을 조회합니다.
-      parameters:
-      - description: 워크스페이스 ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 성공 시 프로젝트 목록 반환
-          schema:
-            items:
-              $ref: '#/definitions/model.Project'
-            type: array
-        "400":
-          description: 'error: 잘못된 워크스페이스 ID'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: 'error: 워크스페이스를 찾을 수 없습니다'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 워크스페이스에 연결된 프로젝트 목록 조회
-      tags:
-      - workspaces
-  /workspaces/{id}/projects/{projectId}:
+  /api/workspaces/id/{workspaceId}:
     delete:
       consumes:
       - application/json
-      description: 특정 워크스페이스에서 프로젝트 연결을 해제합니다.
+      description: Delete a workspace by its ID.
+      operationId: deleteWorkspace
       parameters:
-      - description: 워크스페이스 ID
+      - description: Workspace ID
         in: path
         name: id
         required: true
-        type: integer
-      - description: 프로젝트 ID
-        in: path
-        name: projectId
-        required: true
-        type: integer
+        type: string
       produces:
       - application/json
       responses:
         "204":
           description: No Content
-        "400":
-          description: 'error: 잘못된 ID 형식'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 워크스페이스에서 프로젝트 연결 해제
-      tags:
-      - workspaces
-    post:
-      consumes:
-      - application/json
-      description: 특정 워크스페이스에 프로젝트를 연결합니다.
-      parameters:
-      - description: 워크스페이스 ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: 프로젝트 ID
-        in: path
-        name: projectId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: 'error: 잘못된 ID 형식'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
         "404":
-          description: 'error: 워크스페이스 또는 프로젝트를 찾을 수 없습니다'
+          description: Not Found
           schema:
             additionalProperties:
               type: string
             type: object
         "500":
-          description: 'error: 서버 내부 오류'
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
       security:
       - BearerAuth: []
-      summary: 워크스페이스에 프로젝트 연결
+      summary: Delete workspace
       tags:
       - workspaces
-  /workspaces/{id}/users:
     get:
       consumes:
       - application/json
-      description: 특정 워크스페이스에 속한 모든 사용자와 각 사용자의 역할을 조회합니다.
+      description: Retrieve workspace details by workspace ID.
+      operationId: getWorkspaceByID
       parameters:
-      - description: 워크스페이스 ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 성공 시 사용자 및 역할 목록 반환
-          schema:
-            items:
-              $ref: '#/definitions/service.UserWithRoles'
-            type: array
-        "400":
-          description: 'error: 잘못된 워크스페이스 ID'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: 'error: 워크스페이스를 찾을 수 없습니다'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 워크스페이스 사용자 및 역할 목록 조회
-      tags:
-      - workspaces
-      - users
-      - roles
-  /workspaces/{workspaceId}/users/{userId}/roles/{roleId}:
-    delete:
-      consumes:
-      - application/json
-      description: 특정 워크스페이스 내의 사용자에게서 특정 워크스페이스 역할을 제거합니다.
-      parameters:
-      - description: 워크스페이스 ID
+      - description: Workspace ID
         in: path
         name: workspaceId
-        required: true
-        type: integer
-      - description: 사용자 DB ID (db_id)
-        in: path
-        name: userId
-        required: true
-        type: integer
-      - description: 워크스페이스 역할 ID
-        in: path
-        name: roleId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: 'error: 잘못된 ID 형식'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: 'error: 역할 또는 워크스페이스를 찾을 수 없습니다" // User existence check is
-            optional here'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "409":
-          description: 'error: 역할이 해당 워크스페이스에 속하지 않음'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 워크스페이스 사용자 역할 제거
-      tags:
-      - workspaces
-      - roles
-      - users
-    post:
-      consumes:
-      - application/json
-      description: 특정 워크스페이스 내의 사용자에게 특정 워크스페이스 역할을 할당합니다.
-      parameters:
-      - description: 워크스페이스 ID
-        in: path
-        name: workspaceId
-        required: true
-        type: integer
-      - description: 사용자 DB ID (db_id)
-        in: path
-        name: userId
-        required: true
-        type: integer
-      - description: 워크스페이스 역할 ID
-        in: path
-        name: roleId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: 'error: 잘못된 ID 형식'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: 'error: 사용자, 역할 또는 워크스페이스를 찾을 수 없습니다'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "409":
-          description: 'error: 역할이 해당 워크스페이스에 속하지 않음'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 워크스페이스 사용자에게 역할 할당
-      tags:
-      - workspaces
-      - roles
-      - users
-  /workspaces/name/{name}:
-    get:
-      consumes:
-      - application/json
-      description: 이름으로 특정 워크스페이스를 조회합니다 (연결된 프로젝트 정보 포함).
-      parameters:
-      - description: 워크스페이스 이름
-        in: path
-        name: name
         required: true
         type: string
       produces:
@@ -2105,22 +4803,461 @@ paths:
           schema:
             $ref: '#/definitions/model.Workspace'
         "404":
-          description: 'error: 워크스페이스를 찾을 수 없습니다'
+          description: Not Found
           schema:
             additionalProperties:
               type: string
             type: object
         "500":
-          description: 'error: 서버 내부 오류'
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
       security:
       - BearerAuth: []
-      summary: 이름으로 워크스페이스 조회
+      summary: Get workspace by ID
       tags:
       - workspaces
+    put:
+      consumes:
+      - application/json
+      description: Update the details of an existing workspace.
+      operationId: updateWorkspace
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workspace Info
+        in: body
+        name: workspace
+        required: true
+        schema:
+          $ref: '#/definitions/model.Workspace'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Workspace'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update workspace
+      tags:
+      - workspaces
+  /api/workspaces/id/{workspaceId}/projects/list:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve project list belonging to specific workspace
+      operationId: getWorkspaceProjectsByWorkspaceId
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: workspaceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Project'
+            type: array
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Workspace not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List workspace projects
+      tags:
+      - workspaces
+  /api/workspaces/id/{workspaceId}/users/id/{userId}:
+    get:
+      consumes:
+      - application/json
+      description: Get roles assigned to a user in a workspace
+      operationId: getUserWorkspaceRoles
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Workspace ID
+        in: path
+        name: workspaceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMaster'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user workspace roles
+      tags:
+      - roles
+  /api/workspaces/id/{workspaceId}/users/list:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve users and roles list belonging to workspace
+      operationId: listUsersAndRolesByWorkspace
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: workspaceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.UserWorkspaceRole'
+            type: array
+        "400":
+          description: 'error: Invalid workspace ID'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Workspace not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List users and roles by workspace
+      tags:
+      - workspaces
+  /api/workspaces/list:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve a list of all workspaces.
+      operationId: listWorkspaces
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Workspace'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all workspaces
+      tags:
+      - workspaces
+  /api/workspaces/name/{workspaceName}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve specific workspace by name
+      operationId: getWorkspaceByName
+      parameters:
+      - description: Workspace Name
+        in: path
+        name: workspaceName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Workspace'
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Workspace not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get workspace by name
+      tags:
+      - workspaces
+  /api/workspaces/projects/list:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve project list belonging to specific workspace
+      operationId: listWorkspaceProjects
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: workspaceId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Project'
+            type: array
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Workspace not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List workspace projects
+      tags:
+      - workspaces
+  /api/workspaces/temporary-credentials:
+    post:
+      consumes:
+      - application/json
+      description: Get temporary credentials for CSP
+      operationId: mciamGetTemporaryCredentials
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get temporary credentials
+      tags:
+      - csp-credentials
+  /api/workspaces/unassign/projects:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a project from a workspace
+      operationId: removeProjectFromWorkspace
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Remove project from workspace
+      tags:
+      - workspaces
+  /api/workspaces/users-roles/list:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve the list of users and roles assigned to the workspace.
+      operationId: listAllWorkspaceUsersAndRoles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.WorkspaceWithUsersAndRoles'
+            type: array
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List users and roles in workspace
+      tags:
+      - workspaces
+  /api/workspaces/users/list:
+    post:
+      consumes:
+      - application/json
+      description: List users by workspace criteria
+      operationId: listWorkspaceUsers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.WorkspaceWithUsersAndRoles'
+            type: array
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List workspace users
+      tags:
+      - workspaces
+  /api/workspaces/workspace-ticket:
+    post:
+      consumes:
+      - application/json
+      description: Set workspace ticket
+      operationId: mciamWorkspaceTicket
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Workspace ticket set successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Set workspace ticket
+      tags:
+      - auth
+  /readyz:
+    get:
+      consumes:
+      - application/json
+      description: Check the health status of the service.
+      operationId: mciamCheckHealth
+      parameters:
+      - description: Detail check components (nginx,db,keycloak,all)
+        in: query
+        name: detail
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - health
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.
