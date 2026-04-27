@@ -99,6 +99,7 @@ func main() {
 		&model.GroupPlatformRole{},
 		&model.GroupWorkspaceRole{},
 		&model.WorkspaceInvitation{},
+		&model.Company{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
@@ -130,11 +131,14 @@ func main() {
 	cspAccountHandler := handler.NewCspAccountHandler(db)
 	cspIdpConfigHandler := handler.NewCspIdpConfigHandler(db)
 	cspPolicyHandler := handler.NewCspPolicyHandler(db)
+	cspValidationHandler := handler.NewCspValidationHandler(db)
 
 	// 조직 핸들러 초기화
 	organizationHandler := handler.NewOrganizationHandler(db)
 	// 그룹 역할 핸들러 초기화
 	groupRoleHandler := handler.NewGroupRoleHandler(db)
+	// 회사 정보 핸들러 초기화
+	companyHandler := handler.NewCompanyHandler(db)
 
 	// Echo 인스턴스 생성
 	e := echo.New()
@@ -207,6 +211,16 @@ func main() {
 	// platform admin 생성. 권한체크 필요한데...
 	api.POST("/initial-admin", adminHandler.SetupInitialAdmin) // TODO : 초기 설정에서 직접 keycloak 호출하는 것으로 바꿔야 할 듯.
 
+	// 회사 정보 라우트 (싱글톤 — URL에 ID 없음)
+	company := api.Group("/company")
+	{
+		company.POST("", companyHandler.CreateCompany, middleware.PlatformAdminMiddleware)
+		company.GET("", companyHandler.GetCompany, middleware.PlatformRoleMiddleware(middleware.Read))
+		company.PUT("", companyHandler.UpdateCompany, middleware.PlatformAdminMiddleware)
+		company.DELETE("", companyHandler.DeactivateCompany, middleware.PlatformAdminMiddleware)
+		company.POST("/activate", companyHandler.ActivateCompany, middleware.PlatformAdminMiddleware)
+	}
+
 	// 관리자 setup 라우트
 	setup := api.Group("/setup", middleware.PlatformAdminMiddleware)
 	{
@@ -231,6 +245,7 @@ func main() {
 
 		workspaces.POST("/workspace-ticket", authHandler.WorkspaceTicket) // 1개 워크스페이스에 대한 티켓 설정
 		workspaces.POST("/temporary-credentials", cspCredentialHandler.GetTemporaryCredentials)
+		workspaces.POST("/credentials/validate", cspValidationHandler.ValidateCredentials)
 
 		workspaces.POST("/users/list", workspaceHandler.ListWorkspaceUsers)                                                                    // workspace의 사용자 목록 조회
 		workspaces.POST("/users-roles/list", workspaceHandler.ListWorkspaceUsersAndRoles, middleware.PlatformRoleMiddleware(middleware.Write)) // workspace와 사용자 및 role 조회
@@ -340,6 +355,7 @@ func main() {
 		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.PUT("/id/:userId/password", userHandler.ResetUserPassword, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.GET("/me", userHandler.GetMyInfo)                  // 사용자 본인 정보 조회
 		users.PUT("/me/password", userHandler.ChangeMyPassword) // 사용자 본인 패스워드 변경
 
 		users.POST("/menus-tree/list", menuHandler.ListUserMenuTree)
@@ -459,6 +475,8 @@ func main() {
 		cspIdpConfigs.POST("/id/:configId/test", cspIdpConfigHandler.TestCspIdpConnection, middleware.PlatformAdminMiddleware)
 		cspIdpConfigs.POST("/id/:configId/activate", cspIdpConfigHandler.ActivateCspIdpConfig, middleware.PlatformAdminMiddleware)
 		cspIdpConfigs.POST("/id/:configId/deactivate", cspIdpConfigHandler.DeactivateCspIdpConfig, middleware.PlatformAdminMiddleware)
+		cspIdpConfigs.GET("/summary", cspIdpConfigHandler.GetCspIdpSummary)
+		cspIdpConfigs.POST("/health-check", cspIdpConfigHandler.BulkHealthCheck, middleware.PlatformAdminMiddleware)
 	}
 
 	// 조직 관리 라우트 (platformAdmin 전용)
