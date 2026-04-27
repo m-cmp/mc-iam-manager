@@ -279,3 +279,52 @@ func (h *CspIdpConfigHandler) DeactivateCspIdpConfig(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "IDP config deactivated successfully"})
 }
+
+// GetCspIdpSummary godoc
+// @Summary Get CSP IDP config summary
+// @Description Get IDP configuration count summary grouped by CSP account
+// @Tags csp-idp-configs
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.CspIdpSummary
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/csp-idp-configs/summary [get]
+// @Id getCspIdpSummary
+func (h *CspIdpConfigHandler) GetCspIdpSummary(c echo.Context) error {
+	summaries, err := h.cspIdpConfigService.GetIdpSummary()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get IDP summary: %v", err)})
+	}
+
+	if summaries == nil {
+		summaries = []model.CspIdpSummary{}
+	}
+	return c.JSON(http.StatusOK, summaries)
+}
+
+// BulkHealthCheck godoc
+// @Summary Bulk health check for CSP IDP configs
+// @Description Check connection status of all active CSP IDP configurations concurrently
+// @Tags csp-idp-configs
+// @Accept json
+// @Produce json
+// @Param request body model.BulkHealthCheckRequest false "Optional filter"
+// @Success 200 {object} model.BulkHealthCheckResponse
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/csp-idp-configs/health-check [post]
+// @Id bulkHealthCheckCspIdpConfigs
+func (h *CspIdpConfigHandler) BulkHealthCheck(c echo.Context) error {
+	var req model.BulkHealthCheckRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	}
+
+	result, err := h.cspIdpConfigService.BulkHealthCheck(&req)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to run health check: %v", err)})
+	}
+
+	return c.JSON(http.StatusOK, result)
+}
