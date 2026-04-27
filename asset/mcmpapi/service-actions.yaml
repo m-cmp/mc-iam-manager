@@ -1006,6 +1006,14 @@ serviceActions:
             method: post
             resourcePath: /api/setup/sync-projects
             description: mc-infra-manager의 네임스페이스 목록을 조회하여 로컬 DB에 없는 프로젝트를 추가합니다.
+        getProjectSyncDiff:
+            method: get
+            resourcePath: /api/setup/projects/sync-diff
+            description: mc-infra-manager의 namespace 목록과 로컬 프로젝트를 비교하여 불일치 목록을 반환합니다. DB 변경 없음.
+        applyProjectSync:
+            method: post
+            resourcePath: /api/setup/projects/sync
+            description: 지정된 nsId 목록의 project를 생성하거나 지정된 workspace에 할당합니다.
         testCallGetAllNs:
             method: get
             resourcePath: /api/mcmp-apis/test/mc-infra-manager/getallns
