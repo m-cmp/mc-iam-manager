@@ -182,7 +182,7 @@ func (h *GroupRoleHandler) RemoveGroupPlatformRole(c echo.Context) error {
 		case errors.Is(err, repository.ErrRoleMasterNotFound):
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "역할을 찾을 수 없습니다"})
 		case errors.Is(err, repository.ErrGroupPlatformRoleNotFound):
-			return c.JSON(http.StatusNotFound, map[string]string{"error": "할당된 역할을 찾을 수 없습니다"})
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "할당된 역할 매핑을 찾을 수 없습니다"})
 		default:
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
