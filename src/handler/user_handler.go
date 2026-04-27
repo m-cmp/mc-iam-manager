@@ -338,6 +338,35 @@ func (h *UserHandler) ResetUserPassword(c echo.Context) error {
 	})
 }
 
+// GetMyInfo godoc
+// @Summary Get my info
+// @Description Get the authenticated user's own profile information. No PlatformRole required.
+// @Tags users
+// @Produce json
+// @Success 200 {object} model.User
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/me [get]
+// @Id getMyInfo
+func (h *UserHandler) GetMyInfo(c echo.Context) error {
+	kcUserIdVal := c.Get("kcUserId")
+	if kcUserIdVal == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+	kcUserID, ok := kcUserIdVal.(string)
+	if !ok || kcUserID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	user, err := h.userService.GetUserByKcID(c.Request().Context(), kcUserID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+	}
+	return c.JSON(http.StatusOK, user)
+}
+
 // ChangeMyPassword godoc
 // @Summary Change my password
 // @Description Change the authenticated user's own password. Requires current password for verification.
