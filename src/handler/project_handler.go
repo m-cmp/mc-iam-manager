@@ -41,28 +41,45 @@ func NewProjectHandler(db *gorm.DB) *ProjectHandler {
 
 // CreateProject godoc
 // @Summary Create new project
-// @Description Create a new project with the specified information.
+// @Description Create a new project with the specified information. Optionally specify a workspace to assign the project to.
 // @Tags projects
 // @Accept json
 // @Produce json
-// @Param project body model.Project true "Project Info"
+// @Param project body model.CreateProjectRequest true "Project Info"
 // @Success 201 {object} model.Project
 // @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/projects [post]
 // @Id createProject
 func (h *ProjectHandler) CreateProject(c echo.Context) error {
-	var project model.Project
-	if err := c.Bind(&project); err != nil {
+	var req model.CreateProjectRequest
+	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
 	}
-	project.ID = 0 // Ensure ID is not set by client
-	// project.NsId will be set by the service after calling the external API
 
-	// Call the service Create method, passing the context
-	if err := h.projectService.Create(c.Request().Context(), &project); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 생성 실패 (DB 저장 오류): %v", err)})
+	project := &model.Project{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	// Parse optional workspaceId
+	var workspaceID uint
+	if req.WorkspaceID != "" {
+		workspaceIDInt, err := util.StringToUint(req.WorkspaceID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 워크스페이스 ID 형식입니다"})
+		}
+		workspaceID = workspaceIDInt
+	}
+
+	// Call the service Create method with optional workspaceID
+	if err := h.projectService.Create(c.Request().Context(), project, workspaceID); err != nil {
+		if err.Error() == "workspace not found" {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "워크스페이스를 찾을 수 없습니다"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("프로젝트 생성 실패: %v", err)})
 	}
 
 	log.Printf("Successfully created project '%s' (ID: %d, NsId: %s)", project.Name, project.ID, project.NsId)
@@ -231,6 +248,44 @@ func (h *ProjectHandler) DeleteProject(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+// GetProjectWorkspaces godoc
+// @Summary Get workspaces assigned to project
+// @Description Retrieve list of workspaces that the project is assigned to
+// @Tags projects
+// @Accept json
+// @Produce json
+// @Param projectId path string true "Project ID"
+// @Success 200 {array} model.Workspace
+// @Failure 400 {object} map[string]string "error: Invalid project ID"
+// @Failure 404 {object} map[string]string "error: Project not found"
+// @Failure 500 {object} map[string]string "error: Internal server error"
+// @Security BearerAuth
+// @Router /api/projects/id/{projectId}/workspaces [get]
+// @Id getProjectWorkspaces
+func (h *ProjectHandler) GetProjectWorkspaces(c echo.Context) error {
+	projectIDInt, err := util.StringToUint(c.Param("projectId"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid project ID"})
+	}
+
+	workspaces, err := h.projectService.GetProjectWorkspaces(projectIDInt)
+	if err != nil {
+		if err.Error() == "project not found" {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "Project not found"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": fmt.Sprintf("Failed to retrieve workspace list: %v", err),
+		})
+	}
+
+	// 빈 배열 처리
+	if workspaces == nil {
+		workspaces = []*model.Workspace{}
+	}
+
+	return c.JSON(http.StatusOK, workspaces)
+}
+
 // SyncProjects godoc
 // @Summary mc-infra-manager와 프로젝트 동기화
 // @Description mc-infra-manager의 네임스페이스 목록을 조회하여 로컬 DB에 없는 프로젝트를 추가합니다.
@@ -258,14 +313,13 @@ func (h *ProjectHandler) SyncProjects(c echo.Context) error {
 // @Tags projects
 // @Accept json
 // @Produce json
-// @Param id path int true "프로젝트 ID"
-// @Param workspaceId path int true "워크스페이스 ID"
+// @Param request body model.WorkspaceProjectMappingRequest true "Workspace and Project IDs"
 // @Success 204 "No Content"
 // @Failure 400 {object} map[string]string "error: 잘못된 ID 형식"
 // @Failure 404 {object} map[string]string "error: 프로젝트 또는 워크스페이스를 찾을 수 없습니다"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /api/projects/{id}/workspaces/{workspaceId} [post]
+// @Router /api/projects/assign/workspaces [post]
 // @Id addWorkspaceToProject
 func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 	var req model.WorkspaceProjectMappingRequest
@@ -309,7 +363,12 @@ func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 // @Tags projects
 // @Accept json
 // @Produce json
-// @Param id path string true "Project ID"
+// @Param request body model.WorkspaceProjectMappingRequest true "Workspace and Project IDs"
+// @Success 204 "No Content"
+// @Failure 400 {object} map[string]string "error: Invalid request"
+// @Failure 500 {object} map[string]string "error: Internal server error"
+// @Security BearerAuth
+// @Router /api/projects/unassign/workspaces [delete]
 // @Id removeWorkspaceFromProject
 func (h *ProjectHandler) RemoveWorkspaceFromProject(c echo.Context) error {
 	var req model.WorkspaceProjectMappingRequest

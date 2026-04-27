@@ -144,8 +144,14 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	}
 
 	// 기본 workspace 생성
+	defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
+	if defaultWsName == "" {
+		defaultWsName = "ws01" // fallback
+		log.Printf("[INFO] DEFAULT_WORKSPACE_NAME not set, using default: %s", defaultWsName)
+	}
+	
 	err = h.workspaceService.CreateWorkspace(&model.Workspace{
-		Name:        "ws01",
+		Name:        defaultWsName,
 		Description: "Default Workspace",
 	})
 	if err != nil {

@@ -1,0 +1,1121 @@
+serviceActions:
+    mc-application-manager:
+        _meta:
+            version: 0.5.0
+            repository: https://github.com/m-cmp/mc-application-manager
+            generatedAt: "2026-01-06T07:17:34Z"
+        checkConnectionUsingPOST:
+            method: post
+            resourcePath: /oss/connection-check
+            description: checkConnection
+        createCatalogRefUsingPOST:
+            method: post
+            resourcePath: /catalog/software/ref/{catalogIdx}
+            description: software catalog 관련정보 등록(webpage, workflow 등)
+        createCatalogUsingPOST:
+            method: post
+            resourcePath: /catalog/software/
+            description: software catalog 등록
+        createComponentByTextUsingPOST:
+            method: post
+            resourcePath: /oss/v1/components/{module}/create/{name}/text
+            description: createComponentByText
+        createComponentUsingPOST:
+            method: post
+            resourcePath: /oss/v1/components/{module}/create/{name}
+            description: createComponent
+        createManifestUsingPOST:
+            method: post
+            resourcePath: /manifest/
+            description: createManifest
+        createRepositoryUsingPOST:
+            method: post
+            resourcePath: /oss/v1/repositories/{module}/create
+            description: createRepository
+        createRepositoryUsingPOST_1:
+            method: post
+            resourcePath: /repository/
+            description: createRepository
+        deleteCatalogRefWorkflowUsingDELETE:
+            method: delete
+            resourcePath: /catalog/software/ref/{catalogIdx}/{catalogRefIdx}
+            description: deleteCatalogRefWorkflow
+        deleteCatalogUsingDELETE:
+            method: delete
+            resourcePath: /catalog/software/{catalogIdx}
+            description: software catalog 삭제
+        deleteComponentUsingDELETE:
+            method: delete
+            resourcePath: /oss/v1/components/{module}/delete/{id}
+            description: deleteComponent
+        deleteOssTypeUsingDELETE:
+            method: delete
+            resourcePath: /ossType/{ossTypeIdx}
+            description: deleteOssType
+        deleteOssUsingDELETE:
+            method: delete
+            resourcePath: /oss/{ossIdx}
+            description: deleteOss
+        deleteRepositoryFileUsingDELETE:
+            method: delete
+            resourcePath: /repository/file/{filename}
+            description: deleteRepositoryFile
+        deleteRepositoryUsingDELETE:
+            method: delete
+            resourcePath: /oss/v1/repositories/{module}/delete/{name}
+            description: deleteRepository
+        deleteRepositoryUsingDELETE_1:
+            method: delete
+            resourcePath: /repository/
+            description: deleteRepository
+        detailOssTypeUsingGET:
+            method: get
+            resourcePath: /ossType/{ossTypeIdx}
+            description: detailOssType
+        detailOssUsingGET:
+            method: get
+            resourcePath: /oss/{ossIdx}
+            description: detailOss
+        errorHtmlUsingDELETE:
+            method: delete
+            resourcePath: /error
+            description: errorHtml
+        errorHtmlUsingGET:
+            method: get
+            resourcePath: /error
+            description: errorHtml
+        errorHtmlUsingHEAD:
+            method: head
+            resourcePath: /error
+            description: errorHtml
+        errorHtmlUsingOPTIONS:
+            method: options
+            resourcePath: /error
+            description: errorHtml
+        errorHtmlUsingPATCH:
+            method: patch
+            resourcePath: /error
+            description: errorHtml
+        errorHtmlUsingPOST:
+            method: post
+            resourcePath: /error
+            description: errorHtml
+        errorHtmlUsingPUT:
+            method: put
+            resourcePath: /error
+            description: errorHtml
+        execWorkflowUsingPOST:
+            method: post
+            resourcePath: /catalog/software/ref/workflow
+            description: execWorkflow
+        generateConfigmapYamlUsingPOST:
+            method: post
+            resourcePath: /yaml/configmap
+            description: generateConfigmapYaml
+        generateDeploymentYamlUsingPOST:
+            method: post
+            resourcePath: /yaml/deployment
+            description: generateDeploymentYaml
+        generateHPAYamlUsingPOST:
+            method: post
+            resourcePath: /yaml/hpa
+            description: generateHPAYaml
+        generatePodYamlUsingPOST:
+            method: post
+            resourcePath: /yaml/pod
+            description: generatePodYaml
+        generateServiceYamlUsingPOST:
+            method: post
+            resourcePath: /yaml/service
+            description: generateServiceYaml
+        getArtifactHubListUsingGET:
+            method: get
+            resourcePath: /search/artifacthub/{keyword}
+            description: getArtifactHubList
+        getCatalogDetailUsingGET:
+            method: get
+            resourcePath: /catalog/software/{catalogIdx}
+            description: software catalog 내용 확인(연결된 정보들까지)
+        getCatalogListUsingGET:
+            method: get
+            resourcePath: /catalog/software/
+            description: software catalog 리스트 불러오기
+        getCatalogReferenceUsingGET:
+            method: get
+            resourcePath: /catalog/software/ref/{catalogIdx}
+            description: getCatalogReference
+        getComponentDetailByNameUsingGET:
+            method: get
+            resourcePath: /oss/v1/components/{module}/detail/{id}
+            description: getComponentDetailByName
+        getComponentListUsingGET:
+            method: get
+            resourcePath: /oss/v1/components/{module}/list/{name}
+            description: getComponentList
+        getDockerHubListUsingGET:
+            method: get
+            resourcePath: /search/dockerhub/{keyword}
+            description: getDockerHubList
+        getManifestDetailTxtUsingGET:
+            method: get
+            resourcePath: /manifest/{manifestIdx}/txt
+            description: getManifestDetailTxt
+        getManifestDetailUsingGET:
+            method: get
+            resourcePath: /manifest/{manifestIdx}
+            description: getManifestDetail
+        getManifestUsingGET:
+            method: get
+            resourcePath: /manifest/
+            description: getManifest
+        getOssListUsingGET:
+            method: get
+            resourcePath: /oss/list/{ossTypeName}
+            description: getOssList
+        getOssListUsingGET_1:
+            method: get
+            resourcePath: /oss/list
+            description: getOssList
+        getOssTypeListUsingGET:
+            method: get
+            resourcePath: /ossType/list
+            description: getOssTypeList
+        getRepositoryDetailByNameUsingGET:
+            method: get
+            resourcePath: /oss/v1/repositories/{module}/detail/{name}
+            description: getRepositoryDetailByName
+        getRepositoryFileUsingGET:
+            method: get
+            resourcePath: /repository/file/{filename}
+            description: getRepositoryFile
+        getRepositoryListUsingGET:
+            method: get
+            resourcePath: /oss/v1/repositories/{module}/list
+            description: getRepositoryList
+        getRepositoryListUsingGET_1:
+            method: get
+            resourcePath: /repository/
+            description: getRepositoryList
+        getRepositoryUsingGET:
+            method: get
+            resourcePath: /repository/{repositoryName}
+            description: getRepository
+        insertRepositoryUsingPOST:
+            method: post
+            resourcePath: /repository/{repositoryName}
+            description: insertRepository
+        isOssInfoDuplicatedUsingGET:
+            method: get
+            resourcePath: /oss/duplicate
+            description: isOssInfoDuplicated
+        openapiJsonUsingGET:
+            method: get
+            resourcePath: /v3/api-docs
+            description: openapiJson
+        openapiJsonUsingGET_1:
+            method: get
+            resourcePath: /v3/api-docs/swagger-config
+            description: openapiJson
+        openapiYamlUsingGET:
+            method: get
+            resourcePath: /v3/api-docs.yaml
+            description: openapiYaml
+        redirectToUiUsingGET:
+            method: get
+            resourcePath: /swagger-ui.html
+            description: redirectToUi
+        registOssTypeUsingPOST:
+            method: post
+            resourcePath: /ossType
+            description: registOssType
+        registOssUsingPOST:
+            method: post
+            resourcePath: /oss
+            description: registOss
+        saveManifestUsingGET:
+            method: get
+            resourcePath: /manifest/download/{manifestIdx}
+            description: saveManifest
+        updateCatalogUsingPUT:
+            method: put
+            resourcePath: /catalog/software/
+            description: software catalog 수정
+        updateManifestUsingDELETE:
+            method: delete
+            resourcePath: /manifest/{manifestIdx}
+            description: updateManifest
+        updateManifestUsingPUT:
+            method: put
+            resourcePath: /manifest/
+            description: updateManifest
+        updateOssTypeUsingPATCH:
+            method: patch
+            resourcePath: /ossType/{ossTypeIdx}
+            description: updateOssType
+        updateOssUsingPATCH:
+            method: patch
+            resourcePath: /oss/{ossIdx}
+            description: updateOss
+        updateRepositoryUsingPUT:
+            method: put
+            resourcePath: /oss/v1/repositories/{module}/update
+            description: updateRepository
+        updateRepositoryUsingPUT_1:
+            method: put
+            resourcePath: /repository/
+            description: updateRepository
+        uploadFilesUsingPOST:
+            method: post
+            resourcePath: /repository/file/
+            description: file upload
+    mc-cost-optimizer:
+        _meta:
+            version: 0.5.0
+            repository: https://github.com/m-cmp/mc-cost-optimizer
+            generatedAt: "2026-01-06T07:17:34Z"
+        getAbrnormalRcmd:
+            method: post
+            resourcePath: /api/costopti/be/opti/abnormalRcmd
+            description: 최근 24시간동안 과금이 발생한 서비스들의 이상 비용 여부를 확인한다.
+        getAlarmHistory:
+            method: post
+            resourcePath: /api/costopti/be/alarm/history
+            description: 최근 7일간 발생한 최적화 알람을 조회한다.
+        getBillAsset:
+            method: post
+            resourcePath: /api/costopti/be/getBillAsset
+            description: 이번달 사용한 서비스(VM, DB 등) 단위의 비용을 확인합니다.
+        getBillingBaseInfo:
+            method: post
+            resourcePath: /api/costopti/be/invoice/getBillingBaseInfo
+            description: 이번달 CSP별 요약된 빌링 인보이스를 확인한다.
+        getCurMonthBill:
+            method: post
+            resourcePath: /api/costopti/be/getCurMonthBill
+            description: 지난달 대비 이번달 비용을 확인합니다.
+        getInstOptiSizeRcmd:
+            method: post
+            resourcePath: /api/costopti/be/opti/instOptiSizeRcmd
+            description: 사용중인 인스턴스의 추천 사이즈를 확인한다.
+        getInvoice:
+            method: post
+            resourcePath: /api/costopti/be/invoice/getInvoice
+            description: 이번달 빌링 인보이스 내역을 확인한다.
+        getProjects:
+            method: get
+            resourcePath: /api/costopti/be/getProjects
+            description: 워크스페이스에 속한 프로젝트 목록을 조회합니다.
+        getReadyz:
+            method: get
+            resourcePath: /api/costopti/be/readyz
+            description: 어플리케이션의 상태를 조회합니다.
+        getSummary:
+            method: post
+            resourcePath: /api/costopti/be/invoice/getSummary
+            description: CSP별 빌링 인보이스 비용을 월별로 확인한다.
+        getTop5Bill:
+            method: post
+            resourcePath: /api/costopti/be/getTop5Bill
+            description: 이번달에 사용한 비용 상위 5개의 리소스와 비용을 확인합니다.
+        getUnusedRcmd:
+            method: post
+            resourcePath: /api/costopti/be/opti/unusedRcmd
+            description: 최근 24시간동안 과금이 발생한 리소스에 대하여 미사용 자원을 추천한다.
+        getWorkspaces:
+            method: get
+            resourcePath: /api/costopti/be/getWorkspaces
+            description: 워크스페이스 목록을 조회합니다.
+        updateTBBRscMeta:
+            method: get
+            resourcePath: /api/costopti/be/updateRscMeta
+            description: ""
+    mc-iam-manager:
+        _meta:
+            version: 0.3.0
+            repository: https://github.com/m-cmp/mc-iam-manager
+            generatedAt: "2026-01-06T07:17:34Z"
+        UpdateFrameworkService:
+            method: put
+            resourcePath: /api/mcmp-apis/name/{serviceName}
+            description: Updates specific fields (e.g., BaseURL, Auth info) of an MCMP API service definition identified by its name. Cannot update name or version.
+        addCspRoleMappings:
+            method: post
+            resourcePath: /api/roles/csp-roles
+            description: Create a new mapping between role and CSP role
+        addProjectToWorkspace:
+            method: post
+            resourcePath: /api/workspaces/assign/projects
+            description: Add a project to a workspace
+        addUserToWorkspace:
+            method: post
+            resourcePath: /api/workspaces/{id}/users
+            description: Add a user to a workspace
+        addWorkspaceToProject:
+            method: post
+            resourcePath: /api/projects/{id}/workspaces/{workspaceId}
+            description: 프로젝트에 워크스페이스를 연결합니다.
+        assignMciamPermissionToRole:
+            method: post
+            resourcePath: /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}
+            description: 역할에 MC-IAM 권한을 할당합니다.
+        assignPlatformRole:
+            method: post
+            resourcePath: /api/roles/assign/platform-role
+            description: Assign a platform role to a user
+        assignRole:
+            method: post
+            resourcePath: /api/roles/id/{roleId}/assign
+            description: Assign a role to a user
+        assignWorkspaceRole:
+            method: post
+            resourcePath: /api/roles/assign/workspace-role
+            description: Assign a workspace role to a user
+        checkUserRoles:
+            method: get
+            resourcePath: /api/setup/check-user-roles
+            description: Check all roles assigned to a user. 특정 유저가 가진 role 목록을 조회합니다.
+        createCspRole:
+            method: post
+            resourcePath: /api/roles/csp
+            description: Create a new csp role
+        createCspRoles:
+            method: post
+            resourcePath: /api/roles/csp-roles/batch
+            description: Create multiple new csp roles
+        createMciamPermission:
+            method: post
+            resourcePath: /api/permissions/mciam
+            description: Create a new permission with the specified information.
+        createMcmpApiPermissionActionMapping:
+            method: post
+            resourcePath: /api/mcmp-api-permission-action-mappings
+            description: Creates a new mapping between a permission and an API action
+        createMenu:
+            method: post
+            resourcePath: /api/menus
+            description: Create a new menu
+        createMenusRolesMapping:
+            method: post
+            resourcePath: /api/menus/platform-roles
+            description: Create a new menu mapping
+        createPlatformRole:
+            method: post
+            resourcePath: /api/roles/platform-roles
+            description: Create a new menu role
+        createProject:
+            method: post
+            resourcePath: /api/projects
+            description: Create a new project with the specified information.
+        createResourceType:
+            method: post
+            resourcePath: /api/resource-types/cloud-resources
+            description: 새로운 리소스 타입을 생성합니다
+        createRole:
+            method: post
+            resourcePath: /api/roles
+            description: Create a new role
+        createUser:
+            method: post
+            resourcePath: /api/users
+            description: Create a new user with the specified information.
+        createWorkspace:
+            method: post
+            resourcePath: /api/workspaces
+            description: Create a new workspace with the specified information.
+        createWorkspaceRole:
+            method: post
+            resourcePath: /api/roles/workspace-roles
+            description: Create a new workspace role
+        deleteCspRole:
+            method: delete
+            resourcePath: /api/roles/csp-roles/id/{roleId}
+            description: Delete a role
+        deleteMapping:
+            method: delete
+            resourcePath: /api/mcmp-api-permission-action-mappings/permissions/{permissionId}/actions/{actionId}
+            description: Deletes a mapping between a permission and an API action
+        deleteMciamPermission:
+            method: delete
+            resourcePath: /api/permissions/mciam/{id}
+            description: Delete a permission by its ID.
+        deleteMenu:
+            method: delete
+            resourcePath: /api/menus/id/{menuId}
+            description: Delete a menu
+        deleteMenusRolesMapping:
+            method: delete
+            resourcePath: /api/menus/platform-roles
+            description: Delete the mapping between a platform role and a menu.
+        deletePlatformRole:
+            method: delete
+            resourcePath: /api/roles/platform-roles/id/{roleId}
+            description: Delete a platform role
+        deleteProject:
+            method: delete
+            resourcePath: /api/projects/{id}
+            description: Delete a project by its ID.
+        deleteResourceType:
+            method: delete
+            resourcePath: /api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId
+            description: 리소스 타입을 삭제합니다
+        deleteRole:
+            method: delete
+            resourcePath: /api/roles/id/{roleId}
+            description: Delete a role by its name.
+        deleteUser:
+            method: delete
+            resourcePath: /api/users/{id}
+            description: Delete a user by their ID.
+        deleteWorkspace:
+            method: delete
+            resourcePath: /api/workspaces/id/{workspaceId}
+            description: Delete a workspace by its ID.
+        deleteWorkspaceRole:
+            method: delete
+            resourcePath: /api/roles/workspace-roles/id/{roleId}
+            description: Delete a workspace role
+        getCloudResourceTypeByID:
+            method: get
+            resourcePath: /api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId
+            description: 특정 리소스 타입을 ID로 조회합니다
+        getCspRoleByID:
+            method: get
+            resourcePath: /api/roles/csp/id/{roleId}
+            description: Get csp role details by ID
+        getCspRoleByName:
+            method: get
+            resourcePath: /api/roles/csp/name/{roleName}
+            description: Get csp role details by Name
+        getCspRoleMappingByRoleId:
+            method: get
+            resourcePath: /api/roles/csp-roles/id/:roleId
+            description: Get a mapping between role and CSP role
+        getMciamPermissionByID:
+            method: get
+            resourcePath: /api/permissions/mciam/id/{id}
+            description: Retrieve permission details by permission ID.
+        getMenuByID:
+            method: post
+            resourcePath: /api/menus/id/{menuId}
+            description: Get menu details by ID
+        getPlatformActionsByPermissionID:
+            method: get
+            resourcePath: /api/mcmp-api-permission-action-mappings/platforms/id/{permissionId}/actions
+            description: Returns all platform actions mapped to a specific permission
+        getPlatformRoleByID:
+            method: get
+            resourcePath: /api/roles/platform-roles/id/{roleId}
+            description: Get platform role details by ID
+        getPlatformRoleByName:
+            method: get
+            resourcePath: /api/roles/platform-roles/name/{roleName}
+            description: Get menu role details by Name
+        getProjectByID:
+            method: get
+            resourcePath: /api/projects/{id}
+            description: Retrieve project details by project ID.
+        getProjectByName:
+            method: get
+            resourcePath: /api/projects/name/{projectName}
+            description: Get project details by name
+        getRoleByRoleID:
+            method: get
+            resourcePath: /api/roles/id/{roleId}
+            description: Get role details by ID
+        getRoleByRoleName:
+            method: get
+            resourcePath: /api/roles/name/{roleName}
+            description: Retrieve role details by role name.
+        getRoleMasterMappings:
+            method: get
+            resourcePath: /api/roles/mappings/role/id/:roleId
+            description: Get role master mappings
+        getRoleMciamPermissions:
+            method: get
+            resourcePath: /api/roles/{roleType}/{roleId}/mciam-permissions
+            description: 특정 역할의 MC-IAM 권한 ID 목록을 조회합니다.
+        getUserByID:
+            method: get
+            resourcePath: /api/users/id/{userId}
+            description: Retrieve user details by user ID.
+        getUserByKcID:
+            method: get
+            resourcePath: /api/users/kc/{kcUserId}
+            description: Get user details by KcID
+        getUserByUsername:
+            method: get
+            resourcePath: /api/users/name/{username}
+            description: Get user details by username
+        getUserMenuTree:
+            method: get
+            resourcePath: /api/menus/user-menu-tree
+            description: Get menu tree based on user's platform roles
+        getUserWorkspaceAndWorkspaceRolesByUserID:
+            method: get
+            resourcePath: /api/users/id/{userId}/workspaces/roles/list
+            description: Get workspaces and roles for a specific user
+        getUserWorkspaceAndWorkspaceRolesByUserIDAndWorkspaceID:
+            method: get
+            resourcePath: /api/users/id/{userId}/workspaces/id/{workspaceId}/roles/list
+            description: Get workspaces and roles for a specific user and workspace
+        getUserWorkspaceRoles:
+            method: get
+            resourcePath: /api/workspaces/id/{workspaceId}/users/id/{userId}
+            description: Get roles assigned to a user in a workspace
+        getUserWorkspacesByUserID:
+            method: get
+            resourcePath: /api/users/id/{userId}/workspaces/list
+            description: Get workspaces for a specific user
+        getWorkspaceByID:
+            method: get
+            resourcePath: /api/workspaces/id/{workspaceId}
+            description: Retrieve workspace details by workspace ID.
+        getWorkspaceByName:
+            method: get
+            resourcePath: /api/workspaces/name/{workspaceName}
+            description: Retrieve specific workspace by name
+        getWorkspaceProjectsByWorkspaceId:
+            method: get
+            resourcePath: /api/workspaces/id/{workspaceId}/projects/list
+            description: Retrieve project list belonging to specific workspace
+        getWorkspaceRoleByID:
+            method: get
+            resourcePath: /api/roles/workspace-roles/id/{roleId}
+            description: Get workspace role details by ID
+        getWorkspaceRoleByName:
+            method: get
+            resourcePath: /api/roles/workspace-roles/name/{roleName}
+            description: Get workspace role details by Name
+        initializeMenuPermissions:
+            method: get
+            resourcePath: /api/setup/initial-role-menu-permission
+            description: CSV 파일을 읽어서 메뉴 권한을 초기화합니다
+        listAllWorkspaceUsersAndRoles:
+            method: post
+            resourcePath: /api/workspaces/users-roles/list
+            description: Retrieve the list of users and roles assigned to the workspace.
+        listCSPRoles:
+            method: post
+            resourcePath: /api/roles/csp/list
+            description: Get a list of all csp roles
+        listCloudResourceTypes:
+            method: post
+            resourcePath: /api/resource-types/cloud-resources/list
+            description: 모든 리소스 타입 목록을 조회합니다
+        listCspRoleMappings:
+            method: post
+            resourcePath: /api/roles/csp-roles/list
+            description: Get a mapping between role and CSP role
+        listMappedMenusByRole:
+            method: post
+            resourcePath: /api/menus/platform-roles/list
+            description: List menus mapped to a specific platform role.
+        listMciamPermissions:
+            method: post
+            resourcePath: /api/permissions/mciam/list
+            description: Retrieve a list of all permissions.
+        listMenus:
+            method: post
+            resourcePath: /api/menus/list
+            description: List all menus as a tree structure. Admin permission required.
+        listMenusTree:
+            method: post
+            resourcePath: /api/menus/tree/list
+            description: List all menus as a tree structure. Admin permission required.
+        listPermissionsByActionID:
+            method: get
+            resourcePath: /api/mcmp-api-permission-action-mappings/actions/{actionId}/permissions
+            description: Returns all permissions mapped to a specific API action
+        listPlatformActions:
+            method: post
+            resourcePath: /api/mcmp-api-permission-action-mappings/list
+            description: Returns all platform actions mapped to a specific permission
+        listPlatformRoles:
+            method: post
+            resourcePath: /api/roles/menu-roles/list
+            description: Get a list of all menu roles
+        listProjects:
+            method: post
+            resourcePath: /api/projects/list
+            description: Retrieve a list of all projects.
+        listRoleMasterMappings:
+            method: post
+            resourcePath: /api/roles/mappings/list
+            description: List role master mappings
+        listRoles:
+            method: post
+            resourcePath: /api/roles/list
+            description: Retrieve a list of all roles.
+        listServicesAndActions:
+            method: post
+            resourcePath: /api/mcmp-apis/list
+            description: Retrieves all MCMP API service and action definitions currently stored in the database.
+        listUserMenu:
+            method: post
+            resourcePath: /api/users/menus/list
+            description: Get the menu list accessible to the current user's platform role.
+        listUserMenuTree:
+            method: post
+            resourcePath: /api/users/menus-tree/list
+            description: Get the menu tree accessible to the current user's platform role.
+        listUserProjectsByWorkspace:
+            method: get
+            resourcePath: /api/users/workspaces/id/{workspaceId}/projects/list
+            description: List projects for the current user
+        listUserWorkspaceAndWorkspaceRoles:
+            method: post
+            resourcePath: /api/users/workspaces/roles/list
+            description: List workspaces and roles for the current user
+        listUserWorkspaces:
+            method: post
+            resourcePath: /api/users/workspaces/list
+            description: List workspaces for the current user
+        listUsers:
+            method: post
+            resourcePath: /api/users/list
+            description: Retrieve a list of all users.
+        listUsersAndRolesByWorkspace:
+            method: post
+            resourcePath: /api/workspaces/id/{workspaceId}/users/list
+            description: Retrieve users and roles list belonging to workspace
+        listUsersByCspRole:
+            method: post
+            resourcePath: /api/roles/mappings/csp-roles/list
+            description: List users by csp role
+        listUsersByPlatformRole:
+            method: post
+            resourcePath: /api/roles/mappings/platform-roles/users/list
+            description: List users by platform role
+        listUsersByWorkspaceRole:
+            method: post
+            resourcePath: /api/roles/mappings/workspace-roles/users/list
+            description: List users by workspace role
+        listWorkspaceActionsByPermissionID:
+            method: post
+            resourcePath: /api/mcmp-api-permission-action-mappings/actions/list
+            description: Returns all workspace actions mapped to a specific permission
+        listWorkspaceProjects:
+            method: post
+            resourcePath: /api/workspaces/projects/list
+            description: Retrieve project list belonging to specific workspace
+        listWorkspaceRoles:
+            method: post
+            resourcePath: /api/roles/workspace-roles/list
+            description: Get a list of all workspace roles
+        listWorkspaceUsers:
+            method: post
+            resourcePath: /api/workspaces/users/list
+            description: List users by workspace criteria
+        listWorkspaces:
+            method: post
+            resourcePath: /api/workspaces/list
+            description: Retrieve a list of all workspaces.
+        mciamAuthCerts:
+            method: get
+            resourcePath: /api/auth/certs
+            description: Retrieve authentication certificates for MC-IAM-Manager to be used in target frameworks for token validation.
+        mciamCheckHealth:
+            method: get
+            resourcePath: /readyz
+            description: Check the health status of the service.
+        mciamCreateCredential:
+            method: post
+            resourcePath: /api/csp-credentials
+            description: 새로운 CSP 인증 정보를 생성합니다
+        mciamDeleteCredential:
+            method: delete
+            resourcePath: /api/csp-credentials/{id}
+            description: CSP 인증 정보를 삭제합니다
+        mciamGetCredentialByID:
+            method: get
+            resourcePath: /api/csp-credentials/{id}
+            description: 특정 CSP 인증 정보를 ID로 조회합니다
+        mciamGetTempCredentialProviders:
+            method: get
+            resourcePath: /api/auth/temp-credential-csps
+            description: Get temporary credential provider information for AWS and GCP
+        mciamGetTemporaryCredentials:
+            method: post
+            resourcePath: /api/workspaces/temporary-credentials
+            description: Get temporary credentials for CSP
+        mciamListCredentials:
+            method: get
+            resourcePath: /api/csp-credentials
+            description: 모든 CSP 인증 정보 목록을 조회합니다
+        mciamLogin:
+            method: post
+            resourcePath: /api/auth/login
+            description: Authenticate user and issue JWT token.
+        mciamLogout:
+            method: post
+            resourcePath: /api/auth/logout
+            description: Invalidate the user's refresh token and log out.
+        mciamRefreshToken:
+            method: post
+            resourcePath: /api/auth/refresh
+            description: Refresh JWT access token using a valid refresh token.
+        mciamUpdateCredential:
+            method: put
+            resourcePath: /api/csp-credentials/{id}
+            description: CSP 인증 정보를 업데이트합니다
+        mciamValidateToken:
+            method: post
+            resourcePath: /api/auth/validate
+            description: Validate the current access token and refresh if expired
+        mciamWorkspaceTicket:
+            method: post
+            resourcePath: /api/workspaces/workspace-ticket
+            description: Set workspace ticket
+        mcmpApiCall:
+            method: post
+            resourcePath: /api/mcmp-apis/mcmpApiCall
+            description: Executes a defined MCMP API action with parameters structured in McmpApiCallRequest.
+        registerMenusFromBody:
+            method: post
+            resourcePath: /api/menus/setup/initial-menus2
+            description: 'Parse YAML text in the request body and register or update menus in the database. Recommended Content-Type: text/plain, text/yaml, application/yaml.'
+        registerMenusFromYAML:
+            method: post
+            resourcePath: /api/menus/setup/initial-menus
+            description: Register or update menus from a local YAML file specified by the filePath query parameter, or from the MCWEBCONSOLE_MENUYAML URL in .env if not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.
+        removeCspRoleMappings:
+            method: delete
+            resourcePath: /api/roles/unassign/csp-roles
+            description: Delete a mapping between workspace role and CSP role
+        removeMciamPermissionFromRole:
+            method: delete
+            resourcePath: /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}
+            description: 역할에서 MC-IAM 권한을 제거합니다.
+        removePlatformRole:
+            method: delete
+            resourcePath: /api/roles/unassign/platform-role
+            description: Remove a platform role from a user
+        removeProjectFromWorkspace:
+            method: delete
+            resourcePath: /api/workspaces/unassign/projects
+            description: Remove a project from a workspace
+        removeRole:
+            method: delete
+            resourcePath: /api/roles/id/{roleId}/unassign
+            description: Remove a role from a user
+        removeUserFromWorkspace:
+            method: delete
+            resourcePath: /api/workspaces/{id}/users/{userId}
+            description: Remove a user from a workspace
+        removeWorkspaceRole:
+            method: delete
+            resourcePath: /api/roles/unassign/workspace-role
+            description: Remove a workspace role from a user
+        setActiveVersion:
+            method: put
+            resourcePath: /api/mcmp-apis/name/{serviceName}/versions/{version}/activate
+            description: Sets the specified version of an MCMP API service as the active one.
+        setupInitialAdmin:
+            method: post
+            resourcePath: /api/initial-admin
+            description: Creates the initial platform admin user with necessary permissions. platform admin 생성인데
+        syncMcmpAPIs:
+            method: post
+            resourcePath: /api/mcmp-apis/syncMcmpAPIs
+            description: Triggers the synchronization of MCMP API definitions from the configured YAML URL to the database.
+        syncProjects:
+            method: post
+            resourcePath: /api/setup/sync-projects
+            description: mc-infra-manager의 네임스페이스 목록을 조회하여 로컬 DB에 없는 프로젝트를 추가합니다.
+        testCallGetAllNs:
+            method: get
+            resourcePath: /api/mcmp-apis/test/mc-infra-manager/getallns
+            description: Calls the GetAllNs action of the mc-infra-manager service via the CallApi service.
+        updateCspRole:
+            method: put
+            resourcePath: /api/roles/csp-roles/id/{roleId}
+            description: Update role information
+        updateMapping:
+            method: put
+            resourcePath: /api/mcmp-api-permission-action-mappings/permissions/{permissionId}/actions/{actionId}
+            description: Updates an existing mapping between a permission and an API action
+        updateMciamPermission:
+            method: put
+            resourcePath: /api/permissions/mciam/{id}
+            description: Update the details of an existing permission.
+        updateMenu:
+            method: put
+            resourcePath: /api/menus/id/{menuId}
+            description: Update menu information
+        updateProject:
+            method: put
+            resourcePath: /api/projects/{id}
+            description: Update the details of an existing project.
+        updateResourceType:
+            method: put
+            resourcePath: /api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId
+            description: 리소스 타입 정보를 업데이트합니다
+        updateRole:
+            method: put
+            resourcePath: /api/roles/id/{roleId}
+            description: Update the details of an existing role.
+        updateUser:
+            method: put
+            resourcePath: /api/users/{id}
+            description: Update the details of an existing user.
+        updateUserStatus:
+            method: post
+            resourcePath: /api/users/id/{userId}/status
+            description: Update user status (active/inactive)
+        updateWorkspace:
+            method: put
+            resourcePath: /api/workspaces/id/{workspaceId}
+            description: Update the details of an existing workspace.
+    mc-workflow-manager:
+        _meta:
+            version: 0.5.0
+            repository: https://github.com/m-cmp/mc-workflow-manager
+            generatedAt: "2026-01-06T07:17:34Z"
+        checkConnectionUsingGET:
+            method: get
+            resourcePath: /readyz
+            description: checkConnection
+        checkConnectionUsingPOST:
+            method: post
+            resourcePath: /oss/connection-check
+            description: checkConnection
+        deleteEventListnerUsingDELETE:
+            method: delete
+            resourcePath: /eventlistener/{eventListenerIdx}
+            description: deleteEventListner
+        deleteOssTypeUsingDELETE:
+            method: delete
+            resourcePath: /ossType/{ossTypeIdx}
+            description: deleteOssType
+        deleteOssUsingDELETE:
+            method: delete
+            resourcePath: /oss/{ossIdx}
+            description: deleteOss
+        deleteWorkflowStageTypeUsingDELETE:
+            method: delete
+            resourcePath: /workflowStageType/{workflowStageTypeIdx}
+            description: deleteWorkflowStageType
+        deleteWorkflowStageUsingDELETE:
+            method: delete
+            resourcePath: /workflowStage/{workflowStageIdx}
+            description: deleteWorkflowStage
+        deleteWorkflowUsingDELETE:
+            method: delete
+            resourcePath: /workflow/{workflowIdx}
+            description: deleteWorkflow
+        detailEventListenerUsingGET:
+            method: get
+            resourcePath: /eventlistener/{eventListenerIdx}
+            description: detailEventListener
+        detailOssTypeUsingGET:
+            method: get
+            resourcePath: /ossType/{ossTypeIdx}
+            description: detailOssType
+        detailOssUsingGET:
+            method: get
+            resourcePath: /oss/{ossIdx}
+            description: detailOss
+        detailWorkflowStageTypeUsingGET:
+            method: get
+            resourcePath: /workflowStageType/{workflowStageTypeIdx}
+            description: detailWorkflowStageType
+        detailWorkflowStageUsingGET:
+            method: get
+            resourcePath: /workflowStage/{workflowStageIdx}
+            description: detailWorkflowStage
+        errorUsingDELETE:
+            method: delete
+            resourcePath: /error
+            description: error
+        errorUsingGET:
+            method: get
+            resourcePath: /error
+            description: error
+        errorUsingHEAD:
+            method: head
+            resourcePath: /error
+            description: error
+        errorUsingOPTIONS:
+            method: options
+            resourcePath: /error
+            description: error
+        errorUsingPATCH:
+            method: patch
+            resourcePath: /error
+            description: error
+        errorUsingPOST:
+            method: post
+            resourcePath: /error
+            description: error
+        errorUsingPUT:
+            method: put
+            resourcePath: /error
+            description: error
+        getDefaultWorkflowStageUsingGET:
+            method: get
+            resourcePath: /workflowStage/default/script/{workflowStageTypeName}
+            description: getDefaultWorkflowStage
+        getEventListenerListUsingGET:
+            method: get
+            resourcePath: /eventlistener/list
+            description: getEventListenerList
+        getOssListUsingGET:
+            method: get
+            resourcePath: /oss/list/{ossTypeName}
+            description: getOssList
+        getOssListUsingGET_1:
+            method: get
+            resourcePath: /oss/list
+            description: getOssList
+        getOssTypeFilteredListUsingGET:
+            method: get
+            resourcePath: /ossType/filter/list
+            description: getOssTypeFilteredList
+        getOssTypeListUsingGET:
+            method: get
+            resourcePath: /ossType/list
+            description: getOssTypeList
+        getWorkflowDetailUsingGET:
+            method: get
+            resourcePath: /eventlistener/workflowDetail/{workflowIdx}/{evnetListenerYn}
+            description: getWorkflowDetail
+        getWorkflowHistoryListUsingGET:
+            method: get
+            resourcePath: /workflow/history/{workflowIdx}
+            description: getWorkflowHistoryList
+        getWorkflowListUsingGET:
+            method: get
+            resourcePath: /eventlistener/workflowList/{eventListenerYn}
+            description: getWorkflowList
+        getWorkflowListUsingGET_1:
+            method: get
+            resourcePath: /workflow/list
+            description: getWorkflowList
+        getWorkflowLogUsingGET:
+            method: get
+            resourcePath: /workflow/log/{workflowIdx}
+            description: getWorkflowLog
+        getWorkflowParamListUsingGET:
+            method: get
+            resourcePath: /workflow/param/list
+            description: getWorkflowParamList
+        getWorkflowRunHistoryListUsingGET:
+            method: get
+            resourcePath: /workflow/runHistory/{workflowIdx}
+            description: getWorkflowRunHistoryList
+        getWorkflowStageHistoryListUsingGET:
+            method: get
+            resourcePath: /workflow/stageHistory/{workflowIdx}
+            description: getWorkflowStageHistoryList
+        getWorkflowStageListUsingGET:
+            method: get
+            resourcePath: /workflow/workflowStageList
+            description: getWorkflowStageList
+        getWorkflowStageListUsingGET_1:
+            method: get
+            resourcePath: /workflowStage/list
+            description: getWorkflowStageList
+        getWorkflowStageListUsingGET_2:
+            method: get
+            resourcePath: /workflowStageType/list
+            description: getWorkflowStageList
+        getWorkflowTemplateUsingGET:
+            method: get
+            resourcePath: /workflow/template/{workflowName}
+            description: getWorkflowTemplate
+        getWorkflowUsingGET:
+            method: get
+            resourcePath: /workflow/{workflowIdx}
+            description: getWorkflow
+        isEventListenerDuplicatedUsingGET:
+            method: get
+            resourcePath: /eventlistener/duplicate
+            description: isEventListenerDuplicated
+        isOssInfoDuplicatedUsingGET:
+            method: get
+            resourcePath: /oss/duplicate
+            description: isOssInfoDuplicated
+        isWorkflowNameDuplicatedUsingGET:
+            method: get
+            resourcePath: /workflow/name/duplicate
+            description: isWorkflowNameDuplicated
+        isWorkflowStageNameDuplicatedUsingGET:
+            method: get
+            resourcePath: /workflowStage/duplicate
+            description: isWorkflowStageNameDuplicated
+        openapiJsonUsingGET:
+            method: get
+            resourcePath: /v3/api-docs
+            description: openapiJson
+        openapiJsonUsingGET_1:
+            method: get
+            resourcePath: /v3/api-docs/swagger-config
+            description: openapiJson
+        openapiYamlUsingGET:
+            method: get
+            resourcePath: /v3/api-docs.yaml
+            description: openapiYaml
+        redirectToUiUsingGET:
+            method: get
+            resourcePath: /swagger-ui.html
+            description: redirectToUi
+        registEventListnerUsingPOST:
+            method: post
+            resourcePath: /eventlistener
+            description: registEventListner
+        registOssTypeUsingPOST:
+            method: post
+            resourcePath: /ossType
+            description: registOssType
+        registOssUsingPOST:
+            method: post
+            resourcePath: /oss
+            description: registOss
+        registWorkflowStageUsingPOST:
+            method: post
+            resourcePath: /workflowStage
+            description: registWorkflowStage
+        registWorkflowStageUsingPOST_1:
+            method: post
+            resourcePath: /workflowStageType
+            description: registWorkflowStage
+        registWorkflowUsingPOST:
+            method: post
+            resourcePath: /workflow
+            description: registWorkflow
+        runEventListenerUsingGET:
+            method: get
+            resourcePath: /eventlistener/run/{eventListenerIdx}
+            description: runEventListener
+        runWorkflowGetUsingGET:
+            method: get
+            resourcePath: /workflow/run/{workflowIdx}
+            description: runWorkflowGet
+        runWorkflowPostUsingPOST:
+            method: post
+            resourcePath: /workflow/run
+            description: runWorkflowPost
+        updateEventListnerUsingPATCH:
+            method: patch
+            resourcePath: /eventlistener/{eventListenerIdx}
+            description: updateEventListner
+        updateOssTypeUsingPATCH:
+            method: patch
+            resourcePath: /ossType/{ossTypeIdx}
+            description: updateOssType
+        updateOssUsingPATCH:
+            method: patch
+            resourcePath: /oss/{ossIdx}
+            description: updateOss
+        updateWorkflowStageTypeUsingPATCH:
+            method: patch
+            resourcePath: /workflowStageType/{workflowStageTypeIdx}
+            description: updateWorkflowStageType
+        updateWorkflowStageUsingPATCH:
+            method: patch
+            resourcePath: /workflowStage/{workflowStageIdx}
+            description: updateWorkflowStage
+        updateWorkflowUsingPATCH:
+            method: patch
+            resourcePath: /workflow/{workflowIdx}
+            description: updateWorkflow

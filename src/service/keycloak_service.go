@@ -62,6 +62,14 @@ type KeycloakService interface {
 	GetImpersonationTokenByServiceAccount(ctx context.Context) (*gocloak.JWT, error)
 	// AssignRealmRoleToUser assigns a realm role to a user
 	AssignRealmRoleToUser(ctx context.Context, kcUserId, roleName string) error
+	// CheckRealmRoleExists checks if a realm role exists
+	CheckRealmRoleExists(ctx context.Context, roleName string) (bool, error)
+	// CreateRealmRole creates a realm role
+	CreateRealmRole(ctx context.Context, roleName string) error
+	// CreateRealmRoleAndWait creates a realm role and waits for it to be available
+	CreateRealmRoleAndWait(ctx context.Context, roleName string) error
+	// RemoveRealmRoleFromUser removes a realm role from a user
+	RemoveRealmRoleFromUser(ctx context.Context, kcUserId, roleName string) error
 	// IssueWorkspaceTicket 워크스페이스 티켓을 발행합니다.
 	IssueWorkspaceTicket(ctx context.Context, kcUserId string, workspaceID uint) (string, map[string]interface{}, error)
 	// 기본 Role 정의
@@ -811,7 +819,7 @@ func (s *keycloakService) SetupInitialKeycloakAdmin(ctx context.Context, adminTo
 	// 3. platformAdmin 역할 할당. patformAdmin 역할이 없으면 생성
 	log.Printf("[DEBUG] Setting platformAdmin role")
 	platformAdminRoleName := "platformAdmin"
-	platformAdminRole := gocloak.Role{}
+	var platformAdminRole gocloak.Role
 	realmRole, err := config.KC.Client.GetRealmRole(ctx, adminToken.AccessToken, config.KC.Realm, platformAdminRoleName)
 	if err != nil {
 		log.Printf("failed to get platformAdmin role: %v", err)
@@ -839,7 +847,7 @@ func (s *keycloakService) SetupInitialKeycloakAdmin(ctx context.Context, adminTo
 	} else {
 		platformAdminRole = *realmRole
 	}
-	log.Printf("platformAdminRole: %s", platformAdminRole)
+	log.Printf("platformAdminRole: %+v", platformAdminRole)
 	// platformAdminRole, err := config.KC.Client.GetRealmRole(ctx, adminToken.AccessToken, config.KC.Realm, "platformAdmin")
 	// if err != nil {
 	// 	log.Printf("failed to get platformAdmin role: %v", err)
@@ -1139,7 +1147,7 @@ func (s *keycloakService) GetImpersonationTokenByAdminToken(ctx context.Context,
 		return "", fmt.Errorf("failed to decode impersonation response: %w", err)
 	}
 
-	log.Printf("[DEBUG] Impersonation resp.StatusCode : ", resp.StatusCode) //if result.Token == "" {
+	log.Printf("[DEBUG] Impersonation resp.StatusCode : %d", resp.StatusCode) //if result.Token == "" {
 	// resp.Body를 다시 읽기 위해 전체 바이트로 읽음
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	log.Printf("[DEBUG] Impersonation response body: %s", string(respBody))
@@ -1335,4 +1343,129 @@ func (s *keycloakService) GetClientCredentialsToken(ctx context.Context) (*goclo
 	}
 	//log.Printf("[DEBUG] client credentials token: %s", token)
 	return token, nil
+}
+
+// CheckRealmRoleExists checks if a realm role exists
+func (s *keycloakService) CheckRealmRoleExists(ctx context.Context, roleName string) (bool, error) {
+	if config.KC == nil || config.KC.Client == nil {
+		return false, fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	_, err = config.KC.Client.GetRealmRole(ctx, token.AccessToken, config.KC.Realm, roleName)
+	if err != nil {
+		// Role not found
+		return false, nil
+	}
+	return true, nil
+}
+
+// CreateRealmRole creates a realm role
+func (s *keycloakService) CreateRealmRole(ctx context.Context, roleName string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	newRole := gocloak.Role{
+		Name:        &roleName,
+		Description: gocloak.StringP("Platform role"),
+	}
+
+	result, err := config.KC.Client.CreateRealmRole(ctx, token.AccessToken, config.KC.Realm, newRole)
+	if err != nil {
+		return fmt.Errorf("failed to create realm role %s: %w", roleName, err)
+	}
+
+	log.Printf("Successfully created realm role: %s, result: %s", roleName, result)
+	return nil
+}
+
+// RemoveRealmRoleFromUser removes a realm role from a user
+func (s *keycloakService) RemoveRealmRoleFromUser(ctx context.Context, kcUserId, roleName string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	// Get the role by name
+	roles, err := config.KC.Client.GetRealmRoles(ctx, token.AccessToken, config.KC.Realm, gocloak.GetRoleParams{
+		Search: &roleName,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get realm role %s: %w", roleName, err)
+	}
+	if len(roles) == 0 {
+		log.Printf("Realm role %s not found, skipping removal", roleName)
+		return nil
+	}
+	if len(roles) > 1 {
+		log.Printf("Warning: Found multiple roles matching '%s'. Using the first one.", roleName)
+	}
+
+	// Remove the role from the user
+	err = config.KC.Client.DeleteRealmRoleFromUser(ctx, token.AccessToken, config.KC.Realm, kcUserId, []gocloak.Role{*roles[0]})
+	if err != nil {
+		return fmt.Errorf("failed to remove realm role %s from user %s: %w", roleName, kcUserId, err)
+	}
+
+	log.Printf("Successfully removed realm role %s from user %s", roleName, kcUserId)
+	return nil
+}
+
+// CreateRealmRoleAndWait creates a realm role and waits for it to be available
+func (s *keycloakService) CreateRealmRoleAndWait(ctx context.Context, roleName string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	newRole := gocloak.Role{
+		Name:        &roleName,
+		Description: gocloak.StringP("Platform role"),
+	}
+
+	result, err := config.KC.Client.CreateRealmRole(ctx, token.AccessToken, config.KC.Realm, newRole)
+	if err != nil {
+		return fmt.Errorf("failed to create realm role %s: %w", roleName, err)
+	}
+
+	log.Printf("Realm role creation initiated: %s, result: %s", roleName, result)
+
+	// 1초마다 최대 20번 시도하여 role 생성 확인
+	maxRetries := 20
+	for i := 0; i < maxRetries; i++ {
+		time.Sleep(1 * time.Second)
+
+		exists, err := s.CheckRealmRoleExists(ctx, roleName)
+		if err != nil {
+			log.Printf("Failed to check realm role existence (attempt %d/%d): %v", i+1, maxRetries, err)
+			continue
+		}
+
+		if exists {
+			log.Printf("Realm role %s successfully created and available (attempt %d/%d)", roleName, i+1, maxRetries)
+			return nil
+		}
+
+		log.Printf("Realm role %s not yet available, waiting... (attempt %d/%d)", roleName, i+1, maxRetries)
+	}
+
+	return fmt.Errorf("realm role %s was not available after %d attempts", roleName, maxRetries)
 }

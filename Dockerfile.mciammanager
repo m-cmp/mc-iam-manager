@@ -1,6 +1,6 @@
 # --- Build Stage ---
-FROM golang:1.23.1-alpine AS builder
-# Updated Go version to match go.mod (1.23.1)
+FROM golang:1.25.0-alpine AS builder
+# Updated Go version to match go.mod (1.25.0)
 
 # Install build dependencies if any (e.g., git for private modules)
 RUN apk add --no-cache git
