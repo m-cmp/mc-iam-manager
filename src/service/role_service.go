@@ -107,10 +107,14 @@ func (s *RoleService) CreateRoleWithAllDependencies(
 				}
 
 				// 매핑 생성 (트랜잭션 내에서)
+				authMethod := constants.AuthMethodOIDC
+				if cspRole.AuthMethod != "" {
+					authMethod = cspRole.AuthMethod
+				}
 				mapping := &model.RoleMasterCspRoleMapping{
 					RoleID:      createdRole.ID,
 					CspRoleID:   cspRoleID,
-					AuthMethod:  constants.AuthMethodOIDC,
+					AuthMethod:  authMethod,
 					Description: description,
 				}
 
