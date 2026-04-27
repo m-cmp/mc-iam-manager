@@ -31,6 +31,7 @@ type AlibabaCredentialService interface {
 		roleArn string,
 		oidcToken string,
 		region string,
+		audience string,
 	) (*model.CspCredentialResponse, error)
 }
 
@@ -166,6 +167,7 @@ func (s *alibabaCredentialService) AssumeRoleWithOIDC(
 	roleArn string,
 	oidcToken string,
 	region string,
+	audience string,
 ) (*model.CspCredentialResponse, error) {
 	log.Printf("[ALIBABA_CREDENTIAL] AssumeRoleWithOIDC - RoleArn: %s, OIDCProviderArn: %s", roleArn, oidcProviderArn)
 
@@ -182,6 +184,11 @@ func (s *alibabaCredentialService) AssumeRoleWithOIDC(
 	formData.Set("OIDCToken", oidcToken)
 	formData.Set("RoleSessionName", sessionName)
 	formData.Set("Format", "JSON")
+	formData.Set("Timestamp", time.Now().UTC().Format("2006-01-02T15:04:05Z"))
+	formData.Set("SignatureNonce", fmt.Sprintf("%d", time.Now().UnixNano()))
+	if audience != "" {
+		formData.Set("OIDCTokenAudience", audience)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, alibabaStsEndpoint, strings.NewReader(formData.Encode()))
 	if err != nil {
