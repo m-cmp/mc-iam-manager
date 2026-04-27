@@ -96,7 +96,7 @@ type CspAccountFilter struct {
 // CreateCspAccountRequest CSP 계정 생성 요청
 type CreateCspAccountRequest struct {
 	Name        string            `json:"name" binding:"required"`
-	CspType     string            `json:"csp_type" binding:"required,oneof=aws gcp azure"`
+	CspType     string            `json:"csp_type" binding:"required,oneof=aws gcp azure alibaba tencent ibm ncp nhn kt openstack"`
 	AccountInfo map[string]string `json:"account_info"`
 	Description string            `json:"description"`
 }

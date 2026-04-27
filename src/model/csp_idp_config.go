@@ -272,3 +272,37 @@ type UpdateCspIdpConfigRequest struct {
 	IsActive    *bool             `json:"is_active"`
 	Description string            `json:"description"`
 }
+
+// CspIdpSummary CSP 계정별 IDP 설정 현황 요약
+type CspIdpSummary struct {
+	CspAccountID   uint           `json:"csp_account_id"`
+	CspAccountName string         `json:"csp_account_name"`
+	CspType        string         `json:"csp_type"`
+	TotalCount     int            `json:"total_count"`
+	ActiveCount    int            `json:"active_count"`
+	MethodCounts   map[string]int `json:"method_counts"`
+}
+
+// HealthCheckResult IDP 연결 상태 확인 결과 (단건)
+type HealthCheckResult struct {
+	ConfigID   uint   `json:"config_id"`
+	ConfigName string `json:"config_name"`
+	CspType    string `json:"csp_type"`
+	AuthMethod string `json:"auth_method"`
+	Status     string `json:"status"` // CONNECTED, FAILED, TIMEOUT
+	ErrorMsg   string `json:"error_message,omitempty"`
+	CheckedAt  string `json:"checked_at"`
+}
+
+// BulkHealthCheckRequest IDP 연결 상태 일괄 확인 요청 (선택적 필터)
+type BulkHealthCheckRequest struct {
+	CspAccountID *uint `json:"csp_account_id,omitempty"`
+}
+
+// BulkHealthCheckResponse IDP 연결 상태 일괄 확인 응답
+type BulkHealthCheckResponse struct {
+	TotalCount     int                 `json:"total_count"`
+	ConnectedCount int                 `json:"connected_count"`
+	FailedCount    int                 `json:"failed_count"`
+	Results        []HealthCheckResult `json:"results"`
+}
