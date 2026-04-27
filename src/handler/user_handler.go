@@ -438,6 +438,72 @@ func (h *UserHandler) ChangeMyPassword(c echo.Context) error {
 	})
 }
 
+// GetMyPlatformRoles godoc
+// @Summary 내 유효 플랫폼 역할 목록 조회
+// @Description 현재 로그인한 사용자에게 실제로 적용되는 플랫폼 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을 통합하여 반환합니다.
+// @Tags users
+// @Produce json
+// @Success 200 {array} model.RoleMaster
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/me/platform-roles [get]
+// @Id getMyPlatformRoles
+func (h *UserHandler) GetMyPlatformRoles(c echo.Context) error {
+	kcUserIdVal := c.Get("kcUserId")
+	if kcUserIdVal == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+	kcUserID, ok := kcUserIdVal.(string)
+	if !ok || kcUserID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	user, err := h.userService.GetUserByKcID(c.Request().Context(), kcUserID)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
+	}
+
+	roles, err := h.roleService.GetEffectivePlatformRoles(user.ID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
+}
+
+// GetMyWorkspaceRoles godoc
+// @Summary 내 유효 워크스페이스 역할 목록 조회
+// @Description 현재 로그인한 사용자에게 실제로 적용되는 워크스페이스별 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을 통합하여 반환합니다.
+// @Tags users
+// @Produce json
+// @Success 200 {array} model.EffectiveWorkspaceRole
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/me/workspace-roles [get]
+// @Id getMyWorkspaceRoles
+func (h *UserHandler) GetMyWorkspaceRoles(c echo.Context) error {
+	kcUserIdVal := c.Get("kcUserId")
+	if kcUserIdVal == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+	kcUserID, ok := kcUserIdVal.(string)
+	if !ok || kcUserID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	user, err := h.userService.GetUserByKcID(c.Request().Context(), kcUserID)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
+	}
+
+	roles, err := h.roleService.GetEffectiveWorkspaceRoles(user.ID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
+}
+
 // UpdateUser godoc
 // @Summary Update user
 // @Description Update the details of an existing user.

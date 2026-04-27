@@ -379,16 +379,91 @@ func (r *OrganizationRepository) RemoveUserFromOrganization(userID, orgID uint) 
 	return nil
 }
 
-// FindUserOrganizations 사용자가 소속된 조직 목록 조회
-func (r *OrganizationRepository) FindUserOrganizations(userID uint) ([]model.Organization, error) {
-	var orgs []model.Organization
-	if err := r.db.Joins("JOIN mcmp_user_organizations uo ON uo.organization_id = mcmp_organizations.id").
-		Where("uo.user_id = ?", userID).
-		Order("mcmp_organizations.organization_code ASC").
-		Find(&orgs).Error; err != nil {
+// FindUserOrganizations 사용자가 소속된 조직 목록 조회 (계층 정보 포함)
+func (r *OrganizationRepository) FindUserOrganizations(userID uint) ([]model.OrganizationTree, error) {
+	type RawResult struct {
+		ID               uint
+		ParentID         *uint
+		OrganizationCode string
+		Name             string
+		Description      string
+		Level            int
+		Path             string
+		UserCount        int
+	}
+	var results []RawResult
+
+	query := `
+        WITH RECURSIVE org_tree AS (
+            SELECT
+                o.id,
+                o.parent_id,
+                o.organization_code,
+                o.name,
+                o.description,
+                1 AS level,
+                o.name::text AS path,
+                (SELECT COUNT(*) FROM mcmp_user_organizations uc WHERE uc.organization_id = o.id) AS user_count
+            FROM mcmp_organizations o
+            WHERE o.parent_id IS NULL
+
+            UNION ALL
+
+            SELECT
+                o.id,
+                o.parent_id,
+                o.organization_code,
+                o.name,
+                o.description,
+                ot.level + 1,
+                ot.path || '/' || o.name,
+                (SELECT COUNT(*) FROM mcmp_user_organizations uc WHERE uc.organization_id = o.id) AS user_count
+            FROM mcmp_organizations o
+            INNER JOIN org_tree ot ON o.parent_id = ot.id
+        )
+        SELECT ot.*
+        FROM org_tree ot
+        INNER JOIN mcmp_user_organizations uo ON uo.organization_id = ot.id
+        WHERE uo.user_id = ?
+        ORDER BY ot.organization_code ASC
+    `
+	if err := r.db.Raw(query, userID).Scan(&results).Error; err != nil {
 		return nil, fmt.Errorf("error finding organizations for user %d: %w", userID, err)
 	}
-	return orgs, nil
+
+	trees := make([]model.OrganizationTree, len(results))
+	for i, r := range results {
+		trees[i] = model.OrganizationTree{
+			ID:               r.ID,
+			ParentID:         r.ParentID,
+			OrganizationCode: r.OrganizationCode,
+			Name:             r.Name,
+			Description:      r.Description,
+			Level:            r.Level,
+			Path:             r.Path,
+			UserCount:        r.UserCount,
+		}
+	}
+	return trees, nil
+}
+
+// ReplaceUserOrganizations 사용자 조직 전체 교체 (기존 제거 후 신규 할당)
+func (r *OrganizationRepository) ReplaceUserOrganizations(userID uint, orgIDs []uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ?", userID).Delete(&model.UserOrganization{}).Error; err != nil {
+			return fmt.Errorf("error removing existing organizations for user %d: %w", userID, err)
+		}
+		for _, orgID := range orgIDs {
+			mapping := model.UserOrganization{
+				UserID:         userID,
+				OrganizationID: orgID,
+			}
+			if err := tx.Create(&mapping).Error; err != nil {
+				return fmt.Errorf("error assigning user %d to organization %d: %w", userID, orgID, err)
+			}
+		}
+		return nil
+	})
 }
 
 // FindOrganizationUsers 조직에 소속된 사용자 목록 조회
