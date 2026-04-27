@@ -25,6 +25,7 @@ type AdminHandler struct {
 	workspaceService     service.WorkspaceService
 	menuService          service.MenuService
 	organizationService  *service.OrganizationService
+	companyService       *service.CompanyService
 }
 
 // NewAdminHandler 새 AdminHandler 인스턴스 생성
@@ -36,6 +37,7 @@ func NewAdminHandler(db *gorm.DB) *AdminHandler {
 		workspaceService:    *service.NewWorkspaceService(db),
 		menuService:         *service.NewMenuService(db),
 		organizationService: service.NewOrganizationService(db),
+		companyService:      service.NewCompanyService(db),
 	}
 }
 
@@ -188,6 +190,11 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	err = h.organizationService.LoadAndRegisterOrganizationsFromYAML("")
 	if err != nil {
 		log.Printf("[ERROR] Register default organizations failed: %v", err)
+	}
+
+	// 기본 회사 생성 (COMP-006: 이미 존재하면 skip, 실패해도 non-fatal)
+	if err := h.companyService.CreateDefaultCompany(); err != nil {
+		log.Printf("[WARNING] Failed to create default company: %v", err)
 	}
 
 	// Platform Admin 역할에 모든 메뉴 매핑 추가 : 메뉴 목록 조회에 구현되어 있음.

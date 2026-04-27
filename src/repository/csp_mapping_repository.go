@@ -23,14 +23,19 @@ func NewCspMappingRepository(db *gorm.DB) *CspMappingRepository {
 	return &CspMappingRepository{db: db}
 }
 
-// FindCspRoleMappingsByWorkspaceRoleIDAndCspType 워크스페이스 역할 ID와 CSP 타입으로 CSP 역할 매핑 조회
-func (r *CspMappingRepository) FindCspRoleMappingsByRoleIDAndCspType(roleID uint, cspType string) (*model.RoleMasterCspRoleMapping, error) {
+// FindCspRoleMappingsByRoleIDAndCspType 플랫폼 역할 ID, CSP 타입, 인증방식으로 CSP 역할 매핑 조회.
+// authMethod가 비어 있으면 인증방식 무관 첫 번째 매핑을 반환한다.
+func (r *CspMappingRepository) FindCspRoleMappingsByRoleIDAndCspType(roleID uint, cspType string, authMethod string) (*model.RoleMasterCspRoleMapping, error) {
 	var mappings []*model.RoleMasterCspRoleMapping
-	err := r.db.
+	q := r.db.
 		Joins("JOIN mcmp_role_csp_roles ON mcmp_role_csp_roles.id = mcmp_role_csp_role_mappings.csp_role_id").
-		Where("mcmp_role_csp_role_mappings.role_id = ? AND mcmp_role_csp_roles.csp_type = ?", roleID, cspType).
-		Find(&mappings).Error
-	if err != nil {
+		Where("mcmp_role_csp_role_mappings.role_id = ? AND mcmp_role_csp_roles.csp_type = ?", roleID, cspType)
+
+	if authMethod != "" {
+		q = q.Where("mcmp_role_csp_role_mappings.auth_method = ?", authMethod)
+	}
+
+	if err := q.Find(&mappings).Error; err != nil {
 		return nil, err
 	}
 
@@ -41,13 +46,12 @@ func (r *CspMappingRepository) FindCspRoleMappingsByRoleIDAndCspType(roleID uint
 	// 첫 번째 매핑을 반환하고 CspRoles 배열을 채움
 	targetMapping := mappings[0]
 
-	// CspRoles 배열을 채우기 위해 CspRole 정보를 조회
+	// CspRoles 배열을 채우기 위해 CspRole 정보를 조회 (CspIdpConfig 포함)
 	var cspRole model.CspRole
-	if err := r.db.Where("id = ?", targetMapping.CspRoleID).First(&cspRole).Error; err != nil {
+	if err := r.db.Preload("CspIdpConfig").Where("id = ?", targetMapping.CspRoleID).First(&cspRole).Error; err != nil {
 		if err != gorm.ErrRecordNotFound {
 			return nil, err
 		}
-		// CSP 역할이 없으면 빈 배열로 설정
 		targetMapping.CspRoles = []*model.CspRole{}
 	} else {
 		targetMapping.CspRoles = []*model.CspRole{&cspRole}
