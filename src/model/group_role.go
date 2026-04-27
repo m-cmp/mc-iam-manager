@@ -75,3 +75,8 @@ type GroupWorkspaceRoleResponse struct {
 type AssignUserGroupsRequest struct {
 	GroupIDs []uint `json:"group_ids" validate:"required,min=1"`
 }
+
+// AssignGroupUsersRequest 그룹에 사용자 일괄 할당 요청 (group 입장)
+type AssignGroupUsersRequest struct {
+	UserIDs []uint `json:"user_ids" validate:"required,min=1"`
+}

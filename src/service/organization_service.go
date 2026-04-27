@@ -284,14 +284,76 @@ func (s *OrganizationService) GetUserOrganizations(userID uint) ([]model.Organiz
 	return s.orgRepo.FindUserOrganizations(userID)
 }
 
-// ReplaceUserOrganizations 사용자 조직 전체 교체 (기존 제거 후 신규 할당)
-func (s *OrganizationService) ReplaceUserOrganizations(userID uint, orgIDs []uint) error {
-	for _, orgID := range orgIDs {
-		if _, err := s.orgRepo.FindByID(orgID); err != nil {
-			return fmt.Errorf("organization not found: %d", orgID)
+// GetUserOrganizationsWithHierarchy 사용자가 소속된 조직 목록을 계층 정보(path, level) 포함하여 조회
+func (s *OrganizationService) GetUserOrganizationsWithHierarchy(userID uint) ([]model.OrganizationTree, error) {
+	orgs, err := s.orgRepo.FindUserOrganizations(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 전체 트리 평면 목록 조회 (path/level 계산용)
+	flatAll, err := s.orgRepo.FindTreeFlat()
+	if err != nil {
+		return nil, err
+	}
+
+	// ID → tree 노드 맵 구성
+	treeMap := make(map[uint]model.OrganizationTree, len(flatAll))
+	for _, node := range flatAll {
+		treeMap[node.ID] = node
+	}
+
+	// 사용자 소속 조직에 계층 정보 적용
+	result := make([]model.OrganizationTree, 0, len(orgs))
+	for _, org := range orgs {
+		if node, ok := treeMap[org.ID]; ok {
+			result = append(result, node)
+		} else {
+			// fallback: 기본 정보만
+			result = append(result, model.OrganizationTree{
+				ID:               org.ID,
+				ParentID:         org.ParentID,
+				OrganizationCode: org.OrganizationCode,
+				Name:             org.Name,
+				Description:      org.Description,
+				CreatedAt:        org.CreatedAt,
+				UpdatedAt:        org.UpdatedAt,
+			})
 		}
 	}
-	return s.orgRepo.ReplaceUserOrganizations(userID, orgIDs)
+	return result, nil
+}
+
+// ReplaceUserGroups 사용자의 그룹 멤버십을 전체 교체 (기존 제거 후 신규 할당)
+func (s *OrganizationService) ReplaceUserGroups(userID uint, groupIDs []uint) error {
+	// 신규 그룹 존재 확인
+	for _, gID := range groupIDs {
+		if _, err := s.orgRepo.FindByID(gID); err != nil {
+			return fmt.Errorf("group not found: %d", gID)
+		}
+	}
+
+	// 기존 그룹 조회
+	currentOrgs, err := s.orgRepo.FindUserOrganizations(userID)
+	if err != nil {
+		return err
+	}
+
+	// 기존 그룹 제거
+	for _, org := range currentOrgs {
+		if err := s.orgRepo.RemoveUserFromOrganization(userID, org.ID); err != nil {
+			// ErrUserOrganizationNotFound는 무시 (이미 제거됨)
+			if !errors.Is(err, repository.ErrUserOrganizationNotFound) {
+				return err
+			}
+		}
+	}
+
+	// 신규 그룹 할당
+	if len(groupIDs) > 0 {
+		return s.orgRepo.AssignUserToOrganizations(userID, groupIDs)
+	}
+	return nil
 }
 
 // GetOrganizationUsers 조직에 소속된 사용자 목록 조회

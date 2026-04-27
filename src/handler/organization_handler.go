@@ -291,10 +291,11 @@ func (h *OrganizationHandler) AssignUserOrganizations(c echo.Context) error {
 
 // GetUserOrganizations godoc
 // @Summary 사용자 소속 조직 조회
-// @Description 사용자가 소속된 조직 목록을 조회합니다. path, level 계층 정보가 포함됩니다.
+// @Description 사용자가 소속된 조직 목록을 조회합니다. hierarchy=true이면 path/level 포함.
 // @Tags organizations
 // @Produce json
 // @Param userId path int true "사용자 ID"
+// @Param hierarchy query bool false "계층 정보(path, level) 포함 여부 (기본: false)"
 // @Success 200 {array} model.OrganizationTree
 // @Failure 400 {object} map[string]string
 // @Security BearerAuth
@@ -306,6 +307,14 @@ func (h *OrganizationHandler) GetUserOrganizations(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID"})
 	}
 
+	if c.QueryParam("hierarchy") == "true" {
+		orgs, err := h.orgService.GetUserOrganizationsWithHierarchy(uint(userID))
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusOK, orgs)
+	}
+
 	orgs, err := h.orgService.GetUserOrganizations(uint(userID))
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -314,18 +323,17 @@ func (h *OrganizationHandler) GetUserOrganizations(c echo.Context) error {
 }
 
 // ReplaceUserGroups godoc
-// @Summary 사용자 그룹 전체 교체
-// @Description 사용자가 소속된 그룹을 전체 교체합니다. 기존 그룹을 모두 제거하고 새로운 그룹을 할당합니다.
-// @Tags groups
+// @Summary 사용자 그룹 멤버십 전체 교체
+// @Description 사용자의 기존 그룹을 모두 제거하고 지정된 그룹으로 교체합니다.
+// @Tags organizations
 // @Accept json
 // @Produce json
 // @Param userId path int true "사용자 ID"
-// @Param body body model.ReplaceUserGroupsRequest true "그룹 교체 요청"
+// @Param body body model.AssignUserGroupsRequest true "교체할 그룹 목록"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users/{userId}/groups [put]
+// @Router /api/users/id/{userId}/groups [put]
 // @Id replaceUserGroups
 func (h *OrganizationHandler) ReplaceUserGroups(c echo.Context) error {
 	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
@@ -333,19 +341,18 @@ func (h *OrganizationHandler) ReplaceUserGroups(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID"})
 	}
 
-	var req model.ReplaceUserGroupsRequest
+	var req model.AssignUserGroupsRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
-
-	if err := h.orgService.ReplaceUserOrganizations(uint(userID), req.GroupIDs); err != nil {
-		if errors.Is(err, repository.ErrOrganizationNotFound) {
-			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	if err := c.Validate(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"message": "사용자 그룹이 교체되었습니다."})
+	if err := h.orgService.ReplaceUserGroups(uint(userID), req.GroupIDs); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "사용자 그룹 멤버십이 교체되었습니다."})
 }
 
 // RemoveUserOrganization godoc
