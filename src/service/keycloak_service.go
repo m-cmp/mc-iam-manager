@@ -33,6 +33,7 @@ type KeycloakService interface {
 	UpdateUser(ctx context.Context, user *model.User) error
 	DeleteUser(ctx context.Context, kcId string) error
 	EnableUser(ctx context.Context, kcUserID string) error
+	DisableUser(ctx context.Context, kcUserID string) error
 	CheckAdminLogin(ctx context.Context) (bool, error)
 	CheckRealm(ctx context.Context) (bool, error)
 	CreateRealm(ctx context.Context, accessToken string) (bool, error)
@@ -438,6 +439,34 @@ func (s *keycloakService) EnableUser(ctx context.Context, kcUserID string) error
 		return fmt.Errorf("failed to enable user %s in keycloak: %w", kcUserID, err)
 	}
 	log.Printf("User '%s' enabled in Keycloak.", kcUserID)
+	return nil
+}
+
+// DisableUser disables a user in Keycloak.
+func (s *keycloakService) DisableUser(ctx context.Context, kcUserID string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+	adminToken, err := config.KC.LoginAdmin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token to disable user: %w", err)
+	}
+	user, err := config.KC.Client.GetUserByID(ctx, adminToken.AccessToken, config.KC.Realm, kcUserID)
+	if err != nil {
+		return fmt.Errorf("failed to get user %s from keycloak before disabling: %w", kcUserID, err)
+	}
+	if user == nil {
+		return fmt.Errorf("user %s not found in keycloak", kcUserID)
+	}
+	userToUpdate := gocloak.User{
+		ID:      &kcUserID,
+		Enabled: gocloak.BoolP(false),
+	}
+	err = config.KC.Client.UpdateUser(ctx, adminToken.AccessToken, config.KC.Realm, userToUpdate)
+	if err != nil {
+		return fmt.Errorf("failed to disable user %s in keycloak: %w", kcUserID, err)
+	}
+	log.Printf("User '%s' disabled in Keycloak.", kcUserID)
 	return nil
 }
 
