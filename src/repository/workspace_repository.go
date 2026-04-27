@@ -64,7 +64,7 @@ func (r *WorkspaceRepository) FindWorkspaces(req *model.WorkspaceFilterRequest) 
 	// If filter conditions exist, retrieve workspaces that match the conditions
 	// Use query builder to create basic query
 	query := r.db.Model(&model.Workspace{})
-	log.Printf("req", req)
+	log.Printf("req: %+v", req)
 
 	if req.WorkspaceID != "" {
 		workspaceIdInt, err := util.StringToUint(req.WorkspaceID)

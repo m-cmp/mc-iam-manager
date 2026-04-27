@@ -1,8 +1,10 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -11,19 +13,23 @@ import (
 
 // CspAccountService CSP 계정 서비스
 type CspAccountService struct {
-	db              *gorm.DB
-	cspAccountRepo  *repository.CspAccountRepository
+	db               *gorm.DB
+	cspAccountRepo   *repository.CspAccountRepository
 	cspIdpConfigRepo *repository.CspIdpConfigRepository
 	cspPolicyRepo    *repository.CspPolicyRepository
+	cspRoleRepo      *repository.CspRoleRepository
+	awsCredService   AwsCredentialService
 }
 
 // NewCspAccountService 새 CspAccountService 인스턴스 생성
 func NewCspAccountService(db *gorm.DB) *CspAccountService {
 	return &CspAccountService{
-		db:              db,
-		cspAccountRepo:  repository.NewCspAccountRepository(db),
+		db:               db,
+		cspAccountRepo:   repository.NewCspAccountRepository(db),
 		cspIdpConfigRepo: repository.NewCspIdpConfigRepository(db),
 		cspPolicyRepo:    repository.NewCspPolicyRepository(db),
+		cspRoleRepo:      repository.NewCspRoleRepository(db),
+		awsCredService:   NewAwsCredentialService(),
 	}
 }
 
@@ -165,39 +171,169 @@ func (s *CspAccountService) DeleteCspAccount(id uint) error {
 	return nil
 }
 
-// ValidateCspAccount CSP 계정 유효성 검증
-func (s *CspAccountService) ValidateCspAccount(id uint) error {
+// ValidateCspAccount CSP 계정 인프라 검증 — 연결된 CspRole의 IDP/IAM 설정을 실제 CSP API로 확인
+func (s *CspAccountService) ValidateCspAccount(ctx context.Context, id uint) (*model.CspAccountValidationResponse, error) {
 	account, err := s.cspAccountRepo.GetByID(id)
 	if err != nil {
-		return fmt.Errorf("failed to get CSP account: %w", err)
+		return nil, fmt.Errorf("failed to get CSP account: %w", err)
 	}
 	if account == nil {
-		return fmt.Errorf("CSP account not found with ID: %d", id)
+		return nil, fmt.Errorf("CSP account not found with ID: %d", id)
 	}
 
-	// CSP 타입별 필수 필드 검증
-	switch account.CspType {
+	roles, err := s.cspRoleRepo.GetByCspAccountID(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CSP roles: %w", err)
+	}
+	if len(roles) == 0 {
+		return nil, fmt.Errorf("no CSP roles found for account ID: %d", id)
+	}
+
+	resp := &model.CspAccountValidationResponse{
+		AccountID:   account.ID,
+		AccountName: account.Name,
+		CspType:     account.CspType,
+		Results:     make([]model.CspAccountValidationResult, 0, len(roles)),
+	}
+
+	for _, role := range roles {
+		result := s.validateCspRole(ctx, role)
+		resp.Results = append(resp.Results, result)
+	}
+
+	log.Printf("Validated CSP account: %s (ID: %d), roles: %d", account.Name, account.ID, len(roles))
+	return resp, nil
+}
+
+// validateCspRole CspRole 단위로 CSP 인프라 검증
+func (s *CspAccountService) validateCspRole(ctx context.Context, role *model.CspRole) model.CspAccountValidationResult {
+	result := model.CspAccountValidationResult{
+		CspRoleID:   role.ID,
+		CspRoleName: role.Name,
+		CspType:     role.CspType,
+	}
+
+	if role.CspIdpConfig == nil {
+		result.AuthMethod = "UNKNOWN"
+		result.Valid = false
+		result.Error = "CspIdpConfig not linked to this CspRole"
+		return result
+	}
+
+	result.AuthMethod = string(role.CspIdpConfig.AuthMethod)
+
+	valCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	switch role.CspType {
 	case "aws":
-		if account.GetAccountID() == "" {
-			return fmt.Errorf("AWS account_id is required")
-		}
-	case "gcp":
-		if account.GetProjectID() == "" {
-			return fmt.Errorf("GCP project_id is required")
-		}
-	case "azure":
-		if account.GetSubscriptionID() == "" {
-			return fmt.Errorf("Azure subscription_id is required")
-		}
-		if account.GetTenantID() == "" {
-			return fmt.Errorf("Azure tenant_id is required")
-		}
+		s.validateAWSRole(valCtx, role, &result)
 	default:
-		return fmt.Errorf("unsupported CSP type: %s", account.CspType)
+		s.validateGenericRole(valCtx, role, &result)
 	}
 
-	log.Printf("Validated CSP account: %s (ID: %d)", account.Name, account.ID)
-	return nil
+	return result
+}
+
+// validateAWSRole AWS CspRole 검증 (OIDC/SAML: IDP+RoleTrust, SECRET_KEY: CallerIdentity)
+func (s *CspAccountService) validateAWSRole(ctx context.Context, role *model.CspRole, result *model.CspAccountValidationResult) {
+	cfg := role.CspIdpConfig
+	idpIdentifier := role.IdpIdentifier
+	iamIdentifier := role.IamIdentifier
+
+	switch cfg.AuthMethod {
+	case model.AuthMethodOIDC:
+		if idpIdentifier == "" {
+			result.Valid = false
+			result.Error = "IdpIdentifier (OIDC Provider ARN) is empty"
+			return
+		}
+		detail, err := s.awsCredService.CheckOIDCProvider(ctx, idpIdentifier)
+		if err != nil {
+			result.Valid = false
+			result.Error = fmt.Sprintf("OIDC provider check failed: %v", err)
+			return
+		}
+		if iamIdentifier != "" {
+			trustDetail, err := s.awsCredService.CheckRoleTrust(ctx, iamIdentifier, "sts:AssumeRoleWithWebIdentity", idpIdentifier)
+			if err != nil {
+				result.Valid = false
+				result.Error = fmt.Sprintf("Role trust check failed: %v", err)
+				return
+			}
+			detail += " | " + trustDetail
+		}
+		result.Valid = true
+		result.Detail = detail
+
+	case model.AuthMethodSAML:
+		if idpIdentifier == "" {
+			result.Valid = false
+			result.Error = "IdpIdentifier (SAML Provider ARN) is empty"
+			return
+		}
+		detail, err := s.awsCredService.CheckSAMLProvider(ctx, idpIdentifier)
+		if err != nil {
+			result.Valid = false
+			result.Error = fmt.Sprintf("SAML provider check failed: %v", err)
+			return
+		}
+		if iamIdentifier != "" {
+			trustDetail, err := s.awsCredService.CheckRoleTrust(ctx, iamIdentifier, "sts:AssumeRoleWithSAML", idpIdentifier)
+			if err != nil {
+				result.Valid = false
+				result.Error = fmt.Sprintf("Role trust check failed: %v", err)
+				return
+			}
+			detail += " | " + trustDetail
+		}
+		result.Valid = true
+		result.Detail = detail
+
+	case model.AuthMethodSecretKey:
+		accessKeyID := cfg.GetAccessKeyID()
+		secretKey := cfg.GetSecretAccessKey()
+		if accessKeyID == "" || secretKey == "" {
+			result.Valid = false
+			result.Error = "access_key_id or secret_access_key is empty in CspIdpConfig"
+			return
+		}
+		detail, err := s.awsCredService.CheckCallerIdentity(ctx, accessKeyID, secretKey)
+		if err != nil {
+			result.Valid = false
+			result.Error = fmt.Sprintf("CallerIdentity check failed: %v", err)
+			return
+		}
+		result.Valid = true
+		result.Detail = detail
+
+	default:
+		result.Valid = false
+		result.Error = fmt.Sprintf("unsupported auth method for AWS: %s", cfg.AuthMethod)
+	}
+}
+
+// validateGenericRole GCP/Azure 등 — config 필수 필드 존재 확인 (인프라 레벨 체크 미구현)
+func (s *CspAccountService) validateGenericRole(ctx context.Context, role *model.CspRole, result *model.CspAccountValidationResult) {
+	cfg := role.CspIdpConfig
+	if cfg.AuthMethod == model.AuthMethodSecretKey {
+		if cfg.GetAccessKeyID() == "" || cfg.GetSecretAccessKey() == "" {
+			result.Valid = false
+			result.Error = "access_key_id or secret_access_key is empty in CspIdpConfig"
+			return
+		}
+		result.Valid = true
+		result.Detail = "SECRET_KEY config fields present (live validation not implemented for this CSP)"
+		return
+	}
+	// OIDC/SAML: IdpIdentifier + IamIdentifier 존재 확인
+	if role.IdpIdentifier == "" {
+		result.Valid = false
+		result.Error = "IdpIdentifier is empty"
+		return
+	}
+	result.Valid = true
+	result.Detail = fmt.Sprintf("%s config fields present (live infrastructure check not implemented for %s)", cfg.AuthMethod, role.CspType)
 }
 
 // GetActiveCspAccounts 활성 CSP 계정 목록 조회

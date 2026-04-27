@@ -96,7 +96,7 @@ type CspAccountFilter struct {
 // CreateCspAccountRequest CSP 계정 생성 요청
 type CreateCspAccountRequest struct {
 	Name        string            `json:"name" binding:"required"`
-	CspType     string            `json:"csp_type" binding:"required,oneof=aws gcp azure"`
+	CspType     string            `json:"csp_type" binding:"required,oneof=aws gcp azure alibaba tencent ibm ncp nhn kt openstack"`
 	AccountInfo map[string]string `json:"account_info"`
 	Description string            `json:"description"`
 }
@@ -107,4 +107,23 @@ type UpdateCspAccountRequest struct {
 	AccountInfo map[string]string `json:"account_info"`
 	IsActive    *bool             `json:"is_active"`
 	Description string            `json:"description"`
+}
+
+// CspAccountValidationResult 개별 CspRole(provider+method) 검증 결과
+type CspAccountValidationResult struct {
+	CspRoleID   uint   `json:"csp_role_id"`
+	CspRoleName string `json:"csp_role_name"`
+	CspType     string `json:"csp_type"`
+	AuthMethod  string `json:"auth_method"`
+	Valid       bool   `json:"valid"`
+	Detail      string `json:"detail,omitempty"`
+	Error       string `json:"error,omitempty"`
+}
+
+// CspAccountValidationResponse CSP 계정 인프라 검증 응답
+type CspAccountValidationResponse struct {
+	AccountID   uint                         `json:"account_id"`
+	AccountName string                       `json:"account_name"`
+	CspType     string                       `json:"csp_type"`
+	Results     []CspAccountValidationResult `json:"results"`
 }

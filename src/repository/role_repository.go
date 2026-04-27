@@ -374,8 +374,10 @@ func (r *RoleRepository) CreateRoleCspRoleMapping(req *model.CreateRoleMasterCsp
 		return fmt.Errorf("잘못된 CSP 역할 ID 형식: %w", err)
 	}
 
-	// TODO :authMethod 는 default로 할지 아니면 선택하는 로직 추가 필요. 우선은 OIDC로 고정. TODO : 선택하는 로직 추가 필요
-	req.AuthMethod = constants.AuthMethodOIDC
+	// AuthMethod 미지정 시 OIDC 기본값
+	if req.AuthMethod == "" {
+		req.AuthMethod = constants.AuthMethodOIDC
+	}
 
 	// 중복 체크 - 카운트로 확인
 	var count int64
@@ -439,8 +441,7 @@ func (r *RoleRepository) CreateWorkspaceRoleCspRoleMapping(req *model.CreateCspR
 		// csp role 저장
 		for _, cspRole := range req.CspRoles {
 			savedCspRole := model.CspRole{}
-			err := tx.Save(&cspRole).Scan(&savedCspRole)
-			if err != nil {
+			if err := tx.Save(&cspRole).Scan(&savedCspRole).Error; err != nil {
 				return fmt.Errorf("failed to create csp role: %w", err)
 			}
 
