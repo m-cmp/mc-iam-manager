@@ -510,6 +510,84 @@ func (s *UserService) GetUserIDByKcID(ctx context.Context, kcUserID string) (uin
 	return syncedUser.ID, nil
 }
 
+// DeactivateUser 사용자 계정 비활성화 (ACTIVE → INACTIVE)
+func (s *UserService) DeactivateUser(ctx context.Context, userID uint, requestorKcID string) error {
+	user, err := s.userRepo.FindUserByID(userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+	if user.KcId == requestorKcID {
+		return fmt.Errorf("cannot deactivate yourself")
+	}
+	if user.Status == model.UserStatusInactive {
+		return fmt.Errorf("user is already inactive")
+	}
+	ks := NewKeycloakService()
+	if err := ks.DisableUser(ctx, user.KcId); err != nil {
+		return fmt.Errorf("failed to disable user in keycloak: %w", err)
+	}
+	if err := s.userRepo.UpdateStatus(userID, model.UserStatusInactive); err != nil {
+		return fmt.Errorf("failed to update user status in db: %w", err)
+	}
+	return nil
+}
+
+// ActivateUser 사용자 계정 재활성화 (INACTIVE → ACTIVE)
+func (s *UserService) ActivateUser(ctx context.Context, userID uint) error {
+	user, err := s.userRepo.FindUserByID(userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+	if user.Status != model.UserStatusInactive {
+		return fmt.Errorf("user is not inactive")
+	}
+	ks := NewKeycloakService()
+	if err := ks.EnableUser(ctx, user.KcId); err != nil {
+		return fmt.Errorf("failed to enable user in keycloak: %w", err)
+	}
+	if err := s.userRepo.UpdateStatus(userID, model.UserStatusActive); err != nil {
+		return fmt.Errorf("failed to update user status in db: %w", err)
+	}
+	return nil
+}
+
+// RequestWithdrawal 현재 사용자 탈퇴 신청 (ACTIVE → WITHDRAWAL_REQUESTED)
+func (s *UserService) RequestWithdrawal(ctx context.Context, kcUserID string) error {
+	user, err := s.userRepo.FindByKcID(kcUserID)
+	if err != nil || user == nil {
+		return fmt.Errorf("user not found")
+	}
+	if user.Status != model.UserStatusActive {
+		return fmt.Errorf("only active users can request withdrawal")
+	}
+	if err := s.userRepo.UpdateStatus(user.ID, model.UserStatusWithdrawalRequested); err != nil {
+		return fmt.Errorf("failed to request withdrawal: %w", err)
+	}
+	return nil
+}
+
+// ProcessWithdrawal 탈퇴 최종 처리 (WITHDRAWAL_REQUESTED → WITHDRAWN)
+func (s *UserService) ProcessWithdrawal(ctx context.Context, userID uint) error {
+	user, err := s.userRepo.FindUserByID(userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+	if user.Status != model.UserStatusWithdrawalRequested {
+		return fmt.Errorf("user has not requested withdrawal")
+	}
+	if err := s.userRepo.DeleteAllRoleMappings(userID); err != nil {
+		return fmt.Errorf("failed to remove role mappings: %w", err)
+	}
+	ks := NewKeycloakService()
+	if err := ks.DisableUser(ctx, user.KcId); err != nil {
+		return fmt.Errorf("failed to disable user in keycloak: %w", err)
+	}
+	if err := s.userRepo.UpdateStatus(userID, model.UserStatusWithdrawn); err != nil {
+		return fmt.Errorf("failed to update user status in db: %w", err)
+	}
+	return nil
+}
+
 // getValidToken (Keep as is, assuming tokenRepo is initialized if needed)
 // func (s *UserService) getValidToken(ctx context.Context) (string, error) {
 // 	// ... (Implementation) ...
