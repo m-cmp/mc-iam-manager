@@ -2492,6 +2492,277 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/csp/iam/roles": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSP에 IAM 역할을 직접 생성합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-iam"
+                ],
+                "summary": "CSP IAM 역할 생성",
+                "operationId": "createCspIAMRole",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "CSP 계정 ID",
+                        "name": "csp_account_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "IAM 역할 정보",
+                        "name": "role",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/csp.Role"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp/iam/roles/{roleName}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSP에서 특정 IAM 역할 정보를 조회합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-iam"
+                ],
+                "summary": "CSP IAM 역할 조회",
+                "operationId": "getCspIAMRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IAM 역할명",
+                        "name": "roleName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "CSP 계정 ID",
+                        "name": "csp_account_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/csp.Role"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSP의 IAM 역할 정보를 수정합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-iam"
+                ],
+                "summary": "CSP IAM 역할 수정",
+                "operationId": "updateCspIAMRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IAM 역할명",
+                        "name": "roleName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "CSP 계정 ID",
+                        "name": "csp_account_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "IAM 역할 수정 정보",
+                        "name": "role",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/csp.Role"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSP에서 IAM 역할을 삭제합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-iam"
+                ],
+                "summary": "CSP IAM 역할 삭제",
+                "operationId": "deleteCspIAMRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IAM 역할명",
+                        "name": "roleName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "CSP 계정 ID",
+                        "name": "csp_account_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/groups/id/{groupId}/platform-roles": {
             "get": {
                 "security": [
@@ -4956,7 +5227,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "조직을 삭제합니다. 하위 조직 또는 소속 사용자가 있으면 삭제 불가.",
+                "description": "조직을 삭제합니다. cascade=true이면 하위 조직 및 사용자 매핑도 모두 삭제됩니다. 기본(cascade=false)이고 하위 조직이 있으면 400을 반환합니다.",
                 "produces": [
                     "application/json"
                 ],
@@ -4972,6 +5243,127 @@ const docTemplate = `{
                         "name": "organizationId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "하위 조직 cascade 삭제 여부 (기본: false)",
+                        "name": "cascade",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "삭제 성공"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/id/{organizationId}/deletable": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "특정 조직의 삭제 가능 여부와 사유를 반환합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "조직 삭제 가능 여부 확인",
+                "operationId": "getOrganizationDeletable",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "조직 ID",
+                        "name": "organizationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.OrganizationDeletableResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/id/{organizationId}/move": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "조직을 트리 내 다른 위치(다른 부모 조직)로 이동합니다. 하위 조직도 함께 이동하며 조직 코드가 자동 재생성됩니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "조직 이동",
+                "operationId": "moveOrganization",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "조직 ID",
+                        "name": "organizationId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "이동 요청 (new_parent_id: null이면 최상위로 이동)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MoveOrganizationRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -4995,6 +5387,62 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/id/{organizationId}/subtree": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "지정 조직을 루트로 하는 하위 트리를 반환합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "특정 조직의 하위 트리 조회",
+                "operationId": "getOrganizationSubtree",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "조직 ID",
+                        "name": "organizationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.OrganizationTree"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -5042,6 +5490,44 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/tree": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "전체 조직을 계층 트리 구조로 반환합니다. 최대 10단계 깊이를 지원하며 각 노드에 children 배열을 포함합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "전체 조직 트리 조회",
+                "operationId": "getOrganizationTree",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.OrganizationTree"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -6849,7 +7335,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get a list of all csp roles",
+                "description": "Get a list of all csp roles stored in the database",
                 "consumes": [
                     "application/json"
                 ],
@@ -6867,7 +7353,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/model.RoleMaster"
+                                "$ref": "#/definitions/model.CspRole"
                             }
                         }
                     },
@@ -8858,6 +9344,227 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/users/id/{userId}/access-summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "사용자의 직접 할당 플랫폼 역할, 소속 그룹 목록, 그룹 기반 역할을 통합 조회합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "사용자 접근 권한 요약 조회",
+                "operationId": "getUserAccessSummary",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "사용자 ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.UserAccessSummaryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/activate": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reactivate a deactivated user account (INACTIVE → ACTIVE).",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Activate user account",
+                "operationId": "activateUser",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User DB ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/deactivate": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deactivate a user account (ACTIVE → INACTIVE). Keycloak login is disabled.",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Deactivate user account",
+                "operationId": "deactivateUser",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User DB ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/effective-platform-roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "사용자에게 직접 할당된 역할과 소속 그룹을 통해 상속된 역할을 중복 제거하여 반환합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "사용자 유효 플랫폼 역할 목록 조회 (직접 + 그룹 상속)",
+                "operationId": "getUserEffectivePlatformRoles",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "사용자 ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.EffectivePlatformRoleItem"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/id/{userId}/groups": {
             "put": {
                 "security": [
@@ -9156,6 +9863,71 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/withdraw": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin processes a withdrawal request: removes all role/org mappings and disables in Keycloak.",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Process user withdrawal",
+                "operationId": "processWithdrawal",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User DB ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -9703,6 +10475,153 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/platform-roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "현재 로그인한 사용자에게 실제로 적용되는 플랫폼 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을 통합하여 반환합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "내 유효 플랫폼 역할 목록 조회",
+                "operationId": "getMyPlatformRoles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMaster"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/withdrawal": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Current user requests account withdrawal (ACTIVE → WITHDRAWAL_REQUESTED).",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Request user withdrawal",
+                "operationId": "requestWithdrawal",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/workspace-roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "현재 로그인한 사용자에게 실제로 적용되는 워크스페이스별 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을 통합하여 반환합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "내 유효 워크스페이스 역할 목록 조회",
+                "operationId": "getMyWorkspaceRoles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.EffectiveWorkspaceRole"
+                            }
                         }
                     },
                     "401": {
@@ -11657,6 +12576,80 @@ const docTemplate = `{
                 "RoleTypeCSP"
             ]
         },
+        "csp.Principal": {
+            "type": "object",
+            "properties": {
+                "AWS": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Service": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "csp.Role": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "policy": {
+                    "$ref": "#/definitions/csp.RolePolicy"
+                },
+                "tags": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "csp.RolePolicy": {
+            "type": "object",
+            "properties": {
+                "Statement": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/csp.RolePolicyStatement"
+                    }
+                },
+                "Version": {
+                    "type": "string"
+                }
+            }
+        },
+        "csp.RolePolicyStatement": {
+            "type": "object",
+            "properties": {
+                "Action": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Effect": {
+                    "type": "string"
+                },
+                "Principal": {
+                    "$ref": "#/definitions/csp.Principal"
+                },
+                "Resource": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "handler.UserListRequest": {
             "type": "object",
             "properties": {
@@ -12764,6 +13757,41 @@ const docTemplate = `{
                 }
             }
         },
+        "model.EffectivePlatformRoleItem": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "integer"
+                },
+                "role_name": {
+                    "type": "string"
+                },
+                "source": {
+                    "description": "\"direct\" 또는 \"group:{groupName}\"",
+                    "type": "string"
+                }
+            }
+        },
+        "model.EffectiveWorkspaceRole": {
+            "type": "object",
+            "properties": {
+                "role_id": {
+                    "type": "integer"
+                },
+                "role_name": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "integer"
+                },
+                "workspace_name": {
+                    "type": "string"
+                }
+            }
+        },
         "model.FilterRoleMasterMappingRequest": {
             "type": "object",
             "properties": {
@@ -12805,6 +13833,23 @@ const docTemplate = `{
                 },
                 "workspaceName": {
                     "type": "string"
+                }
+            }
+        },
+        "model.GroupAccessInfo": {
+            "type": "object",
+            "properties": {
+                "group_id": {
+                    "type": "integer"
+                },
+                "group_name": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlatformRoleSimple"
+                    }
                 }
             }
         },
@@ -13148,6 +14193,15 @@ const docTemplate = `{
                 }
             }
         },
+        "model.MoveOrganizationRequest": {
+            "type": "object",
+            "properties": {
+                "new_parent_id": {
+                    "description": "nil = 최상위로 이동",
+                    "type": "integer"
+                }
+            }
+        },
         "model.Organization": {
             "type": "object",
             "properties": {
@@ -13194,6 +14248,17 @@ const docTemplate = `{
                 }
             }
         },
+        "model.OrganizationDeletableResponse": {
+            "type": "object",
+            "properties": {
+                "deletable": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
         "model.OrganizationTree": {
             "type": "object",
             "properties": {
@@ -13233,6 +14298,20 @@ const docTemplate = `{
                 },
                 "user_count": {
                     "type": "integer"
+                }
+            }
+        },
+        "model.PlatformRoleSimple": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "integer"
+                },
+                "role_name": {
+                    "type": "string"
                 }
             }
         },
@@ -13890,6 +14969,14 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.RoleMaster"
                     }
                 },
+                "status": {
+                    "description": "사용자 계정 상태",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.UserStatus"
+                        }
+                    ]
+                },
                 "updated_at": {
                     "type": "string"
                 },
@@ -13902,6 +14989,26 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.RoleMaster"
                     }
+                }
+            }
+        },
+        "model.UserAccessSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "direct_roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlatformRoleSimple"
+                    }
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.GroupAccessInfo"
+                    }
+                },
+                "user_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -13922,6 +15029,21 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.UserStatus": {
+            "type": "string",
+            "enum": [
+                "ACTIVE",
+                "INACTIVE",
+                "WITHDRAWAL_REQUESTED",
+                "WITHDRAWN"
+            ],
+            "x-enum-varnames": [
+                "UserStatusActive",
+                "UserStatusInactive",
+                "UserStatusWithdrawalRequested",
+                "UserStatusWithdrawn"
+            ]
         },
         "model.UserStatusRequest": {
             "type": "object",
