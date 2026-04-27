@@ -379,16 +379,91 @@ func (r *OrganizationRepository) RemoveUserFromOrganization(userID, orgID uint) 
 	return nil
 }
 
-// FindUserOrganizations 사용자가 소속된 조직 목록 조회
-func (r *OrganizationRepository) FindUserOrganizations(userID uint) ([]model.Organization, error) {
-	var orgs []model.Organization
-	if err := r.db.Joins("JOIN mcmp_user_organizations uo ON uo.organization_id = mcmp_organizations.id").
-		Where("uo.user_id = ?", userID).
-		Order("mcmp_organizations.organization_code ASC").
-		Find(&orgs).Error; err != nil {
+// FindUserOrganizations 사용자가 소속된 조직 목록 조회 (계층 정보 포함)
+func (r *OrganizationRepository) FindUserOrganizations(userID uint) ([]model.OrganizationTree, error) {
+	type RawResult struct {
+		ID               uint
+		ParentID         *uint
+		OrganizationCode string
+		Name             string
+		Description      string
+		Level            int
+		Path             string
+		UserCount        int
+	}
+	var results []RawResult
+
+	query := `
+        WITH RECURSIVE org_tree AS (
+            SELECT
+                o.id,
+                o.parent_id,
+                o.organization_code,
+                o.name,
+                o.description,
+                1 AS level,
+                o.name::text AS path,
+                (SELECT COUNT(*) FROM mcmp_user_organizations uc WHERE uc.organization_id = o.id) AS user_count
+            FROM mcmp_organizations o
+            WHERE o.parent_id IS NULL
+
+            UNION ALL
+
+            SELECT
+                o.id,
+                o.parent_id,
+                o.organization_code,
+                o.name,
+                o.description,
+                ot.level + 1,
+                ot.path || '/' || o.name,
+                (SELECT COUNT(*) FROM mcmp_user_organizations uc WHERE uc.organization_id = o.id) AS user_count
+            FROM mcmp_organizations o
+            INNER JOIN org_tree ot ON o.parent_id = ot.id
+        )
+        SELECT ot.*
+        FROM org_tree ot
+        INNER JOIN mcmp_user_organizations uo ON uo.organization_id = ot.id
+        WHERE uo.user_id = ?
+        ORDER BY ot.organization_code ASC
+    `
+	if err := r.db.Raw(query, userID).Scan(&results).Error; err != nil {
 		return nil, fmt.Errorf("error finding organizations for user %d: %w", userID, err)
 	}
-	return orgs, nil
+
+	trees := make([]model.OrganizationTree, len(results))
+	for i, r := range results {
+		trees[i] = model.OrganizationTree{
+			ID:               r.ID,
+			ParentID:         r.ParentID,
+			OrganizationCode: r.OrganizationCode,
+			Name:             r.Name,
+			Description:      r.Description,
+			Level:            r.Level,
+			Path:             r.Path,
+			UserCount:        r.UserCount,
+		}
+	}
+	return trees, nil
+}
+
+// ReplaceUserOrganizations 사용자 조직 전체 교체 (기존 제거 후 신규 할당)
+func (r *OrganizationRepository) ReplaceUserOrganizations(userID uint, orgIDs []uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ?", userID).Delete(&model.UserOrganization{}).Error; err != nil {
+			return fmt.Errorf("error removing existing organizations for user %d: %w", userID, err)
+		}
+		for _, orgID := range orgIDs {
+			mapping := model.UserOrganization{
+				UserID:         userID,
+				OrganizationID: orgID,
+			}
+			if err := tx.Create(&mapping).Error; err != nil {
+				return fmt.Errorf("error assigning user %d to organization %d: %w", userID, orgID, err)
+			}
+		}
+		return nil
+	})
 }
 
 // FindOrganizationUsers 조직에 소속된 사용자 목록 조회
@@ -419,6 +494,170 @@ func (r *OrganizationRepository) UpdateDescendantCodes(oldPrefix, newPrefix stri
          WHERE organization_code LIKE ? AND organization_code != ?`,
 		newPrefix, oldPrefix, oldPrefix+"%", oldPrefix,
 	).Error
+}
+
+// FindSubtreeFlat 특정 조직을 루트로 하는 하위 트리를 평면 목록으로 조회 (CTE, level/path 포함)
+// orgID 조직 자신도 포함
+func (r *OrganizationRepository) FindSubtreeFlat(orgID uint) ([]model.OrganizationTree, error) {
+	type RawResult struct {
+		ID               uint
+		ParentID         *uint
+		OrganizationCode string
+		Name             string
+		Description      string
+		Level            int
+		Path             string
+		UserCount        int
+	}
+	var results []RawResult
+
+	query := `
+        WITH RECURSIVE org_subtree AS (
+            SELECT
+                o.id,
+                o.parent_id,
+                o.organization_code,
+                o.name,
+                o.description,
+                1 AS level,
+                o.name::text AS path,
+                (SELECT COUNT(*) FROM mcmp_user_organizations uo WHERE uo.organization_id = o.id) AS user_count
+            FROM mcmp_organizations o
+            WHERE o.id = ?
+
+            UNION ALL
+
+            SELECT
+                o.id,
+                o.parent_id,
+                o.organization_code,
+                o.name,
+                o.description,
+                ot.level + 1,
+                ot.path || '/' || o.name,
+                (SELECT COUNT(*) FROM mcmp_user_organizations uo WHERE uo.organization_id = o.id) AS user_count
+            FROM mcmp_organizations o
+            INNER JOIN org_subtree ot ON o.parent_id = ot.id
+        )
+        SELECT * FROM org_subtree ORDER BY organization_code ASC
+    `
+	if err := r.db.Raw(query, orgID).Scan(&results).Error; err != nil {
+		return nil, fmt.Errorf("error querying organization subtree: %w", err)
+	}
+
+	trees := make([]model.OrganizationTree, len(results))
+	for i, res := range results {
+		trees[i] = model.OrganizationTree{
+			ID:               res.ID,
+			ParentID:         res.ParentID,
+			OrganizationCode: res.OrganizationCode,
+			Name:             res.Name,
+			Description:      res.Description,
+			Level:            res.Level,
+			Path:             "/" + res.Path,
+			UserCount:        res.UserCount,
+		}
+	}
+	return trees, nil
+}
+
+// GetSubtreeDepth 특정 조직의 하위 트리 최대 깊이를 반환
+// orgID가 루트일 때 전체 트리 깊이를 계산 (이동 후 깊이 초과 검증용)
+func (r *OrganizationRepository) GetSubtreeDepth(orgID uint) (int, error) {
+	type Result struct {
+		MaxDepth int
+	}
+	var res Result
+
+	query := `
+        WITH RECURSIVE subtree AS (
+            SELECT id, parent_id, 1 AS depth
+            FROM mcmp_organizations
+            WHERE id = ?
+            UNION ALL
+            SELECT o.id, o.parent_id, s.depth + 1
+            FROM mcmp_organizations o
+            INNER JOIN subtree s ON o.parent_id = s.id
+        )
+        SELECT COALESCE(MAX(depth), 1) AS max_depth FROM subtree
+    `
+	if err := r.db.Raw(query, orgID).Scan(&res).Error; err != nil {
+		return 0, fmt.Errorf("error calculating subtree depth: %w", err)
+	}
+	return res.MaxDepth, nil
+}
+
+// GetAncestorDepth 특정 조직의 루트로부터의 깊이(레벨)를 반환
+func (r *OrganizationRepository) GetAncestorDepth(orgID uint) (int, error) {
+	type Result struct {
+		Depth int
+	}
+	var res Result
+
+	query := `
+        WITH RECURSIVE ancestors AS (
+            SELECT id, parent_id, 1 AS depth
+            FROM mcmp_organizations
+            WHERE id = ?
+            UNION ALL
+            SELECT o.id, o.parent_id, a.depth + 1
+            FROM mcmp_organizations o
+            INNER JOIN ancestors a ON a.parent_id = o.id
+        )
+        SELECT MAX(depth) AS depth FROM ancestors
+    `
+	if err := r.db.Raw(query, orgID).Scan(&res).Error; err != nil {
+		return 0, fmt.Errorf("error calculating ancestor depth: %w", err)
+	}
+	return res.Depth, nil
+}
+
+// DeleteCascade 조직과 모든 하위 조직 및 사용자 매핑을 cascade 삭제
+// 트랜잭션 내에서 하위 조직 ID를 재귀 조회 후 매핑 → 조직 순서로 삭제
+func (r *OrganizationRepository) DeleteCascade(orgID uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// 하위 조직 ID 전체 조회 (자신 포함)
+		type IDResult struct {
+			ID uint
+		}
+		var results []IDResult
+		query := `
+            WITH RECURSIVE subtree AS (
+                SELECT id FROM mcmp_organizations WHERE id = ?
+                UNION ALL
+                SELECT o.id FROM mcmp_organizations o
+                INNER JOIN subtree s ON o.parent_id = s.id
+            )
+            SELECT id FROM subtree
+        `
+		if err := tx.Raw(query, orgID).Scan(&results).Error; err != nil {
+			return fmt.Errorf("error querying subtree for cascade delete: %w", err)
+		}
+
+		ids := make([]uint, len(results))
+		for i, r := range results {
+			ids[i] = r.ID
+		}
+
+		// 사용자 매핑 삭제
+		if err := tx.Where("organization_id IN ?", ids).Delete(&model.UserOrganization{}).Error; err != nil {
+			return fmt.Errorf("error deleting user mappings for cascade: %w", err)
+		}
+
+		// 하위 조직 먼저 삭제 (코드 DESC 정렬 = 깊은 자식 먼저)
+		if err := tx.Where("id IN ? AND id != ?", ids, orgID).
+			Order("organization_code DESC").
+			Delete(&model.Organization{}).Error; err != nil {
+			return fmt.Errorf("error deleting child organizations for cascade: %w", err)
+		}
+
+		// 대상 조직 삭제
+		if err := tx.Delete(&model.Organization{}, "id = ?", orgID).Error; err != nil {
+			return fmt.Errorf("error deleting target organization: %w", err)
+		}
+
+		return nil
+	})
 }
 
 func init() {

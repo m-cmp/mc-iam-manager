@@ -14,6 +14,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// ErrMaxDepthExceeded 조직 이동 시 최대 깊이(10단계) 초과
+var ErrMaxDepthExceeded = errors.New("organization tree depth would exceed maximum (10 levels)")
+
 // OrganizationService 조직 비즈니스 로직
 type OrganizationService struct {
 	db      *gorm.DB
@@ -116,6 +119,133 @@ func (s *OrganizationService) GetOrganizations(tree bool) (interface{}, error) {
 
 	// 평면 목록을 Tree 구조로 변환
 	return buildOrganizationTree(flatList), nil
+}
+
+// GetOrganizationTree 전체 조직을 계층 트리 구조로 반환 (RQ-M2-UG-034-01)
+// 최대 10단계 깊이를 지원하며 각 노드에 children 배열을 포함한다.
+func (s *OrganizationService) GetOrganizationTree() ([]model.OrganizationTree, error) {
+	flatList, err := s.orgRepo.FindTreeFlat()
+	if err != nil {
+		return nil, err
+	}
+	return buildOrganizationTree(flatList), nil
+}
+
+// GetOrganizationSubtree 특정 조직을 루트로 하는 하위 트리를 반환 (RQ-M2-UG-034-02)
+func (s *OrganizationService) GetOrganizationSubtree(orgID uint) ([]model.OrganizationTree, error) {
+	if _, err := s.orgRepo.FindByID(orgID); err != nil {
+		return nil, err
+	}
+
+	flatList, err := s.orgRepo.FindSubtreeFlat(orgID)
+	if err != nil {
+		return nil, err
+	}
+	return buildOrganizationTree(flatList), nil
+}
+
+// MoveOrganization 조직을 트리 내 다른 위치로 이동 (RQ-M2-UG-035-01)
+// 이동 시 하위 조직 코드 자동 재생성, 최대 10단계 깊이 초과 시 오류
+func (s *OrganizationService) MoveOrganization(orgID uint, req *model.MoveOrganizationRequest) error {
+	current, err := s.orgRepo.FindByID(orgID)
+	if err != nil {
+		return err
+	}
+
+	// 자기 자신 또는 하위 조직으로의 이동 방지
+	if err := s.validateNoCircularReference(orgID, req.NewParentID); err != nil {
+		return err
+	}
+
+	// 새 부모 코드 조회 (nil이면 최상위)
+	newParentCode := ""
+	if req.NewParentID != nil {
+		newParent, err := s.orgRepo.FindByID(*req.NewParentID)
+		if err != nil {
+			return fmt.Errorf("new parent organization not found: %d: %w", *req.NewParentID, repository.ErrOrganizationNotFound)
+		}
+		newParentCode = newParent.OrganizationCode
+
+		// 이동 후 최대 깊이(10단계) 초과 확인
+		parentDepth, err := s.orgRepo.GetAncestorDepth(*req.NewParentID)
+		if err != nil {
+			return err
+		}
+		subtreeDepth, err := s.orgRepo.GetSubtreeDepth(orgID)
+		if err != nil {
+			return err
+		}
+		if parentDepth+subtreeDepth > 10 {
+			return ErrMaxDepthExceeded
+		}
+	} else {
+		// 최상위로 이동 시 서브트리 깊이 자체가 10을 넘으면 불가
+		subtreeDepth, err := s.orgRepo.GetSubtreeDepth(orgID)
+		if err != nil {
+			return err
+		}
+		if subtreeDepth > 10 {
+			return ErrMaxDepthExceeded
+		}
+	}
+
+	// 새 코드 생성
+	newCode, err := s.orgRepo.GenerateOrganizationCode(newParentCode)
+	if err != nil {
+		return err
+	}
+
+	// 하위 조직 코드 일괄 업데이트
+	oldCode := current.OrganizationCode
+	if err := s.orgRepo.UpdateDescendantCodes(oldCode, newCode); err != nil {
+		return fmt.Errorf("error updating descendant codes: %w", err)
+	}
+
+	// 대상 조직 parent_id + code 업데이트
+	updates := map[string]interface{}{
+		"parent_id":         req.NewParentID,
+		"organization_code": newCode,
+	}
+	return s.orgRepo.Update(orgID, updates)
+}
+
+// CheckOrganizationDeletable 조직 삭제 가능 여부 확인 (RQ-M2-UG-036-01)
+func (s *OrganizationService) CheckOrganizationDeletable(orgID uint) (*model.OrganizationDeletableResponse, error) {
+	if _, err := s.orgRepo.FindByID(orgID); err != nil {
+		return nil, err
+	}
+
+	hasChildren, err := s.orgRepo.HasChildren(orgID)
+	if err != nil {
+		return nil, err
+	}
+	if hasChildren {
+		return &model.OrganizationDeletableResponse{
+			Deletable: false,
+			Reason:    "하위 조직이 존재합니다. cascade=true 옵션을 사용하거나 하위 조직을 먼저 삭제해주세요.",
+		}, nil
+	}
+
+	hasUsers, err := s.orgRepo.HasUsers(orgID)
+	if err != nil {
+		return nil, err
+	}
+	if hasUsers {
+		return &model.OrganizationDeletableResponse{
+			Deletable: false,
+			Reason:    "소속 사용자가 있습니다. cascade=true 옵션을 사용하거나 사용자를 먼저 제거해주세요.",
+		}, nil
+	}
+
+	return &model.OrganizationDeletableResponse{Deletable: true}, nil
+}
+
+// DeleteOrganizationCascade 조직 및 모든 하위 조직/사용자 매핑을 cascade 삭제 (RQ-M2-UG-036-02)
+func (s *OrganizationService) DeleteOrganizationCascade(orgID uint) error {
+	if _, err := s.orgRepo.FindByID(orgID); err != nil {
+		return err
+	}
+	return s.orgRepo.DeleteCascade(orgID)
 }
 
 // SearchOrganizations name/code 필터로 조직 목록 검색 (평면 목록 반환)
@@ -279,8 +409,8 @@ func (s *OrganizationService) RemoveUserFromOrganization(userID, orgID uint) err
 	return s.orgRepo.RemoveUserFromOrganization(userID, orgID)
 }
 
-// GetUserOrganizations 사용자가 소속된 조직 목록 조회
-func (s *OrganizationService) GetUserOrganizations(userID uint) ([]model.Organization, error) {
+// GetUserOrganizations 사용자가 소속된 조직 목록 조회 (계층 정보 포함)
+func (s *OrganizationService) GetUserOrganizations(userID uint) ([]model.OrganizationTree, error) {
 	return s.orgRepo.FindUserOrganizations(userID)
 }
 

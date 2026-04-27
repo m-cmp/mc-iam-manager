@@ -295,6 +295,16 @@ func (s *RoleService) GetUserPlatformRoles(userID uint) ([]model.RoleMaster, err
 	return s.roleRepository.FindUserPlatformRoles(userID)
 }
 
+// GetEffectivePlatformRoles 사용자의 유효 플랫폼 역할 목록 조회 (직접 할당 + 그룹 상속)
+func (s *RoleService) GetEffectivePlatformRoles(userID uint) ([]model.RoleMaster, error) {
+	return s.roleRepository.FindEffectivePlatformRoles(userID)
+}
+
+// GetEffectiveWorkspaceRoles 사용자의 유효 워크스페이스 역할 목록 조회 (직접 할당 + 그룹 상속)
+func (s *RoleService) GetEffectiveWorkspaceRoles(userID uint) ([]model.EffectiveWorkspaceRole, error) {
+	return s.roleRepository.FindEffectiveWorkspaceRoles(userID)
+}
+
 // 있으면 update, 없으면 insert
 func (s *RoleService) CreateRoleCspRoleMapping(req *model.CreateRoleMasterCspRoleMappingRequest) error {
 

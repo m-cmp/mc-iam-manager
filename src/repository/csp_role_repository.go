@@ -577,3 +577,12 @@ func (r *CspRoleRepository) getAwsIamClient(issuedBy string) (*iam.Client, error
 
 	return iam.NewFromConfig(cfg), nil
 }
+
+// GetByCspAccountID CspAccountID로 CspRole 목록 조회 (CspIdpConfig Preload)
+func (r *CspRoleRepository) GetByCspAccountID(accountID uint) ([]*model.CspRole, error) {
+	var roles []*model.CspRole
+	if err := r.db.Preload("CspIdpConfig").Where("csp_account_id = ?", accountID).Find(&roles).Error; err != nil {
+		return nil, fmt.Errorf("failed to get CSP roles by account ID: %w", err)
+	}
+	return roles, nil
+}

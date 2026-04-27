@@ -65,29 +65,37 @@ func NewUserHandler(db *gorm.DB) *UserHandler {
 	}
 }
 
+// UserListRequest is the optional request body for ListUsers.
+type UserListRequest struct {
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
 // ListUsers godoc
 // @Summary List all users
-// @Description Retrieve a list of all users.
+// @Description Retrieve a list of users. Optionally filter by Keycloak enabled status (true=active, false=pending approval).
 // @Tags users
 // @Accept json
 // @Produce json
+// @Param request body handler.UserListRequest false "Optional filter"
 // @Success 200 {array} model.User
+// @Failure 403 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/users/list [post]
 // @Id listUsers
 func (h *UserHandler) ListUsers(c echo.Context) error {
-	// --- Role validation (Admin or platformAdmin) ---
-	requiredRoles := []string{"admin", "platformAdmin"} // todo : shouldn't this be checked in middleware?
-	// Use the helper function that reads roles from context
+	requiredRoles := []string{"admin", "platformAdmin"}
 	if !checkRoleFromContext(c, requiredRoles) {
 		fmt.Printf("[INFO] ListUsers: Permission denied. User does not have required roles: %v\n", requiredRoles)
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: Required role not found"})
 	}
-	fmt.Printf("[DEBUG] ListUsers: Permission granted.\n")
-	// --- Role validation end ---
 
-	users, err := h.userService.ListUsers(c.Request().Context())
+	var req UserListRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+
+	users, err := h.userService.ListUsers(c.Request().Context(), req.Enabled)
 	if err != nil {
 		fmt.Printf("[ERROR] ListUsers: Error from userService.ListUsers: %v\n", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to retrieve user list"})
@@ -428,6 +436,72 @@ func (h *UserHandler) ChangeMyPassword(c echo.Context) error {
 		"success": true,
 		"message": "Password successfully changed",
 	})
+}
+
+// GetMyPlatformRoles godoc
+// @Summary 내 유효 플랫폼 역할 목록 조회
+// @Description 현재 로그인한 사용자에게 실제로 적용되는 플랫폼 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을 통합하여 반환합니다.
+// @Tags users
+// @Produce json
+// @Success 200 {array} model.RoleMaster
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/me/platform-roles [get]
+// @Id getMyPlatformRoles
+func (h *UserHandler) GetMyPlatformRoles(c echo.Context) error {
+	kcUserIdVal := c.Get("kcUserId")
+	if kcUserIdVal == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+	kcUserID, ok := kcUserIdVal.(string)
+	if !ok || kcUserID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	user, err := h.userService.GetUserByKcID(c.Request().Context(), kcUserID)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
+	}
+
+	roles, err := h.roleService.GetEffectivePlatformRoles(user.ID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
+}
+
+// GetMyWorkspaceRoles godoc
+// @Summary 내 유효 워크스페이스 역할 목록 조회
+// @Description 현재 로그인한 사용자에게 실제로 적용되는 워크스페이스별 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을 통합하여 반환합니다.
+// @Tags users
+// @Produce json
+// @Success 200 {array} model.EffectiveWorkspaceRole
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/me/workspace-roles [get]
+// @Id getMyWorkspaceRoles
+func (h *UserHandler) GetMyWorkspaceRoles(c echo.Context) error {
+	kcUserIdVal := c.Get("kcUserId")
+	if kcUserIdVal == nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+	kcUserID, ok := kcUserIdVal.(string)
+	if !ok || kcUserID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+
+	user, err := h.userService.GetUserByKcID(c.Request().Context(), kcUserID)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "User not found"})
+	}
+
+	roles, err := h.roleService.GetEffectiveWorkspaceRoles(user.ID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, roles)
 }
 
 // UpdateUser godoc
@@ -959,4 +1033,141 @@ func (h *UserHandler) GetUserWorkspaceAndWorkspaceRolesByUserIDAndWorkspaceID(c 
 	}
 
 	return c.JSON(http.StatusOK, workspaceRoles)
+}
+
+// DeactivateUser godoc
+// @Summary Deactivate user account
+// @Description Deactivate a user account (ACTIVE → INACTIVE). Keycloak login is disabled.
+// @Tags users
+// @Param userId path string true "User DB ID"
+// @Success 204
+// @Failure 400 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/id/{userId}/deactivate [put]
+// @Id deactivateUser
+func (h *UserHandler) DeactivateUser(c echo.Context) error {
+	if !checkRoleFromContext(c, []string{"platformAdmin"}) {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: PlatformAdmin access required"})
+	}
+	userIDInt, err := util.StringToUint(c.Param("userId"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID format"})
+	}
+	requestorKcIDVal := c.Get("kcUserId")
+	requestorKcID, _ := requestorKcIDVal.(string)
+	if err := h.userService.DeactivateUser(c.Request().Context(), userIDInt, requestorKcID); err != nil {
+		switch err.Error() {
+		case "cannot deactivate yourself":
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		case "user is already inactive":
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		default:
+			if strings.Contains(err.Error(), "not found") {
+				return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+			}
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to deactivate user"})
+		}
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// ActivateUser godoc
+// @Summary Activate user account
+// @Description Reactivate a deactivated user account (INACTIVE → ACTIVE).
+// @Tags users
+// @Param userId path string true "User DB ID"
+// @Success 204
+// @Failure 400 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/id/{userId}/activate [put]
+// @Id activateUser
+func (h *UserHandler) ActivateUser(c echo.Context) error {
+	if !checkRoleFromContext(c, []string{"platformAdmin"}) {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: PlatformAdmin access required"})
+	}
+	userIDInt, err := util.StringToUint(c.Param("userId"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID format"})
+	}
+	if err := h.userService.ActivateUser(c.Request().Context(), userIDInt); err != nil {
+		switch err.Error() {
+		case "user is not inactive":
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		default:
+			if strings.Contains(err.Error(), "not found") {
+				return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+			}
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to activate user"})
+		}
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// RequestWithdrawal godoc
+// @Summary Request user withdrawal
+// @Description Current user requests account withdrawal (ACTIVE → WITHDRAWAL_REQUESTED).
+// @Tags users
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/me/withdrawal [post]
+// @Id requestWithdrawal
+func (h *UserHandler) RequestWithdrawal(c echo.Context) error {
+	kcUserIDVal := c.Get("kcUserId")
+	kcUserID, ok := kcUserIDVal.(string)
+	if !ok || kcUserID == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+	}
+	if err := h.userService.RequestWithdrawal(c.Request().Context(), kcUserID); err != nil {
+		switch err.Error() {
+		case "only active users can request withdrawal":
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to request withdrawal"})
+		}
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "탈퇴 신청이 완료되었습니다. 관리자 승인 후 처리됩니다."})
+}
+
+// ProcessWithdrawal godoc
+// @Summary Process user withdrawal
+// @Description Admin processes a withdrawal request: removes all role/org mappings and disables in Keycloak.
+// @Tags users
+// @Param userId path string true "User DB ID"
+// @Success 204
+// @Failure 400 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/users/id/{userId}/withdraw [put]
+// @Id processWithdrawal
+func (h *UserHandler) ProcessWithdrawal(c echo.Context) error {
+	if !checkRoleFromContext(c, []string{"platformAdmin"}) {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden: PlatformAdmin access required"})
+	}
+	userIDInt, err := util.StringToUint(c.Param("userId"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID format"})
+	}
+	if err := h.userService.ProcessWithdrawal(c.Request().Context(), userIDInt); err != nil {
+		switch err.Error() {
+		case "user has not requested withdrawal":
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		default:
+			if strings.Contains(err.Error(), "not found") {
+				return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
+			}
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to process withdrawal"})
+		}
+	}
+	return c.NoContent(http.StatusNoContent)
 }

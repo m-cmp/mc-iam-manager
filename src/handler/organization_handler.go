@@ -220,11 +220,12 @@ func (h *OrganizationHandler) UpdateOrganization(c echo.Context) error {
 
 // DeleteOrganization godoc
 // @Summary 조직 삭제
-// @Description 조직을 삭제합니다. 하위 조직 또는 소속 사용자가 있으면 삭제 불가.
+// @Description 조직을 삭제합니다. cascade=true이면 하위 조직 및 사용자 매핑도 모두 삭제됩니다. 기본(cascade=false)이고 하위 조직이 있으면 400을 반환합니다.
 // @Tags organizations
 // @Produce json
 // @Param organizationId path int true "조직 ID"
-// @Success 200 {object} map[string]string
+// @Param cascade query bool false "하위 조직 cascade 삭제 여부 (기본: false)"
+// @Success 204 "삭제 성공"
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Security BearerAuth
@@ -236,20 +237,147 @@ func (h *OrganizationHandler) DeleteOrganization(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid organization ID"})
 	}
 
+	cascade := c.QueryParam("cascade") == "true"
+
+	if cascade {
+		if err := h.orgService.DeleteOrganizationCascade(uint(id)); err != nil {
+			if errors.Is(err, repository.ErrOrganizationNotFound) {
+				return c.JSON(http.StatusNotFound, map[string]string{"error": "조직을 찾을 수 없습니다"})
+			}
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+		return c.NoContent(http.StatusNoContent)
+	}
+
 	if err := h.orgService.DeleteOrganization(uint(id)); err != nil {
 		switch {
 		case errors.Is(err, repository.ErrOrganizationNotFound):
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "조직을 찾을 수 없습니다"})
 		case errors.Is(err, repository.ErrOrganizationHasChildren):
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "하위 조직이 존재합니다. 먼저 하위 조직을 삭제해주세요."})
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "하위 조직이 존재합니다. cascade=true 옵션을 사용하거나 하위 조직을 먼저 삭제해주세요."})
 		case errors.Is(err, repository.ErrOrganizationHasUsers):
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "소속 사용자가 있습니다. 먼저 사용자를 조직에서 제거해주세요."})
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "소속 사용자가 있습니다. cascade=true 옵션을 사용하거나 사용자를 먼저 제거해주세요."})
 		default:
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"message": "조직이 삭제되었습니다."})
+	return c.NoContent(http.StatusNoContent)
+}
+
+// GetOrganizationTree godoc
+// @Summary 전체 조직 트리 조회
+// @Description 전체 조직을 계층 트리 구조로 반환합니다. 최대 10단계 깊이를 지원하며 각 노드에 children 배열을 포함합니다.
+// @Tags organizations
+// @Produce json
+// @Success 200 {array} model.OrganizationTree
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/organizations/tree [get]
+// @Id getOrganizationTree
+func (h *OrganizationHandler) GetOrganizationTree(c echo.Context) error {
+	tree, err := h.orgService.GetOrganizationTree()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, tree)
+}
+
+// GetOrganizationSubtree godoc
+// @Summary 특정 조직의 하위 트리 조회
+// @Description 지정 조직을 루트로 하는 하위 트리를 반환합니다.
+// @Tags organizations
+// @Produce json
+// @Param organizationId path int true "조직 ID"
+// @Success 200 {array} model.OrganizationTree
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/organizations/id/{organizationId}/subtree [get]
+// @Id getOrganizationSubtree
+func (h *OrganizationHandler) GetOrganizationSubtree(c echo.Context) error {
+	id, err := strconv.ParseUint(c.Param("organizationId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid organization ID"})
+	}
+
+	tree, err := h.orgService.GetOrganizationSubtree(uint(id))
+	if err != nil {
+		if errors.Is(err, repository.ErrOrganizationNotFound) {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "조직을 찾을 수 없습니다"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, tree)
+}
+
+// MoveOrganization godoc
+// @Summary 조직 이동
+// @Description 조직을 트리 내 다른 위치(다른 부모 조직)로 이동합니다. 하위 조직도 함께 이동하며 조직 코드가 자동 재생성됩니다.
+// @Tags organizations
+// @Accept json
+// @Produce json
+// @Param organizationId path int true "조직 ID"
+// @Param body body model.MoveOrganizationRequest true "이동 요청 (new_parent_id: null이면 최상위로 이동)"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/organizations/id/{organizationId}/move [put]
+// @Id moveOrganization
+func (h *OrganizationHandler) MoveOrganization(c echo.Context) error {
+	id, err := strconv.ParseUint(c.Param("organizationId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid organization ID"})
+	}
+
+	var req model.MoveOrganizationRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	}
+
+	if err := h.orgService.MoveOrganization(uint(id), &req); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrOrganizationNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "조직을 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrCircularReference):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "자기 자신 또는 하위 조직으로의 이동은 불가합니다"})
+		case errors.Is(err, service.ErrMaxDepthExceeded):
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "이동 후 최대 깊이(10단계)를 초과합니다"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "조직이 이동되었습니다."})
+}
+
+// GetOrganizationDeletable godoc
+// @Summary 조직 삭제 가능 여부 확인
+// @Description 특정 조직의 삭제 가능 여부와 사유를 반환합니다.
+// @Tags organizations
+// @Produce json
+// @Param organizationId path int true "조직 ID"
+// @Success 200 {object} model.OrganizationDeletableResponse
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/organizations/id/{organizationId}/deletable [get]
+// @Id getOrganizationDeletable
+func (h *OrganizationHandler) GetOrganizationDeletable(c echo.Context) error {
+	id, err := strconv.ParseUint(c.Param("organizationId"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid organization ID"})
+	}
+
+	resp, err := h.orgService.CheckOrganizationDeletable(uint(id))
+	if err != nil {
+		if errors.Is(err, repository.ErrOrganizationNotFound) {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "조직을 찾을 수 없습니다"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, resp)
 }
 
 // AssignUserOrganizations godoc
