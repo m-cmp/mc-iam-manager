@@ -95,12 +95,16 @@ func (r *MenuRepository) CreateMenu(req *model.CreateMenuRequest) error {
 	if err != nil {
 		return err
 	}
+	isAction := false
+	if req.IsAction != nil {
+		isAction = *req.IsAction
+	}
 	menu := &model.Menu{
 		ID:          req.ID,
 		ParentID:    req.ParentID,
 		DisplayName: req.DisplayName,
 		ResType:     req.ResType,
-		IsAction:    req.IsAction,
+		IsAction:    isAction,
 		Priority:    priorityInt,
 		MenuNumber:  menuNumberInt,
 	}
@@ -146,6 +150,27 @@ func (r *MenuRepository) DeleteMenu(id string) error {
 		return ErrMenuNotFound
 	}
 
+	return nil
+}
+
+// DeleteMenuWithChildren CTE로 하위 메뉴 전체를 포함하여 삭제
+func (r *MenuRepository) DeleteMenuWithChildren(id string) error {
+	// PostgreSQL WITH RECURSIVE로 모든 하위 메뉴 ID 수집 후 삭제
+	query := `
+WITH RECURSIVE menu_tree AS (
+  SELECT id FROM mcmp_menus WHERE id = ?
+  UNION ALL
+  SELECT m.id FROM mcmp_menus m INNER JOIN menu_tree mt ON m.parent_id = mt.id
+)
+DELETE FROM mcmp_menus WHERE id IN (SELECT id FROM menu_tree)
+`
+	result := r.db.Exec(query, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrMenuNotFound
+	}
 	return nil
 }
 
@@ -289,10 +314,54 @@ func (r *MenuRepository) CreateRoleMenuMappings(mappings []*model.RoleMenuMappin
 	return r.db.Create(mappings).Error
 }
 
+// CreateMenuWithRoleMappings 메뉴 생성과 역할 매핑을 하나의 트랜잭션으로 처리
+func (r *MenuRepository) CreateMenuWithRoleMappings(menu *model.Menu, roleIDs []uint) ([]*model.RoleMenuMapping, error) {
+	var createdMappings []*model.RoleMenuMapping
+
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		// 1. 메뉴 생성
+		if err := tx.Create(menu).Error; err != nil {
+			return fmt.Errorf("메뉴 생성 실패: %w", err)
+		}
+
+		// 2. 역할 매핑 생성 (중복 시 기존 레코드 반환)
+		for _, roleID := range roleIDs {
+			mapping := &model.RoleMenuMapping{
+				RoleID: roleID,
+				MenuID: menu.ID,
+			}
+			if err := tx.Where("role_id = ? AND menu_id = ?", roleID, menu.ID).
+				FirstOrCreate(mapping).Error; err != nil {
+				return fmt.Errorf("역할-메뉴 매핑 생성 실패 (roleId=%d): %w", roleID, err)
+			}
+			createdMappings = append(createdMappings, mapping)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return createdMappings, nil
+}
+
 // DeleteMapping 역할-메뉴 매핑 삭제
 func (r *MenuRepository) DeleteRoleMenuMapping(mappings []*model.RoleMenuMapping) error {
 	query := r.db.Delete(mappings)
 	return query.Error
+}
+
+// DeleteRoleMenuMappingByRoleAndMenu role_id + menu_id 조건으로 매핑 삭제
+func (r *MenuRepository) DeleteRoleMenuMappingByRoleAndMenu(roleID uint, menuID string) error {
+	result := r.db.Where("role_id = ? AND menu_id = ?", roleID, menuID).Delete(&model.RoleMenuMapping{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("mapping not found")
+	}
+	return nil
 }
 
 // 해당 role 과 매핑된 모든 메뉴 매핑 삭제

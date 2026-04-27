@@ -58,4 +58,56 @@ workspace profile2
 - workspacedesc : testws02 desc
 
 
+# test를 진행하기 위한 그룹용 사용자를 정의한다.
+
+user profile6 : 그룹관리자(org-admin)
+- username : orgadmin01
+- email : orgadmin01@test.com
+- firstname : oa
+- lastname : 01
+- password : orgadmin011111
+
+user profile7 : 그룹멤버1(org-member)
+- username : orgmember01
+- email : orgmember01@test.com
+- firstname : om
+- lastname : 01
+- password : orgmember011111
+
+user profile8 : 그룹멤버2(org-member)
+- username : orgmember02
+- email : orgmember02@test.com
+- firstname : om
+- lastname : 02
+- password : orgmember021111
+
+
+# test를 진행하기 위한 그룹을 정의한다.
+
+# seed 그룹 (groups.yaml에서 로딩)
+group profile1 (seed - root)
+- name : MZC
+- group_code : 01
+- description : M-CMP 최상위 그룹
+
+group profile2 (seed - child)
+- name : mc-iam-manager
+- group_code : 0106
+- parent : MZC(01)
+
+group profile3 (seed - child)
+- name : mc-infra-manager
+- group_code : 0107
+- parent : MZC(01)
+
+# CRUD 테스트용 그룹
+group profile4 (create)
+- name : TestOrg-Dev
+- description : 개발팀 테스트 그룹
+
+group profile5 (create - child)
+- name : TestOrg-Dev-Backend
+- description : 백엔드팀 테스트 그룹
+- parent : TestOrg-Dev
+
 

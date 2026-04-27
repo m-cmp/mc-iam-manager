@@ -1,6 +1,13 @@
 #!/bin/bash
 
-source ../../.env
+# Load .env from current directory or parent
+if [ -f "../../.env" ]; then
+    source ../../.env
+elif [ -f ".env" ]; then
+    source .env
+else
+    echo "Warning: .env file not found, using defaults"
+fi
 
 # 자동화된 설정 함수
 auto_setup() {

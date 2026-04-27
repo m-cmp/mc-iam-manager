@@ -144,6 +144,14 @@ func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 		}
 		platformRoleIDs = append(platformRoleIDs, strconv.FormatUint(uint64(role.ID), 10))
 	}
+	// JWT 역할이 DB에 없으면(예: platformAdmin) admin 역할로 자동 fallback
+	if len(platformRoleIDs) == 0 && len(userPlatformRoles) > 0 {
+		adminRole, err := h.roleService.GetRoleByName("admin", constants.RoleTypePlatform)
+		if err == nil && adminRole != nil {
+			c.Logger().Debug("Falling back to admin role for unrecognized platform roles: %v", userPlatformRoles)
+			platformRoleIDs = append(platformRoleIDs, strconv.FormatUint(uint64(adminRole.ID), 10))
+		}
+	}
 	req.RoleIDs = platformRoleIDs
 
 	menuList, err := h.menuService.MenuList(req)
@@ -210,7 +218,7 @@ func (h *MenuHandler) ListMenus(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /api/menus/tree/list [post]
+// @Router /api/menus/menus-tree/list [post]
 // @Id listMenusTree
 func (h *MenuHandler) ListMenusTree(c echo.Context) error {
 	// If this is an admin-only function, let middleware handle the check.
@@ -316,6 +324,11 @@ func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 	id := c.Param("menuId")
 	menu, err := h.menuService.GetMenuByID(&id)
 	if err != nil {
+		if err == repository.ErrMenuNotFound {
+			return c.JSON(http.StatusNotFound, map[string]string{
+				"error": "Menu not found",
+			})
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to find menu",
 		})
@@ -330,12 +343,15 @@ func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 
 // Create godoc
 // @Summary Create new menu
-// @Description Create a new menu
+// @Description Create a new menu. If roleIds is provided, the menu is mapped to those platform roles in a single transaction. platform_admin role is always automatically mapped.
 // @Tags menus
 // @Accept json
 // @Produce json
-// @Param menu body model.Menu true "Menu Info"
-// @Success 201 {object} model.Menu
+// @Param menu body model.CreateMenuRequest true "Menu Info"
+// @Success 201 {object} model.CreateMenuResponse
+// @Failure 400 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/menus [post]
 // @Id createMenu
@@ -350,69 +366,32 @@ func (h *MenuHandler) CreateMenu(c echo.Context) error {
 
 	// menuId로 기존 메뉴 조회
 	existingMenu, err := h.menuService.GetMenuByID(&req.ID)
-	if err != nil {
-		c.Logger().Debugf("Failed to check existing menu: %v", err)
-		if err == repository.ErrMenuNotFound {
-			// Menu doesn't exist.
-		} else {
-			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "Error occurred while retrieving menu",
-			})
-		}
+	if err != nil && err != repository.ErrMenuNotFound {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Error occurred while retrieving menu",
+		})
 	}
 
 	if existingMenu != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
+		return c.JSON(http.StatusConflict, map[string]string{
 			"error": "Menu already exists",
 		})
-		// // 기존 메뉴가 있으면 업데이트
-		// updates := map[string]interface{}{
-		// 	"parent_id":    req.ParentID,
-		// 	"display_name": req.DisplayName,
-		// 	"res_type":     req.ResType,
-		// 	"is_action":    req.IsAction,
-		// }
-
-		// // Priority와 MenuNumber는 문자열에서 변환 필요
-		// if req.Priority != "" {
-		// 	priorityInt, err := util.StringToUint(req.Priority)
-		// 	if err != nil {
-		// 		return c.JSON(http.StatusBadRequest, map[string]string{
-		// 			"error": "잘못된 priority 값입니다",
-		// 		})
-		// 	}
-		// 	updates["priority"] = priorityInt
-		// }
-
-		// if req.MenuNumber != "" {
-		// 	menuNumberInt, err := util.StringToUint(req.MenuNumber)
-		// 	if err != nil {
-		// 		return c.JSON(http.StatusBadRequest, map[string]string{
-		// 			"error": "잘못된 menu number 값입니다",
-		// 		})
-		// 	}
-		// 	updates["menu_number"] = menuNumberInt
-		// }
-
-		// if err := h.menuService.Update(req.ID, updates); err != nil {
-		// 	c.Logger().Debugf("Menu update err %s", err)
-		// 	return c.JSON(http.StatusInternalServerError, map[string]string{
-		// 		"error": "메뉴 업데이트에 실패했습니다",
-		// 	})
-		// }
-
-		// return c.JSON(http.StatusOK, map[string]string{"message": "메뉴 업데이트에 성공했습니다"})
-	} else {
-		// 기존 메뉴가 없으면 생성
-		if err := h.menuService.Create(req); err != nil {
-			c.Logger().Debugf("CreateMenu err %s", err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "메뉴 생성에 실패했습니다",
-			})
-		}
-
-		return c.JSON(http.StatusCreated, map[string]string{"message": "메뉴 생성에 성공했습니다"})
 	}
+
+	// 메뉴 생성 + 역할 매핑 (트랜잭션)
+	resp, err := h.menuService.CreateWithRoleMappings(req)
+	if err != nil {
+		c.Logger().Debugf("CreateMenu err %v", err)
+		errMsg := err.Error()
+		if len(errMsg) >= len("존재하지 않는 역할") && errMsg[:len("존재하지 않는 역할")] == "존재하지 않는 역할" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": errMsg})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": fmt.Sprintf("메뉴 생성에 실패했습니다: %v", err),
+		})
+	}
+
+	return c.JSON(http.StatusCreated, resp)
 }
 
 // Update godoc
@@ -452,7 +431,9 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 	if menu.ResType != "" {
 		updates["res_type"] = menu.ResType
 	}
-	updates["is_action"] = menu.IsAction
+	if menu.IsAction != nil {
+		updates["is_action"] = *menu.IsAction
+	}
 	if menu.Priority != "" {
 		priorityInt, err := util.StringToUint(menu.Priority)
 		if err != nil {
@@ -518,6 +499,11 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 func (h *MenuHandler) DeleteMenu(c echo.Context) error {
 	id := c.Param("menuId")
 	if err := h.menuService.Delete(id); err != nil {
+		if err == repository.ErrMenuNotFound {
+			return c.JSON(http.StatusNotFound, map[string]string{
+				"error": "Menu not found",
+			})
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "메뉴 삭제에 실패했습니다",
 		})
@@ -680,21 +666,18 @@ func (h *MenuHandler) CreateMenusRolesMapping(c echo.Context) error {
 // @Router /api/menus/platform-roles [delete]
 // @Id deleteMenusRolesMapping
 func (h *MenuHandler) DeleteMenusRolesMapping(c echo.Context) error {
-	roleID := c.Param("roleId")
-	menuID := c.Param("menuId")
+	roleID := c.QueryParam("roleId")
+	menuID := c.QueryParam("menuId")
 
 	roleIDInt, err := util.StringToUint(roleID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid role ID"})
 	}
-
-	mappings := []*model.RoleMenuMapping{
-		{
-			RoleID: roleIDInt,
-			MenuID: menuID,
-		},
+	if menuID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "menuId is required"})
 	}
-	err = h.menuService.DeleteRoleMenuMapping(mappings)
+
+	err = h.menuService.DeleteRoleMenuMappingByRoleAndMenu(roleIDInt, menuID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

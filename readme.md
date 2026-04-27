@@ -27,7 +27,7 @@ M-CMP IAM Manager provides an integrated authorization and access control framew
 
 ### Key Characteristics
 
-- **Multi-cloud Support**: Integrated management of various CSPs including AWS, Azure, GCP
+- **Multi-cloud Support**: Integrated management of various CSPs including AWS, GCP, Alibaba Cloud, Tencent Cloud, NCP, NHN, KT Cloud, and OpenStack
 - **RBAC-based Access Control**: Role-based granular permission management
 - **Centralized Management**: Single platform control for all cloud resource access
 - **Temporary Credentials**: JWT-based secure temporary access token issuance
@@ -35,7 +35,7 @@ M-CMP IAM Manager provides an integrated authorization and access control framew
 ## Key Features
 
 ### 🏢 **Enterprise Multi-cloud Environment Management**
-- **Multi-CSP Integration**: Unified management of IAM across multiple cloud service providers like AWS, Azure, GCP
+- **Multi-CSP Integration**: Unified management of IAM across multiple cloud service providers including AWS, GCP, Alibaba Cloud, Tencent Cloud, NCP, NHN, KT Cloud, and OpenStack
 - **Centralized Permission Control**: Manage access permissions for all cloud resources from a single platform
 - **RBAC (Role-based Access Control)**: Granular permission management based on user roles
 - **Temporary Credentials**: JWT-based secure temporary access token issuance
@@ -95,11 +95,11 @@ nano .env
 ```
 
 **Key Configuration Items:**
-- `DOMAIN_NAME`: Domain name (e.g., mciam.m-cmp.org)
-- `EMAIL`: Email for SSL certificate issuance
-- `MCIAMMANAGER_PORT`: Application port (default: 5000)
-- `KEYCLOAK_ADMIN`: Keycloak administrator account
-- `KEYCLOAK_ADMIN_PASSWORD`: Keycloak administrator password
+- `MC_IAM_MANAGER_EXTERNAL_DOMAIN`: Domain name (e.g., mciam.m-cmp.org)
+- `MC_IAM_MANAGER_CERT_EMAIL`: Email for SSL certificate issuance
+- `MC_IAM_MANAGER_PORT`: Application port (default: 5000)
+- `MC_IAM_MANAGER_KEYCLOAK_ADMIN`: Keycloak administrator account
+- `MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD`: Keycloak administrator password
 
 #### Step 3: Certificate Configuration
 
@@ -113,12 +113,12 @@ nano .env
 
 **Full System Deployment (Recommended):**
 ```bash
-sudo docker compose -f docker-compose.all.yaml up -d
+sudo docker compose -f docker-compose.yaml up -d
 ```
 
-**Standalone Mode (Using Existing Infrastructure):**
+**With SSL Certificate (Production):**
 ```bash
-sudo docker compose -f docker-compose.standalone.yaml up -d
+sudo docker compose -f docker-compose.yaml -f docker-compose.cert.yaml up -d
 ```
 
 **Direct Source Code Execution:**
@@ -295,7 +295,7 @@ sudo docker compose -f docker-compose.yaml up -d
 
 ```bash
 cd ./src
-swag init -g src/main.go -o src/docs
+swag init --output ./docs
 ```
 
 ### Access API Documentation

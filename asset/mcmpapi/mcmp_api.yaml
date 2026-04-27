@@ -960,7 +960,35 @@ serviceActions:
       method: post
       resourcePath: /api/resource/file/framework/{framework}/menu
       description: "mc-web-console 등 menu yaml을 사용해서 메뉴 리소스를 등록합니다."
-  
+    changeMyPassword:
+      method: put
+      resourcePath: /api/users/me/password
+      description: "Change the authenticated user's own password. Requires current password for verification."
+    Listmenus:
+      method: post
+      resourcePath: /api/menus/list
+      description: "List all menus (Admin only)"
+    Listmenustree:
+      method: post
+      resourcePath: /api/menus/menus-tree/list
+      description: "List all menus as tree structure (Admin only)"
+    Createmenu:
+      method: post
+      resourcePath: /api/menus
+      description: "Create a new menu"
+    Getmenubyid:
+      method: get
+      resourcePath: /api/menus/id/{menuId}
+      description: "Get menu details by ID"
+    Updatemenu:
+      method: put
+      resourcePath: /api/menus/id/{menuId}
+      description: "Update menu details"
+    Deletemenu:
+      method: delete
+      resourcePath: /api/menus/id/{menuId}
+      description: "Delete a menu"
+
   mc-infra-manager:
     Putchangek8snodegroupautoscalesize:
       method: put

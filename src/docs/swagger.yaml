@@ -4,20 +4,36 @@ definitions:
     enum:
     - OIDC
     - SAML
+    - SECRET_KEY
     type: string
     x-enum-varnames:
     - AuthMethodOIDC
     - AuthMethodSAML
+    - AuthMethodSecretKey
   constants.CSPType:
     enum:
     - aws
     - gcp
     - azure
+    - alibaba
+    - tencent
+    - ibm
+    - ncp
+    - nhn
+    - kt
+    - openstack
     type: string
     x-enum-varnames:
     - CSPTypeAWS
     - CSPTypeGCP
     - CSPTypeAzure
+    - CSPTypeAlibaba
+    - CSPTypeTencent
+    - CSPTypeIBM
+    - CSPTypeNCP
+    - CSPTypeNHN
+    - CSPTypeKT
+    - CSPTypeOpenStack
   constants.IAMRoleType:
     enum:
     - platform
@@ -36,6 +52,59 @@ definitions:
     - RoleTypePlatform
     - RoleTypeWorkspace
     - RoleTypeCSP
+  csp.Principal:
+    properties:
+      AWS:
+        items:
+          type: string
+        type: array
+      Service:
+        items:
+          type: string
+        type: array
+    type: object
+  csp.Role:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      policy:
+        $ref: '#/definitions/csp.RolePolicy'
+      tags:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  csp.RolePolicy:
+    properties:
+      Statement:
+        items:
+          $ref: '#/definitions/csp.RolePolicyStatement'
+        type: array
+      Version:
+        type: string
+    type: object
+  csp.RolePolicyStatement:
+    properties:
+      Action:
+        items:
+          type: string
+        type: array
+      Effect:
+        type: string
+      Principal:
+        $ref: '#/definitions/csp.Principal'
+      Resource:
+        items:
+          type: string
+        type: array
+    type: object
+  handler.UserListRequest:
+    properties:
+      enabled:
+        type: boolean
+    type: object
   idp.UserLogin:
     properties:
       id:
@@ -123,6 +192,33 @@ definitions:
       version:
         type: string
     type: object
+  model.AssignGroupPlatformRoleRequest:
+    properties:
+      role_id:
+        type: integer
+    required:
+    - role_id
+    type: object
+  model.AssignGroupUsersRequest:
+    properties:
+      user_ids:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - user_ids
+    type: object
+  model.AssignGroupWorkspaceRequest:
+    properties:
+      role_id:
+        type: integer
+      workspace_id:
+        type: integer
+    required:
+    - role_id
+    - workspace_id
+    type: object
   model.AssignRoleRequest:
     properties:
       roleId:
@@ -143,6 +239,26 @@ definitions:
       workspaceId:
         description: 워크스페이스 ID (문자열로 받음)
         type: string
+    type: object
+  model.AssignUserGroupsRequest:
+    properties:
+      group_ids:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - group_ids
+    type: object
+  model.AssignUserOrganizationsRequest:
+    properties:
+      organization_ids:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - organization_ids
     type: object
   model.AssignWorkspaceRoleRequest:
     properties:
@@ -182,6 +298,81 @@ definitions:
     - AuthMethodOIDC
     - AuthMethodSAML
     - AuthMethodSecretKey
+  model.BulkHealthCheckRequest:
+    properties:
+      csp_account_id:
+        type: integer
+    type: object
+  model.BulkHealthCheckResponse:
+    properties:
+      connected_count:
+        type: integer
+      failed_count:
+        type: integer
+      results:
+        items:
+          $ref: '#/definitions/model.HealthCheckResult'
+        type: array
+      total_count:
+        type: integer
+    type: object
+  model.ChangeMyPasswordRequest:
+    properties:
+      currentPassword:
+        type: string
+      newPassword:
+        minLength: 8
+        type: string
+    required:
+    - currentPassword
+    - newPassword
+    type: object
+  model.CompanyRequest:
+    properties:
+      description:
+        type: string
+      kc_client_id:
+        type: string
+      kc_client_secret:
+        type: string
+      name:
+        type: string
+      realm_name:
+        type: string
+    required:
+    - kc_client_id
+    - kc_client_secret
+    - name
+    - realm_name
+    type: object
+  model.CompanyResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      kc_client_id:
+        type: string
+      name:
+        type: string
+      realm_name:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  model.CompanyUpdateRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
   model.CreateCspAccountRequest:
     properties:
       account_info:
@@ -193,6 +384,13 @@ definitions:
         - aws
         - gcp
         - azure
+        - alibaba
+        - tencent
+        - ibm
+        - ncp
+        - nhn
+        - kt
+        - openstack
         type: string
       description:
         type: string
@@ -254,6 +452,10 @@ definitions:
     type: object
   model.CreateCspRoleRequest:
     properties:
+      authMethod:
+        allOf:
+        - $ref: '#/definitions/constants.AuthMethod'
+        description: 인증방식 (OIDC/SAML/SECRET_KEY), 미지정 시 OIDC 기본값
       cspRoleName:
         description: csp의 RoleName. 여러 role이 있기때문에 csp에 정의한 role로 구분하기 위해 사용
         type: string
@@ -299,6 +501,56 @@ definitions:
     - menuIds
     - roleId
     type: object
+  model.CreateMenuRequest:
+    properties:
+      displayName:
+        type: string
+      id:
+        type: string
+      isAction:
+        type: boolean
+      menuNumber:
+        type: string
+      parentId:
+        type: string
+      priority:
+        type: string
+      resType:
+        type: string
+      roleIds:
+        description: 생성과 동시에 매핑할 역할 ID 목록 (platform_admin은 항상 자동 매핑)
+        items:
+          type: integer
+        type: array
+    required:
+    - id
+    type: object
+  model.CreateMenuResponse:
+    properties:
+      menu:
+        $ref: '#/definitions/model.Menu'
+      roleMappings:
+        items:
+          $ref: '#/definitions/model.RoleMenuMapping'
+        type: array
+    type: object
+  model.CreateOrganizationRequest:
+    properties:
+      description:
+        maxLength: 1000
+        type: string
+      name:
+        maxLength: 255
+        type: string
+      organization_code:
+        description: 비어있으면 자동 생성
+        type: string
+      parent_id:
+        description: nil = 최상위 조직
+        type: integer
+    required:
+    - name
+    type: object
   model.CreateProjectRequest:
     properties:
       description:
@@ -336,6 +588,13 @@ definitions:
     required:
     - name
     type: object
+  model.CredentialSummary:
+    properties:
+      accessKeyId:
+        type: string
+      expiration:
+        type: string
+    type: object
   model.CspAccount:
     properties:
       account_info:
@@ -366,6 +625,36 @@ definitions:
         type: boolean
       name:
         type: string
+    type: object
+  model.CspAccountValidationResponse:
+    properties:
+      account_id:
+        type: integer
+      account_name:
+        type: string
+      csp_type:
+        type: string
+      results:
+        items:
+          $ref: '#/definitions/model.CspAccountValidationResult'
+        type: array
+    type: object
+  model.CspAccountValidationResult:
+    properties:
+      auth_method:
+        type: string
+      csp_role_id:
+        type: integer
+      csp_role_name:
+        type: string
+      csp_type:
+        type: string
+      detail:
+        type: string
+      error:
+        type: string
+      valid:
+        type: boolean
     type: object
   model.CspIdpConfig:
     properties:
@@ -404,6 +693,23 @@ definitions:
         type: boolean
       name:
         type: string
+    type: object
+  model.CspIdpSummary:
+    properties:
+      active_count:
+        type: integer
+      csp_account_id:
+        type: integer
+      csp_account_name:
+        type: string
+      csp_type:
+        type: string
+      method_counts:
+        additionalProperties:
+          type: integer
+        type: object
+      total_count:
+        type: integer
     type: object
   model.CspPolicy:
     properties:
@@ -495,6 +801,64 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.CspValidationRequest:
+    properties:
+      authMethod:
+        description: 인증방식 (OIDC, SAML, SECRET_KEY)
+        type: string
+      cspType:
+        description: CSP 유형 (aws, gcp, ...)
+        type: string
+      workspaceId:
+        description: 대상 워크스페이스 ID
+        type: string
+    type: object
+  model.CspValidationResponse:
+    properties:
+      authMethod:
+        type: string
+      credentials:
+        allOf:
+        - $ref: '#/definitions/model.CredentialSummary'
+        description: valid=true일 때만
+      cspType:
+        type: string
+      error:
+        type: string
+      failedStep:
+        description: 0=전체성공, N=N번 단계 실패
+        type: integer
+      steps:
+        description: 항상 전체 단계 포함
+        items:
+          $ref: '#/definitions/model.ValidationStep'
+        type: array
+      valid:
+        type: boolean
+    type: object
+  model.EffectivePlatformRoleItem:
+    properties:
+      description:
+        type: string
+      role_id:
+        type: integer
+      role_name:
+        type: string
+      source:
+        description: '"direct" 또는 "group:{groupName}"'
+        type: string
+    type: object
+  model.EffectiveWorkspaceRole:
+    properties:
+      role_id:
+        type: integer
+      role_name:
+        type: string
+      workspace_id:
+        type: integer
+      workspace_name:
+        type: string
+    type: object
   model.FilterRoleMasterMappingRequest:
     properties:
       authMethod:
@@ -524,8 +888,79 @@ definitions:
       workspaceName:
         type: string
     type: object
+  model.GroupAccessInfo:
+    properties:
+      group_id:
+        type: integer
+      group_name:
+        type: string
+      roles:
+        items:
+          $ref: '#/definitions/model.PlatformRoleSimple'
+        type: array
+    type: object
+  model.GroupPlatformRoleResponse:
+    properties:
+      created_at:
+        type: string
+      group_id:
+        type: integer
+      group_name:
+        type: string
+      role_id:
+        type: integer
+      role_name:
+        type: string
+    type: object
+  model.GroupWorkspaceRoleResponse:
+    properties:
+      created_at:
+        type: string
+      group_id:
+        type: integer
+      group_name:
+        type: string
+      role_id:
+        type: integer
+      role_name:
+        type: string
+      workspace_id:
+        type: integer
+      workspace_name:
+        type: string
+    type: object
+  model.HealthCheckResult:
+    properties:
+      auth_method:
+        type: string
+      checked_at:
+        type: string
+      config_id:
+        type: integer
+      config_name:
+        type: string
+      csp_type:
+        type: string
+      error_message:
+        type: string
+      status:
+        description: CONNECTED, FAILED, TIMEOUT
+        type: string
+    type: object
   model.ImportApiFramework:
     properties:
+      authPass:
+        description: Password for basic auth or token for bearer auth
+        type: string
+      authType:
+        description: 'Authentication type: "none", "basic", "bearer"'
+        type: string
+      authUser:
+        description: Username for basic auth
+        type: string
+      baseUrl:
+        description: Base URL for the service (e.g., "http://localhost:1323/tumblebug")
+        type: string
       name:
         description: Framework name (e.g., "mc-infra-manager")
         type: string
@@ -592,6 +1027,18 @@ definitions:
         description: Total number of frameworks in request
         type: integer
     type: object
+  model.InvitationStatus:
+    enum:
+    - PENDING
+    - PENDING_APPROVAL
+    - ACCEPTED
+    - REJECTED
+    type: string
+    x-enum-varnames:
+    - InvitationStatusPending
+    - InvitationStatusPendingApproval
+    - InvitationStatusAccepted
+    - InvitationStatusRejected
   model.MciamPermission:
     properties:
       action:
@@ -688,6 +1135,85 @@ definitions:
       resType:
         type: string
     type: object
+  model.MoveOrganizationRequest:
+    properties:
+      new_parent_id:
+        description: nil = 최상위로 이동
+        type: integer
+    type: object
+  model.Organization:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/model.Organization'
+        type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      organization_code:
+        type: string
+      parent:
+        allOf:
+        - $ref: '#/definitions/model.Organization'
+        description: 관계 정의 (API 응답 전용 - 필요 시 Preload)
+      parent_id:
+        type: integer
+      updated_at:
+        type: string
+      users:
+        items:
+          $ref: '#/definitions/model.User'
+        type: array
+    type: object
+  model.OrganizationDeletableResponse:
+    properties:
+      deletable:
+        type: boolean
+      reason:
+        type: string
+    type: object
+  model.OrganizationTree:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/model.OrganizationTree'
+        type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      level:
+        type: integer
+      name:
+        type: string
+      organization_code:
+        type: string
+      parent_id:
+        type: integer
+      path:
+        description: '예: "/조직A/개발팀"'
+        type: string
+      updated_at:
+        type: string
+      user_count:
+        type: integer
+    type: object
+  model.PlatformRoleSimple:
+    properties:
+      description:
+        type: string
+      role_id:
+        type: integer
+      role_name:
+        type: string
+    type: object
   model.PolicyType:
     enum:
     - inline
@@ -726,6 +1252,108 @@ definitions:
         items:
           $ref: '#/definitions/model.Workspace'
         type: array
+    type: object
+  model.ProjectSyncApplyAssignedItem:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      nsId:
+        type: string
+    type: object
+  model.ProjectSyncApplyCreatedItem:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      nsId:
+        type: string
+    type: object
+  model.ProjectSyncApplyFailedItem:
+    properties:
+      error:
+        type: string
+      nsId:
+        type: string
+    type: object
+  model.ProjectSyncApplyRequest:
+    properties:
+      nsIds:
+        items:
+          type: string
+        type: array
+      workspaceId:
+        type: string
+    required:
+    - nsIds
+    - workspaceId
+    type: object
+  model.ProjectSyncApplyResponse:
+    properties:
+      assigned:
+        items:
+          $ref: '#/definitions/model.ProjectSyncApplyAssignedItem'
+        type: array
+      created:
+        items:
+          $ref: '#/definitions/model.ProjectSyncApplyCreatedItem'
+        type: array
+      failed:
+        items:
+          $ref: '#/definitions/model.ProjectSyncApplyFailedItem'
+        type: array
+      skipped:
+        items:
+          $ref: '#/definitions/model.ProjectSyncApplySkippedItem'
+        type: array
+    type: object
+  model.ProjectSyncApplySkippedItem:
+    properties:
+      nsId:
+        type: string
+      reason:
+        type: string
+    type: object
+  model.ProjectSyncDiffMissingItem:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      nsId:
+        type: string
+    type: object
+  model.ProjectSyncDiffResponse:
+    properties:
+      missingProjects:
+        items:
+          $ref: '#/definitions/model.ProjectSyncDiffMissingItem'
+        type: array
+      unassignedProjects:
+        items:
+          $ref: '#/definitions/model.ProjectSyncDiffUnassignedItem'
+        type: array
+    type: object
+  model.ProjectSyncDiffUnassignedItem:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      nsId:
+        type: string
+    type: object
+  model.ResetPasswordRequest:
+    properties:
+      newPassword:
+        minLength: 8
+        type: string
+    required:
+    - newPassword
     type: object
   model.ResourceType:
     properties:
@@ -849,6 +1477,21 @@ definitions:
           $ref: '#/definitions/model.UserWorkspaceRole'
         type: array
     type: object
+  model.RoleMenuMapping:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      menu_id:
+        description: 메뉴 ID
+        type: string
+      role_id:
+        description: 역할 ID
+        type: integer
+      updated_at:
+        type: string
+    type: object
   model.RoleSub:
     properties:
       created_at:
@@ -862,6 +1505,15 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.SendInvitationRequest:
+    properties:
+      inviteeUserId:
+        type: integer
+      roleId:
+        type: integer
+    required:
+    - inviteeUserId
+    type: object
   model.SetupInitialAdminRequest:
     properties:
       email:
@@ -870,6 +1522,26 @@ definitions:
         type: string
       username:
         type: string
+    type: object
+  model.SignupRequest:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      organization:
+        description: 선택 필드
+        type: string
+      password:
+        minLength: 8
+        type: string
+    required:
+    - email
+    - firstName
+    - lastName
+    - password
     type: object
   model.SyncPoliciesRequest:
     properties:
@@ -926,6 +1598,28 @@ definitions:
         additionalProperties: true
         type: object
     type: object
+  model.UpdateGroupWorkspaceRoleRequest:
+    properties:
+      role_id:
+        type: integer
+    required:
+    - role_id
+    type: object
+  model.UpdateOrganizationRequest:
+    properties:
+      description:
+        maxLength: 1000
+        type: string
+      name:
+        maxLength: 255
+        type: string
+      organization_code:
+        description: 코드 수정 시 입력
+        type: string
+      parent_id:
+        description: 부모 변경 시 입력
+        type: integer
+    type: object
   model.User:
     properties:
       created_at:
@@ -950,11 +1644,18 @@ definitions:
       lastName:
         description: Ignore LastName for DB
         type: string
+      organization:
+        description: Organization stored in Keycloak attributes
+        type: string
       platform_roles:
         description: 관계 정의
         items:
           $ref: '#/definitions/model.RoleMaster'
         type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/model.UserStatus'
+        description: 사용자 계정 상태
       updated_at:
         type: string
       username:
@@ -964,6 +1665,19 @@ definitions:
         items:
           $ref: '#/definitions/model.RoleMaster'
         type: array
+    type: object
+  model.UserAccessSummaryResponse:
+    properties:
+      direct_roles:
+        items:
+          $ref: '#/definitions/model.PlatformRoleSimple'
+        type: array
+      groups:
+        items:
+          $ref: '#/definitions/model.GroupAccessInfo'
+        type: array
+      user_id:
+        type: integer
     type: object
   model.UserPlatformRole:
     properties:
@@ -977,6 +1691,18 @@ definitions:
         description: 사용자 정보 (JOIN으로 가져올 필드들)
         type: string
     type: object
+  model.UserStatus:
+    enum:
+    - ACTIVE
+    - INACTIVE
+    - WITHDRAWAL_REQUESTED
+    - WITHDRAWN
+    type: string
+    x-enum-varnames:
+    - UserStatusActive
+    - UserStatusInactive
+    - UserStatusWithdrawalRequested
+    - UserStatusWithdrawn
   model.UserStatusRequest:
     properties:
       id:
@@ -1012,6 +1738,32 @@ definitions:
       workspace_name:
         type: string
     type: object
+  model.ValidationStep:
+    properties:
+      detail:
+        description: 수행 내역 또는 오류 안내 (skipped면 "")
+        type: string
+      name:
+        description: 단계명
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/model.ValidationStepStatus'
+        description: ok | failed | skipped
+      step:
+        description: 순번 (1부터)
+        type: integer
+    type: object
+  model.ValidationStepStatus:
+    enum:
+    - ok
+    - failed
+    - skipped
+    type: string
+    x-enum-varnames:
+    - ValidationStepOk
+    - ValidationStepFailed
+    - ValidationStepSkipped
   model.Workspace:
     properties:
       created_at:
@@ -1028,6 +1780,25 @@ definitions:
         type: array
       updated_at:
         type: string
+    type: object
+  model.WorkspaceInvitation:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      inviteeUserId:
+        type: integer
+      inviterUserId:
+        type: integer
+      roleId:
+        type: integer
+      status:
+        $ref: '#/definitions/model.InvitationStatus'
+      updatedAt:
+        type: string
+      workspaceId:
+        type: integer
     type: object
   model.WorkspaceProjectMappingRequest:
     properties:
@@ -1168,6 +1939,47 @@ paths:
       summary: Refresh access token
       tags:
       - auth
+  /api/auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Public user signup (no authentication required)
+      operationId: SignupUser
+      parameters:
+      - description: Signup Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User signup
+      tags:
+      - auth
   /api/auth/temp-credential-csps:
     get:
       consumes:
@@ -1223,6 +2035,173 @@ paths:
       summary: Validate access token
       tags:
       - auth
+  /api/company:
+    delete:
+      description: 플랫폼 회사를 비활성화합니다. (platformAdmin 전용, 멱등 처리)
+      operationId: deactivateCompany
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.CompanyResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Deactivate company
+      tags:
+      - company
+    get:
+      description: 플랫폼 회사 정보를 조회합니다. (싱글톤)
+      operationId: getCompany
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.CompanyResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get company
+      tags:
+      - company
+    post:
+      consumes:
+      - application/json
+      description: 플랫폼 회사 정보를 생성합니다. (싱글톤, platformAdmin 전용)
+      operationId: createCompany
+      parameters:
+      - description: Company Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CompanyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.CompanyResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create company
+      tags:
+      - company
+    put:
+      consumes:
+      - application/json
+      description: 플랫폼 회사 이름/설명을 수정합니다. (platformAdmin 전용)
+      operationId: updateCompany
+      parameters:
+      - description: Company Update Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CompanyUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.CompanyResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update company
+      tags:
+      - company
+  /api/company/activate:
+    post:
+      description: 플랫폼 회사를 활성화합니다. (platformAdmin 전용, 멱등 처리)
+      operationId: activateCompany
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.CompanyResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Activate company
+      tags:
+      - company
   /api/csp-accounts:
     post:
       consumes:
@@ -1480,7 +2459,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Validate CSP account configuration
+      description: Validate CSP account by checking actual CSP infrastructure (IDP
+        provider existence, role trust policy, or credential validity) for each linked
+        CspRole
       operationId: validateCspAccount
       parameters:
       - description: Account ID
@@ -1494,9 +2475,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/model.CspAccountValidationResponse'
         "400":
           description: Bad Request
           schema:
@@ -1509,8 +2488,8 @@ paths:
             additionalProperties:
               type: string
             type: object
-        "500":
-          description: Internal Server Error
+        "503":
+          description: Service Unavailable
           schema:
             additionalProperties:
               type: string
@@ -1704,6 +2683,36 @@ paths:
       security:
       - BearerAuth: []
       summary: Create CSP IDP config
+      tags:
+      - csp-idp-configs
+  /api/csp-idp-configs/health-check:
+    post:
+      consumes:
+      - application/json
+      description: Check connection status of all active CSP IDP configurations concurrently
+      operationId: bulkHealthCheckCspIdpConfigs
+      parameters:
+      - description: Optional filter
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/model.BulkHealthCheckRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.BulkHealthCheckResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Bulk health check for CSP IDP configs
       tags:
       - csp-idp-configs
   /api/csp-idp-configs/id/{configId}:
@@ -1996,6 +3005,32 @@ paths:
       security:
       - BearerAuth: []
       summary: List CSP IDP configs
+      tags:
+      - csp-idp-configs
+  /api/csp-idp-configs/summary:
+    get:
+      consumes:
+      - application/json
+      description: Get IDP configuration count summary grouped by CSP account
+      operationId: getCspIdpSummary
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.CspIdpSummary'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get CSP IDP config summary
       tags:
       - csp-idp-configs
   /api/csp-policies:
@@ -2405,6 +3440,616 @@ paths:
       summary: Sync CSP policies from cloud
       tags:
       - csp-policies
+  /api/csp/iam/roles:
+    post:
+      consumes:
+      - application/json
+      description: CSP에 IAM 역할을 직접 생성합니다
+      operationId: createCspIAMRole
+      parameters:
+      - description: CSP 계정 ID
+        in: query
+        name: csp_account_id
+        required: true
+        type: integer
+      - description: IAM 역할 정보
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/csp.Role'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: CSP IAM 역할 생성
+      tags:
+      - csp-iam
+  /api/csp/iam/roles/{roleName}:
+    delete:
+      consumes:
+      - application/json
+      description: CSP에서 IAM 역할을 삭제합니다
+      operationId: deleteCspIAMRole
+      parameters:
+      - description: IAM 역할명
+        in: path
+        name: roleName
+        required: true
+        type: string
+      - description: CSP 계정 ID
+        in: query
+        name: csp_account_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: CSP IAM 역할 삭제
+      tags:
+      - csp-iam
+    get:
+      consumes:
+      - application/json
+      description: CSP에서 특정 IAM 역할 정보를 조회합니다
+      operationId: getCspIAMRole
+      parameters:
+      - description: IAM 역할명
+        in: path
+        name: roleName
+        required: true
+        type: string
+      - description: CSP 계정 ID
+        in: query
+        name: csp_account_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/csp.Role'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: CSP IAM 역할 조회
+      tags:
+      - csp-iam
+    put:
+      consumes:
+      - application/json
+      description: CSP의 IAM 역할 정보를 수정합니다
+      operationId: updateCspIAMRole
+      parameters:
+      - description: IAM 역할명
+        in: path
+        name: roleName
+        required: true
+        type: string
+      - description: CSP 계정 ID
+        in: query
+        name: csp_account_id
+        required: true
+        type: integer
+      - description: IAM 역할 수정 정보
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/csp.Role'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: CSP IAM 역할 수정
+      tags:
+      - csp-iam
+  /api/groups/id/{groupId}/platform-roles:
+    get:
+      description: 그룹에 할당된 플랫폼 역할 목록을 조회합니다.
+      operationId: getGroupPlatformRoles
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.GroupPlatformRoleResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹 Platform Role 목록 조회
+      tags:
+      - groups
+    post:
+      consumes:
+      - application/json
+      description: 그룹에 플랫폼 역할을 할당합니다. DB + Keycloak 이중 관리.
+      operationId: assignGroupPlatformRole
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 역할 할당 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignGroupPlatformRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹에 Platform Role 할당
+      tags:
+      - groups
+  /api/groups/id/{groupId}/platform-roles/{roleId}:
+    delete:
+      description: 그룹에 할당된 플랫폼 역할을 해제합니다. DB + Keycloak 동시 제거.
+      operationId: removeGroupPlatformRole
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 역할 ID
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹 Platform Role 해제
+      tags:
+      - groups
+  /api/groups/id/{groupId}/platform-roles/available:
+    get:
+      description: 그룹에 아직 할당되지 않은 플랫폼 역할 목록을 조회합니다.
+      operationId: getAvailableGroupPlatformRoles
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMaster'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹에 할당 가능한 Platform Role 목록 조회
+      tags:
+      - groups
+  /api/groups/id/{groupId}/users:
+    post:
+      consumes:
+      - application/json
+      description: 그룹에 사용자 목록을 일괄 할당합니다. DB + Keycloak 그룹 동기화.
+      operationId: assignGroupUsers
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 사용자 일괄 할당 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignGroupUsersRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹에 사용자 일괄 할당 (Keycloak 동기화 포함)
+      tags:
+      - groups
+  /api/groups/id/{groupId}/users/{userId}:
+    delete:
+      description: 그룹에서 특정 사용자를 제거합니다. DB + Keycloak 그룹 동기화.
+      operationId: removeGroupUser
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹에서 사용자 제거 (Keycloak 동기화 포함)
+      tags:
+      - groups
+  /api/groups/id/{groupId}/workspaces:
+    get:
+      description: 그룹에 매핑된 워크스페이스 및 역할 목록을 조회합니다.
+      operationId: getGroupWorkspaces
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.GroupWorkspaceRoleResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹 워크스페이스 매핑 목록 조회
+      tags:
+      - groups
+    post:
+      consumes:
+      - application/json
+      description: 그룹을 워크스페이스에 매핑하고 역할을 지정합니다. DB 전용 관리.
+      operationId: assignGroupWorkspace
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 워크스페이스 매핑 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignGroupWorkspaceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹-워크스페이스 매핑
+      tags:
+      - groups
+  /api/groups/id/{groupId}/workspaces/{workspaceId}:
+    delete:
+      description: 그룹-워크스페이스 매핑을 제거합니다.
+      operationId: removeGroupWorkspaceRole
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 워크스페이스 ID
+        in: path
+        name: workspaceId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹-워크스페이스 매핑 제거
+      tags:
+      - groups
+    put:
+      consumes:
+      - application/json
+      description: 그룹-워크스페이스 매핑의 역할을 변경합니다.
+      operationId: updateGroupWorkspaceRole
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      - description: 워크스페이스 ID
+        in: path
+        name: workspaceId
+        required: true
+        type: integer
+      - description: 역할 변경 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateGroupWorkspaceRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹 워크스페이스 역할 변경
+      tags:
+      - groups
+  /api/groups/id/{groupId}/workspaces/available:
+    get:
+      description: 그룹에 아직 매핑되지 않은 워크스페이스 목록을 조회합니다.
+      operationId: getAvailableGroupWorkspaces
+      parameters:
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Workspace'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 그룹에 매핑 가능한 워크스페이스 목록 조회
+      tags:
+      - groups
   /api/initial-admin:
     post:
       consumes:
@@ -2429,6 +4074,96 @@ paths:
       summary: Setup initial platform admin
       tags:
       - admin
+  /api/invitations:
+    get:
+      consumes:
+      - application/json
+      description: List all workspace invitations, optionally filtered by status
+      operationId: listAllInvitations
+      parameters:
+      - description: Filter by status (PENDING_APPROVAL)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.WorkspaceInvitation'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List all invitations (admin)
+      tags:
+      - invitations
+  /api/invitations/{invitationId}/approve:
+    put:
+      consumes:
+      - application/json
+      description: Admin approves a workspace invitation and registers the invitee
+        as member
+      operationId: approveInvitation
+      parameters:
+      - description: Invitation ID
+        in: path
+        name: invitationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Approve workspace invitation (admin)
+      tags:
+      - invitations
+  /api/invitations/{invitationId}/reject:
+    put:
+      consumes:
+      - application/json
+      description: Admin rejects a workspace invitation
+      operationId: rejectInvitationByAdmin
+      parameters:
+      - description: Invitation ID
+        in: path
+        name: invitationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reject workspace invitation (admin)
+      tags:
+      - invitations
   /api/mcmp-api-permission-action-mappings:
     post:
       consumes:
@@ -2610,10 +4345,12 @@ paths:
       consumes:
       - application/json
       description: Fetches API specifications from remote URLs and imports them to
-        the database. Supports swagger and openapi source types.
+        the database. Supports swagger and openapi source types. Optionally accepts
+        baseUrl and authentication info to populate the mcmp_api_services table.
       operationId: importAPIs
       parameters:
-      - description: Frameworks to import
+      - description: Frameworks to import (with optional baseUrl, authType, authUser,
+          authPass)
         in: body
         name: request
         required: true
@@ -2898,7 +4635,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new menu
+      description: Create a new menu. If roleIds is provided, the menu is mapped to
+        those platform roles in a single transaction. platform_admin role is always
+        automatically mapped.
       operationId: createMenu
       parameters:
       - description: Menu Info
@@ -2906,14 +4645,32 @@ paths:
         name: menu
         required: true
         schema:
-          $ref: '#/definitions/model.Menu'
+          $ref: '#/definitions/model.CreateMenuRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/model.Menu'
+            $ref: '#/definitions/model.CreateMenuResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       security:
       - BearerAuth: []
       summary: Create new menu
@@ -3029,6 +4786,44 @@ paths:
       security:
       - BearerAuth: []
       summary: List all menus
+      tags:
+      - menus
+  /api/menus/menus-tree/list:
+    post:
+      consumes:
+      - application/json
+      description: List all menus as a tree structure. Admin permission required.
+      operationId: listMenusTree
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.MenuTreeNode'
+            type: array
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Forbidden'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all menus Tree
       tags:
       - menus
   /api/menus/platform-roles:
@@ -3228,44 +5023,6 @@ paths:
       summary: Register/Update menus from YAML in request body
       tags:
       - menus
-  /api/menus/tree/list:
-    post:
-      consumes:
-      - application/json
-      description: List all menus as a tree structure. Admin permission required.
-      operationId: listMenusTree
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/model.MenuTreeNode'
-            type: array
-        "401":
-          description: 'error: Unauthorized'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: 'error: Forbidden'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: 서버 내부 오류'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: List all menus Tree
-      tags:
-      - menus
   /api/menus/user-menu-tree:
     get:
       consumes:
@@ -3292,6 +5049,389 @@ paths:
       summary: Get user menu tree by platform roles
       tags:
       - menus
+  /api/organizations:
+    get:
+      description: 전체 조직 목록을 조회합니다. tree=true이면 Tree 구조로 반환. name/code로 검색 가능 (검색
+        시 tree 파라미터 무시).
+      operationId: listOrganizations
+      parameters:
+      - description: 'Tree 구조 반환 여부 (기본: false)'
+        in: query
+        name: tree
+        type: boolean
+      - description: 조직명 검색 (부분 일치, ILIKE)
+        in: query
+        name: name
+        type: string
+      - description: 조직 코드 검색 (부분 일치, ILIKE)
+        in: query
+        name: code
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.OrganizationTree'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 목록 조회
+      tags:
+      - organizations
+    post:
+      consumes:
+      - application/json
+      description: 플랫폼 관리자가 조직을 생성합니다. parent_id가 없으면 최상위 조직 생성.
+      operationId: createOrganization
+      parameters:
+      - description: 조직 생성 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Organization'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 생성
+      tags:
+      - organizations
+  /api/organizations/code/{code}:
+    get:
+      description: 조직 코드로 조직 정보를 조회합니다.
+      operationId: getOrganizationByCode
+      parameters:
+      - description: '조직 코드 (예: 0101)'
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Organization'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 상세 조회 (코드)
+      tags:
+      - organizations
+  /api/organizations/id/{organizationId}:
+    delete:
+      description: 조직을 삭제합니다. cascade=true이면 하위 조직 및 사용자 매핑도 모두 삭제됩니다. 기본(cascade=false)이고
+        하위 조직이 있으면 400을 반환합니다.
+      operationId: deleteOrganization
+      parameters:
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      - description: '하위 조직 cascade 삭제 여부 (기본: false)'
+        in: query
+        name: cascade
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: 삭제 성공
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 삭제
+      tags:
+      - organizations
+    get:
+      description: 조직 ID로 조직 정보를 조회합니다.
+      operationId: getOrganizationByID
+      parameters:
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Organization'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 상세 조회 (ID)
+      tags:
+      - organizations
+    put:
+      consumes:
+      - application/json
+      description: 조직 정보를 수정합니다. 부모 변경 시 하위 조직 코드 자동 재생성.
+      operationId: updateOrganization
+      parameters:
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      - description: 조직 수정 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 수정
+      tags:
+      - organizations
+  /api/organizations/id/{organizationId}/deletable:
+    get:
+      description: 특정 조직의 삭제 가능 여부와 사유를 반환합니다.
+      operationId: getOrganizationDeletable
+      parameters:
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.OrganizationDeletableResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 삭제 가능 여부 확인
+      tags:
+      - organizations
+  /api/organizations/id/{organizationId}/move:
+    put:
+      consumes:
+      - application/json
+      description: 조직을 트리 내 다른 위치(다른 부모 조직)로 이동합니다. 하위 조직도 함께 이동하며 조직 코드가 자동 재생성됩니다.
+      operationId: moveOrganization
+      parameters:
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      - description: '이동 요청 (new_parent_id: null이면 최상위로 이동)'
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.MoveOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 이동
+      tags:
+      - organizations
+  /api/organizations/id/{organizationId}/subtree:
+    get:
+      description: 지정 조직을 루트로 하는 하위 트리를 반환합니다.
+      operationId: getOrganizationSubtree
+      parameters:
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.OrganizationTree'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 특정 조직의 하위 트리 조회
+      tags:
+      - organizations
+  /api/organizations/id/{organizationId}/users:
+    get:
+      description: 특정 조직에 소속된 사용자 목록을 조회합니다.
+      operationId: getOrganizationUsers
+      parameters:
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.User'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 조직 소속 사용자 조회
+      tags:
+      - organizations
+  /api/organizations/tree:
+    get:
+      description: 전체 조직을 계층 트리 구조로 반환합니다. 최대 10단계 깊이를 지원하며 각 노드에 children 배열을 포함합니다.
+      operationId: getOrganizationTree
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.OrganizationTree'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 전체 조직 트리 조회
+      tags:
+      - organizations
   /api/permissions/mciam:
     post:
       consumes:
@@ -4539,7 +6679,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Get a list of all csp roles
+      description: Get a list of all csp roles stored in the database
       operationId: listCSPRoles
       produces:
       - application/json
@@ -4548,7 +6688,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/model.RoleMaster'
+              $ref: '#/definitions/model.CspRole'
             type: array
         "500":
           description: Internal Server Error
@@ -5529,6 +7669,30 @@ paths:
       summary: Check user roles
       tags:
       - admin
+  /api/setup/initial-organizations:
+    post:
+      description: YAML 시드 파일에서 기본 조직 구조(MZC + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.
+      operationId: setupInitialOrganizations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 기본 조직 초기화
+      tags:
+      - organizations
   /api/setup/initial-role-menu-permission:
     get:
       consumes:
@@ -5560,6 +7724,66 @@ paths:
       summary: Initialize menu permissions from CSV
       tags:
       - admin
+  /api/setup/projects/sync:
+    post:
+      consumes:
+      - application/json
+      description: 지정된 nsId 목록의 project를 생성하거나 지정된 workspace에 할당합니다.
+      operationId: applyProjectSync
+      parameters:
+      - description: Sync Apply Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ProjectSyncApplyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ProjectSyncApplyResponse'
+        "400":
+          description: 'error: 잘못된 요청'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 선택한 namespace를 특정 workspace에 동기화
+      tags:
+      - projects
+  /api/setup/projects/sync-diff:
+    get:
+      description: mc-infra-manager의 namespace 목록과 로컬 프로젝트를 비교하여 불일치 목록을 반환합니다. DB
+        변경 없음.
+      operationId: getProjectSyncDiff
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.ProjectSyncDiffResponse'
+        "500":
+          description: 'error: 서버 내부 오류'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: mc-infra-manager와 프로젝트 동기화 차이 조회
+      tags:
+      - projects
   /api/setup/sync-projects:
     post:
       consumes:
@@ -5704,6 +7928,112 @@ paths:
       summary: Update user
       tags:
       - users
+  /api/users/{userId}/organizations:
+    get:
+      description: 사용자가 소속된 조직 목록을 조회합니다. hierarchy=true이면 path/level 포함.
+      operationId: getUserOrganizations
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: '계층 정보(path, level) 포함 여부 (기본: false)'
+        in: query
+        name: hierarchy
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.OrganizationTree'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자 소속 조직 조회
+      tags:
+      - organizations
+    post:
+      consumes:
+      - application/json
+      description: 사용자를 하나 이상의 조직에 할당합니다 (다중 소속 가능).
+      operationId: assignUserOrganizations
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 조직 할당 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignUserOrganizationsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자-조직 할당
+      tags:
+      - organizations
+  /api/users/{userId}/organizations/{organizationId}:
+    delete:
+      description: 사용자를 특정 조직에서 제거합니다.
+      operationId: removeUserOrganization
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자-조직 매핑 제거
+      tags:
+      - organizations
   /api/users/id/{userId}:
     get:
       consumes:
@@ -5738,6 +8068,313 @@ paths:
       security:
       - BearerAuth: []
       summary: Get user by ID
+      tags:
+      - users
+  /api/users/id/{userId}/access-summary:
+    get:
+      description: 사용자의 직접 할당 플랫폼 역할, 소속 그룹 목록, 그룹 기반 역할을 통합 조회합니다.
+      operationId: getUserAccessSummary
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.UserAccessSummaryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자 접근 권한 요약 조회
+      tags:
+      - users
+  /api/users/id/{userId}/activate:
+    put:
+      description: Reactivate a deactivated user account (INACTIVE → ACTIVE).
+      operationId: activateUser
+      parameters:
+      - description: User DB ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Activate user account
+      tags:
+      - users
+  /api/users/id/{userId}/deactivate:
+    put:
+      description: Deactivate a user account (ACTIVE → INACTIVE). Keycloak login is
+        disabled.
+      operationId: deactivateUser
+      parameters:
+      - description: User DB ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Deactivate user account
+      tags:
+      - users
+  /api/users/id/{userId}/effective-platform-roles:
+    get:
+      description: 사용자에게 직접 할당된 역할과 소속 그룹을 통해 상속된 역할을 중복 제거하여 반환합니다.
+      operationId: getUserEffectivePlatformRoles
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.EffectivePlatformRoleItem'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자 유효 플랫폼 역할 목록 조회 (직접 + 그룹 상속)
+      tags:
+      - users
+  /api/users/id/{userId}/groups:
+    post:
+      consumes:
+      - application/json
+      description: 사용자를 하나 이상의 그룹에 할당합니다. DB + Keycloak 그룹 동기화.
+      operationId: assignUserGroups
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 그룹 할당 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignUserGroupsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자를 그룹에 할당 (Keycloak 동기화 포함)
+      tags:
+      - groups
+    put:
+      consumes:
+      - application/json
+      description: 사용자의 기존 그룹을 모두 제거하고 지정된 그룹으로 교체합니다.
+      operationId: replaceUserGroups
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 교체할 그룹 목록
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignUserGroupsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자 그룹 멤버십 전체 교체
+      tags:
+      - organizations
+  /api/users/id/{userId}/groups/{groupId}:
+    delete:
+      description: 사용자를 특정 그룹에서 제거합니다. DB + Keycloak 그룹 동기화.
+      operationId: removeUserFromGroup
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 그룹 ID
+        in: path
+        name: groupId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자를 그룹에서 제거 (Keycloak 동기화 포함)
+      tags:
+      - groups
+  /api/users/id/{userId}/password:
+    put:
+      consumes:
+      - application/json
+      description: Reset a user's password (admin only)
+      operationId: ResetUserPassword
+      parameters:
+      - description: User ID (DB)
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: New Password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reset user password
       tags:
       - users
   /api/users/id/{userId}/status:
@@ -5786,6 +8423,49 @@ paths:
       security:
       - BearerAuth: []
       summary: Update user status
+      tags:
+      - users
+  /api/users/id/{userId}/withdraw:
+    put:
+      description: 'Admin processes a withdrawal request: removes all role/org mappings
+        and disables in Keycloak.'
+      operationId: processWithdrawal
+      parameters:
+      - description: User DB ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Process user withdrawal
       tags:
       - users
   /api/users/id/{userId}/workspaces/id/{workspaceId}/roles/list:
@@ -5929,8 +8609,15 @@ paths:
     post:
       consumes:
       - application/json
-      description: Retrieve a list of all users.
+      description: Retrieve a list of users. Optionally filter by Keycloak enabled
+        status (true=active, false=pending approval).
       operationId: listUsers
+      parameters:
+      - description: Optional filter
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/handler.UserListRequest'
       produces:
       - application/json
       responses:
@@ -5940,6 +8627,12 @@ paths:
             items:
               $ref: '#/definitions/model.User'
             type: array
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:
@@ -5949,6 +8642,277 @@ paths:
       security:
       - BearerAuth: []
       summary: List all users
+      tags:
+      - users
+  /api/users/me:
+    get:
+      description: Get the authenticated user's own profile information. No PlatformRole
+        required.
+      operationId: getMyInfo
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.User'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get my info
+      tags:
+      - users
+  /api/users/me/invitations:
+    get:
+      consumes:
+      - application/json
+      description: List pending workspace invitations for the current user
+      operationId: listMyInvitations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.WorkspaceInvitation'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List my invitations
+      tags:
+      - users
+  /api/users/me/invitations/{invitationId}/accept:
+    put:
+      consumes:
+      - application/json
+      description: Accept a workspace invitation and join as member
+      operationId: acceptInvitation
+      parameters:
+      - description: Invitation ID
+        in: path
+        name: invitationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Accept workspace invitation
+      tags:
+      - users
+  /api/users/me/invitations/{invitationId}/reject:
+    put:
+      consumes:
+      - application/json
+      description: Reject a workspace invitation
+      operationId: rejectInvitation
+      parameters:
+      - description: Invitation ID
+        in: path
+        name: invitationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reject workspace invitation
+      tags:
+      - users
+  /api/users/me/password:
+    put:
+      consumes:
+      - application/json
+      description: Change the authenticated user's own password. Requires current
+        password for verification.
+      operationId: changeMyPassword
+      parameters:
+      - description: Current and New Password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ChangeMyPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Change my password
+      tags:
+      - users
+  /api/users/me/platform-roles:
+    get:
+      description: 현재 로그인한 사용자에게 실제로 적용되는 플랫폼 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을 통합하여
+        반환합니다.
+      operationId: getMyPlatformRoles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.RoleMaster'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 내 유효 플랫폼 역할 목록 조회
+      tags:
+      - users
+  /api/users/me/withdrawal:
+    post:
+      description: Current user requests account withdrawal (ACTIVE → WITHDRAWAL_REQUESTED).
+      operationId: requestWithdrawal
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Request user withdrawal
+      tags:
+      - users
+  /api/users/me/workspace-roles:
+    get:
+      description: 현재 로그인한 사용자에게 실제로 적용되는 워크스페이스별 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을
+        통합하여 반환합니다.
+      operationId: getMyWorkspaceRoles
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.EffectiveWorkspaceRole'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 내 유효 워크스페이스 역할 목록 조회
       tags:
       - users
   /api/users/menus-tree/list:
@@ -6310,6 +9274,50 @@ paths:
       summary: Add project to workspace
       tags:
       - workspaces
+  /api/workspaces/credentials/validate:
+    post:
+      consumes:
+      - application/json
+      description: 워크스페이스 사용자의 CSP×AuthMethod 조합 인증 설정을 단계별로 검증하고 임시자격증명 발급까지 확인한다.
+        실패 여부와 무관하게 모든 단계를 응답에 포함한다.
+      operationId: mciamValidateCredentials
+      parameters:
+      - description: 검증 요청
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CspValidationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.CspValidationResponse'
+        "400":
+          description: 'error: invalid request'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: User not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: CSP 인증 설정 단계별 검증
+      tags:
+      - csp-validation
   /api/workspaces/id/{workspaceId}:
     delete:
       consumes:
@@ -6553,6 +9561,77 @@ paths:
               type: string
             type: object
       summary: List users and roles by workspace
+      tags:
+      - workspaces
+  /api/workspaces/id/{wsId}/invitations:
+    get:
+      consumes:
+      - application/json
+      description: List invitations for a specific workspace
+      operationId: listWorkspaceInvitations
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: wsId
+        required: true
+        type: integer
+      - description: Filter by status (PENDING/ACCEPTED/REJECTED)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.WorkspaceInvitation'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List workspace invitations
+      tags:
+      - workspaces
+    post:
+      consumes:
+      - application/json
+      description: Send an invitation to a platform user to join the workspace
+      operationId: sendWorkspaceInvitation
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: wsId
+        required: true
+        type: integer
+      - description: Invitation request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.SendInvitationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.WorkspaceInvitation'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Send workspace invitation
       tags:
       - workspaces
   /api/workspaces/list:

@@ -56,6 +56,14 @@ menus:
     priority: 2
     menunumber: 1240
 
+  - id: menus
+    parentid: organizations
+    displayname: Menus
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1250
+
   - id: environment
     parentid: settings
     displayname: Environment

@@ -158,6 +158,29 @@ func (r *UserRepository) Delete(id uint) error {
 	return nil
 }
 
+// UpdateStatus updates the status field of a user in the local DB.
+func (r *UserRepository) UpdateStatus(id uint, status model.UserStatus) error {
+	result := r.db.Model(&model.User{}).Where("id = ?", id).Update("status", string(status))
+	if result.Error != nil {
+		return fmt.Errorf("failed to update user status (id: %d): %w", id, result.Error)
+	}
+	return nil
+}
+
+// DeleteAllRoleMappings removes all platform roles, workspace roles, and organization mappings for a user.
+func (r *UserRepository) DeleteAllRoleMappings(userID uint) error {
+	if err := r.db.Where("user_id = ?", userID).Delete(&model.UserPlatformRole{}).Error; err != nil {
+		return fmt.Errorf("failed to delete platform roles for user %d: %w", userID, err)
+	}
+	if err := r.db.Where("user_id = ?", userID).Delete(&model.UserWorkspaceRole{}).Error; err != nil {
+		return fmt.Errorf("failed to delete workspace roles for user %d: %w", userID, err)
+	}
+	if err := r.db.Where("user_id = ?", userID).Delete(&model.UserOrganization{}).Error; err != nil {
+		return fmt.Errorf("failed to delete organization mappings for user %d: %w", userID, err)
+	}
+	return nil
+}
+
 // FindWorkspaceAndWorkspaceRolesByUserID finds all workspace roles assigned to a user.
 // It expects the user's local database ID (id column).
 func (r *UserRepository) FindWorkspaceAndWorkspaceRolesByUserID(userID uint) ([]*model.UserWorkspaceRole, error) {

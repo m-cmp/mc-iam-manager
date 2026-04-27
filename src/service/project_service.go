@@ -452,6 +452,189 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 	return nil
 }
 
+// GetProjectSyncDiff compares local projects with mc-infra-manager namespaces.
+// Returns namespaces missing in local DB and local projects not assigned to any workspace.
+// Read-only: no DB changes.
+func (s *ProjectService) GetProjectSyncDiff(ctx context.Context) (*model.ProjectSyncDiffResponse, error) {
+	callReq := &model.McmpApiCallRequest{
+		ServiceName:   "mc-infra-manager",
+		ActionName:    "GetAllNs",
+		RequestParams: model.McmpApiRequestParams{},
+	}
+	statusCode, respBody, _, _, err := s.mcmpApiService.McmpApiCall(ctx, callReq)
+	if err != nil {
+		return nil, fmt.Errorf("mc-infra-manager GetAllNs failed: %w", err)
+	}
+	if statusCode < 200 || statusCode >= 300 {
+		return nil, fmt.Errorf("mc-infra-manager GetAllNs returned status %d", statusCode)
+	}
+
+	var infraResp struct {
+		Ns []struct {
+			ID          string `json:"id"`
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		} `json:"ns"`
+	}
+	if err := json.Unmarshal(respBody, &infraResp); err != nil {
+		return nil, fmt.Errorf("failed to parse GetAllNs response: %w", err)
+	}
+
+	localProjects, err := s.projectRepo.FindProjects(&model.ProjectFilterRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list local projects: %w", err)
+	}
+	localByNsId := make(map[string]*model.Project, len(localProjects))
+	for _, p := range localProjects {
+		if p.NsId != "" {
+			localByNsId[p.NsId] = p
+		}
+	}
+
+	assignedMap, err := s.projectRepo.FindAllProjectWorkspaceAssignments()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workspace assignments: %w", err)
+	}
+
+	result := &model.ProjectSyncDiffResponse{
+		MissingProjects:    []model.ProjectSyncDiffMissingItem{},
+		UnassignedProjects: []model.ProjectSyncDiffUnassignedItem{},
+	}
+
+	for _, ns := range infraResp.Ns {
+		if _, exists := localByNsId[ns.ID]; !exists {
+			result.MissingProjects = append(result.MissingProjects, model.ProjectSyncDiffMissingItem{
+				NsId:        ns.ID,
+				Name:        ns.Name,
+				Description: ns.Description,
+			})
+		}
+	}
+
+	for _, p := range localProjects {
+		if _, assigned := assignedMap[p.ID]; !assigned {
+			result.UnassignedProjects = append(result.UnassignedProjects, model.ProjectSyncDiffUnassignedItem{
+				ID:          p.ID,
+				NsId:        p.NsId,
+				Name:        p.Name,
+				Description: p.Description,
+			})
+		}
+	}
+
+	return result, nil
+}
+
+// ApplyProjectSyncToWorkspace creates missing projects and assigns unassigned ones to the specified workspace.
+// Each nsId is processed independently; partial failures are collected in the response.
+func (s *ProjectService) ApplyProjectSyncToWorkspace(ctx context.Context, workspaceID uint, nsIds []string) (*model.ProjectSyncApplyResponse, error) {
+	ws, err := s.workspaceRepo.FindWorkspaceByID(workspaceID)
+	if err != nil || ws == nil {
+		return nil, fmt.Errorf("workspace not found")
+	}
+
+	callReq := &model.McmpApiCallRequest{
+		ServiceName:   "mc-infra-manager",
+		ActionName:    "GetAllNs",
+		RequestParams: model.McmpApiRequestParams{},
+	}
+	statusCode, respBody, _, _, err := s.mcmpApiService.McmpApiCall(ctx, callReq)
+	if err != nil {
+		return nil, fmt.Errorf("mc-infra-manager GetAllNs failed: %w", err)
+	}
+	if statusCode < 200 || statusCode >= 300 {
+		return nil, fmt.Errorf("mc-infra-manager GetAllNs returned status %d", statusCode)
+	}
+
+	var infraResp struct {
+		Ns []struct {
+			ID          string `json:"id"`
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		} `json:"ns"`
+	}
+	if err := json.Unmarshal(respBody, &infraResp); err != nil {
+		return nil, fmt.Errorf("failed to parse GetAllNs response: %w", err)
+	}
+	infraByNsId := make(map[string]struct {
+		Name        string
+		Description string
+	}, len(infraResp.Ns))
+	for _, ns := range infraResp.Ns {
+		infraByNsId[ns.ID] = struct {
+			Name        string
+			Description string
+		}{ns.Name, ns.Description}
+	}
+
+	localProjects, err := s.projectRepo.FindProjects(&model.ProjectFilterRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list local projects: %w", err)
+	}
+	localByNsId := make(map[string]*model.Project, len(localProjects))
+	for _, p := range localProjects {
+		if p.NsId != "" {
+			localByNsId[p.NsId] = p
+		}
+	}
+
+	assignedMap, err := s.projectRepo.FindAllProjectWorkspaceAssignments()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workspace assignments: %w", err)
+	}
+
+	resp := &model.ProjectSyncApplyResponse{
+		Created:  []model.ProjectSyncApplyCreatedItem{},
+		Assigned: []model.ProjectSyncApplyAssignedItem{},
+		Skipped:  []model.ProjectSyncApplySkippedItem{},
+		Failed:   []model.ProjectSyncApplyFailedItem{},
+	}
+
+	for _, nsId := range nsIds {
+		infraNs, inInfra := infraByNsId[nsId]
+		if !inInfra {
+			resp.Skipped = append(resp.Skipped, model.ProjectSyncApplySkippedItem{NsId: nsId, Reason: "not found in infra"})
+			continue
+		}
+
+		localProject, exists := localByNsId[nsId]
+		if !exists {
+			// Create project locally (without calling mc-infra-manager PostNs — namespace already exists)
+			newProject := &model.Project{
+				NsId:        nsId,
+				Name:        infraNs.Name,
+				Description: infraNs.Description,
+			}
+			if err := s.projectRepo.CreateProject(newProject); err != nil {
+				log.Printf("ApplyProjectSync: failed to create project for nsId %s: %v", nsId, err)
+				resp.Failed = append(resp.Failed, model.ProjectSyncApplyFailedItem{NsId: nsId, Error: err.Error()})
+				continue
+			}
+			if err := s.projectRepo.AddProjectWorkspaceAssociation(newProject.ID, workspaceID); err != nil {
+				log.Printf("ApplyProjectSync: failed to assign new project %d to workspace %d: %v", newProject.ID, workspaceID, err)
+				resp.Failed = append(resp.Failed, model.ProjectSyncApplyFailedItem{NsId: nsId, Error: err.Error()})
+				continue
+			}
+			resp.Created = append(resp.Created, model.ProjectSyncApplyCreatedItem{ID: newProject.ID, NsId: nsId, Name: newProject.Name})
+			continue
+		}
+
+		if _, assigned := assignedMap[localProject.ID]; assigned {
+			resp.Skipped = append(resp.Skipped, model.ProjectSyncApplySkippedItem{NsId: nsId, Reason: "already assigned"})
+			continue
+		}
+
+		if err := s.projectRepo.AddProjectWorkspaceAssociation(localProject.ID, workspaceID); err != nil {
+			log.Printf("ApplyProjectSync: failed to assign project %d to workspace %d: %v", localProject.ID, workspaceID, err)
+			resp.Failed = append(resp.Failed, model.ProjectSyncApplyFailedItem{NsId: nsId, Error: err.Error()})
+			continue
+		}
+		resp.Assigned = append(resp.Assigned, model.ProjectSyncApplyAssignedItem{ID: localProject.ID, NsId: nsId, Name: localProject.Name})
+	}
+
+	return resp, nil
+}
+
 // CreateProject 새로운 프로젝트를 생성하고 기본 워크스페이스에 할당합니다.
 func (s *ProjectService) CreateProject(project *model.Project) error {
 	// 프로젝트 생성

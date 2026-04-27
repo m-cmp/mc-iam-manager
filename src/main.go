@@ -94,6 +94,12 @@ func main() {
 		&mcmpapi.McmpApiServiceMeta{},
 		&model.MciamPermission{},
 		&model.MciamRoleMciamPermission{},
+		&model.Organization{},
+		&model.UserOrganization{},
+		&model.GroupPlatformRole{},
+		&model.GroupWorkspaceRole{},
+		&model.WorkspaceInvitation{},
+		&model.Company{},
 	); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
@@ -109,6 +115,7 @@ func main() {
 	userHandler := handler.NewUserHandler(db)
 	menuHandler := handler.NewMenuHandler(db)
 	workspaceHandler := handler.NewWorkspaceHandler(db)
+	workspaceInvitationHandler := handler.NewWorkspaceInvitationHandler(db)
 
 	projectHandler := handler.NewProjectHandler(db)
 
@@ -124,6 +131,15 @@ func main() {
 	cspAccountHandler := handler.NewCspAccountHandler(db)
 	cspIdpConfigHandler := handler.NewCspIdpConfigHandler(db)
 	cspPolicyHandler := handler.NewCspPolicyHandler(db)
+	cspIAMHandler := handler.NewCspIAMHandler(db)
+	cspValidationHandler := handler.NewCspValidationHandler(db)
+
+	// 조직 핸들러 초기화
+	organizationHandler := handler.NewOrganizationHandler(db)
+	// 그룹 역할 핸들러 초기화
+	groupRoleHandler := handler.NewGroupRoleHandler(db)
+	// 회사 정보 핸들러 초기화
+	companyHandler := handler.NewCompanyHandler(db)
 
 	// Echo 인스턴스 생성
 	e := echo.New()
@@ -151,7 +167,8 @@ func main() {
 		basePath + "/auth/login",
 		basePath + "/auth/logout",
 		basePath + "/auth/refresh",
-		basePath + "/auth/certs", // 인증서 조회 경로 추가
+		basePath + "/auth/certs",   // 인증서 조회 경로 추가
+		basePath + "/auth/signup",  // 사용자 가입 신청 경로 추가
 
 	}
 
@@ -189,20 +206,34 @@ func main() {
 		auth.GET("/certs", authHandler.AuthCerts)
 		auth.GET("/temp-credential-csps", authHandler.GetTempCredentialProviders)
 		auth.POST("/validate", authHandler.Validate)
+		auth.POST("/signup", userHandler.SignupUser) // Public signup
 	}
 
 	// platform admin 생성. 권한체크 필요한데...
 	api.POST("/initial-admin", adminHandler.SetupInitialAdmin) // TODO : 초기 설정에서 직접 keycloak 호출하는 것으로 바꿔야 할 듯.
+
+	// 회사 정보 라우트 (싱글톤 — URL에 ID 없음)
+	company := api.Group("/company")
+	{
+		company.POST("", companyHandler.CreateCompany, middleware.PlatformAdminMiddleware)
+		company.GET("", companyHandler.GetCompany, middleware.PlatformRoleMiddleware(middleware.Read))
+		company.PUT("", companyHandler.UpdateCompany, middleware.PlatformAdminMiddleware)
+		company.DELETE("", companyHandler.DeactivateCompany, middleware.PlatformAdminMiddleware)
+		company.POST("/activate", companyHandler.ActivateCompany, middleware.PlatformAdminMiddleware)
+	}
 
 	// 관리자 setup 라우트
 	setup := api.Group("/setup", middleware.PlatformAdminMiddleware)
 	{
 		setup.GET("/check-user-roles", adminHandler.CheckUserRoles)
 		setup.POST("/sync-projects", projectHandler.SyncProjects)
+		setup.GET("/projects/sync-diff", projectHandler.GetProjectSyncDiff)
+		setup.POST("/projects/sync", projectHandler.ApplyProjectSync)
 		setup.POST("/sync-mcmp-apis", mcmpApiHandler.SyncMcmpAPIs)
 		setup.POST("/initial-menus", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
 		setup.POST("/initial-menus2", menuHandler.RegisterMenusFromBody, middleware.PlatformAdminMiddleware)
 		setup.GET("/initial-role-menu-permission", adminHandler.InitializeMenuPermissions, middleware.PlatformAdminMiddleware)
+		setup.POST("/initial-organizations", organizationHandler.SetupInitialOrganizations, middleware.PlatformAdminMiddleware)
 	}
 
 	// 워크스페이스 라우트
@@ -217,6 +248,7 @@ func main() {
 
 		workspaces.POST("/workspace-ticket", authHandler.WorkspaceTicket) // 1개 워크스페이스에 대한 티켓 설정
 		workspaces.POST("/temporary-credentials", cspCredentialHandler.GetTemporaryCredentials)
+		workspaces.POST("/credentials/validate", cspValidationHandler.ValidateCredentials)
 
 		workspaces.POST("/users/list", workspaceHandler.ListWorkspaceUsers)                                                                    // workspace의 사용자 목록 조회
 		workspaces.POST("/users-roles/list", workspaceHandler.ListWorkspaceUsersAndRoles, middleware.PlatformRoleMiddleware(middleware.Write)) // workspace와 사용자 및 role 조회
@@ -231,6 +263,10 @@ func main() {
 		workspaces.DELETE("/id/:id/users/:userId", workspaceHandler.RemoveUserFromWorkspace, middleware.PlatformRoleMiddleware(middleware.Write)) // workspace에서 사용자 제거
 		workspaces.POST("/assign/projects", workspaceHandler.AddProjectToWorkspace, middleware.PlatformAdminMiddleware)
 		workspaces.DELETE("/unassign/projects", workspaceHandler.RemoveProjectFromWorkspace, middleware.PlatformAdminMiddleware)
+
+		// 워크스페이스 초대 (RQ-M6-WS-036)
+		workspaces.POST("/id/:wsId/invitations", workspaceInvitationHandler.SendInvitation)
+		workspaces.GET("/id/:wsId/invitations", workspaceInvitationHandler.ListWorkspaceInvitations)
 
 	}
 
@@ -321,6 +357,15 @@ func main() {
 		users.PUT("/id/:userId", userHandler.UpdateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
 		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.PUT("/id/:userId/password", userHandler.ResetUserPassword, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.GET("/me", userHandler.GetMyInfo)                                                            // 사용자 본인 정보 조회
+		users.PUT("/me/password", userHandler.ChangeMyPassword)                                            // 사용자 본인 패스워드 변경
+		users.GET("/me/platform-roles", userHandler.GetMyPlatformRoles)                                    // 내 유효 플랫폼 역할 목록
+		users.GET("/me/workspace-roles", userHandler.GetMyWorkspaceRoles)                                  // 내 유효 워크스페이스 역할 목록
+		users.PUT("/id/:userId/deactivate", userHandler.DeactivateUser, middleware.PlatformAdminMiddleware) // 사용자 계정 비활성화
+		users.PUT("/id/:userId/activate", userHandler.ActivateUser, middleware.PlatformAdminMiddleware)     // 사용자 계정 재활성화
+		users.POST("/me/withdrawal", userHandler.RequestWithdrawal)                                        // 탈퇴 신청
+		users.PUT("/id/:userId/withdraw", userHandler.ProcessWithdrawal, middleware.PlatformAdminMiddleware) // 탈퇴 처리
 
 		users.POST("/menus-tree/list", menuHandler.ListUserMenuTree)
 		users.POST("/menus/list", menuHandler.ListUserMenu)
@@ -332,6 +377,19 @@ func main() {
 		users.GET("/id/:userId/workspaces/roles/list", userHandler.GetUserWorkspaceAndWorkspaceRolesByUserID, middleware.PlatformRoleMiddleware(middleware.Read))
 		users.GET("/id/:userId/workspaces/id/:workspaceId/roles/list", userHandler.GetUserWorkspaceAndWorkspaceRolesByUserIDAndWorkspaceID, middleware.PlatformRoleMiddleware(middleware.Read))
 
+		// 내 초대 목록/수락/거절 (RQ-M6-WS-037)
+		users.GET("/me/invitations", workspaceInvitationHandler.ListMyInvitations)
+		users.PUT("/me/invitations/:invitationId/accept", workspaceInvitationHandler.AcceptInvitation)
+		users.PUT("/me/invitations/:invitationId/reject", workspaceInvitationHandler.RejectInvitation)
+
+	}
+
+	// 초대 관리 라우트 (관리자) (RQ-M6-WS-038)
+	invitations := api.Group("/invitations")
+	{
+		invitations.GET("", workspaceInvitationHandler.ListAllInvitations, middleware.PlatformRoleMiddleware(middleware.Write))
+		invitations.PUT("/:invitationId/approve", workspaceInvitationHandler.ApproveInvitation, middleware.PlatformRoleMiddleware(middleware.Write))
+		invitations.PUT("/:invitationId/reject", workspaceInvitationHandler.RejectInvitationByAdmin, middleware.PlatformRoleMiddleware(middleware.Write))
 	}
 
 	// 메뉴 라우트
@@ -426,7 +484,73 @@ func main() {
 		cspIdpConfigs.POST("/id/:configId/test", cspIdpConfigHandler.TestCspIdpConnection, middleware.PlatformAdminMiddleware)
 		cspIdpConfigs.POST("/id/:configId/activate", cspIdpConfigHandler.ActivateCspIdpConfig, middleware.PlatformAdminMiddleware)
 		cspIdpConfigs.POST("/id/:configId/deactivate", cspIdpConfigHandler.DeactivateCspIdpConfig, middleware.PlatformAdminMiddleware)
+		cspIdpConfigs.GET("/summary", cspIdpConfigHandler.GetCspIdpSummary)
+		cspIdpConfigs.POST("/health-check", cspIdpConfigHandler.BulkHealthCheck, middleware.PlatformAdminMiddleware)
 	}
+
+	// 조직 관리 라우트 (platformAdmin 전용)
+	organizations := api.Group("/organizations", middleware.PlatformAdminMiddleware)
+	{
+		organizations.POST("", organizationHandler.CreateOrganization)
+		organizations.GET("", organizationHandler.GetOrganizations)
+		// 트리 조회 (RQ-M2-UG-034)
+		organizations.GET("/tree", organizationHandler.GetOrganizationTree)
+		organizations.GET("/id/:organizationId", organizationHandler.GetOrganizationByID)
+		organizations.GET("/code/:code", organizationHandler.GetOrganizationByCode)
+		organizations.PUT("/id/:organizationId", organizationHandler.UpdateOrganization)
+		organizations.DELETE("/id/:organizationId", organizationHandler.DeleteOrganization)
+		organizations.GET("/id/:organizationId/users", organizationHandler.GetOrganizationUsers)
+		// 하위 트리 조회 (RQ-M2-UG-034)
+		organizations.GET("/id/:organizationId/subtree", organizationHandler.GetOrganizationSubtree)
+		// 조직 이동 (RQ-M2-UG-035)
+		organizations.PUT("/id/:organizationId/move", organizationHandler.MoveOrganization)
+		// 삭제 가능 여부 확인 (RQ-M2-UG-036)
+		organizations.GET("/id/:organizationId/deletable", organizationHandler.GetOrganizationDeletable)
+	}
+
+	// 사용자-조직 라우트 (users 그룹에 추가, platformAdmin 전용)
+	users.POST("/id/:userId/organizations", organizationHandler.AssignUserOrganizations, middleware.PlatformAdminMiddleware)
+	users.GET("/id/:userId/organizations", organizationHandler.GetUserOrganizations, middleware.PlatformAdminMiddleware)
+	users.DELETE("/id/:userId/organizations/:organizationId", organizationHandler.RemoveUserOrganization, middleware.PlatformAdminMiddleware)
+
+	// 그룹 관리 라우트 (/api/groups - organizations의 별칭, platformAdmin 전용)
+	// 주의: organizationId 파라미터 이름 유지 (기존 핸들러 호환)
+	groups := api.Group("/groups", middleware.PlatformAdminMiddleware)
+	{
+		groups.POST("", organizationHandler.CreateOrganization)
+		groups.GET("", organizationHandler.GetOrganizations)
+		groups.GET("/id/:organizationId", organizationHandler.GetOrganizationByID)
+		groups.GET("/code/:code", organizationHandler.GetOrganizationByCode)
+		groups.PUT("/id/:organizationId", organizationHandler.UpdateOrganization)
+		groups.DELETE("/id/:organizationId", organizationHandler.DeleteOrganization)
+		groups.GET("/id/:organizationId/users", organizationHandler.GetOrganizationUsers)
+		// 그룹 사용자 관리 (그룹 입장, Keycloak 동기화 포함)
+		groups.POST("/id/:groupId/users", groupRoleHandler.AssignGroupUsers)
+		groups.DELETE("/id/:groupId/users/:userId", groupRoleHandler.RemoveGroupUser)
+
+		// 그룹 플랫폼 역할 관리 (DB + Keycloak)
+		groups.POST("/id/:groupId/platform-roles", groupRoleHandler.AssignGroupPlatformRole)
+		groups.GET("/id/:groupId/platform-roles", groupRoleHandler.GetGroupPlatformRoles)
+		groups.GET("/id/:groupId/platform-roles/available", groupRoleHandler.GetAvailableGroupPlatformRoles)
+		groups.DELETE("/id/:groupId/platform-roles/:roleId", groupRoleHandler.RemoveGroupPlatformRole)
+
+		// 그룹-워크스페이스 매핑 관리 (DB 전용)
+		groups.POST("/id/:groupId/workspaces", groupRoleHandler.AssignGroupWorkspace)
+		groups.GET("/id/:groupId/workspaces", groupRoleHandler.GetGroupWorkspaces)
+		groups.GET("/id/:groupId/workspaces/available", groupRoleHandler.GetAvailableGroupWorkspaces)
+		groups.PUT("/id/:groupId/workspaces/:workspaceId", groupRoleHandler.UpdateGroupWorkspaceRole)
+		groups.DELETE("/id/:groupId/workspaces/:workspaceId", groupRoleHandler.RemoveGroupWorkspaceRole)
+	}
+
+	// 사용자-그룹 라우트 (Keycloak 동기화 포함, platformAdmin 전용)
+	users.POST("/id/:userId/groups", groupRoleHandler.AssignUserGroups, middleware.PlatformAdminMiddleware)
+	users.GET("/id/:userId/groups", organizationHandler.GetUserOrganizations, middleware.PlatformAdminMiddleware)
+	users.PUT("/id/:userId/groups", organizationHandler.ReplaceUserGroups, middleware.PlatformAdminMiddleware)
+	users.DELETE("/id/:userId/groups/:groupId", groupRoleHandler.RemoveUserFromGroup, middleware.PlatformAdminMiddleware)
+
+	// 사용자 유효 권한 조회 라우트 (그룹 기반 역할 상속 포함, platformAdmin 전용)
+	users.GET("/id/:userId/effective-platform-roles", groupRoleHandler.GetUserEffectivePlatformRoles, middleware.PlatformAdminMiddleware)
+	users.GET("/id/:userId/access-summary", groupRoleHandler.GetUserAccessSummary, middleware.PlatformAdminMiddleware)
 
 	// CSP 정책 관리 라우트
 	cspPolicies := api.Group("/csp-policies", middleware.PlatformRoleMiddleware(middleware.Read))
@@ -441,6 +565,15 @@ func main() {
 		cspPolicies.POST("/attach", cspPolicyHandler.AttachPolicyToRole, middleware.PlatformAdminMiddleware)
 		cspPolicies.POST("/detach", cspPolicyHandler.DetachPolicyFromRole, middleware.PlatformAdminMiddleware)
 		cspPolicies.GET("/role/:roleId", cspPolicyHandler.GetRolePolicies)
+	}
+
+	// CSP IAM 직접 관리 라우트 (CSP IAM Role CRUD)
+	cspIAM := api.Group("/csp/iam", middleware.PlatformAdminMiddleware)
+	{
+		cspIAM.POST("/roles", cspIAMHandler.CreateIAMRole)
+		cspIAM.GET("/roles/:roleName", cspIAMHandler.GetIAMRole)
+		cspIAM.PUT("/roles/:roleName", cspIAMHandler.UpdateIAMRole)
+		cspIAM.DELETE("/roles/:roleName", cspIAMHandler.DeleteIAMRole)
 	}
 
 	// Swagger 문서 라우트
