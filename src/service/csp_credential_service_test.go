@@ -122,13 +122,15 @@ func TestGetTemporaryCredentials_AWS_OIDC_STSFail(t *testing.T) {
 // TC-CRED-05: AWS SAML — 정상 발급
 func TestGetTemporaryCredentials_AWS_SAML_Success(t *testing.T) {
 	aws := &mockAwsCredService{samlResult: awsSamlCred}
+	mapping := buildMapping(constants.AuthMethodSAML, idpArn, roleArn, model.AuthMethodSAML, nil)
+	mapping.CspRoles[0].ExtendedConfig = map[string]interface{}{"saml_client_id": idpArn}
 	svc := newCredServiceWithMocks(credServiceDeps{
 		aws:      aws,
 		gcp:      &mockGcpCredService{},
 		alibaba:  &mockAlibabaCredService{},
 		kc:       samlKC(),
 		userRepo: &mockUserRepoForCred{role: stdUserRole()},
-		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodSAML, idpArn, roleArn, model.AuthMethodSAML, nil)},
+		mapRepo:  &mockCspMappingRepo{mapping: mapping},
 	})
 
 	cred, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("aws", "SAML"))
@@ -163,18 +165,20 @@ func TestGetTemporaryCredentials_AWS_SAML_CustomAudience(t *testing.T) {
 
 // TC-CRED-07: AWS SAML — Keycloak assertion 획득 실패
 func TestGetTemporaryCredentials_AWS_SAML_KeycloakFail(t *testing.T) {
+	mapping := buildMapping(constants.AuthMethodSAML, idpArn, roleArn, model.AuthMethodSAML, nil)
+	mapping.CspRoles[0].ExtendedConfig = map[string]interface{}{"saml_client_id": idpArn}
 	svc := newCredServiceWithMocks(credServiceDeps{
 		aws:      &mockAwsCredService{},
 		gcp:      &mockGcpCredService{},
 		alibaba:  &mockAlibabaCredService{},
 		kc:       failSamlKC(),
 		userRepo: &mockUserRepoForCred{role: stdUserRole()},
-		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodSAML, idpArn, roleArn, model.AuthMethodSAML, nil)},
+		mapRepo:  &mockCspMappingRepo{mapping: mapping},
 	})
 
 	_, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("aws", "SAML"))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to get SAML assertion for AWS")
+	assert.Contains(t, err.Error(), "SAML Assertion 발급 실패")
 }
 
 // ── AWS SECRET_KEY ────────────────────────────────────────────────────────────
@@ -293,13 +297,15 @@ func TestGetTemporaryCredentials_GCP_SAML_KeycloakFail(t *testing.T) {
 
 // TC-CRED-13: Alibaba SAML — 정상 발급
 func TestGetTemporaryCredentials_Alibaba_SAML_Success(t *testing.T) {
+	mapping := buildMapping(constants.AuthMethodSAML, idpArn, roleArn, model.AuthMethodSAML, nil)
+	mapping.CspRoles[0].ExtendedConfig = map[string]interface{}{"saml_client_id": idpArn}
 	svc := newCredServiceWithMocks(credServiceDeps{
 		aws:      &mockAwsCredService{},
 		gcp:      &mockGcpCredService{},
 		alibaba:  &mockAlibabaCredService{result: alibabaSamlCred},
 		kc:       samlKC(),
 		userRepo: &mockUserRepoForCred{role: stdUserRole()},
-		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodSAML, idpArn, roleArn, model.AuthMethodSAML, nil)},
+		mapRepo:  &mockCspMappingRepo{mapping: mapping},
 	})
 
 	cred, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("alibaba", "SAML"))

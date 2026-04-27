@@ -307,6 +307,66 @@ func (h *ProjectHandler) SyncProjects(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"message": "Project synchronization successful"})
 }
 
+// GetProjectSyncDiff godoc
+// @Summary mc-infra-manager와 프로젝트 동기화 차이 조회
+// @Description mc-infra-manager의 namespace 목록과 로컬 프로젝트를 비교하여 불일치 목록을 반환합니다. DB 변경 없음.
+// @Tags projects
+// @Produce json
+// @Success 200 {object} model.ProjectSyncDiffResponse
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /api/setup/projects/sync-diff [get]
+// @Id getProjectSyncDiff
+func (h *ProjectHandler) GetProjectSyncDiff(c echo.Context) error {
+	diff, err := h.projectService.GetProjectSyncDiff(c.Request().Context())
+	if err != nil {
+		log.Printf("GetProjectSyncDiff error: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("동기화 차이 조회 실패: %v", err)})
+	}
+	return c.JSON(http.StatusOK, diff)
+}
+
+// ApplyProjectSync godoc
+// @Summary 선택한 namespace를 특정 workspace에 동기화
+// @Description 지정된 nsId 목록의 project를 생성하거나 지정된 workspace에 할당합니다.
+// @Tags projects
+// @Accept json
+// @Produce json
+// @Param request body model.ProjectSyncApplyRequest true "Sync Apply Request"
+// @Success 200 {object} model.ProjectSyncApplyResponse
+// @Failure 400 {object} map[string]string "error: 잘못된 요청"
+// @Failure 500 {object} map[string]string "error: 서버 내부 오류"
+// @Security BearerAuth
+// @Router /api/setup/projects/sync [post]
+// @Id applyProjectSync
+func (h *ProjectHandler) ApplyProjectSync(c echo.Context) error {
+	var req model.ProjectSyncApplyRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+	if req.WorkspaceID == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "workspaceId가 필요합니다"})
+	}
+	if len(req.NsIds) == 0 {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "nsIds가 필요합니다"})
+	}
+
+	workspaceIDInt, err := util.StringToUint(req.WorkspaceID)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 workspaceId 형식입니다"})
+	}
+
+	result, err := h.projectService.ApplyProjectSyncToWorkspace(c.Request().Context(), workspaceIDInt, req.NsIds)
+	if err != nil {
+		log.Printf("ApplyProjectSync error: %v", err)
+		if err.Error() == "workspace not found" {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "workspace not found"})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("동기화 적용 실패: %v", err)})
+	}
+	return c.JSON(http.StatusOK, result)
+}
+
 // AddWorkspaceToProject godoc
 // @Summary 프로젝트에 워크스페이스 연결
 // @Description 프로젝트에 워크스페이스를 연결합니다.

@@ -270,8 +270,17 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 				log.Printf("[CSP_CREDENTIAL] Error getting impersonation token for Alibaba: %v", err)
 				return nil, fmt.Errorf("failed to get impersonation token for Alibaba: %w", err)
 			}
-			log.Printf("[CSP_CREDENTIAL] Calling Alibaba AssumeRoleWithOIDC...")
-			return s.alibabaCredService.AssumeRoleWithOIDC(ctx, idpArn, roleArn, impersonationToken.AccessToken, region)
+			// Alibaba STS requires OIDC ID token (aud = single client_id), not access_token
+			oidcToken := impersonationToken.IDToken
+			if oidcToken == "" {
+				oidcToken = impersonationToken.AccessToken
+			}
+			audience := ""
+			if targetCspRole.CspIdpConfig != nil {
+				audience = targetCspRole.CspIdpConfig.Config["audience"]
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling Alibaba AssumeRoleWithOIDC... (audience=%s)", audience)
+			return s.alibabaCredService.AssumeRoleWithOIDC(ctx, idpArn, roleArn, oidcToken, region, audience)
 		case model.AuthMethodSAML:
 			// === 사전 체크 게이트: DB / Keycloak / CSP 설정 상태 확인 ===
 

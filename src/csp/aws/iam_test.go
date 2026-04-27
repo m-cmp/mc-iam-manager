@@ -173,3 +173,29 @@ func TestAWSIAMClient(t *testing.T) {
 	// 	assert.Error(t, err)
 	// })
 }
+
+// TC-IAM-VALIDATE-01: RoleARN 미설정 시 오류 반환
+func TestNewAWSIAMClient_MissingRoleARN(t *testing.T) {
+	db := setupTestDB(t)
+	cfg := &csp.IAMClientConfig{
+		Region:           "ap-northeast-2",
+		WebIdentityToken: "dummy-token",
+		RoleARN:          "",
+	}
+	_, err := NewAWSIAMClient(cfg, db)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "role ARN is required")
+}
+
+// TC-IAM-VALIDATE-02: WebIdentityToken 미설정 시 오류 반환
+func TestNewAWSIAMClient_MissingWebIdentityToken(t *testing.T) {
+	db := setupTestDB(t)
+	cfg := &csp.IAMClientConfig{
+		Region:           "ap-northeast-2",
+		WebIdentityToken: "",
+		RoleARN:          "arn:aws:iam::123456789012:role/test-role",
+	}
+	_, err := NewAWSIAMClient(cfg, db)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "web identity token is required")
+}

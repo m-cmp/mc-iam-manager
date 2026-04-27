@@ -28,11 +28,12 @@ type KeycloakService interface {
 	KeycloakAdminLogin(ctx context.Context) (*gocloak.JWT, error)
 	GetUser(ctx context.Context, kcId string) (*gocloak.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*gocloak.User, error)
-	GetUsers(ctx context.Context) ([]*gocloak.User, error)
+	GetUsers(ctx context.Context, enabled *bool) ([]*gocloak.User, error)
 	CreateUser(ctx context.Context, user *model.User) (string, error)
 	UpdateUser(ctx context.Context, user *model.User) error
 	DeleteUser(ctx context.Context, kcId string) error
 	EnableUser(ctx context.Context, kcUserID string) error
+	DisableUser(ctx context.Context, kcUserID string) error
 	CheckAdminLogin(ctx context.Context) (bool, error)
 	CheckRealm(ctx context.Context) (bool, error)
 	CreateRealm(ctx context.Context, accessToken string) (bool, error)
@@ -160,8 +161,8 @@ func (s *keycloakService) GetUserByUsername(ctx context.Context, username string
 	return users[0], nil
 }
 
-// GetUsers retrieves all users from Keycloak.
-func (s *keycloakService) GetUsers(ctx context.Context) ([]*gocloak.User, error) {
+// GetUsers retrieves users from Keycloak, optionally filtered by enabled status.
+func (s *keycloakService) GetUsers(ctx context.Context, enabled *bool) ([]*gocloak.User, error) {
 	// Directly use config.KC
 	if config.KC == nil || config.KC.Client == nil {
 		return nil, fmt.Errorf("keycloak configuration not initialized")
@@ -170,8 +171,10 @@ func (s *keycloakService) GetUsers(ctx context.Context) ([]*gocloak.User, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin token: %w", err)
 	}
-	// Consider pagination for large numbers of users
 	getUsersParams := gocloak.GetUsersParams{}
+	if enabled != nil {
+		getUsersParams.Enabled = enabled
+	}
 	kcUsers, err := config.KC.Client.GetUsers(ctx, token.AccessToken, config.KC.Realm, getUsersParams)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users from keycloak: %w", err)
@@ -436,6 +439,34 @@ func (s *keycloakService) EnableUser(ctx context.Context, kcUserID string) error
 		return fmt.Errorf("failed to enable user %s in keycloak: %w", kcUserID, err)
 	}
 	log.Printf("User '%s' enabled in Keycloak.", kcUserID)
+	return nil
+}
+
+// DisableUser disables a user in Keycloak.
+func (s *keycloakService) DisableUser(ctx context.Context, kcUserID string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+	adminToken, err := config.KC.LoginAdmin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token to disable user: %w", err)
+	}
+	user, err := config.KC.Client.GetUserByID(ctx, adminToken.AccessToken, config.KC.Realm, kcUserID)
+	if err != nil {
+		return fmt.Errorf("failed to get user %s from keycloak before disabling: %w", kcUserID, err)
+	}
+	if user == nil {
+		return fmt.Errorf("user %s not found in keycloak", kcUserID)
+	}
+	userToUpdate := gocloak.User{
+		ID:      &kcUserID,
+		Enabled: gocloak.BoolP(false),
+	}
+	err = config.KC.Client.UpdateUser(ctx, adminToken.AccessToken, config.KC.Realm, userToUpdate)
+	if err != nil {
+		return fmt.Errorf("failed to disable user %s in keycloak: %w", kcUserID, err)
+	}
+	log.Printf("User '%s' disabled in Keycloak.", kcUserID)
 	return nil
 }
 
@@ -1273,7 +1304,7 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 
 	// 서비스 계정으로 로그인
 	//token, err := config.KC.Client.LoginClient(ctx, clientID, clientSecret, config.KC.Realm)
-	token, err := config.KC.Client.LoginClient(ctx, clientName, clientSecret, config.KC.Realm)
+	token, err := config.KC.Client.LoginClient(ctx, clientName, clientSecret, config.KC.Realm, "openid")
 	if err != nil {
 		return nil, fmt.Errorf("failed to login with service account: %w", err)
 	}

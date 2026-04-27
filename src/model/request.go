@@ -285,3 +285,64 @@ type ChangeMyPasswordRequest struct {
 	CurrentPassword string `json:"currentPassword" validate:"required"`
 	NewPassword     string `json:"newPassword" validate:"required,min=8"`
 }
+
+// ProjectSyncApplyRequest POST /api/setup/projects/sync request body
+type ProjectSyncApplyRequest struct {
+	WorkspaceID string   `json:"workspaceId" validate:"required"`
+	NsIds       []string `json:"nsIds" validate:"required"`
+}
+
+// ProjectSyncDiffMissingItem namespace exists in infra but has no local project
+type ProjectSyncDiffMissingItem struct {
+	NsId        string `json:"nsId"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// ProjectSyncDiffUnassignedItem local project exists but is not assigned to any workspace
+type ProjectSyncDiffUnassignedItem struct {
+	ID          uint   `json:"id"`
+	NsId        string `json:"nsId"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// ProjectSyncDiffResponse GET /api/setup/projects/sync-diff response
+type ProjectSyncDiffResponse struct {
+	MissingProjects    []ProjectSyncDiffMissingItem    `json:"missingProjects"`
+	UnassignedProjects []ProjectSyncDiffUnassignedItem `json:"unassignedProjects"`
+}
+
+// ProjectSyncApplyCreatedItem newly created project during sync apply
+type ProjectSyncApplyCreatedItem struct {
+	ID   uint   `json:"id"`
+	NsId string `json:"nsId"`
+	Name string `json:"name"`
+}
+
+// ProjectSyncApplyAssignedItem existing project that was assigned to workspace
+type ProjectSyncApplyAssignedItem struct {
+	ID   uint   `json:"id"`
+	NsId string `json:"nsId"`
+	Name string `json:"name"`
+}
+
+// ProjectSyncApplySkippedItem namespace skipped during sync apply
+type ProjectSyncApplySkippedItem struct {
+	NsId   string `json:"nsId"`
+	Reason string `json:"reason"`
+}
+
+// ProjectSyncApplyFailedItem namespace where sync apply failed
+type ProjectSyncApplyFailedItem struct {
+	NsId  string `json:"nsId"`
+	Error string `json:"error"`
+}
+
+// ProjectSyncApplyResponse POST /api/setup/projects/sync response
+type ProjectSyncApplyResponse struct {
+	Created  []ProjectSyncApplyCreatedItem  `json:"created"`
+	Assigned []ProjectSyncApplyAssignedItem `json:"assigned"`
+	Skipped  []ProjectSyncApplySkippedItem  `json:"skipped"`
+	Failed   []ProjectSyncApplyFailedItem   `json:"failed"`
+}

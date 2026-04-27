@@ -207,6 +207,30 @@ func (s *GroupRoleService) AssignUsersToGroup(ctx context.Context, groupID uint,
 	return nil
 }
 
+// GetEffectivePlatformRoles 사용자의 유효 플랫폼 역할 목록 조회 (직접 + 그룹 상속, 중복 제거)
+func (s *GroupRoleService) GetEffectivePlatformRoles(userID uint) ([]model.EffectivePlatformRoleItem, error) {
+	return s.groupRoleRepo.FindEffectivePlatformRolesByUserID(userID)
+}
+
+// GetUserAccessSummary 사용자 접근 권한 요약 조회 (직접 역할 + 그룹 + 그룹 기반 역할)
+func (s *GroupRoleService) GetUserAccessSummary(userID uint) (*model.UserAccessSummaryResponse, error) {
+	directRoles, err := s.groupRoleRepo.FindDirectPlatformRolesByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get direct roles: %w", err)
+	}
+
+	groups, err := s.groupRoleRepo.FindUserGroupsWithRoles(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get groups with roles: %w", err)
+	}
+
+	return &model.UserAccessSummaryResponse{
+		UserID:      userID,
+		DirectRoles: directRoles,
+		Groups:      groups,
+	}, nil
+}
+
 // RemoveUserFromGroup 사용자를 그룹에서 제거 (DB + Keycloak 동기화)
 func (s *GroupRoleService) RemoveUserFromGroup(ctx context.Context, userID, groupID uint, kcUserID string) error {
 	// 그룹 조회

@@ -9,9 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
-
-	"encoding/base64"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -44,36 +41,15 @@ type AWSIAMClient struct {
 
 // NewAWSIAMClient 새로운 AWS IAM 클라이언트 생성
 func NewAWSIAMClient(cfg *csp.IAMClientConfig, db *gorm.DB) (*AWSIAMClient, error) {
-	// 워크스페이스 ID 추출
-	workspaceId := extractWorkspaceId(cfg.WorkspaceTicket)
-	if workspaceId == "" {
-		return nil, fmt.Errorf("invalid workspace ticket")
+	if cfg.RoleARN == "" {
+		return nil, fmt.Errorf("role ARN is required")
 	}
-
-	// 워크스페이스 역할 조회
-	// var workspaceRole struct {
-	// 	ID uint `gorm:"column:id"`
-	// }
-	// if err := db.Table("workspace_roles").
-	// 	Where("workspace_id = ?", workspaceId).
-	// 	First(&workspaceRole).Error; err != nil {
-	// 	return nil, fmt.Errorf("failed to get workspace role: %w", err)
-	// }
-
-	// // CSP 역할 매핑 조회
-	var cspRoleMapping struct {
-		RoleARN string
+	if cfg.WebIdentityToken == "" {
+		return nil, fmt.Errorf("web identity token is required")
 	}
-	//cspRoleMapping.RoleARN = "arn:aws:iam::050864702683:role/mciam_viewer"
-	cspRoleMapping.RoleARN = "arn:aws:iam::050864702683:role/mciam-csp-role-manager"
-	// if err := db.Table("workspace_role_csp_role_mappings").
-	// 	Where("workspace_role_id = ? AND csp_type = ?", workspaceRole.ID, "AWS").
-	// 	First(&cspRoleMapping).Error; err != nil {
-	// 	return nil, fmt.Errorf("failed to get CSP role mapping: %w", err)
-	// }
 
 	// STS 토큰 발급
-	securityToken, err := getSecurityToken(cfg.WebIdentityToken, cspRoleMapping.RoleARN)
+	securityToken, err := getSecurityToken(cfg.WebIdentityToken, cfg.RoleARN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get security token: %w", err)
 	}
@@ -103,31 +79,6 @@ func NewAWSIAMClient(cfg *csp.IAMClientConfig, db *gorm.DB) (*AWSIAMClient, erro
 	}, nil
 }
 
-// extractWorkspaceId 워크스페이스 티켓에서 워크스페이스 ID 추출
-func extractWorkspaceId(ticket string) string {
-	// JWT 토큰에서 페이로드 부분 추출
-	parts := strings.Split(ticket, ".")
-	if len(parts) != 3 {
-		return ""
-	}
-
-	// Base64 디코딩
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return ""
-	}
-
-	// JSON 파싱
-	var claims struct {
-		Sub string `json:"sub"`
-	}
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return ""
-	}
-
-	return claims.Sub
-}
-
 // getSecurityToken STS 토큰 발급
 func getSecurityToken(accessToken, roleArn string) (*AssumeRoleWithWebIdentityResponse, error) {
 	// AWS STS 엔드포인트
@@ -146,8 +97,6 @@ func getSecurityToken(accessToken, roleArn string) (*AssumeRoleWithWebIdentityRe
 	//params.Add("RoleArn", "arn:aws:iam::050864702683:role/test-oidc-readonlyrole") // 고정된 role ARN 사용
 	params.Add("RoleSessionName", "IAMManagerSession")
 	params.Add("DurationSeconds", "3600")
-
-	fmt.Printf("accessToken: %+v\n", accessToken)
 
 	// HTTP 요청 생성
 	req, err := http.NewRequest("GET", endpoint, nil)
