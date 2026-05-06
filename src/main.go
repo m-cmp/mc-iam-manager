@@ -443,6 +443,7 @@ func main() {
 		mcmpApis.PUT("/name/:serviceName/versions/:version/activate", mcmpApiHandler.SetActiveVersion, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApis.POST("/call", mcmpApiHandler.McmpApiCall, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApis.GET("/test/mc-infra-manager/getallns", mcmpApiHandler.TestCallGetAllNs, middleware.PlatformRoleMiddleware(middleware.Manage))
+		mcmpApis.POST("", mcmpApiHandler.CreateFrameworkService, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApis.PUT("/name/:serviceName", mcmpApiHandler.UpdateFrameworkService, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApis.POST("/import", mcmpApiHandler.ImportAPIs, middleware.PlatformRoleMiddleware(middleware.Manage))
 	}

@@ -27,6 +27,8 @@ import (
 // Local path to service-actions.yaml file (relative to working directory)
 const localServiceActionsPath = "asset/mcmpapi/service-actions.yaml"
 
+var ErrFrameworkServiceAlreadyExists = errors.New("framework service already exists")
+
 // McmpApiService defines the interface for mcmp API operations
 type McmpApiService interface {
 	GetDB() *gorm.DB
@@ -36,6 +38,7 @@ type McmpApiService interface {
 	SetActiveVersion(serviceName, version string) error
 	GetAllAPIDefinitions(serviceNameFilter, actionNameFilter string) (*mcmpapi.McmpApiDefinitions, error)
 	UpdateService(serviceName string, updates map[string]interface{}) error
+	CreateFrameworkService(svc *mcmpapi.McmpApiService) error
 	McmpApiCall(ctx context.Context, req *model.McmpApiCallRequest) (int, []byte, string, string, error)
 	SyncMcmpAPIsFromYAML() error
 	ImportAPIs(req *model.ImportApiRequest) (*model.ImportApiResponse, error)
@@ -304,6 +307,29 @@ func (s *mcmpApiService) UpdateService(serviceName string, updates map[string]in
 	// }
 
 	return s.repo.UpdateService(serviceName, updates)
+}
+
+// CreateFrameworkService creates a single McmpApiService record within its own transaction.
+func (s *mcmpApiService) CreateFrameworkService(svc *mcmpapi.McmpApiService) error {
+	if err := s.ensureTables(); err != nil {
+		return err
+	}
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := s.repo.CreateService(tx, svc); err != nil {
+		tx.Rollback()
+		if errors.Is(err, gorm.ErrDuplicatedKey) ||
+			strings.Contains(strings.ToLower(err.Error()), "duplicate") {
+			return ErrFrameworkServiceAlreadyExists
+		}
+		return err
+	}
+	return tx.Commit().Error
 }
 
 // McmpApiCall executes a call to an external MCMP API based on stored definitions and provided parameters. (Renamed)
