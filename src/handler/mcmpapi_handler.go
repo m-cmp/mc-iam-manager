@@ -347,6 +347,47 @@ func (h *McmpApiHandler) TestCallGetAllNs(c echo.Context) error {
 	return nil
 }
 
+// CreateFrameworkService godoc
+// @Summary Create MCMP API Service Definition
+// @Description Creates a new MCMP API service (framework) record. Returns 409 if a service with the same name already exists.
+// @Tags McmpAPI
+// @Accept json
+// @Produce json
+// @Param body body model.CreateMcmpApiServiceRequest true "Service definition"
+// @Success 201 {object} mcmpapi.McmpApiService
+// @Failure 400 {object} map[string]string "error: invalid request body or validation failure"
+// @Failure 409 {object} map[string]string "error: framework service already exists"
+// @Failure 500 {object} map[string]string "error: internal server error"
+// @Router /api/mcmp-apis [post]
+// @Id CreateFrameworkService
+// @Security BearerAuth
+func (h *McmpApiHandler) CreateFrameworkService(c echo.Context) error {
+	var req model.CreateMcmpApiServiceRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid body: " + err.Error()})
+	}
+	if err := c.Validate(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	svc := &mcmpapi.McmpApiService{
+		Name:     req.Name,
+		Version:  req.Version,
+		BaseURL:  req.BaseURL,
+		AuthType: req.AuthType,
+		AuthUser: req.AuthUser,
+		AuthPass: req.AuthPass,
+		IsActive: req.IsActive,
+	}
+	if err := h.service.CreateFrameworkService(svc); err != nil {
+		if errors.Is(err, service.ErrFrameworkServiceAlreadyExists) {
+			return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusCreated, svc)
+}
+
 // UpdateService godoc
 // @Summary Update MCMP API Service Definition
 // @Description Updates specific fields (e.g., BaseURL, Auth info) of an MCMP API service definition identified by its name. Cannot update name or version.
