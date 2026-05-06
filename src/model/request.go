@@ -266,6 +266,17 @@ type ImportApiResponse struct {
 	FrameworkResults []ImportApiFrameworkResult `json:"frameworkResults"` // Detailed results for each framework
 }
 
+// CreateMcmpApiServiceRequest represents the request body for POST /api/mcmp-apis
+type CreateMcmpApiServiceRequest struct {
+	Name     string `json:"name"     validate:"required,max=100"`
+	Version  string `json:"version"  validate:"required,max=50"`
+	BaseURL  string `json:"baseUrl"  validate:"required,url"`
+	AuthType string `json:"authType,omitempty" validate:"omitempty,oneof=none basic bearer"`
+	AuthUser string `json:"authUser,omitempty"`
+	AuthPass string `json:"authPass,omitempty"`
+	IsActive bool   `json:"isActive,omitempty"`
+}
+
 // SignupRequest represents the signup form data
 type SignupRequest struct {
 	Email        string `json:"email" validate:"required,email"`
