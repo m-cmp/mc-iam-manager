@@ -51,7 +51,16 @@ auto_setup() {
         return 1
     fi
     echo "✓ API resources initialized successfully"
-    
+
+    # 5-1. 프레임워크 서비스 URL 등록 (sync-projects 전 서비스 레지스트리 선행 등록)
+    echo "Step 5-1: Registering framework service URLs..."
+    register_framework_services
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Framework service registration failed"
+        return 1
+    fi
+    echo "✓ Framework services registered successfully"
+
     # 6. 프로젝트 동기화
     echo "Step 6: Syncing projects..."
     sync_projects
@@ -306,6 +315,61 @@ init_api_resources() {
     fi
     
     echo "API resources initialized"
+    return 0
+}
+
+register_framework_services() {
+    echo "Registering framework service URLs to mcmp_api_services..."
+
+    register_service() {
+        local name="$1"
+        local version="$2"
+        local base_url="$3"
+        local auth_type="${4:-none}"
+        local auth_user="${5:-}"
+        local auth_pass="${6:-}"
+
+        json_data=$(jq -n \
+            --arg name "$name" \
+            --arg version "$version" \
+            --arg baseUrl "$base_url" \
+            --arg authType "$auth_type" \
+            --arg authUser "$auth_user" \
+            --arg authPass "$auth_pass" \
+            --argjson isActive true \
+            '{name: $name, version: $version, baseUrl: $baseUrl, authType: $authType, authUser: $authUser, authPass: $authPass, isActive: $isActive}')
+
+        response=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \
+            --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+            --header 'Content-Type: application/json' \
+            --data "$json_data" \
+            "$MC_IAM_MANAGER_HOST/api/mcmp-apis")
+
+        http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+        response_body=$(echo $response | sed -e 's/HTTPSTATUS\:.*//g')
+
+        if [ "$http_code" = "201" ]; then
+            echo "  ✓ Registered: $name ($base_url)"
+        elif [ "$http_code" = "409" ]; then
+            echo "  ✓ Already registered: $name (skipped)"
+        else
+            echo "  ✗ Failed to register $name (HTTP $http_code): $response_body"
+            return 1
+        fi
+        return 0
+    }
+
+    INFRA_MANAGER_VERSION=$(grep -A1 "^  mc-infra-manager:" ./api.yaml 2>/dev/null | grep "version:" | awk '{print $2}' | tr -d '"')
+    INFRA_MANAGER_VERSION="${INFRA_MANAGER_VERSION:-0.12.6}"
+
+    register_service "mc-infra-manager" "$INFRA_MANAGER_VERSION" \
+        "http://mc-infra-manager:${MC_INFRA_MANAGER_PORT:-1323}/tumblebug" \
+        "basic" "$MC_INFRA_MANAGER_API_USERNAME" "$MC_INFRA_MANAGER_API_PASSWORD"
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
+    echo "Framework service registration completed"
     return 0
 }
 
