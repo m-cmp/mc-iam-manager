@@ -49,3 +49,6 @@ SPEC.md
 
 # Build binaries (local only)
 mc-iam-manager-*
+
+# Claude Code local config
+.claude/
