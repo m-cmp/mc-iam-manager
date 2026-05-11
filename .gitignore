@@ -46,3 +46,9 @@ doc/
 # SPEC.md is not committed to avoid conflicts
 SPEC.md
 .worktrees/
+
+# Build binaries (local only)
+mc-iam-manager-*
+
+# Claude Code local config
+.claude/
