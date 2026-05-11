@@ -4,7 +4,7 @@
 services:
   mc-infra-connector:
     version: 0.9.8
-    baseurl: http://43.201.77.237:1024/spider
+    baseurl: http://mc-infra-connector:1024/spider
     auth:
       type: basic
       username: 
@@ -12,13 +12,13 @@ services:
 
   mc-iam-manager:
     version: 0.3.0
-    baseurl: http://localhost:3000
+    baseurl: http://mc-iam-manager:5005
     auth:
       type: bearer
 
   mc-infra-manager:
     version: 0.9.22
-    baseurl: http://43.201.77.237:1323/tumblebug
+    baseurl: http://mc-infra-manager:1323/tumblebug
     auth:
       type: basic
       username: default
@@ -32,27 +32,27 @@ services:
 
   mc-observability:
     version: 0.2.3
-    baseurl: http://localhost:18080
+    baseurl: http://mc-observability:18080
     auth:
 
   mc-application-manager:
     version: 0.3.0
-    baseurl: http://localhost:18084
+    baseurl: http://mc-application-manager:18084
     auth:
 
   mc-workflow-manager:
     version: 0.3.0
-    baseurl: http://localhost:18083
+    baseurl: http://mc-workflow-manager:18083
     auth:
 
   mc-cost-optimizer:
     version: 0.3.0
-    baseurl: http://localhost:9090
+    baseurl: http://mc-cost-optimizer:9090
     auth:
 
   mc-data-manager:
     version: 0.3.0
-    baseurl: http://localhost:3300
+    baseurl: http://mc-data-manager:3300
     auth:
   
   # sample:
