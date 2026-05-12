@@ -20,7 +20,7 @@ verbose: false
 frameworks:
   # MC-IAM-Manager - Identity and Access Management
   - name: mc-iam-manager
-    version: "0.3.0"                    # Active version (local development)
+    version: "0.5.2"                    # Active version (local development)
     repository: https://github.com/m-cmp/mc-iam-manager
     swagger: ../../src/docs/swagger.yaml   # Local path relative to this file
 
@@ -50,18 +50,16 @@ frameworks:
     swagger: https://raw.githubusercontent.com/m-cmp/mc-workflow-manager/v0.5.0/swagger.json
 
   # MC-Infra-Manager - Multi-Cloud Infrastructure Management
-  # Note: No releases found - using main branch
-  # - name: mc-infra-manager
-  #   version: "main"                     # No releases, using main branch
-  #   repository: https://github.com/m-cmp/mc-infra-manager
-  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-infra-manager/main/swagger.yaml
+  - name: mc-infra-manager
+    version: "main"
+    repository: https://github.com/cloud-barista/cb-tumblebug
+    swagger: https://raw.githubusercontent.com/cloud-barista/cb-tumblebug/refs/heads/main/src/interface/rest/docs/swagger.yaml
 
   # MC-Infra-Connector - Cloud Infrastructure Connection
-  # Note: No releases found - using main branch
-  # - name: mc-infra-connector
-  #   version: "main"                     # No releases, using main branch
-  #   repository: https://github.com/m-cmp/mc-infra-connector
-  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-infra-connector/main/swagger.yaml
+  - name: mc-infra-connector
+    version: "main"
+    repository: https://github.com/cloud-barista/cb-spider
+    swagger: https://raw.githubusercontent.com/cloud-barista/cb-spider/refs/heads/master/api/swagger.yaml
 
   # MC-Data-Manager - Data Management
   # Note: No releases found - using main branch
