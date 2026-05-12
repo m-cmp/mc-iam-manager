@@ -1317,8 +1317,8 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 	log.Printf("[DEBUG] Impersonation clientSecret: %s", clientSecret)
 	log.Printf("[DEBUG] Impersonation realm: %s", config.KC.Realm)
 
-	// 서비스 계정으로 로그인
-	//token, err := config.KC.Client.LoginClient(ctx, clientID, clientSecret, config.KC.Realm)
+	// 서비스 계정으로 로그인 (openid scope 포함 → id_token 발급)
+	// Alibaba STS AssumeRoleWithOIDC는 단일 aud 문자열의 id_token을 요구함
 	token, err := config.KC.Client.LoginClient(ctx, clientName, clientSecret, config.KC.Realm, "openid")
 	if err != nil {
 		return nil, fmt.Errorf("failed to login with service account: %w", err)
@@ -1413,12 +1413,30 @@ func (s *keycloakService) GetSamlAssertionByServiceAccount(ctx context.Context, 
 	}
 
 	// Step 4: SAMLResponse 래핑 + standard base64 인코딩
-	// AWS STS AssumeRoleWithSAML은 SAMLResponse 래퍼가 포함된 base64를 요구함
-	samlResponseXML := buildSAMLResponse(assertionXML)
+	// AWS/Alibaba STS AssumeRoleWithSAML은 SAMLResponse 래퍼가 포함된 base64를 요구함
+	// destination: Keycloak SAML 클라이언트의 ACS URL (assertions의 Recipient과 일치)
+	destination := extractRecipientFromAssertion(assertionXML)
+	samlResponseXML := buildSAMLResponse(assertionXML, destination)
 	samlResponseB64 := base64.StdEncoding.EncodeToString([]byte(samlResponseXML))
 
 	log.Printf("[KEYCLOAK] SAML assertion exchange succeeded for audience: %s", samlClientAudience)
 	return samlResponseB64, nil
+}
+
+// extractRecipientFromAssertion extracts the Recipient URL from the SAML assertion's
+// SubjectConfirmationData element. Returns empty string if not found.
+func extractRecipientFromAssertion(assertionXML string) string {
+	const recipientAttr = `Recipient="`
+	idx := strings.Index(assertionXML, recipientAttr)
+	if idx < 0 {
+		return ""
+	}
+	start := idx + len(recipientAttr)
+	end := strings.Index(assertionXML[start:], `"`)
+	if end < 0 {
+		return ""
+	}
+	return assertionXML[start : start+end]
 }
 
 // decodeBase64URLToString base64url (Keycloak token exchange 반환값) → UTF-8 문자열 디코딩
@@ -1441,11 +1459,17 @@ func decodeBase64URLToString(b64url string) (string, error) {
 }
 
 // buildSAMLResponse Keycloak SAML Assertion XML을 SAMLResponse로 래핑
-// AWS STS는 samlp:Response 래퍼가 포함된 SAMLAssertion을 요구함
-func buildSAMLResponse(assertionXML string) string {
-	return `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_samlresponse" Version="2.0" IssueInstant="` +
-		time.Now().UTC().Format("2006-01-02T15:04:05Z") +
-		`"><samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>` +
+// AWS/Alibaba STS AssumeRoleWithSAML은 samlp:Response 래퍼가 포함된 base64를 요구함
+// - Destination: ACS URL (Alibaba: https://signin.aliyun.com/saml-role/sso)
+// - xmlns:saml 은 내부 Assertion에서 선언하므로 Response에서 제외 (서명 c14n 안정성)
+func buildSAMLResponse(assertionXML string, destination string) string {
+	dest := ""
+	if destination != "" {
+		dest = ` Destination="` + destination + `"`
+	}
+	return `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="_samlresponse" Version="2.0" IssueInstant="` +
+		time.Now().UTC().Format("2006-01-02T15:04:05Z") + `"` + dest +
+		`><samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>` +
 		assertionXML +
 		`</samlp:Response>`
 }
