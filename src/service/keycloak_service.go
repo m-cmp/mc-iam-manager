@@ -162,24 +162,39 @@ func (s *keycloakService) GetUserByUsername(ctx context.Context, username string
 }
 
 // GetUsers retrieves users from Keycloak, optionally filtered by enabled status.
+// gocloak.GetUsersParams.Enabled uses json:"omitempty" which drops false values,
+// so we pass enabled as a manual query param to avoid the omitempty bug.
 func (s *keycloakService) GetUsers(ctx context.Context, enabled *bool) ([]*gocloak.User, error) {
-	// Directly use config.KC
 	if config.KC == nil || config.KC.Client == nil {
 		return nil, fmt.Errorf("keycloak configuration not initialized")
 	}
-	token, err := config.KC.LoginAdmin(ctx) // Use admin token
+	token, err := config.KC.LoginAdmin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get admin token: %w", err)
 	}
-	getUsersParams := gocloak.GetUsersParams{}
-	if enabled != nil {
-		getUsersParams.Enabled = enabled
+
+	if enabled == nil {
+		kcUsers, err := config.KC.Client.GetUsers(ctx, token.AccessToken, config.KC.Realm, gocloak.GetUsersParams{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get users from keycloak: %w", err)
+		}
+		return kcUsers, nil
 	}
-	kcUsers, err := config.KC.Client.GetUsers(ctx, token.AccessToken, config.KC.Realm, getUsersParams)
+
+	// enabled 값이 false일 때 omitempty로 쿼리 파라미터가 누락되는 gocloak 버그 우회:
+	// Keycloak Admin REST API를 직접 호출하여 ?enabled=false 명시 전송
+	var result []*gocloak.User
+	url := fmt.Sprintf("%s/admin/realms/%s/users?enabled=%v", config.KC.Host, config.KC.Realm, *enabled)
+	resp, err := config.KC.Client.GetRequestWithBearerAuth(ctx, token.AccessToken).
+		SetResult(&result).
+		Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users from keycloak: %w", err)
 	}
-	return kcUsers, nil
+	if resp.IsError() {
+		return nil, fmt.Errorf("keycloak returned error %d for GetUsers", resp.StatusCode())
+	}
+	return result, nil
 }
 
 // CreateUser creates a user in Keycloak.
