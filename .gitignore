@@ -52,3 +52,6 @@ mc-iam-manager-*
 
 # Claude Code local config
 .claude/
+
+# Script backup files (created by mc-admin-cli sync)
+conf/mc-iam-manager/*.bak.*
