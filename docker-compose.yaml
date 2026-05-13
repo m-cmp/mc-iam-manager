@@ -1,8 +1,8 @@
 x-default-health-check: &default-health-check
-  interval: ${HEALTH_CHECK_INTERVAL}
-  timeout: ${HEALTH_CHECK_TIMEOUT}
-  retries: ${HEALTH_CHECK_RETIES}
-  start_period: ${HEALTH_CHECK_START_PERIOD}
+  interval: ${HEALTH_CHECK_INTERVAL:-1m}
+  timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
+  retries: ${HEALTH_CHECK_RETRIES:-3}
+  start_period: ${HEALTH_CHECK_START_PERIOD:-60s}
 
 networks:
   mc-infra-connector-network:
@@ -14,16 +14,16 @@ services:
   ##### MC-INFRA-CONNECTOR #########################################################################################################################
 
   mc-infra-connector:
-    image: cloudbaristaorg/cb-spider:0.11.1
+    image: cloudbaristaorg/cb-spider:0.12.18
     pull_policy: if_not_present
     container_name: mc-infra-connector
-    platform: linux/amd64
+    restart: unless-stopped
     networks:
       - mc-infra-connector-network
       - mc-web-console-network
     ports:
       - target: 1024
-        published: 1024
+        published: ${MC_INFRA_CONNECTOR_PORT}
         protocol: tcp
     volumes:
       - ./tool/mcc:/app/tool/mcc
@@ -33,12 +33,12 @@ services:
     environment:
       - PLUGIN_SW=OFF
       - SERVER_ADDRESS=0.0.0.0:1024
-      # if you leave these values empty, REST Auth will be disabled.
-      # - API_USERNAME=
-      # - API_PASSWORD=
-      - SPIDER_LOG_LEVEL=error
-      - SPIDER_HISCALL_LOG_LEVEL=error
+      - SPIDER_USERNAME=${MC_INFRA_CONNECTOR_API_USERNAME:-spider}
+      - SPIDER_PASSWORD=${MC_INFRA_CONNECTOR_API_PASSWORD:-spider}
+      - SPIDER_LOG_LEVEL=${MC_INFRA_CONNECTOR_LOG_LEVEL:-error}
+      - SPIDER_HISCALL_LOG_LEVEL=${MC_INFRA_CONNECTOR_HISCALL_LOG_LEVEL:-error}
       - ID_TRANSFORM_MODE=OFF
+      - ADMINWEB=ON
     healthcheck:
       # for CB-Spider
       test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:1024/spider/readyz" ]
@@ -47,17 +47,17 @@ services:
   ##### MC-INFRA-MANAGER #########################################################################################################################
 
   mc-infra-manager:
-    image: cloudbaristaorg/cb-tumblebug:edge
+    image: cloudbaristaorg/cb-tumblebug:0.12.9
     container_name: mc-infra-manager
     pull_policy: if_not_present
-    platform: linux/amd64
+    restart: unless-stopped
     networks:
       - mc-infra-connector-network
       - mc-infra-manager-network
       - mc-web-console-network
     ports:
       - target: 1323
-        published: 1323
+        published: ${MC_INFRA_MANAGER_PORT}
         protocol: tcp
     depends_on:
       mc-infra-manager-etcd:
@@ -66,56 +66,46 @@ services:
         condition: service_started
       mc-infra-manager-postgres:
         condition: service_healthy
+      mc-infra-manager-openbao:
+        condition: service_healthy
     volumes:
       - ./tool/mcc:/app/tool/mcc
       - ./conf/mc-infra-manager/:/app/conf/:ro
       - ./container-volume/mc-infra-manager/meta_db/:/app/meta_db/
       - ./container-volume/mc-infra-manager/log/:/app/log/
     environment:
-      # - TB_ROOT_PATH=/app
-      - TB_SPIDER_REST_URL=http://mc-infra-connector:1024/spider
+      - TB_SPIDER_REST_URL=${MC_INFRA_CONNECTOR_REST_URL:-http://mc-infra-connector:1024/spider}
       - TB_ETCD_ENDPOINTS=http://mc-infra-manager-etcd:2379
       - TB_TERRARIUM_REST_URL=http://mc-terrarium:8055/terrarium
+      - TB_TERRARIUM_API_USERNAME=${MC_INFRA_MANAGER_TERRARIUM_API_USERNAME:-}
+      - TB_TERRARIUM_API_PASSWORD=${MC_INFRA_MANAGER_TERRARIUM_API_PASSWORD:-}
       - TB_IAM_MANAGER_REST_URL=http://mc-iam-manager:${MC_IAM_MANAGER_PORT}
-      # - TB_ETCD_AUTH_ENABLED=true
-      # - TB_ETCD_USERNAME=default
-      # - TB_ETCD_PASSWORD=default
       - TB_POSTGRES_ENDPOINT=mc-infra-manager-postgres:5432
-      - TB_POSTGRES_DATABASE=cb_tumblebug
-      - TB_POSTGRES_USER=cb_tumblebug
-      - TB_POSTGRES_PASSWORD=cb_tumblebug
-      # - TB_ALLOW_ORIGINS=*
-      # - TB_AUTH_ENABLED=true
-      # - TB_API_USERNAME=default
-      # - TB_API_PASSWORD=default
-      # - TB_AUTOCONTROL_DURATION_MS=10000
-      # - TB_SELF_ENDPOINT=localhost:1323
-      # - TB_DRAGONFLY_REST_URL=http://cb-dragonfly:9090/dragonfly
-      # - TB_DEFAULT_NAMESPACE=ns01
-      # - TB_DEFAULT_CREDENTIALHOLDER=admin
-      # - TB_LOGFILE_PATH=/app/log/tumblebug.log
-      # - TB_LOGFILE_MAXSIZE=10
-      # - TB_LOGFILE_MAXBACKUPS=3
-      # - TB_LOGFILE_MAXAGE=30
-      # - TB_LOGFILE_COMPRESS=false
-      # - TB_LOGLEVEL=debug
-      # - TB_LOGWRITER=both
-      # - TB_NODE_ENV=development
+      - TB_POSTGRES_DATABASE=${MC_INFRA_MANAGER_POSTGRES_DB:-tumblebug}
+      - TB_POSTGRES_USER=${MC_INFRA_MANAGER_POSTGRES_USER:-tumblebug}
+      - TB_POSTGRES_PASSWORD=${MC_INFRA_MANAGER_POSTGRES_PASSWORD:-tumblebug}
+      - TB_AUTH_ENABLED=true
+      - TB_AUTH_MODE=basic
+      - TB_API_USERNAME=${MC_INFRA_MANAGER_API_USERNAME:-spider}
+      - TB_API_PASSWORD=${MC_INFRA_MANAGER_API_PASSWORD:-spider}
+      - VAULT_ADDR=http://mc-infra-manager-openbao:${MC_INFRA_MANAGER_OPENBAO_PORT}
+      - VAULT_TOKEN=${MC_INFRA_MANAGER_OPENBAO_VAULT_TOKEN:-dev-only-token}
     healthcheck:
-      test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:1323/tumblebug/readyz" ]
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:1323/tumblebug/readyz || exit 1"]
       <<: *default-health-check
 
   mc-infra-manager-etcd:
-    image: gcr.io/etcd-development/etcd:v3.5.14
+    image: gcr.io/etcd-development/etcd:v3.5.21
     container_name: mc-infra-manager-etcd
+    restart: unless-stopped
     networks:
       - mc-infra-manager-network
     ports:
       - target: 2379
-        published: 2379
+        published: ${MC_INFRA_MANAGER_ETCD_PORT}
         protocol: tcp
       - target: 2380
-        published: 2380
+        published: ${MC_INFRA_MANAGER_ETCD_PEER_PORT}
         protocol: tcp
     volumes:
       - ./container-volume/mc-infra-manager/etcd/data:/etcd-data
@@ -162,19 +152,48 @@ services:
       # # Enable external network for outbound access (not ideal for security)
       # - external_network
     ports:
-      - 6432:5432
+      - ${MC_INFRA_MANAGER_POSTGRES_HOST_PORT:-6432}:5432
     volumes:
       - ./container-volume/mc-infra-manager/meta_db/postgres:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=cb_tumblebug
-      - POSTGRES_PASSWORD=cb_tumblebug
-      - POSTGRES_DB=cb_tumblebug
+      - POSTGRES_USER=${MC_INFRA_MANAGER_POSTGRES_USER:-tumblebug}
+      - POSTGRES_PASSWORD=${MC_INFRA_MANAGER_POSTGRES_PASSWORD:-tumblebug}
+      - POSTGRES_DB=${MC_INFRA_MANAGER_POSTGRES_DB:-tumblebug}
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U cb_tumblebug" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${MC_INFRA_MANAGER_POSTGRES_USER:-tumblebug}" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  mc-infra-manager-openbao:
+    image: openbao/openbao:2.5.1
+    container_name: mc-infra-manager-openbao
+    restart: unless-stopped
+    networks:
+      - mc-infra-manager-network
+    ports:
+      - target: ${MC_INFRA_MANAGER_OPENBAO_PORT}
+        published: ${MC_INFRA_MANAGER_OPENBAO_PORT}
+        protocol: tcp
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - BAO_ADDR=http://127.0.0.1:${MC_INFRA_MANAGER_OPENBAO_PORT}
+      - BAO_PORT=${MC_INFRA_MANAGER_OPENBAO_PORT}
+      - SKIP_SETCAP=true
+      - MC_INFRA_MANAGER_OPENBAO_VAULT_TOKEN=${MC_INFRA_MANAGER_OPENBAO_VAULT_TOKEN:-dev-only-token}
+    volumes:
+      - ./conf/mc-infra-manager/openbao-config.hcl:/openbao/config/config.hcl:ro
+      - ./conf/mc-infra-manager/openbao-entrypoint.sh:/openbao/entrypoint.sh:ro
+      - ./container-volume/openbao-data:/openbao/data
+    entrypoint: ["/bin/sh", "/openbao/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "bao", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
 
   ##### MC-IAM-MANAGER #########################################################################################################################
 
@@ -213,7 +232,7 @@ services:
     volumes:
       - ./tool/mcc:/app/tool/mcc
     healthcheck:
-      test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://${MC_IAM_MANAGER_DOMAIN}:${MC_IAM_MANAGER_PORT}/readyz" ]
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:${MC_IAM_MANAGER_PORT:-5005}/readyz || exit 1"]
       <<: *default-health-check
 
   mc-iam-manager-db:
@@ -226,7 +245,7 @@ services:
       - mc-iam-manager-network
     ports:
       - target: 5432
-        published: 5432
+        published: ${MC_IAM_MANAGER_DB_HOST_PORT:-15432}
         protocol: tcp
     volumes:
       - ./container-volume/mc-iam-manager/postgres/postgres_data:/var/lib/postgresql/data
@@ -256,7 +275,7 @@ services:
       - mc-iam-manager-network
     ports:
       - target: 8080
-        published: 8080
+        published: ${MC_IAM_MANAGER_KEYCLOAK_PORT}
         protocol: tcp
     command:
       - start-dev
@@ -265,11 +284,12 @@ services:
       KC_DB_URL: jdbc:postgresql://mc-iam-manager-db:5432/${MC_IAM_MANAGER_KEYCLOAK_DATABASE_NAME}
       KC_DB_USERNAME: ${MC_IAM_MANAGER_DATABASE_USER}
       KC_DB_PASSWORD: ${MC_IAM_MANAGER_DATABASE_PASSWORD}
-      KC_HOSTNAME_PORT: 8080
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
-      KC_HOSTNAME: ${MC_IAM_MANAGER_KEYCLOAK_EXTERNAL_DOMAIN:-localhost}
+      KC_HOSTNAME_URL: ${MC_IAM_MANAGER_PUBLIC_HOST}/auth
       KC_HTTP_RELATIVE_PATH: /auth
+      KC_PROXY_HEADERS: xforwarded
+      KC_FEATURES: token-exchange,admin-fine-grained-authz
       KEYCLOAK_ADMIN: ${MC_IAM_MANAGER_KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD:-admin_password}
       KC_HTTP_ENABLED: "true"
@@ -286,7 +306,7 @@ services:
     depends_on:
       - mc-iam-manager-db
     healthcheck:
-      test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:8080/" ]
+      test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:8080/auth/" ]
       # test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:8080/health/ready" ]
       <<: *default-health-check
 
@@ -294,13 +314,13 @@ services:
     image: nginx:1.25-alpine
     container_name: mc-iam-manager-nginx
     ports:
-      - "80:80"
-      - "443:443"
+      - "${MC_IAM_MANAGER_NGINX_HTTP_PORT}:80"
+      - "${MC_IAM_MANAGER_NGINX_HTTPS_PORT}:443"
     environment:
-      - DOMAIN_NAME=${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}
+      - DOMAIN_NAME=${MC_IAM_MANAGER_PUBLIC_DOMAIN}
     volumes:
       - ./container-volume/mc-iam-manager/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./container-volume/certs:/etc/nginx/certs:ro
+      - ./container-volume/mc-iam-manager/certs:/etc/nginx/certs:ro
       - ./container-volume/certbot/www:/var/www/certbot:ro
     depends_on:
       - mc-iam-manager-kc
@@ -308,7 +328,7 @@ services:
       - mc-iam-manager-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/nginx-health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/nginx-health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -322,7 +342,7 @@ services:
       - mc-iam-manager-network
     depends_on:
       mc-iam-manager:
-        condition: service_healthy
+        condition: service_started
       mc-iam-manager-db:
         condition: service_healthy
       mc-iam-manager-kc:
@@ -347,20 +367,20 @@ services:
     restart: unless-stopped
     volumes:
       - ./container-volume/mc-web-console/postgres/postgres_data:/var/lib/postgresql/data
+      - ./conf/mc-web-console/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     environment:
-      POSTGRES_DB: ${CONSOLE_POSTGRES_DB}
-      POSTGRES_USER: ${CONSOLE_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${CONSOLE_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${MC_WEB_CONSOLE_POSTGRES_DB}
+      POSTGRES_USER: ${MC_WEB_CONSOLE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${MC_WEB_CONSOLE_POSTGRES_PASSWORD}
     networks:
       - mc-web-console-network
     pull_policy: if_not_present
-    platform: linux/amd64
     ports:
       - target: 5432
-        published: 15432
+        published: ${MC_WEB_CONSOLE_DB_HOST_PORT:-15433}
         protocol: tcp
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${CONSOLE_POSTGRES_USER}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${MC_WEB_CONSOLE_POSTGRES_USER}" ]
       <<: *default-health-check
     command: >
       sh -c "chown -R 70:70 /var/lib/postgresql/data &&
@@ -368,9 +388,9 @@ services:
 
   mc-web-console-api:
     # image: sehyeong0108/mc-web-console-api:20241101
-    image: cloudbaristaorg/mc-web-console-api:edge
+    image: csescsta/mc-web-console-api:edge
+    pull_policy: always
     container_name: mc-web-console-api
-    platform: linux/amd64
     restart: unless-stopped
     depends_on:
       - mc-web-console-db
@@ -384,7 +404,7 @@ services:
       # - mc-cost-optimizer-be
     ports:
       - target: 3000
-        published: 3000
+        published: ${MC_WEB_CONSOLE_API_PORT}
         protocol: tcp
     networks:
       - mc-web-console-network
@@ -394,11 +414,16 @@ services:
       GODEBUG: netdns=go
       API_ADDR: "0.0.0.0"
       API_PORT: "3000"
-      DATABASE_URL: postgres://${CONSOLE_POSTGRES_USER}:${CONSOLE_POSTGRES_PASSWORD}@mc-web-console-db:5432/${CONSOLE_POSTGRES_DB}
+      DB_HOST: mc-web-console-db
+      DB_PORT: 5432
+      DB_USER: ${MC_WEB_CONSOLE_POSTGRES_USER}
+      DB_PASSWORD: ${MC_WEB_CONSOLE_POSTGRES_PASSWORD}
+      DB_NAME: ${MC_WEB_CONSOLE_POSTGRES_DB}
       MCIAM_USE: "true"
       MCIAM_TICKET_USE: "false"
       IFRAME_TARGET_IS_HOST: "true"
       MC_IAM_MANAGER_PORT: ${MC_IAM_MANAGER_PORT}
+      MC_IAM_MANAGER_HOST: mc-iam-manager
     volumes:
       - ./tool/mcc:/app/tool/mcc
       - ./conf/mc-web-console/api/conf/:/conf/
@@ -408,9 +433,9 @@ services:
 
   mc-web-console-front:
     # image: sehyeong0108/mc-web-console-front:20241101
-    image: cloudbaristaorg/mc-web-console-front:0.4.1
+    image: csescsta/mc-web-console-front:edge
+    pull_policy: always
     container_name: mc-web-console-front
-    platform: linux/amd64
     restart: unless-stopped
     depends_on:
       - mc-web-console-api
@@ -419,7 +444,7 @@ services:
       - mc-iam-manager-network
     ports:
       - target: 3001
-        published: 3001
+        published: ${MC_WEB_CONSOLE_FRONT_PORT}
         protocol: tcp
     environment:
       API_ADDR: mc-web-console-api
@@ -429,5 +454,5 @@ services:
     volumes:
       - ./tool/mcc:/app/tool/mcc
     healthcheck:
-      test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:3001" ]
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3001 || exit 1"]
       <<: *default-health-check 
