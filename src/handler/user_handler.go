@@ -95,6 +95,12 @@ func (h *UserHandler) ListUsers(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
 
+	if req.Enabled != nil {
+		fmt.Printf("[INFO] ListUsers: request={enabled: %v}\n", *req.Enabled)
+	} else {
+		fmt.Printf("[INFO] ListUsers: request={enabled: nil (전체 조회)}\n")
+	}
+
 	users, err := h.userService.ListUsers(c.Request().Context(), req.Enabled)
 	if err != nil {
 		fmt.Printf("[ERROR] ListUsers: Error from userService.ListUsers: %v\n", err)

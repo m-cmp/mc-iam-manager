@@ -10,10 +10,10 @@ PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 ENV_FILE="$PROJECT_ROOT/.env"
 
 # 템플릿 파일 경로
-TEMPLATE_FILE="./nginx.template.conf"
+TEMPLATE_FILE="${SCRIPT_DIR}/nginx.template.conf"
 
 # 출력 파일 경로
-OUTPUT_FILE="./nginx.conf"
+OUTPUT_FILE="${PROJECT_ROOT}/container-volume/mc-iam-manager/nginx/nginx.conf"
 
 # .env 파일 존재 확인
 if [ ! -f "$ENV_FILE" ]; then
@@ -39,18 +39,40 @@ echo "출력: $OUTPUT_FILE"
 echo "환경변수를 로드합니다..."
 
 # .env 파일에서 필요한 변수들을 직접 읽어오기
-MC_IAM_MANAGER_KEYCLOAK_DOMAIN=$(grep "^MC_IAM_MANAGER_KEYCLOAK_DOMAIN=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_IAM_MANAGER_KEYCLOAK_PORT=$(grep "^MC_IAM_MANAGER_KEYCLOAK_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_IAM_MANAGER_PORT=$(grep -m1 "^MC_IAM_MANAGER_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_IAM_MANAGER_DOMAIN=$(grep -m1 "^MC_IAM_MANAGER_DOMAIN=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_IAM_MANAGER_PUBLIC_DOMAIN=$(grep -m1 "^MC_IAM_MANAGER_PUBLIC_DOMAIN=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_IAM_MANAGER_KEYCLOAK_DOMAIN=$(grep -m1 "^MC_IAM_MANAGER_KEYCLOAK_DOMAIN=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_IAM_MANAGER_KEYCLOAK_PORT=$(grep -m1 "^MC_IAM_MANAGER_KEYCLOAK_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_OBSERVABILITY_GRAFANA_PROXY_PORT=$(grep -m1 "^MC_OBSERVABILITY_GRAFANA_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_COST_OPTIMIZER_FE_PROXY_PORT=$(grep -m1 "^MC_COST_OPTIMIZER_FE_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
 
 echo "읽어온 환경변수:"
+echo "  MC_IAM_MANAGER_DOMAIN: $MC_IAM_MANAGER_DOMAIN"
+echo "  MC_IAM_MANAGER_PORT: $MC_IAM_MANAGER_PORT"
+echo "  MC_IAM_MANAGER_PUBLIC_DOMAIN: $MC_IAM_MANAGER_PUBLIC_DOMAIN"
 echo "  MC_IAM_MANAGER_KEYCLOAK_DOMAIN: $MC_IAM_MANAGER_KEYCLOAK_DOMAIN"
 echo "  MC_IAM_MANAGER_KEYCLOAK_PORT: $MC_IAM_MANAGER_KEYCLOAK_PORT"
+echo "  MC_OBSERVABILITY_GRAFANA_PROXY_PORT: $MC_OBSERVABILITY_GRAFANA_PROXY_PORT"
+echo "  MC_COST_OPTIMIZER_FE_PROXY_PORT: $MC_COST_OPTIMIZER_FE_PROXY_PORT"
 
 # 템플릿 파일을 복사하고 환경변수 대치
 cp "$TEMPLATE_FILE" "$OUTPUT_FILE"
 
-# 환경변수 대치
-# ${DOMAIN_NAME} 대치
+if [ -n "$MC_IAM_MANAGER_PORT" ]; then
+    sed -i "s/\${MC_IAM_MANAGER_PORT}/$MC_IAM_MANAGER_PORT/g" "$OUTPUT_FILE"
+    echo "✓ MC_IAM_MANAGER_PORT 대치 완료: $MC_IAM_MANAGER_PORT"
+else
+    echo "경고: MC_IAM_MANAGER_PORT 환경변수가 설정되지 않았습니다."
+fi
+
+if [ -n "$MC_IAM_MANAGER_PUBLIC_DOMAIN" ]; then
+    sed -i "s/\${MC_IAM_MANAGER_PUBLIC_DOMAIN}/$MC_IAM_MANAGER_PUBLIC_DOMAIN/g" "$OUTPUT_FILE"
+    echo "✓ MC_IAM_MANAGER_PUBLIC_DOMAIN 대치 완료: $MC_IAM_MANAGER_PUBLIC_DOMAIN"
+else
+    echo "경고: MC_IAM_MANAGER_PUBLIC_DOMAIN 환경변수가 설정되지 않았습니다."
+fi
+
 if [ -n "$MC_IAM_MANAGER_KEYCLOAK_DOMAIN" ]; then
     sed -i "s/\${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}/$MC_IAM_MANAGER_KEYCLOAK_DOMAIN/g" "$OUTPUT_FILE"
     echo "✓ MC_IAM_MANAGER_KEYCLOAK_DOMAIN 대치 완료: $MC_IAM_MANAGER_KEYCLOAK_DOMAIN"
@@ -58,13 +80,31 @@ else
     echo "경고: MC_IAM_MANAGER_KEYCLOAK_DOMAIN 환경변수가 설정되지 않았습니다."
 fi
 
-# ${PORT} 대치 (MC_IAM_MANAGER_PORT 사용)
 if [ -n "$MC_IAM_MANAGER_KEYCLOAK_PORT" ]; then
     sed -i "s/\${MC_IAM_MANAGER_KEYCLOAK_PORT}/$MC_IAM_MANAGER_KEYCLOAK_PORT/g" "$OUTPUT_FILE"
     echo "✓ MC_IAM_MANAGER_KEYCLOAK_PORT 대치 완료: $MC_IAM_MANAGER_KEYCLOAK_PORT"
 else
     echo "경고: MC_IAM_MANAGER_KEYCLOAK_PORT 환경변수가 설정되지 않았습니다."
 fi
+
+if [ -n "$MC_OBSERVABILITY_GRAFANA_PROXY_PORT" ]; then
+    sed -i "s/\${MC_OBSERVABILITY_GRAFANA_PROXY_PORT}/$MC_OBSERVABILITY_GRAFANA_PROXY_PORT/g" "$OUTPUT_FILE"
+    echo "✓ MC_OBSERVABILITY_GRAFANA_PROXY_PORT 대치 완료: $MC_OBSERVABILITY_GRAFANA_PROXY_PORT"
+else
+    echo "경고: MC_OBSERVABILITY_GRAFANA_PROXY_PORT 환경변수가 설정되지 않았습니다."
+fi
+
+if [ -n "$MC_COST_OPTIMIZER_FE_PROXY_PORT" ]; then
+    sed -i "s/\${MC_COST_OPTIMIZER_FE_PROXY_PORT}/$MC_COST_OPTIMIZER_FE_PROXY_PORT/g" "$OUTPUT_FILE"
+    echo "✓ MC_COST_OPTIMIZER_FE_PROXY_PORT 대치 완료: $MC_COST_OPTIMIZER_FE_PROXY_PORT"
+else
+    echo "경고: MC_COST_OPTIMIZER_FE_PROXY_PORT 환경변수가 설정되지 않았습니다."
+fi
+
+# 컨테이너 이름 치환 (템플릿 내 레거시 이름 정정)
+sed -i "s/mciam-manager/mc-iam-manager/g" "$OUTPUT_FILE"
+sed -i "s/mciam-keycloak/mc-iam-manager-kc/g" "$OUTPUT_FILE"
+echo "✓ 컨테이너 이름 수정 완료"
 
 echo "nginx 설정 파일 생성이 완료되었습니다: $OUTPUT_FILE"
 

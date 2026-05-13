@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# UID 변수 충돌 방지 - .env.setup 파일 사용
-source ../../.env.setup
+# UID 변수 충돌 방지 - .env 파일이 있으면 source (없으면 env_file 주입값 사용)
+source .env 2>/dev/null || true
 
 # 자동화된 설정 함수
 auto_setup() {
@@ -51,7 +51,16 @@ auto_setup() {
         return 1
     fi
     echo "✓ API resources initialized successfully"
-    
+
+    # 5-1. 프레임워크 서비스 URL 등록 (sync-projects 전 서비스 레지스트리 선행 등록)
+    echo "Step 5-1: Registering framework service URLs..."
+    register_framework_services
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Framework service registration failed"
+        return 1
+    fi
+    echo "✓ Framework services registered successfully"
+
     # 6. 프로젝트 동기화
     echo "Step 6: Syncing projects..."
     sync_projects
@@ -61,14 +70,31 @@ auto_setup() {
     fi
     echo "✓ Projects synced successfully"
     
-    # 7. 워크스페이스-프로젝트 매핑
-    echo "Step 7: Mapping workspace to all projects..."
+    # 7. Keycloak client redirect URI 설정
+    echo "Step 7: Configuring Keycloak client redirect URIs..."
+    configure_keycloak_client_uris
+    if [ $? -ne 0 ]; then
+        echo "WARNING: Keycloak client redirect URI configuration failed (non-fatal)"
+    else
+        echo "✓ Keycloak client redirect URIs configured successfully"
+    fi
+
+    # 8. 워크스페이스-프로젝트 매핑
+    echo "Step 8: Mapping workspace to all projects..."
     map_workspace_projects
     if [ $? -ne 0 ]; then
         echo "ERROR: Workspace-project mapping failed"
         return 1
     fi
     echo "✓ Workspace-project mapping completed successfully"
+
+    # add_sample_userrole_mapping
+    # if [ $? -ne 0 ]; then
+    #     echo "ERROR: sample user role mapping failed"
+    #     return 1
+    # fi
+    
+    # echo "✓ sample user role mapping completed successfully"
     
     echo "=== Automated setup completed successfully ==="
 }
@@ -245,7 +271,7 @@ init_predefined_roles() {
 
 init_menu() {
     echo "Initializing menu data..."
-    wget -q -O ./menu.yaml "$MCWEBCONSOLE_MENUYAML"
+    wget -q -O ./menu.yaml "$MC_WEB_CONSOLE_MENUYAML"
     
     # wget 성공 여부 확인
     if [ $? -ne 0 ]; then
@@ -278,11 +304,15 @@ init_menu() {
 
 init_api_resources() {
     echo "Initializing API resources..."
-    wget -q -O ./api.yaml "$MCADMINCLI_APIYAML"
-    
-    # wget 성공 여부 확인
-    if [ $? -ne 0 ]; then
-        echo "ERROR: Failed to download api.yaml"
+    if [ -n "$MCADMINCLI_APIYAML" ]; then
+        wget -q -O ./api.yaml "$MCADMINCLI_APIYAML" && echo "  Downloaded api.yaml from $MCADMINCLI_APIYAML" || {
+            echo "  WARNING: Failed to download api.yaml from $MCADMINCLI_APIYAML — using local copy"
+        }
+    else
+        echo "  MCADMINCLI_APIYAML not set — using local api.yaml"
+    fi
+    if [ ! -f ./api.yaml ]; then
+        echo "ERROR: api.yaml not found"
         return 1
     fi
     
@@ -306,6 +336,120 @@ init_api_resources() {
     fi
     
     echo "API resources initialized"
+    return 0
+}
+
+register_framework_services() {
+    echo "Registering framework service URLs to mcmp_api_services..."
+
+    # api.yaml의 services 섹션에 정의된 서비스들을 POST /api/mcmp-apis 로 등록
+    # sync-mcmp-apis는 serviceActions(권한)만 등록하고 service URL 레지스트리는 미처리하므로 별도 등록 필요
+
+    register_service() {
+        local name="$1"
+        local version="$2"
+        local base_url="$3"
+        local auth_type="${4:-none}"
+        local auth_user="${5:-}"
+        local auth_pass="${6:-}"
+
+        json_data=$(jq -n \
+            --arg name "$name" \
+            --arg version "$version" \
+            --arg baseUrl "$base_url" \
+            --arg authType "$auth_type" \
+            --arg authUser "$auth_user" \
+            --arg authPass "$auth_pass" \
+            --argjson isActive true \
+            '{name: $name, version: $version, baseUrl: $baseUrl, authType: $authType, authUser: $authUser, authPass: $authPass, isActive: $isActive}')
+
+        response=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \
+            --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+            --header 'Content-Type: application/json' \
+            --data "$json_data" \
+            "$MC_IAM_MANAGER_HOST/api/mcmp-apis")
+
+        http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+        response_body=$(echo $response | sed -e 's/HTTPSTATUS\:.*//g')
+
+        if [ "$http_code" = "201" ]; then
+            echo "  ✓ Registered: $name ($base_url)"
+        elif [ "$http_code" = "409" ]; then
+            # 기존 레코드가 있으면 base_url, version, auth 자격증명 모두 업데이트
+            PGPASSWORD="$MC_IAM_MANAGER_DATABASE_PASSWORD" psql \
+                -h "$MC_IAM_MANAGER_DATABASE_HOST" \
+                -p "${MC_IAM_MANAGER_DATABASE_PORT:-5432}" \
+                -U "$MC_IAM_MANAGER_DATABASE_USER" \
+                -d "$MC_IAM_MANAGER_DATABASE_NAME" \
+                -c "UPDATE mcmp_api_services SET base_url='$base_url', version='$version', auth_type='$auth_type', auth_user='$auth_user', auth_pass='$auth_pass', updated_at=NOW() WHERE name='$name';" \
+                -q 2>/dev/null \
+            && echo "  ✓ Updated: $name ($base_url)" \
+            || echo "  ✓ Already registered: $name (psql unavailable, skipped)"
+        else
+            echo "  ✗ Failed to register $name (HTTP $http_code): $response_body"
+            return 1
+        fi
+        return 0
+    }
+
+    # api.yaml의 services 섹션에 정의된 모든 framework 등록
+    # mc-iam-manager 자신은 service URL registry 등록 대상에서 제외
+    local failed=0
+    local current_svc=""
+    local current_version=""
+    local current_baseurl=""
+    local current_auth_type=""
+
+    while IFS= read -r line; do
+        # 서비스 이름 감지 (2칸 들여쓰기 + 콜론으로 끝나는 라인)
+        if echo "$line" | grep -qE "^  [a-z].*:$"; then
+            # 직전 서비스 처리
+            if [ -n "$current_svc" ] && [ "$current_svc" != "mc-iam-manager" ]; then
+                auth_user=""
+                auth_pass=""
+                if [ "$current_svc" = "mc-infra-manager" ]; then
+                    auth_user="${MC_INFRA_MANAGER_API_USERNAME}"
+                    auth_pass="${MC_INFRA_MANAGER_API_PASSWORD}"
+                elif [ "$current_svc" = "mc-infra-connector" ]; then
+                    auth_user="${MC_INFRA_CONNECTOR_API_USERNAME}"
+                    auth_pass="${MC_INFRA_CONNECTOR_API_PASSWORD}"
+                fi
+                register_service "$current_svc" "$current_version" "$current_baseurl" \
+                    "${current_auth_type:-none}" "$auth_user" "$auth_pass" || failed=1
+            fi
+            current_svc=$(echo "$line" | sed 's/^  //; s/:$//')
+            current_version=""
+            current_baseurl=""
+            current_auth_type=""
+        elif echo "$line" | grep -q "^    version:"; then
+            current_version=$(echo "$line" | awk '{print $2}' | tr -d '"')
+        elif echo "$line" | grep -q "^    baseurl:"; then
+            current_baseurl=$(echo "$line" | awk '{print $2}')
+        elif echo "$line" | grep -q "^      type:"; then
+            current_auth_type=$(echo "$line" | awk '{print $2}' | tr -d '"')
+        fi
+    done < <(sed -n '/^services:/,/^serviceActions:/p' ./api.yaml | head -n -1)
+
+    # 마지막 서비스 처리
+    if [ -n "$current_svc" ] && [ "$current_svc" != "mc-iam-manager" ]; then
+        auth_user=""
+        auth_pass=""
+        if [ "$current_svc" = "mc-infra-manager" ]; then
+            auth_user="${MC_INFRA_MANAGER_API_USERNAME}"
+            auth_pass="${MC_INFRA_MANAGER_API_PASSWORD}"
+        elif [ "$current_svc" = "mc-infra-connector" ]; then
+            auth_user="${MC_INFRA_CONNECTOR_API_USERNAME}"
+            auth_pass="${MC_INFRA_CONNECTOR_API_PASSWORD}"
+        fi
+        register_service "$current_svc" "$current_version" "$current_baseurl" \
+            "${current_auth_type:-none}" "$auth_user" "$auth_pass" || failed=1
+    fi
+
+    if [ $failed -ne 0 ]; then
+        return 1
+    fi
+
+    echo "Framework service registration completed"
     return 0
 }
 
@@ -407,6 +551,73 @@ sync_projects() {
     echo "✓ Project sync completed successfully"
     echo "Response details:"
     echo "$response_body" | jq .
+    return 0
+}
+
+configure_keycloak_client_uris() {
+    echo "=== Configuring Keycloak Client Redirect URIs ==="
+
+    if [ -z "$MC_IAM_MANAGER_PUBLIC_HOST" ]; then
+        echo "ERROR: MC_IAM_MANAGER_PUBLIC_HOST is not set — cannot configure redirect URIs"
+        return 1
+    fi
+
+    PUBLIC_HOST="$MC_IAM_MANAGER_PUBLIC_HOST"
+    echo "Public host: $PUBLIC_HOST"
+
+    # Keycloak admin token 발급
+    KC_ADMIN_TOKEN=$(curl -s -X POST \
+        "${MC_IAM_MANAGER_KEYCLOAK_HOST}/realms/master/protocol/openid-connect/token" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "grant_type=password" \
+        -d "client_id=admin-cli" \
+        -d "username=${MC_IAM_MANAGER_KEYCLOAK_ADMIN}" \
+        -d "password=${MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD}" \
+        | jq -r '.access_token' 2>/dev/null)
+
+    if [ -z "$KC_ADMIN_TOKEN" ] || [ "$KC_ADMIN_TOKEN" = "null" ]; then
+        echo "ERROR: Failed to obtain Keycloak admin token"
+        return 1
+    fi
+    echo "  ✓ Keycloak admin token obtained"
+
+    KC_ADMIN_URL="${MC_IAM_MANAGER_KEYCLOAK_HOST}/admin/realms/${MC_IAM_MANAGER_KEYCLOAK_REALM}"
+
+    # mciamClient, mciam-oidc-Client 두 클라이언트 설정
+    for CLIENT_NAME in "$MC_IAM_MANAGER_KEYCLOAK_CLIENT_NAME" "$MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME"; do
+        [ -z "$CLIENT_NAME" ] && continue
+
+        # client ID (UUID) 조회
+        CLIENT_ID=$(curl -s \
+            "${KC_ADMIN_URL}/clients?clientId=${CLIENT_NAME}" \
+            -H "Authorization: Bearer ${KC_ADMIN_TOKEN}" \
+            | jq -r '.[0].id' 2>/dev/null)
+
+        if [ -z "$CLIENT_ID" ] || [ "$CLIENT_ID" = "null" ]; then
+            echo "  ⚠️  Client not found: $CLIENT_NAME — skipping"
+            continue
+        fi
+
+        # 현재 client 설정 조회 후 redirect URI 갱신
+        CURRENT=$(curl -s "${KC_ADMIN_URL}/clients/${CLIENT_ID}" \
+            -H "Authorization: Bearer ${KC_ADMIN_TOKEN}")
+
+        UPDATED=$(echo "$CURRENT" | jq \
+            --arg h "$PUBLIC_HOST" \
+            '.rootUrl = $h | .baseUrl = $h | .redirectUris = [$h + "/*"] | .webOrigins = [$h]')
+
+        HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
+            "${KC_ADMIN_URL}/clients/${CLIENT_ID}" \
+            -H "Authorization: Bearer ${KC_ADMIN_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$UPDATED")
+
+        if [ "$HTTP" = "204" ]; then
+            echo "  ✓ Updated: $CLIENT_NAME → redirectUris=[${PUBLIC_HOST}/*]"
+        else
+            echo "  ✗ Failed to update $CLIENT_NAME (HTTP $HTTP)"
+        fi
+    done
     return 0
 }
 
@@ -513,6 +724,38 @@ map_workspace_projects() {
     echo "Workspace-Project mapping completed for workspace ID: $workspace_id"
     return 0
 }
+
+# add_sample_userrole_mapping() {
+#     echo "Adding test users..."
+
+#     #admin
+#     role_id="1"
+#     #platform admin user
+#     user_id="1"
+#     role_type="platform"
+#     # ws01
+#     workspace_id="1"
+
+#     json_data=$(jq -n --arg role_id "$role_id" --arg user_id "$user_id" --arg role_type "$role_type" --arg workspace_id "$workspace_id" \
+#         '{role_id: $role_id, user_id: $user_id, role_type: $role_type, workspace_id: $workspace_id}')
+#     response=$(curl -s -X POST \
+#         --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+#         --header 'Content-Type: application/json' \
+#         --data "$json_data" \
+#         "$MC_IAM_MANAGER_HOST_FOR_INIT/api/roles/assign/platform-role")
+
+#     # 응답 검증
+#     if [ $? -ne 0 ]; then
+#         echo "ERROR: Failed to sync projects"
+#         return 1
+#     fi
+    
+#     echo "Test user addition response: $response"
+
+
+#     echo "Test user addition completed"
+#     return 0
+# }
 
 # 자동 설정 실행
 echo "Starting automated setup process..."
