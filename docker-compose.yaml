@@ -91,7 +91,7 @@ services:
       - VAULT_ADDR=http://mc-infra-manager-openbao:${MC_INFRA_MANAGER_OPENBAO_PORT}
       - VAULT_TOKEN=${MC_INFRA_MANAGER_OPENBAO_VAULT_TOKEN:-dev-only-token}
     healthcheck:
-      test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:1323/tumblebug/readyz" ]
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:1323/tumblebug/readyz || exit 1"]
       <<: *default-health-check
 
   mc-infra-manager-etcd:
@@ -232,7 +232,7 @@ services:
     volumes:
       - ./tool/mcc:/app/tool/mcc
     healthcheck:
-      test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://${MC_IAM_MANAGER_DOMAIN}:${MC_IAM_MANAGER_PORT}/readyz" ]
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:${MC_IAM_MANAGER_PORT:-5005}/readyz || exit 1"]
       <<: *default-health-check
 
   mc-iam-manager-db:
@@ -328,7 +328,7 @@ services:
       - mc-iam-manager-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/nginx-health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/nginx-health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -367,6 +367,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./container-volume/mc-web-console/postgres/postgres_data:/var/lib/postgresql/data
+      - ./conf/mc-web-console/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     environment:
       POSTGRES_DB: ${MC_WEB_CONSOLE_POSTGRES_DB}
       POSTGRES_USER: ${MC_WEB_CONSOLE_POSTGRES_USER}
@@ -453,5 +454,5 @@ services:
     volumes:
       - ./tool/mcc:/app/tool/mcc
     healthcheck:
-      test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:3001" ]
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3001 || exit 1"]
       <<: *default-health-check 

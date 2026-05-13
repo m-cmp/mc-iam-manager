@@ -34,7 +34,7 @@ echo "✓ Container volume directory created and permissions set"
 
 
 # 템플릿 파일 경로
-TEMPLATE_FILE="./nginx.template.conf"
+TEMPLATE_FILE="${SCRIPT_DIR}/nginx.template.conf"
 
 # 출력 파일 경로 (개선된 구조)
 OUTPUT_FILE="${PROJECT_ROOT}/container-volume/mc-iam-manager/nginx/nginx.conf"

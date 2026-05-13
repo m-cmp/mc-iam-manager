@@ -10,7 +10,7 @@ PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 ENV_FILE="$PROJECT_ROOT/.env"
 
 # 템플릿 파일 경로
-TEMPLATE_FILE="./nginx.template.conf"
+TEMPLATE_FILE="${SCRIPT_DIR}/nginx.template.conf"
 
 # 출력 파일 경로
 OUTPUT_FILE="${PROJECT_ROOT}/container-volume/mc-iam-manager/nginx/nginx.conf"
