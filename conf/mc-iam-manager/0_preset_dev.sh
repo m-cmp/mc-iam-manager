@@ -13,7 +13,8 @@ ENV_FILE="${PROJECT_ROOT}/.env"
 
 
 # 인증서 파일 생성할 경로 (Let's Encrypt 구조와 동일)
-CERT_PARENT_DIR="${PROJECT_ROOT}/container-volume" # dockercontainer-volume 디렉토리
+# nginx 볼륨 마운트: ./container-volume/mc-iam-manager/certs:/etc/nginx/certs
+CERT_PARENT_DIR="${PROJECT_ROOT}/container-volume/mc-iam-manager"
 
 # --- 3. 필요한 디렉토리 생성 (Let's Encrypt 구조와 동일) ---
 echo "Creating necessary directories..."
@@ -27,8 +28,8 @@ CURRENT_GROUP=$(id -gn)
 
 echo "Current user: ${CURRENT_USER}:${CURRENT_GROUP}"
 
-sudo mkdir -p "${CERT_PARENT_DIR}" || { echo "Error: Failed to create ${CERT_PARENT_DIR}"; exit 1; }
-sudo chown -R "${CURRENT_USER}:${CURRENT_GROUP}" "${CERT_PARENT_DIR}" || { echo "Error: Failed to change ownership of ${CERT_PARENT_DIR}"; exit 1; }
+mkdir -p "${CERT_PARENT_DIR}" || { echo "Error: Failed to create ${CERT_PARENT_DIR}"; exit 1; }
+chown -R "${CURRENT_USER}:${CURRENT_GROUP}" "${CERT_PARENT_DIR}" || { echo "Error: Failed to change ownership of ${CERT_PARENT_DIR}"; exit 1; }
 echo "✓ Container volume directory created and permissions set"
 
 
@@ -61,6 +62,7 @@ echo "필수 환경변수를 검증합니다..."
 
 # 검증할 필수 환경변수 목록
 REQUIRED_VARS=(
+    "MC_IAM_MANAGER_PUBLIC_DOMAIN"
     "MC_IAM_MANAGER_KEYCLOAK_DOMAIN"
     "MC_IAM_MANAGER_DATABASE_NAME"
     "MC_IAM_MANAGER_DATABASE_USER"
@@ -99,15 +101,16 @@ fi
 
 echo "✅ 모든 필수 환경변수가 정상적으로 로드되었습니다."
 echo "읽어온 환경변수:"
-echo "  DOMAIN_NAME: $MC_IAM_MANAGER_KEYCLOAK_DOMAIN"
+echo "  PUBLIC_DOMAIN: $MC_IAM_MANAGER_PUBLIC_DOMAIN"
+echo "  KEYCLOAK_DOMAIN: $MC_IAM_MANAGER_KEYCLOAK_DOMAIN"
 echo "  MC_IAM_MANAGER_KEYCLOAK_PORT: $MC_IAM_MANAGER_KEYCLOAK_PORT"
 echo "  DATABASE_NAME: $MC_IAM_MANAGER_DATABASE_NAME"
 echo "  DATABASE_USER: $MC_IAM_MANAGER_DATABASE_USER"
 echo "  DATABASE_HOST: $MC_IAM_MANAGER_DATABASE_HOST"
 echo "  MC_IAM_MANAGER_PORT: $MC_IAM_MANAGER_PORT"
 
-# DOMAIN_NAME을 읽은 후 CERT_DIR 정의
-CERT_DIR="${CERT_PARENT_DIR}/certs/live/${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}"      # Let's Encrypt 구조와 동일한 인증서 저장 경로
+# PUBLIC_DOMAIN 기준으로 인증서 디렉토리 정의 (Let's Encrypt 구조와 동일)
+CERT_DIR="${CERT_PARENT_DIR}/certs/live/${MC_IAM_MANAGER_PUBLIC_DOMAIN}"
 
 # Let's Encrypt 구조와 동일한 certs/live/도메인명 디렉토리 생성
 echo "Creating certificate directory: ${CERT_DIR}"
@@ -117,32 +120,27 @@ echo "✓ Certificate directory created successfully"
 
 ## 로컬환경(인증서) 설정
 # --- 3. hosts 파일에 도메인 추가 (관리자 권한 필요) ---
-HOSTS_FILE="/etc/hosts" # hosts 파일 경로 (macOS/Linux 기준)
-echo "Checking ${MC_IAM_MANAGER_KEYCLOAK_DOMAIN} in ${HOSTS_FILE}..."
+HOSTS_FILE="/etc/hosts"
+echo "Checking ${MC_IAM_MANAGER_PUBLIC_DOMAIN} in ${HOSTS_FILE}..."
 
-# 더 정확한 패턴 매칭을 위한 정규식 사용
-# 127.0.0.1 도메인명 형태의 라인이 있는지 확인 (공백/탭 문자 고려)
-if grep -E "^[[:space:]]*127\.0\.0\.1[[:space:]]+${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}[[:space:]]*$" "${HOSTS_FILE}" > /dev/null; then
-    echo "✓ ${MC_IAM_MANAGER_KEYCLOAK_DOMAIN} already exists in ${HOSTS_FILE}. Skipping."
+if grep -E "^[[:space:]]*127\.0\.0\.1[[:space:]]+${MC_IAM_MANAGER_PUBLIC_DOMAIN}[[:space:]]*$" "${HOSTS_FILE}" > /dev/null; then
+    echo "✓ ${MC_IAM_MANAGER_PUBLIC_DOMAIN} already exists in ${HOSTS_FILE}. Skipping."
 else
-    # 기존에 다른 형태로 추가된 항목이 있는지 확인하고 제거
-    echo "Removing any existing entries for ${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}..."
-    sudo sed -i "/[[:space:]]*127\.0\.0\.1[[:space:]]\+${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}[[:space:]]*$/d" "${HOSTS_FILE}"
-    
-    # hosts 파일에 추가 (sudo 권한 필요)
-    echo "Adding 127.0.0.1 ${MC_IAM_MANAGER_KEYCLOAK_DOMAIN} to ${HOSTS_FILE}..."
-    echo "127.0.0.1 ${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}" | sudo tee -a "${HOSTS_FILE}" > /dev/null
-    if [ $? -eq 0 ]; then
-        echo "✓ ${MC_IAM_MANAGER_KEYCLOAK_DOMAIN} added successfully to ${HOSTS_FILE}."
+    echo "Removing any existing entries for ${MC_IAM_MANAGER_PUBLIC_DOMAIN}..."
+    sed -i "/[[:space:]]*127\.0\.0\.1[[:space:]]\+${MC_IAM_MANAGER_PUBLIC_DOMAIN}[[:space:]]*$/d" "${HOSTS_FILE}"
+
+    echo "Adding 127.0.0.1 ${MC_IAM_MANAGER_PUBLIC_DOMAIN} to ${HOSTS_FILE}..."
+    if echo "127.0.0.1 ${MC_IAM_MANAGER_PUBLIC_DOMAIN}" >> "${HOSTS_FILE}" 2>/dev/null; then
+        echo "✓ ${MC_IAM_MANAGER_PUBLIC_DOMAIN} added successfully to ${HOSTS_FILE}."
     else
-        echo "❌ Failed to add ${MC_IAM_MANAGER_KEYCLOAK_DOMAIN} to ${HOSTS_FILE}. Please run this script with sudo or manually add it."
-        echo "Manual step: Add '127.0.0.1 ${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}' to ${HOSTS_FILE}"
+        echo "⚠️  Failed to add to ${HOSTS_FILE} — run with sudo or manually add:"
+        echo "    echo '127.0.0.1 ${MC_IAM_MANAGER_PUBLIC_DOMAIN}' | sudo tee -a ${HOSTS_FILE}"
     fi
 fi
 
 
 # --- 4. Self-Signed Certificate 생성 ---
-echo "Generating Self-Signed Certificate for ${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}... ${CERT_DIR}"
+echo "Generating Self-Signed Certificate for ${MC_IAM_MANAGER_PUBLIC_DOMAIN}... ${CERT_DIR}"
 
 # 기존 인증서 삭제 (새로 발급하기 위해)
 if [ -f "${CERT_DIR}/privkey.pem" ]; then
@@ -151,7 +149,7 @@ if [ -f "${CERT_DIR}/privkey.pem" ]; then
 fi
 
 openssl genrsa -out "${CERT_DIR}/privkey.pem" 2048
-openssl req -new -key "${CERT_DIR}/privkey.pem" -out "${CERT_DIR}/csr.pem" -subj "/CN=${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}"
+openssl req -new -key "${CERT_DIR}/privkey.pem" -out "${CERT_DIR}/csr.pem" -subj "/CN=${MC_IAM_MANAGER_PUBLIC_DOMAIN}"
 openssl x509 -req -days 365 -in "${CERT_DIR}/csr.pem" -signkey "${CERT_DIR}/privkey.pem" -out "${CERT_DIR}/fullchain.pem"
 rm "${CERT_DIR}/csr.pem" # CSR 파일 제거
 
@@ -182,21 +180,22 @@ if [ -d "$OUTPUT_FILE" ]; then
 fi
 
 # 환경변수 대치 (한 번에 처리)
-if [ -n "$MC_IAM_MANAGER_KEYCLOAK_DOMAIN" ] && [ -n "$MC_IAM_MANAGER_KEYCLOAK_PORT" ]; then
-    # 템플릿 파일을 복사하고 환경변수를 한 번에 대치
+if [ -n "$MC_IAM_MANAGER_PUBLIC_DOMAIN" ] && [ -n "$MC_IAM_MANAGER_KEYCLOAK_PORT" ]; then
     sed -e "s/\${MC_IAM_MANAGER_DOMAIN}/$MC_IAM_MANAGER_DOMAIN/g" \
         -e "s/\${MC_IAM_MANAGER_PORT}/$MC_IAM_MANAGER_PORT/g" \
+        -e "s/\${MC_IAM_MANAGER_PUBLIC_DOMAIN}/$MC_IAM_MANAGER_PUBLIC_DOMAIN/g" \
         -e "s/\${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}/$MC_IAM_MANAGER_KEYCLOAK_DOMAIN/g" \
         -e "s/\${MC_IAM_MANAGER_KEYCLOAK_PORT}/$MC_IAM_MANAGER_KEYCLOAK_PORT/g" \
+        -e "s/\${MC_OBSERVABILITY_GRAFANA_PROXY_PORT}/$MC_OBSERVABILITY_GRAFANA_PROXY_PORT/g" \
+        -e "s/\${MC_COST_OPTIMIZER_FE_PROXY_PORT}/$MC_COST_OPTIMIZER_FE_PROXY_PORT/g" \
         -e "s/mciam-manager/mc-iam-manager/g" \
         -e "s/mciam-keycloak/mc-iam-manager-kc/g" \
         "$TEMPLATE_FILE" > "$OUTPUT_FILE"
-    echo "✓ DOMAIN_NAME 대치 완료: $MC_IAM_MANAGER_KEYCLOAK_DOMAIN"
+    echo "✓ PUBLIC_DOMAIN 대치 완료: $MC_IAM_MANAGER_PUBLIC_DOMAIN"
     echo "✓ PORT 대치 완료: $MC_IAM_MANAGER_KEYCLOAK_PORT"
     echo "✓ 컨테이너 이름 수정 완료"
 else
-    echo "경고: MC_IAM_MANAGER_KEYCLOAK_DOMAIN 또는 MC_IAM_MANAGER_KEYCLOAK_PORT 환경변수가 설정되지 않았습니다."
-    # 환경변수가 없으면 템플릿 파일을 그대로 복사
+    echo "경고: MC_IAM_MANAGER_PUBLIC_DOMAIN 또는 MC_IAM_MANAGER_KEYCLOAK_PORT 환경변수가 설정되지 않았습니다."
     cp "$TEMPLATE_FILE" "$OUTPUT_FILE"
 fi
 

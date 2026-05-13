@@ -83,7 +83,7 @@ init_predefined_roles() {
 
 init_menu() {
     echo "Initializing menu data..."
-    wget -q -O ./menu.yaml "$MCWEBCONSOLE_MENUYAML"
+    wget -q -O ./menu.yaml "$MC_WEB_CONSOLE_MENUYAML"
     response=$(curl -s -X POST \
         --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
         --header 'Content-Type: application/json' \
