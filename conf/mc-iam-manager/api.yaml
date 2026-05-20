@@ -46,6 +46,22 @@ services:
     version: 0.3.0
     baseurl: http://mc-data-manager:3300
     auth: null
+  mc-application-manager-fe:
+    version: main
+    baseurl: http://application_manager_fe_url:18084
+    auth: null
+  mc-workflow-manager-fe:
+    version: main
+    baseurl: http://workflow_manager_fe_url:18083
+    auth: null
+  mc-data-manager-fe:
+    version: main
+    baseurl: http://data_manager_fe_url:3300
+    auth: null
+  mc-cost-optimizer-fe:
+    version: main
+    baseurl: http://cost_optimizer_fe_url:7780
+    auth: null
 serviceActions:
   mc-infra-connector:
     Remove-Nodegroup:
