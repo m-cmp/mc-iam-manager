@@ -25,11 +25,10 @@ frameworks:
     swagger: ../../src/docs/swagger.yaml   # Local path relative to this file
 
   # MC-Observability - Monitoring and Observability
-  # Note: Swagger file path needs to be verified - currently not found in v0.5.0
-  # - name: mc-observability
-  #   version: "0.5.0"                    # Latest release: v0.5.0 (Nov 3, 2025)
-  #   repository: https://github.com/m-cmp/mc-observability
-  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-observability/v0.5.0/swagger/swagger.yaml
+  - name: mc-observability
+    version: "0.5.0"                    # Latest release: v0.5.0 (Nov 3, 2025)
+    repository: https://github.com/m-cmp/mc-observability
+    # swagger: https://raw.githubusercontent.com/m-cmp/mc-observability/v0.5.0/swagger/swagger.yaml  # Note: path needs to be verified
 
   # MC-Application-Manager - Application Deployment Management
   - name: mc-application-manager
@@ -50,35 +49,55 @@ frameworks:
     swagger: https://raw.githubusercontent.com/m-cmp/mc-workflow-manager/v0.5.0/swagger.json
 
   # MC-Infra-Manager - Multi-Cloud Infrastructure Management
-  # Note: No releases found - using main branch
-  # - name: mc-infra-manager
-  #   version: "main"                     # No releases, using main branch
-  #   repository: https://github.com/m-cmp/mc-infra-manager
-  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-infra-manager/main/swagger.yaml
+  - name: mc-infra-manager
+    version: "main"                     # No releases, using main branch
+    repository: https://github.com/m-cmp/mc-infra-manager
+    # swagger: https://raw.githubusercontent.com/m-cmp/mc-infra-manager/main/swagger.yaml
 
   # MC-Infra-Connector - Cloud Infrastructure Connection
-  # Note: No releases found - using main branch
-  # - name: mc-infra-connector
-  #   version: "main"                     # No releases, using main branch
-  #   repository: https://github.com/m-cmp/mc-infra-connector
-  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-infra-connector/main/swagger.yaml
+  - name: mc-infra-connector
+    version: "main"                     # No releases, using main branch
+    repository: https://github.com/m-cmp/mc-infra-connector
+    # swagger: https://raw.githubusercontent.com/m-cmp/mc-infra-connector/main/swagger.yaml
 
   # MC-Data-Manager - Data Management
-  # Note: No releases found - using main branch
-  # - name: mc-data-manager
-  #   version: "main"                     # No releases, using main branch
-  #   repository: https://github.com/m-cmp/mc-data-manager
-  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-data-manager/main/swagger.yaml
+  - name: mc-data-manager
+    version: "main"                     # No releases, using main branch
+    repository: https://github.com/m-cmp/mc-data-manager
+    # swagger: https://raw.githubusercontent.com/m-cmp/mc-data-manager/main/swagger.yaml
 
   # MC-Across-Service-Manager - Cross-Service Management
-  # Note: Latest release is v0.1.0, not v0.5.0 - Swagger file path needs verification
-  # - name: mc-across-service-manager
-  #   version: "0.1.0"                   # Latest release: v0.1.0 (not v0.5.0)
-  #   repository: https://github.com/m-cmp/mc-across-service-manager
-  #   swagger: https://raw.githubusercontent.com/m-cmp/mc-across-service-manager/v0.1.0/swagger.yaml
+  - name: mc-across-service-manager
+    version: "0.1.0"                   # Latest release: v0.1.0
+    repository: https://github.com/m-cmp/mc-across-service-manager
+    # swagger: https://raw.githubusercontent.com/m-cmp/mc-across-service-manager/v0.1.0/swagger.yaml  # Note: path needs verification
 
   # MC-Web-Console - Web Console Interface
-  # - name: mc-web-console
-  #   version: "0.1.0"
-  #   repository: https://github.com/m-cmp/mc-web-console
-  #   swagger: /path/to/swagger.yaml
+  - name: mc-web-console
+    version: "main"
+    repository: https://github.com/m-cmp/mc-web-console
+    # swagger: N/A (path unknown)
+
+  # MC-Application-Manager-FE - Application Manager Frontend
+  - name: mc-application-manager-fe
+    version: "main"
+    baseurl: http://application_manager_fe_url:18084
+    # swagger: N/A (frontend service)
+
+  # MC-Workflow-Manager-FE - Workflow Manager Frontend
+  - name: mc-workflow-manager-fe
+    version: "main"
+    baseurl: http://workflow_manager_fe_url:18083
+    # swagger: N/A (frontend service)
+
+  # MC-Data-Manager-FE - Data Manager Frontend
+  - name: mc-data-manager-fe
+    version: "main"
+    baseurl: http://data_manager_fe_url:3300
+    # swagger: N/A (frontend service)
+
+  # MC-Cost-Optimizer-FE - Cost Optimizer Frontend
+  - name: mc-cost-optimizer-fe
+    version: "main"
+    baseurl: http://cost_optimizer_fe_url:7780
+    # swagger: N/A (frontend service)
