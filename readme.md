@@ -330,6 +330,46 @@ swag init --output ./docs
 - `billadmin`: Cost management permissions
 - `billviewer`: Cost viewing permissions
 
+## Troubleshooting
+
+### `mc-iam-manager` Stays Unhealthy After Install
+
+If `docker compose ps` shows `mc-iam-manager` as **unhealthy** and
+`docker logs mc-iam-manager-post-initial` ends with
+`ERROR: 1_setup_auto.sh failed`, the post-init container ran before
+mc-iam-manager finished its first boot (cold-start timing race).
+
+Recovery:
+
+```bash
+# 1. Confirm all prerequisites are healthy
+docker compose ps
+
+# 2. Remove the exited post-init container, then re-run it
+docker rm mc-iam-manager-post-initial 2>/dev/null
+docker compose up -d mc-iam-manager-post-initial
+docker logs -f mc-iam-manager-post-initial
+# Each of the 8 setup steps should finish with ✓
+
+# 3. Verify
+curl -s http://localhost:${MC_IAM_MANAGER_PORT}/readyz | jq .
+# Expected: "status": "healthy"
+```
+
+> The post-init container is idempotent — it is safe to re-run.
+
+### Directory Permission Error When Running `0_preset_dev.sh`
+
+If `0_preset_dev.sh` fails with `Cannot create ... / is not writable`, root-owned files
+from a previous Docker run are blocking access. Clean them up and retry:
+
+```bash
+sudo rm -rf container-volume/mc-iam-manager/postgres container-volume/mc-iam-manager/keycloak
+./conf/mc-iam-manager/0_preset_dev.sh
+```
+
+---
+
 ## Contributing
 
 - **Report Issues**: [GitHub Issues](https://github.com/m-cmp/mc-iam-manager/issues)

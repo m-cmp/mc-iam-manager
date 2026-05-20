@@ -19,18 +19,28 @@ CERT_PARENT_DIR="${PROJECT_ROOT}/container-volume/mc-iam-manager"
 # --- 3. 필요한 디렉토리 생성 (Let's Encrypt 구조와 동일) ---
 echo "Creating necessary directories..."
 
-# dockercontainer-volume 디렉토리 먼저 생성 (sudo 권한으로)
-echo "Creating container-volume directory with proper permissions..."
-
 # 현재 사용자 정보 가져오기
 CURRENT_USER=$(whoami)
-CURRENT_GROUP=$(id -gn)
 
-echo "Current user: ${CURRENT_USER}:${CURRENT_GROUP}"
+echo "Current user: ${CURRENT_USER}"
 
-mkdir -p "${CERT_PARENT_DIR}" || { echo "Error: Failed to create ${CERT_PARENT_DIR}"; exit 1; }
-chown -R "${CURRENT_USER}:${CURRENT_GROUP}" "${CERT_PARENT_DIR}" || { echo "Error: Failed to change ownership of ${CERT_PARENT_DIR}"; exit 1; }
-echo "✓ Container volume directory created and permissions set"
+# 실제 쓰기가 필요한 서브디렉토리만 targeted 생성 (chown -R 없음 — root 소유 Docker 볼륨과 공존)
+for _dir in "${CERT_PARENT_DIR}/certs" "${CERT_PARENT_DIR}/nginx"; do
+    if ! mkdir -p "$_dir" 2>/dev/null; then
+        echo "❌ Error: Cannot create $_dir"
+        echo "   Root-owned files from a previous Docker run may be blocking access."
+        echo "   Clean up with: sudo rm -rf ${CERT_PARENT_DIR}/postgres ${CERT_PARENT_DIR}/keycloak"
+        echo "   Then retry."
+        exit 1
+    fi
+    if [ ! -w "$_dir" ]; then
+        echo "❌ Error: $_dir exists but is not writable by ${CURRENT_USER}."
+        echo "   Clean up with: sudo rm -rf ${CERT_PARENT_DIR}/postgres ${CERT_PARENT_DIR}/keycloak"
+        echo "   Then retry."
+        exit 1
+    fi
+done
+echo "✓ Certificate and nginx directories ready"
 
 
 # 템플릿 파일 경로
