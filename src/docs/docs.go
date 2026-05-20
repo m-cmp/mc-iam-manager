@@ -3869,6 +3869,73 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/mcmp-apis": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new MCMP API service (framework) record. Returns 409 if a service with the same name already exists.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "McmpAPI"
+                ],
+                "summary": "Create MCMP API Service Definition",
+                "operationId": "CreateFrameworkService",
+                "parameters": [
+                    {
+                        "description": "Service definition",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateMcmpApiServiceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/mcmpapi.McmpApiService"
+                        }
+                    },
+                    "400": {
+                        "description": "error: invalid request body or validation failure",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "error: framework service already exists",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/mcmp-apis/import": {
             "post": {
                 "security": [
@@ -12759,6 +12826,41 @@ const docTemplate = `{
                 }
             }
         },
+        "mcmpapi.McmpApiService": {
+            "type": "object",
+            "properties": {
+                "authPass": {
+                    "description": "Consider encryption for password",
+                    "type": "string"
+                },
+                "authType": {
+                    "type": "string"
+                },
+                "authUser": {
+                    "type": "string"
+                },
+                "baseURL": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "description": "Added IsActive field",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "Service name acts as PK",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "mcmpapi.McmpApiServiceAction": {
             "type": "object",
             "properties": {
@@ -13228,6 +13330,44 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.CreateCspRoleRequest"
                     }
+                }
+            }
+        },
+        "model.CreateMcmpApiServiceRequest": {
+            "type": "object",
+            "required": [
+                "baseUrl",
+                "name",
+                "version"
+            ],
+            "properties": {
+                "authPass": {
+                    "type": "string"
+                },
+                "authType": {
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "basic",
+                        "bearer"
+                    ]
+                },
+                "authUser": {
+                    "type": "string"
+                },
+                "baseUrl": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "version": {
+                    "type": "string",
+                    "maxLength": 50
                 }
             }
         },

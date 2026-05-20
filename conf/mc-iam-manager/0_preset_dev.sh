@@ -188,6 +188,7 @@ if [ -n "$MC_IAM_MANAGER_PUBLIC_DOMAIN" ] && [ -n "$MC_IAM_MANAGER_KEYCLOAK_PORT
         -e "s/\${MC_IAM_MANAGER_KEYCLOAK_PORT}/$MC_IAM_MANAGER_KEYCLOAK_PORT/g" \
         -e "s/\${MC_OBSERVABILITY_GRAFANA_PROXY_PORT}/$MC_OBSERVABILITY_GRAFANA_PROXY_PORT/g" \
         -e "s/\${MC_COST_OPTIMIZER_FE_PROXY_PORT}/$MC_COST_OPTIMIZER_FE_PROXY_PORT/g" \
+        -e "s/\${MC_COST_OPTIMIZER_FE_PORT}/$MC_COST_OPTIMIZER_FE_PORT/g" \
         -e "s/mciam-manager/mc-iam-manager/g" \
         -e "s/mciam-keycloak/mc-iam-manager-kc/g" \
         "$TEMPLATE_FILE" > "$OUTPUT_FILE"
