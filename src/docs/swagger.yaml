@@ -172,6 +172,30 @@ definitions:
       updatedAt:
         type: string
     type: object
+  mcmpapi.McmpApiService:
+    properties:
+      authPass:
+        description: Consider encryption for password
+        type: string
+      authType:
+        type: string
+      authUser:
+        type: string
+      baseURL:
+        type: string
+      createdAt:
+        type: string
+      isActive:
+        description: Added IsActive field
+        type: boolean
+      name:
+        description: Service name acts as PK
+        type: string
+      updatedAt:
+        type: string
+      version:
+        type: string
+    type: object
   mcmpapi.McmpApiServiceAction:
     properties:
       description:
@@ -488,6 +512,33 @@ definitions:
         type: array
     required:
     - cspRoles
+    type: object
+  model.CreateMcmpApiServiceRequest:
+    properties:
+      authPass:
+        type: string
+      authType:
+        enum:
+        - none
+        - basic
+        - bearer
+        type: string
+      authUser:
+        type: string
+      baseUrl:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        maxLength: 100
+        type: string
+      version:
+        maxLength: 50
+        type: string
+    required:
+    - baseUrl
+    - name
+    - version
     type: object
   model.CreateMenuMappingRequest:
     properties:
@@ -4340,6 +4391,50 @@ paths:
       summary: Get platform actions by permission ID
       tags:
       - mcmp-api-permission-action-mappings
+  /api/mcmp-apis:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new MCMP API service (framework) record. Returns 409
+        if a service with the same name already exists.
+      operationId: CreateFrameworkService
+      parameters:
+      - description: Service definition
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateMcmpApiServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/mcmpapi.McmpApiService'
+        "400":
+          description: 'error: invalid request body or validation failure'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: 'error: framework service already exists'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create MCMP API Service Definition
+      tags:
+      - McmpAPI
   /api/mcmp-apis/import:
     post:
       consumes:

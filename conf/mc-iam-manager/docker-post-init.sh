@@ -8,14 +8,39 @@ apt-get update && apt-get install -y curl jq wget postgresql-client
 echo ''
 echo ''
 
-echo '------------------------------------------------'
+echo '------------------------------------------------' 
 echo ' Health Check'
 echo '------------------------------------------------'
 
+
+# # mc-iam-manager API가 완전히 준비될 때까지 대기 (간단한 버전)
+# echo 'Waiting for mc-iam-manager API to be ready...'
+# max_attempts=2
+# attempt=1
+
+# while [ $attempt -le $max_attempts ]; do
+#   echo "Attempt $attempt/$max_attempts: Checking mc-iam-manager API..."
+  
+#   # 간단한 API 헬스체크 (컨테이너 이름 사용)
+#   if curl -s -f "http://mc-iam-manager:5000/readyz" > /dev/null 2>&1; then
+#     echo '✓ mc-iam-manager API is ready!'
+#     break
+#   fi
+  
+#   if [ $attempt -eq $max_attempts ]; then
+#     echo 'WARNING: mc-iam-manager API might not be fully ready, but proceeding anyway...'
+#     echo 'This is normal if the service is still initializing.'
+#   fi
+  
+#   echo 'API not ready yet, waiting 5 seconds...'
+#   sleep 5
+#   attempt=$((attempt + 1))
+# done
+
 echo ''
 echo ''
 
-echo '------------------------------------------------'
+echo '------------------------------------------------' 
 echo ' Debug Info'
 echo '------------------------------------------------'
 # 디버깅: 현재 디렉토리와 파일 목록 확인
@@ -34,7 +59,7 @@ ls -la /app/ || echo 'Directory /app/ not found'
 echo ''
 echo ''
 
-echo '------------------------------------------------'
+echo '------------------------------------------------' 
 echo ' Sleep 60 seconds'
 echo '------------------------------------------------'
 sleep 60
@@ -42,7 +67,7 @@ sleep 60
 echo ''
 echo ''
 
-echo '------------------------------------------------'
+echo '------------------------------------------------' 
 echo '1_setup_auto.sh'
 echo '------------------------------------------------'
 
@@ -52,8 +77,10 @@ if [ -f '1_setup_auto.sh' ]; then
   chmod +x 1_setup_auto.sh
   echo 'File permissions after chmod:'
   ls -la 1_setup_auto.sh
+  # echo 'File content (first 5 lines):'
+  # head -5 1_setup_auto.sh
   echo 'Executing 1_setup_auto.sh...'
-
+  
   # bash로 실행 (Ubuntu에는 bash가 기본적으로 포함됨)
   if bash 1_setup_auto.sh; then
     echo 'Script executed successfully with bash 1_setup_auto.sh'
@@ -94,14 +121,14 @@ else
 fi
 
 if [ $? -eq 0 ]; then
-  echo '===================================================================='
+  echo '====================================================================' 
   echo '[Success] MC-IAM-Manager initialization completed successfully!'
-  echo '===================================================================='
+  echo '====================================================================' 
   echo 'Container will exit normally.'
 else
-  echo '===================================================================='
+  echo '====================================================================' 
   echo '[Error] MC-IAM-Manager initialization failed!'
-  echo '===================================================================='
+  echo '====================================================================' 
   echo 'Container will exit error code 1.'
   exit 1
-fi
+fi 
