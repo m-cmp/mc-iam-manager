@@ -1539,8 +1539,8 @@ func (s *keycloakService) SetupPredefinedRoles(ctx context.Context, accessToken 
 		return fmt.Errorf("failed to get realm roles: %w", err)
 	}
 
-	// PREDEFINED_PLATFORM_ROLE에 정의된 역할들이 없으면 생성
-	predefinedRoles := strings.Split(os.Getenv("PREDEFINED_PLATFORM_ROLE"), ",")
+	// MC_IAM_MANAGER_PREDEFINED_PLATFORM_ROLE에 정의된 역할들이 없으면 생성
+	predefinedRoles := strings.Split(os.Getenv("MC_IAM_MANAGER_PREDEFINED_PLATFORM_ROLE"), ",")
 	for _, roleName := range predefinedRoles {
 		roleName = strings.TrimSpace(roleName)
 		if roleName == "" {

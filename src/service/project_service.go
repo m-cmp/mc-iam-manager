@@ -72,10 +72,10 @@ func (s *ProjectService) Create(ctx context.Context, project *model.Project, wor
 		log.Printf("Validated specified workspace: %s (ID: %d)", targetWorkspace.Name, targetWorkspace.ID)
 	} else {
 		// No workspace specified, use default
-		defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
+		defaultWsName := os.Getenv("MC_IAM_MANAGER_DEFAULT_WORKSPACE_NAME")
 		if defaultWsName == "" {
 			defaultWsName = "default"
-			log.Printf("DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
+			log.Printf("MC_IAM_MANAGER_DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
 		}
 		log.Printf("Using default workspace name: %s", defaultWsName)
 		targetWorkspace, err = s.workspaceRepo.FindWorkspaceByName(defaultWsName)
@@ -357,10 +357,10 @@ func (s *ProjectService) SyncProjectsWithInfraManager(ctx context.Context) error
 	log.Printf("Found %d projects assigned to at least one workspace.", len(assignedProjectMap))
 
 	// Get default workspace ID once
-	defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
+	defaultWsName := os.Getenv("MC_IAM_MANAGER_DEFAULT_WORKSPACE_NAME")
 	if defaultWsName == "" {
 		defaultWsName = "default"
-		log.Printf("DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
+		log.Printf("MC_IAM_MANAGER_DEFAULT_WORKSPACE_NAME not set in environment, using default value: %s", defaultWsName)
 	}
 	log.Printf("Using workspace name: %s", defaultWsName)
 	defaultWs, err := s.workspaceRepo.FindWorkspaceByName(defaultWsName)
@@ -643,7 +643,7 @@ func (s *ProjectService) CreateProject(project *model.Project) error {
 	}
 
 	// 기본 워크스페이스 조회
-	defaultWorkspace, err := s.workspaceRepo.FindWorkspaceByName(os.Getenv("DEFAULT_WORKSPACE_NAME"))
+	defaultWorkspace, err := s.workspaceRepo.FindWorkspaceByName(os.Getenv("MC_IAM_MANAGER_DEFAULT_WORKSPACE_NAME"))
 	if err != nil {
 		return fmt.Errorf("기본 워크스페이스를 찾을 수 없습니다: %v", err)
 	}
