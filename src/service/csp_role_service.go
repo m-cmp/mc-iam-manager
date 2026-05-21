@@ -344,9 +344,9 @@ func getAwsAssumeRolePolicyDocument(role *model.CspRole) (string, error) {
 		return "", fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID environment variable is not set")
 	}
 
-	accountID := os.Getenv("AWS_ACCOUNT_ID")
+	accountID := os.Getenv("MC_IAM_MANAGER_AWS_ACCOUNT_ID")
 	if accountID == "" {
-		return "", fmt.Errorf("AWS_ACCOUNT_ID environment variable is not set")
+		return "", fmt.Errorf("MC_IAM_MANAGER_AWS_ACCOUNT_ID environment variable is not set")
 	}
 
 	externalURL := strings.TrimPrefix(strings.TrimPrefix(mciamConfig.KC.ExternalURL, "https://"), "http://")
@@ -427,14 +427,14 @@ func (s *CspRoleService) createNewAwsCredential(issuedBy string) (*model.TempCre
 		Region: "ap-northeast-2",
 	})
 
-	identityProviderArn := os.Getenv("IDENTITY_PROVIDER_ARN_AWS")
+	identityProviderArn := os.Getenv("MC_IAM_MANAGER_AWS_IDENTITY_PROVIDER_ARN")
 	if identityProviderArn == "" {
-		return nil, fmt.Errorf("IDENTITY_PROVIDER_ARN_AWS environment variable is not set")
+		return nil, fmt.Errorf("MC_IAM_MANAGER_AWS_IDENTITY_PROVIDER_ARN environment variable is not set")
 	}
 
-	roleArn := os.Getenv("IDENTITY_ROLE_ARN_AWS")
+	roleArn := os.Getenv("MC_IAM_MANAGER_AWS_IDENTITY_ROLE_ARN")
 	if roleArn == "" {
-		return nil, fmt.Errorf("IDENTITY_ROLE_ARN_AWS environment variable is not set")
+		return nil, fmt.Errorf("MC_IAM_MANAGER_AWS_IDENTITY_ROLE_ARN environment variable is not set")
 	}
 
 	input := &sts.AssumeRoleWithWebIdentityInput{
