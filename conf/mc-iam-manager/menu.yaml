@@ -56,6 +56,14 @@ menus:
     priority: 2
     menunumber: 1240
 
+  - id: menus
+    parentid: organizations
+    displayname: Menus
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1250
+
   - id: environment
     parentid: settings
     displayname: Environment
@@ -76,7 +84,7 @@ menus:
     parentid: cloudsps
     displayname: Cloud Overview
     restype: menu
-    isaction: false
+    isaction: true
     priority: 2
     menunumber: 1310
 
@@ -100,7 +108,7 @@ menus:
     parentid: cloudsps
     displayname: Cloud Drivers
     restype: menu
-    isaction: false
+    isaction: true
     priority: 2
     menunumber: 1340
 
@@ -112,6 +120,14 @@ menus:
     priority: 2
     menunumber: 1350
 
+  - id: cspaccounts
+    parentid: cloudsps
+    displayname: CSP Accounts
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1360
+
   - id: cloudresources
     parentid: environment
     displayname: Cloud Resources
@@ -120,7 +136,7 @@ menus:
     priority: 2
     menunumber: 1405
 
-  - id: specs
+  - id: serverspecs
     parentid: cloudresources
     displayname: Specs
     restype: menu
@@ -128,7 +144,7 @@ menus:
     priority: 2
     menunumber: 1410
 
-  - id: images
+  - id: serverimages
     parentid: cloudresources
     displayname: Images
     restype: menu
@@ -140,13 +156,13 @@ menus:
     parentid: cloudresources
     displayname: Networks
     restype: menu
-    isaction: false
+    isaction: true
     priority: 2
     menunumber: 1510
 
-  - id: securitys
+  - id: securitygroups
     parentid: cloudresources
-    displayname: Securitys
+    displayname: Security Groups
     restype: menu
     isaction: false
     priority: 2
@@ -175,6 +191,30 @@ menus:
     isaction: false
     priority: 2
     menunumber: 1550
+
+  - id: csp
+    parentid: cloudresources
+    displayname: CSP Overview
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1580
+
+  - id: cspschedule
+    parentid: cloudresources
+    displayname: CSP Schedule
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1590
+
+  - id: resourcesync
+    parentid: cloudresources
+    displayname: Resource Sync
+    restype: menu
+    isaction: true
+    priority: 3
+    menunumber: 1595
 
   - id: cloudrescatalogs
     parentid: environment

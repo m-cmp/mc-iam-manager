@@ -319,13 +319,51 @@ case $IAM_MODE in
         echo "Generating Let's Encrypt certificate and configuring production environment..."
         echo ""
 
-        # Production mode: Generate certificate
-        echo "Step 1: Generating Let's Encrypt certificate..."
-
         cd "$PROJECT_ROOT_ABS" || {
             echo "Error: Cannot return to project root."
             exit 1
         }
+
+        # Step 1: Start nginx in HTTP-only mode so certbot can serve ACME challenge
+        echo "Step 1: Starting nginx (HTTP-only) for ACME challenge..."
+        _NGINX_CONF_DIR="$PROJECT_ROOT_ABS/container-volume/mc-iam-manager/nginx"
+        _NGINX_CONF="$_NGINX_CONF_DIR/nginx.conf"
+        _NGINX_CONF_SSL_BAK="$_NGINX_CONF_DIR/nginx.conf.ssl_bak"
+        _CERTBOT_WWW="$PROJECT_ROOT_ABS/container-volume/certbot/www"
+        mkdir -p "$_NGINX_CONF_DIR" "$_CERTBOT_WWW"
+
+        # Write HTTP-only nginx.conf (no SSL, just ACME challenge)
+        _DOMAIN=$(grep -m1 "^MC_IAM_MANAGER_PUBLIC_DOMAIN=" "$PROJECT_ROOT_ABS/.env" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+        cat > "$_NGINX_CONF" <<HTTPONLY_EOF
+worker_processes auto;
+pid /run/nginx.pid;
+include /etc/nginx/modules-enabled/*.conf;
+events { worker_connections 768; }
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    server {
+        listen 80;
+        server_name ${_DOMAIN};
+        location /.well-known/acme-challenge/ { root /var/www/certbot; }
+        location / { return 200 "cert pending\n"; add_header Content-Type text/plain; }
+    }
+}
+HTTPONLY_EOF
+
+        docker compose up -d mc-iam-manager-nginx
+        echo "Waiting for nginx to be ready..."
+        for i in $(seq 1 15); do
+            if docker compose exec -T mc-iam-manager-nginx nginx -t >/dev/null 2>&1; then
+                echo "✓ nginx is ready."
+                break
+            fi
+            sleep 2
+        done
+
+        # Step 2: Generate Let's Encrypt certificate via certbot webroot
+        echo ""
+        echo "Step 2: Generating Let's Encrypt certificate..."
 
         docker compose -f "$PROJECT_ROOT_ABS/docker-compose.cert.yaml" --env-file "$PROJECT_ROOT_ABS/.env" up
         if [ $? -eq 0 ]; then
@@ -336,13 +374,14 @@ case $IAM_MODE in
             fi
         else
             echo "❌ Error occurred during certificate generation."
+            docker compose stop mc-iam-manager-nginx
             exit 1
         fi
 
         echo ""
-        echo "Step 2: Configuring production mode..."
+        echo "Step 3: Configuring production mode (SSL nginx.conf)..."
 
-        # Execute production mode script
+        # Execute production mode script to generate SSL nginx.conf
         cd "$PROJECT_ROOT_ABS/conf/mc-iam-manager/" || {
             echo "Error: Cannot find mc-iam-manager directory."
             cd "$ORIGINAL_DIR"
@@ -366,6 +405,11 @@ case $IAM_MODE in
             cd "$ORIGINAL_DIR"
             exit 1
         fi
+
+        # Reload nginx to pick up SSL config
+        cd "$PROJECT_ROOT_ABS" || { cd "$ORIGINAL_DIR"; exit 1; }
+        echo "Reloading nginx with SSL configuration..."
+        docker compose restart mc-iam-manager-nginx
         ;;
 esac
 

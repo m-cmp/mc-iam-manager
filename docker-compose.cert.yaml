@@ -5,15 +5,19 @@ services:
   mcmp-certbot:
     image: certbot/certbot:latest
     container_name: mcmp-certbot
-    ports:
-      - "80:80"  # Standalone 모드에서 80번 포트 사용
     volumes:
-      # Certbot 설정 및 발급된 인증서 저장 (읽기/쓰기 권한 필요)
-      - ./dockercontainer-volume/certs:/etc/letsencrypt
-    environment:
-      DOMAIN_NAME: ${DOMAIN_NAME}
-      EMAIL: ${EMAIL}
-    entrypoint: ["certbot"] # Certbot 실행 명령을 엔트리포인트로 지정
-    #command: ["certonly", "--standalone", "--email", "$EMAIL", "--agree-tos", "--no-eff-email", "-d", "$DOMAIN_NAME", "--non-interactive", "--staging"] # <-- 초기 발급 테스트 시 --staging 사용, 실제 발급 시 제거
-    command: ["certonly", "--standalone", "--email", "$EMAIL", "--agree-tos", "--no-eff-email", "-d", "$DOMAIN_NAME", "--non-interactive"] # <-- 실제발급
-    #command: ["certonly", "--standalone", "--email", "$EMAIL", "--agree-tos", "--no-eff-email", "-d", "$DOMAIN_NAME", "--non-interactive", "--force-renewal"] # <-- 강제 재발급 (필요시에만 사용)
+      - ./container-volume/mc-iam-manager/certs:/etc/letsencrypt
+      - ./container-volume/certbot/www:/var/www/certbot
+    networks:
+      - mc-iam-manager-network
+    entrypoint: ["certbot"]
+    command: ["certonly", "--webroot", "--webroot-path", "/var/www/certbot",
+              "--email", "${MC_IAM_MANAGER_CERT_EMAIL}",
+              "--agree-tos", "--no-eff-email",
+              "-d", "${MC_IAM_MANAGER_PUBLIC_DOMAIN}",
+              "--non-interactive"]
+
+networks:
+  mc-iam-manager-network:
+    external: true
+    name: mc-iam-manager_mc-iam-manager-network
