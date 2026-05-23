@@ -309,6 +309,7 @@ services:
     ports:
       - "${MC_IAM_MANAGER_NGINX_HTTP_PORT}:80"
       - "${MC_IAM_MANAGER_NGINX_HTTPS_PORT}:443"
+      - "${MC_WEB_CONSOLE_FRONT_PORT}:${MC_WEB_CONSOLE_FRONT_PORT}"
     environment:
       - DOMAIN_NAME=${MC_IAM_MANAGER_PUBLIC_DOMAIN}
     volumes:
@@ -433,10 +434,6 @@ services:
     networks:
       - mc-web-console-network
       - mc-iam-manager-network
-    ports:
-      - target: 3001
-        published: ${MC_WEB_CONSOLE_FRONT_PORT}
-        protocol: tcp
     environment:
       API_ADDR: mc-web-console-api
       API_PORT: 3000
