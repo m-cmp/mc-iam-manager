@@ -16,8 +16,10 @@ RUN go mod download
 # Copy the contents of the src directory
 COPY src/ ./
 
-# Copy asset directory from project root
-COPY asset ./asset
+# Copy required asset subdirectories (asset/setup/ excluded)
+COPY asset/mcmpapi ./asset/mcmpapi
+COPY asset/menu ./asset/menu
+COPY asset/organization ./asset/organization
 
 # Build the application statically
 # Output binary to /mc-iam-manager
