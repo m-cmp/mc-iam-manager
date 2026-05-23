@@ -696,6 +696,240 @@ serviceActions:
       method: get
       resourcePath: /api/roles/csp-roles/id/{roleId}
       description: "role별 CSP role 목록 조회"
+    listUserProjectsByWorkspace:
+      method: get
+      resourcePath: /api/users/workspaces/id/{workspaceId}/projects/list
+      description: List projects for the current user
+    listUserWorkspaceAndWorkspaceRoles:
+      method: post
+      resourcePath: /api/users/workspaces/roles/list
+      description: List workspaces and roles for the current user
+    listUserWorkspaces:
+      method: post
+      resourcePath: /api/users/workspaces/list
+      description: List workspaces for the current user
+    listUsers:
+      method: post
+      resourcePath: /api/users/list
+      description: Retrieve a list of all users.
+    listUsersAndRolesByWorkspace:
+      method: post
+      resourcePath: /api/workspaces/id/{workspaceId}/users/list
+      description: Retrieve users and roles list belonging to workspace
+    listUsersByCspRole:
+      method: post
+      resourcePath: /api/roles/mappings/csp-roles/list
+      description: List users by csp role
+    listUsersByPlatformRole:
+      method: post
+      resourcePath: /api/roles/mappings/platform-roles/users/list
+      description: List users by platform role
+    listUsersByWorkspaceRole:
+      method: post
+      resourcePath: /api/roles/mappings/workspace-roles/users/list
+      description: List users by workspace role
+    listWorkspaceActionsByPermissionID:
+      method: post
+      resourcePath: /api/mcmp-api-permission-action-mappings/actions/list
+      description: Returns all workspace actions mapped to a specific permission
+    listWorkspaceProjects:
+      method: post
+      resourcePath: /api/workspaces/projects/list
+      description: Retrieve project list belonging to specific workspace
+    listWorkspaceRoles:
+      method: post
+      resourcePath: /api/workspaces/roles/list
+      description: Retrieve all workspace-level roles with optional filtering
+    listWorkspaceUsers:
+      method: post
+      resourcePath: /api/workspaces/users/list
+      description: List users by workspace criteria
+    listWorkspaces:
+      method: post
+      resourcePath: /api/workspaces/list
+      description: Retrieve a list of all workspaces.
+    mciamAuthCerts:
+      method: get
+      resourcePath: /api/auth/certs
+      description: Retrieve authentication certificates for MC-IAM-Manager to be used
+        in target frameworks for token validation.
+    mciamCheckHealth:
+      method: get
+      resourcePath: /readyz
+      description: Check the health status of the service.
+    mciamCreateCredential:
+      method: post
+      resourcePath: /api/csp-credentials
+      description: 새로운 CSP 인증 정보를 생성합니다
+    mciamDeleteCredential:
+      method: delete
+      resourcePath: /api/csp-credentials/{id}
+      description: CSP 인증 정보를 삭제합니다
+    mciamGetCredentialByID:
+      method: get
+      resourcePath: /api/csp-credentials/{id}
+      description: 특정 CSP 인증 정보를 ID로 조회합니다
+    mciamGetTempCredentialProviders:
+      method: get
+      resourcePath: /api/auth/temp-credential-csps
+      description: Get temporary credential provider information for AWS and GCP
+    mciamGetTemporaryCredentials:
+      method: post
+      resourcePath: /api/workspaces/temporary-credentials
+      description: Get temporary credentials for CSP
+    mciamListCredentials:
+      method: get
+      resourcePath: /api/csp-credentials
+      description: 모든 CSP 인증 정보 목록을 조회합니다
+    mciamLogin:
+      method: post
+      resourcePath: /api/auth/login
+      description: Authenticate user and issue JWT token.
+    mciamLogout:
+      method: post
+      resourcePath: /api/auth/logout
+      description: Invalidate the user's refresh token and log out.
+    mciamRefreshToken:
+      method: post
+      resourcePath: /api/auth/refresh
+      description: Refresh JWT access token using a valid refresh token.
+    mciamUpdateCredential:
+      method: put
+      resourcePath: /api/csp-credentials/{id}
+      description: CSP 인증 정보를 업데이트합니다
+    mciamValidateToken:
+      method: post
+      resourcePath: /api/auth/validate
+      description: Validate the current access token and refresh if expired
+    mciamWorkspaceTicket:
+      method: post
+      resourcePath: /api/workspaces/workspace-ticket
+      description: Set workspace ticket
+    mcmpApiCall:
+      method: post
+      resourcePath: /api/mcmp-apis/mcmpApiCall
+      description: Executes a defined MCMP API action with parameters structured in
+        McmpApiCallRequest.
+    registerMenusFromBody:
+      method: post
+      resourcePath: /api/menus/setup/initial-menus2
+      description: 'Parse YAML text in the request body and register or update menus
+        in the database. Recommended Content-Type: text/plain, text/yaml, application/yaml.'
+    registerMenusFromYAML:
+      method: post
+      resourcePath: /api/menus/setup/initial-menus
+      description: Register or update menus from a local YAML file specified by the
+        filePath query parameter, or from the MC_WEB_CONSOLE_MENUYAML URL in .env if
+        not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.
+    removeCspRoleMappings:
+      method: delete
+      resourcePath: /api/roles/unassign/csp-roles
+      description: Delete a mapping between workspace role and CSP role
+    removeGroupPlatformRole:
+      method: delete
+      resourcePath: /api/groups/id/{groupId}/platform-roles/{roleId}
+      description: 그룹에 할당된 플랫폼 역할을 해제합니다. DB + Keycloak 동시 제거.
+    removeGroupWorkspaceRole:
+      method: delete
+      resourcePath: /api/groups/id/{groupId}/workspaces/{workspaceId}
+      description: 그룹-워크스페이스 매핑을 제거합니다.
+    removeMciamPermissionFromRole:
+      method: delete
+      resourcePath: /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId}
+      description: 역할에서 MC-IAM 권한을 제거합니다.
+    removePlatformRole:
+      method: delete
+      resourcePath: /api/roles/unassign/platform-role
+      description: Remove a platform role from a user
+    removeProjectFromWorkspace:
+      method: delete
+      resourcePath: /api/workspaces/unassign/projects
+      description: Remove a project from a workspace
+    removeRole:
+      method: delete
+      resourcePath: /api/roles/id/{roleId}/unassign
+      description: Remove a role from a user
+    removeUserFromGroup:
+      method: delete
+      resourcePath: /api/users/id/{userId}/groups/{groupId}
+      description: 사용자를 특정 그룹에서 제거합니다. DB + Keycloak 그룹 동기화.
+    removeUserFromWorkspace:
+      method: delete
+      resourcePath: /api/workspaces/{id}/users/{userId}
+      description: Remove a user from a workspace
+    removeUserOrganization:
+      method: delete
+      resourcePath: /api/users/{userId}/organizations/{organizationId}
+      description: 사용자를 특정 조직에서 제거합니다.
+    removeWorkspaceFromProject:
+      method: delete
+      resourcePath: /api/projects/unassign/workspaces
+      description: Remove a workspace from a project
+    removeWorkspaceRole:
+      method: delete
+      resourcePath: /api/roles/unassign/workspace-role
+      description: Remove a workspace role from a user
+    setActiveVersion:
+      method: put
+      resourcePath: /api/mcmp-apis/name/{serviceName}/versions/{version}/activate
+      description: Sets the specified version of an MCMP API service as the active
+        one.
+    setupInitialAdmin:
+      method: post
+      resourcePath: /api/initial-admin
+      description: Creates the initial platform admin user with necessary permissions.
+        platform admin 생성인데
+    setupInitialOrganizations:
+      method: post
+      resourcePath: /api/setup/initial-organizations
+      description: YAML 시드 파일에서 기본 조직 구조(MZC + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.
+    syncCspPolicies:
+      method: post
+      resourcePath: /api/csp-policies/sync
+      description: Synchronize policies from the CSP cloud
+    syncMcmpAPIs:
+      method: post
+      resourcePath: /api/mcmp-apis/syncMcmpAPIs
+      description: Triggers the synchronization of MCMP API definitions from the configured
+        YAML URL to the database.
+    syncProjects:
+      method: post
+      resourcePath: /api/setup/sync-projects
+      description: mc-infra-manager의 네임스페이스 목록을 조회하여 로컬 DB에 없는 프로젝트를 추가합니다.
+    getProjectSyncDiff:
+      method: get
+      resourcePath: /api/setup/projects/sync-diff
+      description: mc-infra-manager의 namespace 목록과 로컬 프로젝트를 비교하여 불일치 목록을 반환합니다. DB
+        변경 없음.
+    applyProjectSync:
+      method: post
+      resourcePath: /api/setup/projects/sync
+      description: 지정된 nsId 목록의 project를 생성하거나 지정된 workspace에 할당합니다.
+    testCallGetAllNs:
+      method: get
+      resourcePath: /api/mcmp-apis/test/mc-infra-manager/getallns
+      description: Calls the GetAllNs action of the mc-infra-manager service via the
+        CallApi service.
+    testCspIdpConnection:
+      method: post
+      resourcePath: /api/csp-idp-configs/id/{configId}/test
+      description: Test connection to CSP using IDP configuration
+    updateCspAccount:
+      method: put
+      resourcePath: /api/csp-accounts/id/{accountId}
+      description: Update CSP account details
+    updateCspIdpConfig:
+      method: put
+      resourcePath: /api/csp-idp-configs/id/{configId}
+      description: Update CSP IDP configuration details
+    updateCspPolicy:
+      method: put
+      resourcePath: /api/csp-policies/id/{policyId}
+      description: Update CSP policy details
+    updateCspRole:
+      method: put
+      resourcePath: /api/roles/csp-roles/id/{roleId}
+      description: Update role information
     listCSPRoles:
       method: post
       resourcePath: /api/roles/csp/list

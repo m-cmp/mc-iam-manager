@@ -85,7 +85,32 @@ if [ -f '1_setup_auto.sh' ]; then
   if bash 1_setup_auto.sh; then
     echo 'Script executed successfully with bash 1_setup_auto.sh'
   else
-    echo 'ERROR: 1_setup_auto.sh Script execution failed'
+    cat <<'RECOVERY'
+====================================================================
+ERROR: 1_setup_auto.sh failed.
+
+mc-iam-manager was likely not yet ready when setup ran.
+To recover manually:
+
+1. Wait ~2 minutes for all containers to stabilize.
+
+2. Check service status:
+       docker compose ps
+
+   Confirm mc-iam-manager and mc-infra-manager are both healthy.
+
+3. Re-run the post-init container (idempotent — safe to repeat):
+       docker rm mc-iam-manager-post-initial 2>/dev/null
+       docker compose up -d mc-iam-manager-post-initial
+       docker logs -f mc-iam-manager-post-initial
+
+   Each of the 8 setup steps should finish with ✓.
+
+4. Verify health:
+       curl -s http://localhost:${MC_IAM_MANAGER_PORT}/readyz | jq .
+   Expected: "status": "healthy"
+====================================================================
+RECOVERY
     exit 1
   fi
 else

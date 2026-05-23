@@ -215,8 +215,12 @@ services:
         published: ${MC_IAM_MANAGER_PORT}
         protocol: tcp
     depends_on:
-      - mc-iam-manager-db
-      - mc-iam-manager-kc
+      mc-iam-manager-db:
+        condition: service_healthy
+      mc-iam-manager-kc:
+        condition: service_healthy
+      mc-infra-manager:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgres://${MC_IAM_MANAGER_DATABASE_USER}:${MC_IAM_MANAGER_DATABASE_PASSWORD}@${MC_IAM_MANAGER_DATABASE_HOST}:5432/${MC_IAM_MANAGER_DATABASE_NAME}
       PORT: ${MC_IAM_MANAGER_PORT}

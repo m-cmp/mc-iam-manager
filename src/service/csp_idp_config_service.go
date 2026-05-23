@@ -228,7 +228,7 @@ func (s *CspIdpConfigService) testAwsOidcConnection(ctx context.Context, idpConf
 	// Role ARN 구성 (환경 변수 또는 IDP Config에서)
 	roleArn := idpConfig.Config["role_arn"]
 	if roleArn == "" {
-		roleArn = os.Getenv("IDENTITY_ROLE_ARN_AWS")
+		roleArn = os.Getenv("MC_IAM_MANAGER_AWS_IDENTITY_ROLE_ARN")
 	}
 	if roleArn == "" {
 		return fmt.Errorf("role_arn is not configured")

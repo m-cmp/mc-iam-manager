@@ -331,6 +331,45 @@ swag init --output ./docs
 - `billadmin`: 비용 관리 권한
 - `billviewer`: 비용 조회 권한
 
+## 트러블슈팅
+
+### 설치 후 `mc-iam-manager`가 unhealthy 상태로 지속될 때
+
+`docker compose ps`에서 `mc-iam-manager`가 **unhealthy** 이고
+`docker logs mc-iam-manager-post-initial` 끝에
+`ERROR: 1_setup_auto.sh failed`가 보이면, post-init 컨테이너가
+mc-iam-manager의 초기 부팅 완료 전에 실행된 것입니다 (cold-start 타이밍 race).
+
+복구 방법:
+
+```bash
+# 1. 모든 사전 조건이 healthy 상태인지 확인
+docker compose ps
+
+# 2. 종료된 post-init 컨테이너를 삭제하고 재실행
+docker rm mc-iam-manager-post-initial 2>/dev/null
+docker compose up -d mc-iam-manager-post-initial
+docker logs -f mc-iam-manager-post-initial
+# 8단계 각각이 ✓ 로 완료되어야 합니다
+
+# 3. 상태 확인
+curl -s http://localhost:${MC_IAM_MANAGER_PORT}/readyz | jq .
+# 예상 결과: "status": "healthy"
+```
+
+> post-init 컨테이너는 멱등(idempotent)하게 설계되어 있어 재실행해도 안전합니다.
+
+### `0_preset_dev.sh` 실행 시 디렉토리 권한 오류
+
+`0_preset_dev.sh`가 `Cannot create ... / is not writable`로 실패하면, 이전 Docker 실행으로 생긴 root 소유 파일이 접근을 막고 있는 것입니다. 아래 명령으로 정리 후 재시도하세요:
+
+```bash
+sudo rm -rf container-volume/mc-iam-manager/postgres container-volume/mc-iam-manager/keycloak
+./conf/mc-iam-manager/0_preset_dev.sh
+```
+
+---
+
 ## 기여하기
 
 - **이슈 보고**: [GitHub Issues](https://github.com/m-cmp/mc-iam-manager/issues)

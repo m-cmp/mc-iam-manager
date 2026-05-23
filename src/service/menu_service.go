@@ -372,7 +372,7 @@ func (s *MenuService) Delete(id string) error {
 }
 
 // LoadAndRegisterMenusFromYAML YAML 파일에서 메뉴를 로드하여 DB에 등록(Upsert)
-// filePath 쿼리 파라미터가 없으면 .env의 MCWEBCONSOLE_MENUYAML URL에서 다운로드 시도
+// filePath 쿼리 파라미터가 없으면 .env의 MC_WEB_CONSOLE_MENUYAML URL에서 다운로드 시도
 func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 	effectiveFilePath := filePath
 	downloaded := false
@@ -382,7 +382,7 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 		// Load .env file to get the URL (assuming .env is at project root)
 		// .env path should be relative to project root when running the binary
 		util.LoadEnvFiles()
-		menuURL := os.Getenv("MCWEBCONSOLE_MENUYAML")
+		menuURL := os.Getenv("MC_WEB_CONSOLE_MENUYAML")
 
 		// Default local path relative to project root
 		assetPath := util.GetAssetPath()
@@ -427,13 +427,13 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 				}
 			}
 		} else if menuURL != "" {
-			// If MCWEBCONSOLE_MENUYAML is set but not a URL, assume it's a local path relative to project root
-			fmt.Printf("Using local menu YAML path from MCWEBCONSOLE_MENUYAML: %s\n", menuURL)
+			// If MC_WEB_CONSOLE_MENUYAML is set but not a URL, assume it's a local path relative to project root
+			fmt.Printf("Using local menu YAML path from MC_WEB_CONSOLE_MENUYAML: %s\n", menuURL)
 			// Assuming menuURL is relative to project root:
 			effectiveFilePath = menuURL // Use the path directly
 		} else {
-			// If MCWEBCONSOLE_MENUYAML is not set, use the default local path
-			fmt.Printf("MCWEBCONSOLE_MENUYAML not set or invalid URL, using default local path: %s\n", defaultLocalPath)
+			// If MC_WEB_CONSOLE_MENUYAML is not set, use the default local path
+			fmt.Printf("MC_WEB_CONSOLE_MENUYAML not set or invalid URL, using default local path: %s\n", defaultLocalPath)
 			effectiveFilePath = defaultLocalPath
 		}
 	}
@@ -551,7 +551,7 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 	if effectiveFilePath == "" {
 		// Load .env file to get the URL (assuming .env is at project root)
 		util.LoadEnvFiles()
-		permissionURL := os.Getenv("MCWEBCONSOLE_PERMISSIONCSV")
+		permissionURL := os.Getenv("MC_WEB_CONSOLE_MENU_PERMISSIONS")
 
 		// Default local path relative to project root
 		assetPath := util.GetAssetPath()
