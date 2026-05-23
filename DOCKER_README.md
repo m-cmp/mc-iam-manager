@@ -229,17 +229,30 @@ docker compose up mc-iam-manager-post-initial
 
 ## 유지보수
 
-### 서비스 중지 및 재시작
+### 서비스 중지 및 초기화
+
+`clearAll.sh`는 컨테이너 중지부터 전체 초기화까지 처리합니다.
+
 ```bash
-# 정지 (볼륨 보존)
-docker compose stop
+# 인터랙티브 모드 (중지 / 전체 초기화 선택)
+./clearAll.sh
 
-# 재시작
-docker compose start
+# 전체 초기화 (비인터랙티브)
+./clearAll.sh --full
+```
 
-# 완전 삭제 (볼륨 포함)
-docker compose down -v
-sudo rm -rf container-volume
+| 모드 | 동작 |
+|------|------|
+| Stop only (선택 1) | 컨테이너·네트워크 제거, DB 데이터·인증서 보존 |
+| Full reset (선택 2 / `--full`) | 볼륨 삭제 + `container-volume/` 삭제 + `.env` 삭제 |
+
+Full reset 이후에는 `./installAll.sh`로 처음부터 재설치합니다.
+
+#### 컨테이너 재시작 (데이터 보존)
+```bash
+# 중지 후 재기동
+./clearAll.sh          # 선택 1: Stop only
+docker compose up -d
 ```
 
 ### 인증서 갱신 (prod 모드)
