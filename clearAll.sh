@@ -106,7 +106,7 @@ case $CLEAR_MODE in
         echo "⚠️  Full reset will permanently delete:"
         echo "   - All named Docker volumes (database data)"
         echo "   - container-volume/ (nginx config, certificates, DB files)"
-        echo "   - .env"
+        echo "   - .env (restored to repo defaults if tracked by git)"
         echo ""
         echo -n "Are you sure? (yes/N): "
         read -r confirm
@@ -129,7 +129,11 @@ case $CLEAR_MODE in
             echo "✓ container-volume/ removed."
         fi
 
-        if [ -f "$PROJECT_ROOT_ABS/.env" ]; then
+        # Restore .env: if tracked by git, restore defaults; otherwise delete
+        if git -C "$PROJECT_ROOT_ABS" ls-files --error-unmatch .env >/dev/null 2>&1; then
+            git -C "$PROJECT_ROOT_ABS" checkout -- .env
+            echo "✓ .env restored to repo defaults."
+        elif [ -f "$PROJECT_ROOT_ABS/.env" ]; then
             rm -f "$PROJECT_ROOT_ABS/.env"
             echo "✓ .env removed."
         fi
