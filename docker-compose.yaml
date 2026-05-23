@@ -26,7 +26,6 @@ services:
         published: ${MC_INFRA_CONNECTOR_PORT}
         protocol: tcp
     volumes:
-      - ./tool/mcc:/app/tool/mcc
       - ./conf/mc-infra-connector/:/root/go/src/github.com/cloud-barista/cb-spider/conf/:ro
       - ./container-volume/mc-infra-connector/meta_db/:/root/go/src/github.com/cloud-barista/cb-spider/meta_db/
       - ./container-volume/mc-infra-connector/log/:/root/go/src/github.com/cloud-barista/cb-spider/log/
@@ -40,8 +39,7 @@ services:
       - ID_TRANSFORM_MODE=OFF
       - ADMINWEB=ON
     healthcheck:
-      # for CB-Spider
-      test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:1024/spider/readyz" ]
+      test: ["CMD-SHELL", "curl -f -s http://localhost:1024/spider/readyz || exit 1"]
       <<: *default-health-check
 
   ##### MC-INFRA-MANAGER #########################################################################################################################
@@ -69,7 +67,6 @@ services:
       mc-infra-manager-openbao:
         condition: service_healthy
     volumes:
-      - ./tool/mcc:/app/tool/mcc
       - ./conf/mc-infra-manager/:/app/conf/:ro
       - ./container-volume/mc-infra-manager/meta_db/:/app/meta_db/
       - ./container-volume/mc-infra-manager/log/:/app/log/
@@ -229,8 +226,6 @@ services:
     # - For other services: uses ./conf/mc-iam-manager/.env file
     env_file:
       - ./.env
-    volumes:
-      - ./tool/mcc:/app/tool/mcc
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:${MC_IAM_MANAGER_PORT:-5005}/readyz || exit 1"]
       <<: *default-health-check
@@ -295,19 +290,17 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_PROXY: edge
     volumes:
-      - ./tool/mcc:/app/tool/mcc
       - ./container-volume/mc-iam-manager/keycloak/data/:/opt/keycloak/data/
     # Environment file configuration:
     # - For mc-iam-manager: uses project root .env file
     # - For mc-admin-cli: uses ./conf/mc-iam-manager/.env file
     # - For other services: uses ./conf/mc-iam-manager/.env file
     env_file:
-      - ./.env  
+      - ./.env
     depends_on:
       - mc-iam-manager-db
     healthcheck:
-      test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:8080/auth/" ]
-      # test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:8080/health/ready" ]
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080 && echo -e \"GET /auth/ HTTP/1.0\\r\\n\\r\\n\" >&3 && head -1 <&3 | grep -qE \"200|302\"'"]
       <<: *default-health-check
 
   mc-iam-manager-nginx:
@@ -354,7 +347,6 @@ services:
     env_file:
       - ./.env
     volumes:
-      - ./tool/mcc:/app/tool/mcc
       - ./conf/mc-iam-manager/:/app/mc-iam-manager/
     working_dir: /app/mc-iam-manager
     command: bash /app/mc-iam-manager/docker-post-init.sh
@@ -425,10 +417,9 @@ services:
       MC_IAM_MANAGER_PORT: ${MC_IAM_MANAGER_PORT}
       MC_IAM_MANAGER_HOST: mc-iam-manager
     volumes:
-      - ./tool/mcc:/app/tool/mcc
       - ./conf/mc-web-console/api/conf/:/conf/
     healthcheck:
-      test: [ "CMD", "/app/tool/mcc", "rest", "get", "http://localhost:3000/readyz" ]
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/3000 && echo -e \"GET /readyz HTTP/1.0\\r\\n\\r\\n\" >&3 && head -1 <&3 | grep -q 200'"]
       <<: *default-health-check
 
   mc-web-console-front:
@@ -451,8 +442,6 @@ services:
       API_PORT: 3000
       FRONT_ADDR: 0.0.0.0
       FRONT_PORT: 3001
-    volumes:
-      - ./tool/mcc:/app/tool/mcc
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:3001 || exit 1"]
       <<: *default-health-check 
