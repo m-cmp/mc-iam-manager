@@ -602,9 +602,14 @@ configure_keycloak_client_uris() {
         CURRENT=$(curl -s "${KC_ADMIN_URL}/clients/${CLIENT_ID}" \
             -H "Authorization: Bearer ${KC_ADMIN_TOKEN}")
 
+        FRONT_HOST="${MC_IAM_MANAGER_PUBLIC_DOMAIN}${MC_WEB_CONSOLE_FRONT_PORT:+:${MC_WEB_CONSOLE_FRONT_PORT}}"
+        FRONT_SCHEME=$(echo "$PUBLIC_HOST" | grep -o 'https\?')
+        FRONT_URI="${FRONT_SCHEME}://${FRONT_HOST}"
+
         UPDATED=$(echo "$CURRENT" | jq \
             --arg h "$PUBLIC_HOST" \
-            '.rootUrl = $h | .baseUrl = $h | .redirectUris = [$h + "/*"] | .webOrigins = [$h]')
+            --arg f "$FRONT_URI" \
+            '.rootUrl = $h | .baseUrl = $h | .redirectUris = [$h + "/*", $f + "/*"] | .webOrigins = [$h, $f]')
 
         HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X PUT \
             "${KC_ADMIN_URL}/clients/${CLIENT_ID}" \
@@ -613,7 +618,7 @@ configure_keycloak_client_uris() {
             -d "$UPDATED")
 
         if [ "$HTTP" = "204" ]; then
-            echo "  ✓ Updated: $CLIENT_NAME → redirectUris=[${PUBLIC_HOST}/*]"
+            echo "  ✓ Updated: $CLIENT_NAME → redirectUris=[${PUBLIC_HOST}/*, ${FRONT_URI}/*]"
         else
             echo "  ✗ Failed to update $CLIENT_NAME (HTTP $HTTP)"
         fi

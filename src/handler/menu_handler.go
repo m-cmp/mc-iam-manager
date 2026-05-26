@@ -513,7 +513,7 @@ func (h *MenuHandler) DeleteMenu(c echo.Context) error {
 
 // RegisterMenusFromYAML godoc
 // @Summary Register/Update menus from YAML file or URL
-// @Description Register or update menus from a local YAML file specified by the filePath query parameter, or from the MCWEBCONSOLE_MENUYAML URL in .env if not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.
+// @Description Register or update menus from a local YAML file specified by the filePath query parameter, or from the MC_WEB_CONSOLE_MENUYAML URL in .env if not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.
 // @Tags menus
 // @Accept json
 // @Produce json

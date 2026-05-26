@@ -130,7 +130,7 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	}
 
 	// 3-2. db에 기본 역할 생성
-	predefinedRoles := strings.Split(os.Getenv("PREDEFINED_PLATFORM_ROLE"), ",")
+	predefinedRoles := strings.Split(os.Getenv("MC_IAM_MANAGER_PREDEFINED_PLATFORM_ROLE"), ",")
 	registeredRoles := []uint{}
 	for _, roleName := range predefinedRoles {
 		role, err := h.roleService.CreateRoleWithSubs(&model.RoleMaster{
@@ -148,10 +148,10 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	}
 
 	// 기본 workspace 생성
-	defaultWsName := os.Getenv("DEFAULT_WORKSPACE_NAME")
+	defaultWsName := os.Getenv("MC_IAM_MANAGER_DEFAULT_WORKSPACE_NAME")
 	if defaultWsName == "" {
 		defaultWsName = "ws01" // fallback
-		log.Printf("[INFO] DEFAULT_WORKSPACE_NAME not set, using default: %s", defaultWsName)
+		log.Printf("[INFO] MC_IAM_MANAGER_DEFAULT_WORKSPACE_NAME not set, using default: %s", defaultWsName)
 	}
 	
 	err = h.workspaceService.CreateWorkspace(&model.Workspace{

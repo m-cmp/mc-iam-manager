@@ -15,7 +15,7 @@ import (
 	"gorm.io/gorm" // Import gorm
 )
 
-const apiYamlEnvVar = "MCADMINCLI_APIYAML"
+const apiYamlEnvVar = "MC_ADMIN_CLI_APIYAML"
 
 // McmpApiHandler handles requests related to mcmp API definitions. (Renamed)
 type McmpApiHandler struct {
