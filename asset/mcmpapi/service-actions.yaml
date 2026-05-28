@@ -592,7 +592,7 @@ serviceActions:
             description: Delete a role by its name.
         deleteUser:
             method: delete
-            resourcePath: /api/users/{id}
+            resourcePath: /api/users/id/{userId}
             description: Delete a user by their ID.
         deleteWorkspace:
             method: delete
@@ -1224,7 +1224,7 @@ serviceActions:
             description: Update the details of an existing role.
         updateUser:
             method: put
-            resourcePath: /api/users/{id}
+            resourcePath: /api/users/id/{userId}
             description: Update the details of an existing user.
         updateUserStatus:
             method: post

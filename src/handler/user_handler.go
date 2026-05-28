@@ -218,7 +218,9 @@ func (h *UserHandler) CreateUser(c echo.Context) error {
 	err := h.userService.CreateUser(c.Request().Context(), &user) // Assign error to a new variable 'err'
 	if err != nil {
 		fmt.Printf("[ERROR] CreateUser: Error from userService.CreateUser: %v\n", err)
-		// Provide more specific error if possible (e.g., user exists)
+		if strings.Contains(err.Error(), "already exists") {
+			return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
 	}
 
@@ -516,14 +518,14 @@ func (h *UserHandler) GetMyWorkspaceRoles(c echo.Context) error {
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param id path string true "User ID"
+// @Param userId path string true "User ID"
 // @Param user body model.User true "User Info"
 // @Success 200 {object} model.User
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users/{id} [put]
+// @Router /api/users/id/{userId} [put]
 // @Id updateUser
 func (h *UserHandler) UpdateUser(c echo.Context) error {
 	// --- Role validation (Admin or platformAdmin) ---
@@ -573,12 +575,12 @@ func (h *UserHandler) UpdateUser(c echo.Context) error {
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param id path string true "User ID"
+// @Param userId path string true "User ID"
 // @Success 204 "No Content"
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users/{id} [delete]
+// @Router /api/users/id/{userId} [delete]
 // @Id deleteUser
 func (h *UserHandler) DeleteUser(c echo.Context) error {
 	// --- Role validation (Admin or platformAdmin) ---
