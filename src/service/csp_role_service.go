@@ -30,6 +30,7 @@ type CspRoleService struct {
 	db                 *gorm.DB
 	cspRoleRepo        *repository.CspRoleRepository
 	tempCredentialRepo *repository.TempCredentialRepository
+	cspIdpConfigRepo   *repository.CspIdpConfigRepository
 	keycloakService    KeycloakService
 }
 
@@ -39,6 +40,7 @@ func NewCspRoleService(db *gorm.DB, keycloakService KeycloakService) *CspRoleSer
 		db:                 db,
 		cspRoleRepo:        repository.NewCspRoleRepository(db),
 		tempCredentialRepo: repository.NewTempCredentialRepository(db),
+		cspIdpConfigRepo:   repository.NewCspIdpConfigRepository(db),
 		keycloakService:    keycloakService,
 	}
 }
@@ -416,26 +418,47 @@ func mapAwsRoleToModel(id uint, cspType string, idpIdentifier string, getRoleRes
 	return createdRole
 }
 
+// findActiveAwsOidcConfig 활성 OIDC + AWS IDP Config 1건을 조회합니다. (private)
+// getIAMClient(csp_iam_handler.go)와 동일한 IDP Config 기반 패턴을 사용합니다.
+func (s *CspRoleService) findActiveAwsOidcConfig() (*model.CspIdpConfig, error) {
+	configs, err := s.cspIdpConfigRepo.GetActiveConfigs()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active IDP configs: %w", err)
+	}
+	for _, cfg := range configs {
+		if cfg.IsOIDC() && cfg.CspAccount != nil && cfg.CspAccount.CspType == "aws" {
+			return cfg, nil
+		}
+	}
+	return nil, fmt.Errorf("no active AWS OIDC IDP config found: please register an OIDC IDP config for an AWS CSP account")
+}
+
 // createNewAwsCredential 새로운 AWS 임시 자격 증명을 생성합니다. (private)
+// role_arn은 IDP Config DB에서 조회합니다 (getIAMClient와 동일한 패턴).
 func (s *CspRoleService) createNewAwsCredential(issuedBy string) (*model.TempCredential, error) {
 	token, err := s.keycloakService.GetClientCredentialsToken(context.TODO())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Keycloak token: %v", err)
 	}
 
+	// IDP Config DB에서 활성 AWS OIDC 설정 조회
+	idpConfig, err := s.findActiveAwsOidcConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	roleArn := idpConfig.Config["role_arn"]
+	if roleArn == "" {
+		return nil, fmt.Errorf("role_arn not configured in active AWS OIDC IDP config (id=%d)", idpConfig.ID)
+	}
+
+	// oidc_provider_arn은 AssumeRoleWithWebIdentity API의 파라미터가 아님 — 로깅 확인용으로만 사용
+	oidcProviderArn := idpConfig.GetOidcProviderArn()
+	log.Printf("createNewAwsCredential: using IDP config id=%d, role_arn=%s, oidc_provider_arn=%s", idpConfig.ID, roleArn, oidcProviderArn)
+
 	stsClient := sts.NewFromConfig(aws.Config{
 		Region: "ap-northeast-2",
 	})
-
-	identityProviderArn := os.Getenv("MC_IAM_MANAGER_AWS_IDENTITY_PROVIDER_ARN")
-	if identityProviderArn == "" {
-		return nil, fmt.Errorf("MC_IAM_MANAGER_AWS_IDENTITY_PROVIDER_ARN environment variable is not set")
-	}
-
-	roleArn := os.Getenv("MC_IAM_MANAGER_AWS_IDENTITY_ROLE_ARN")
-	if roleArn == "" {
-		return nil, fmt.Errorf("MC_IAM_MANAGER_AWS_IDENTITY_ROLE_ARN environment variable is not set")
-	}
 
 	input := &sts.AssumeRoleWithWebIdentityInput{
 		RoleArn:          aws.String(roleArn),
