@@ -61,6 +61,15 @@ auto_setup() {
     fi
     echo "✓ Framework services registered successfully"
 
+    # 5-2. Update iframe service URLs to public-accessible addresses
+    echo "Step 5-2: Updating iframe service URLs to public addresses..."
+    update_public_service_urls
+    if [ $? -ne 0 ]; then
+        echo "WARNING: Public service URL update failed (non-fatal, iframe may not render remotely)"
+    else
+        echo "✓ Public service URLs updated successfully"
+    fi
+
     # 6. 프로젝트 동기화
     echo "Step 6: Syncing projects..."
     sync_projects
@@ -304,12 +313,12 @@ init_menu() {
 
 init_api_resources() {
     echo "Initializing API resources..."
-    if [ -n "$MCADMINCLI_APIYAML" ]; then
-        wget -q -O ./api.yaml "$MCADMINCLI_APIYAML" && echo "  Downloaded api.yaml from $MCADMINCLI_APIYAML" || {
-            echo "  WARNING: Failed to download api.yaml from $MCADMINCLI_APIYAML — using local copy"
+    if [ -n "$MC_ADMIN_CLI_APIYAML" ]; then
+        wget -q -O ./api.yaml "$MC_ADMIN_CLI_APIYAML" && echo "  Downloaded api.yaml from $MC_ADMIN_CLI_APIYAML" || {
+            echo "  WARNING: Failed to download api.yaml from $MC_ADMIN_CLI_APIYAML — using local copy"
         }
     else
-        echo "  MCADMINCLI_APIYAML not set — using local api.yaml"
+        echo "  MC_ADMIN_CLI_APIYAML not set — using local api.yaml"
     fi
     if [ ! -f ./api.yaml ]; then
         echo "ERROR: api.yaml not found"
@@ -450,6 +459,149 @@ register_framework_services() {
     fi
 
     echo "Framework service registration completed"
+    return 0
+}
+
+update_public_service_urls() {
+    echo "Updating framework service URLs to public-accessible addresses..."
+
+    # mc-cost-optimizer-fe: replace the internal container URL (http://mc-cost-optimizer-fe:7780)
+    # with the nginx HTTPS proxy URL accessible directly from the browser.
+    # /api/getapihosts returns this value as the iframe src in MCIAM_USE=true environments.
+    local cost_fe_public_url="${MC_COST_OPTIMIZER_FE_PUBLIC_HOST:-http://${MC_IAM_MANAGER_PUBLIC_DOMAIN}:${MC_COST_OPTIMIZER_FE_PROXY_PORT}}"
+
+    # mc-cost-optimizer-fe is not in the upstream api.yaml, so attempt registration first (idempotent)
+    local reg_body
+    reg_body=$(printf '{"name":"mc-cost-optimizer-fe","version":"v1","baseUrl":"http://mc-cost-optimizer-fe:7780","authType":"none","authUser":"","authPass":"","isActive":true}')
+    local reg_resp
+    reg_resp=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header 'Content-Type: application/json' \
+        --data "$reg_body" \
+        "$MC_IAM_MANAGER_HOST/api/mcmp-apis")
+    local reg_code
+    reg_code=$(echo $reg_resp | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+    if [ "$reg_code" = "201" ]; then
+        echo "  ✓ mc-cost-optimizer-fe registered"
+    elif [ "$reg_code" = "409" ]; then
+        echo "  ✓ mc-cost-optimizer-fe already registered"
+    else
+        echo "  ✗ Failed to register mc-cost-optimizer-fe (HTTP $reg_code)"
+        return 1
+    fi
+
+    # Update baseurl to the external public URL
+    local response
+    response=$(curl -s -w "HTTPSTATUS:%{http_code}" -X PUT \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header 'Content-Type: application/json' \
+        --data "{\"base_url\": \"${cost_fe_public_url}\"}" \
+        "$MC_IAM_MANAGER_HOST/api/mcmp-apis/name/mc-cost-optimizer-fe")
+    local http_code
+    http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+    local response_body
+    response_body=$(echo $response | sed -e 's/HTTPSTATUS\:.*//g')
+    if [ "$http_code" = "200" ]; then
+        echo "  ✓ Updated mc-cost-optimizer-fe baseurl: ${cost_fe_public_url}"
+    else
+        echo "  ✗ Failed to update mc-cost-optimizer-fe (HTTP $http_code): $response_body"
+        return 1
+    fi
+
+    # mc-workflow-manager-fe: register and update dedicated iframe nginx HTTPS proxy URL
+    local wf_public_url="${MC_WORKFLOW_MANAGER_PUBLIC_HOST}"
+    reg_body=$(printf '{"name":"mc-workflow-manager-fe","version":"v0.0.1","baseUrl":"http://mc-workflow-manager:18083","authType":"none","authUser":"","authPass":"","isActive":true}')
+    reg_resp=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header 'Content-Type: application/json' \
+        --data "$reg_body" \
+        "$MC_IAM_MANAGER_HOST/api/mcmp-apis")
+    reg_code=$(echo $reg_resp | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+    if [ "$reg_code" = "201" ]; then
+        echo "  ✓ mc-workflow-manager-fe registered"
+    elif [ "$reg_code" = "409" ]; then
+        echo "  ✓ mc-workflow-manager-fe already registered"
+    else
+        echo "  ✗ Failed to register mc-workflow-manager-fe (HTTP $reg_code)"
+        return 1
+    fi
+    response=$(curl -s -w "HTTPSTATUS:%{http_code}" -X PUT \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header 'Content-Type: application/json' \
+        --data "{\"base_url\": \"${wf_public_url}\"}" \
+        "$MC_IAM_MANAGER_HOST/api/mcmp-apis/name/mc-workflow-manager-fe")
+    http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+    response_body=$(echo $response | sed -e 's/HTTPSTATUS\:.*//g')
+    if [ "$http_code" = "200" ]; then
+        echo "  ✓ Updated mc-workflow-manager-fe baseurl: ${wf_public_url}"
+    else
+        echo "  ✗ Failed to update mc-workflow-manager-fe (HTTP $http_code): $response_body"
+        return 1
+    fi
+
+    # mc-data-manager-fe: register and update dedicated iframe nginx HTTPS proxy URL
+    local dm_public_url="${MC_DATA_MANAGER_PUBLIC_HOST}"
+    reg_body=$(printf '{"name":"mc-data-manager-fe","version":"v0.0.1","baseUrl":"http://mc-data-manager:3300","authType":"none","authUser":"","authPass":"","isActive":true}')
+    reg_resp=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header 'Content-Type: application/json' \
+        --data "$reg_body" \
+        "$MC_IAM_MANAGER_HOST/api/mcmp-apis")
+    reg_code=$(echo $reg_resp | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+    if [ "$reg_code" = "201" ]; then
+        echo "  ✓ mc-data-manager-fe registered"
+    elif [ "$reg_code" = "409" ]; then
+        echo "  ✓ mc-data-manager-fe already registered"
+    else
+        echo "  ✗ Failed to register mc-data-manager-fe (HTTP $reg_code)"
+        return 1
+    fi
+    response=$(curl -s -w "HTTPSTATUS:%{http_code}" -X PUT \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header 'Content-Type: application/json' \
+        --data "{\"base_url\": \"${dm_public_url}\"}" \
+        "$MC_IAM_MANAGER_HOST/api/mcmp-apis/name/mc-data-manager-fe")
+    http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+    response_body=$(echo $response | sed -e 's/HTTPSTATUS\:.*//g')
+    if [ "$http_code" = "200" ]; then
+        echo "  ✓ Updated mc-data-manager-fe baseurl: ${dm_public_url}"
+    else
+        echo "  ✗ Failed to update mc-data-manager-fe (HTTP $http_code): $response_body"
+        return 1
+    fi
+
+    # mc-application-manager-fe: register and update dedicated iframe nginx HTTPS proxy URL
+    local am_public_url="${MC_APPLICATION_MANAGER_PUBLIC_HOST}"
+    reg_body=$(printf '{"name":"mc-application-manager-fe","version":"v0.0.1","baseUrl":"http://mc-application-manager:18084","authType":"none","authUser":"","authPass":"","isActive":true}')
+    reg_resp=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header 'Content-Type: application/json' \
+        --data "$reg_body" \
+        "$MC_IAM_MANAGER_HOST/api/mcmp-apis")
+    reg_code=$(echo $reg_resp | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+    if [ "$reg_code" = "201" ]; then
+        echo "  ✓ mc-application-manager-fe registered"
+    elif [ "$reg_code" = "409" ]; then
+        echo "  ✓ mc-application-manager-fe already registered"
+    else
+        echo "  ✗ Failed to register mc-application-manager-fe (HTTP $reg_code)"
+        return 1
+    fi
+    response=$(curl -s -w "HTTPSTATUS:%{http_code}" -X PUT \
+        --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+        --header 'Content-Type: application/json' \
+        --data "{\"base_url\": \"${am_public_url}\"}" \
+        "$MC_IAM_MANAGER_HOST/api/mcmp-apis/name/mc-application-manager-fe")
+    http_code=$(echo $response | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
+    response_body=$(echo $response | sed -e 's/HTTPSTATUS\:.*//g')
+    if [ "$http_code" = "200" ]; then
+        echo "  ✓ Updated mc-application-manager-fe baseurl: ${am_public_url}"
+    else
+        echo "  ✗ Failed to update mc-application-manager-fe (HTTP $http_code): $response_body"
+        return 1
+    fi
+
+    echo "Public service URL update completed"
     return 0
 }
 

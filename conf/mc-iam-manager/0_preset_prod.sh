@@ -1,6 +1,7 @@
 #!/bin/bash
+set -euo pipefail
 
-# 템플릿 파일에서 환경변수를 .env 파일의 값으로 대치하는 스크립트
+# Script to substitute environment variables in the template file with values from the .env file
 
 # 스크립트 실행 디렉토리 확인
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,9 +28,9 @@ if [ ! -f "$TEMPLATE_FILE" ]; then
     exit 1
 fi
 
-# 출력 디렉토리 생성
+# Create output directory
 OUTPUT_DIR="$(dirname "$OUTPUT_FILE")"
-mkdir -p "$OUTPUT_DIR"
+mkdir -p "$OUTPUT_DIR" || { echo "Error: Cannot create directory: $OUTPUT_DIR (may be a permission issue)"; exit 1; }
 
 echo "nginx 설정 파일을 생성합니다..."
 echo "템플릿: $TEMPLATE_FILE"
@@ -46,9 +47,13 @@ MC_IAM_MANAGER_KEYCLOAK_DOMAIN=$(grep -m1 "^MC_IAM_MANAGER_KEYCLOAK_DOMAIN=" "$E
 MC_IAM_MANAGER_KEYCLOAK_PORT=$(grep -m1 "^MC_IAM_MANAGER_KEYCLOAK_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
 MC_OBSERVABILITY_GRAFANA_PROXY_PORT=$(grep -m1 "^MC_OBSERVABILITY_GRAFANA_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
 MC_COST_OPTIMIZER_FE_PROXY_PORT=$(grep -m1 "^MC_COST_OPTIMIZER_FE_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_COST_OPTIMIZER_FE_PORT=$(grep -m1 "^MC_COST_OPTIMIZER_FE_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_COST_OPTIMIZER_BE_PORT=$(grep -m1 "^MC_COST_OPTIMIZER_BE_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_COST_OPTIMIZER_ALARM_PORT=$(grep -m1 "^MC_COST_OPTIMIZER_ALARM_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_WORKFLOW_MANAGER_PROXY_PORT=$(grep -m1 "^MC_WORKFLOW_MANAGER_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_DATA_MANAGER_PROXY_PORT=$(grep -m1 "^MC_DATA_MANAGER_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+MC_APPLICATION_MANAGER_PROXY_PORT=$(grep -m1 "^MC_APPLICATION_MANAGER_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
 
-echo "읽어온 환경변수:"
+echo "Loaded environment variables:"
 echo "  MC_IAM_MANAGER_DOMAIN: $MC_IAM_MANAGER_DOMAIN"
 echo "  MC_IAM_MANAGER_PORT: $MC_IAM_MANAGER_PORT"
 echo "  MC_IAM_MANAGER_PUBLIC_DOMAIN: $MC_IAM_MANAGER_PUBLIC_DOMAIN"
@@ -56,10 +61,14 @@ echo "  MC_IAM_MANAGER_KEYCLOAK_DOMAIN: $MC_IAM_MANAGER_KEYCLOAK_DOMAIN"
 echo "  MC_IAM_MANAGER_KEYCLOAK_PORT: $MC_IAM_MANAGER_KEYCLOAK_PORT"
 echo "  MC_OBSERVABILITY_GRAFANA_PROXY_PORT: $MC_OBSERVABILITY_GRAFANA_PROXY_PORT"
 echo "  MC_COST_OPTIMIZER_FE_PROXY_PORT: $MC_COST_OPTIMIZER_FE_PROXY_PORT"
-echo "  MC_COST_OPTIMIZER_FE_PORT: $MC_COST_OPTIMIZER_FE_PORT"
+echo "  MC_COST_OPTIMIZER_BE_PORT: $MC_COST_OPTIMIZER_BE_PORT"
+echo "  MC_COST_OPTIMIZER_ALARM_PORT: $MC_COST_OPTIMIZER_ALARM_PORT"
+echo "  MC_WORKFLOW_MANAGER_PROXY_PORT: $MC_WORKFLOW_MANAGER_PROXY_PORT"
+echo "  MC_DATA_MANAGER_PROXY_PORT: $MC_DATA_MANAGER_PROXY_PORT"
+echo "  MC_APPLICATION_MANAGER_PROXY_PORT: $MC_APPLICATION_MANAGER_PROXY_PORT"
 
-# 템플릿 파일을 복사하고 환경변수 대치
-cp "$TEMPLATE_FILE" "$OUTPUT_FILE"
+# Copy template file and substitute environment variables
+cp "$TEMPLATE_FILE" "$OUTPUT_FILE" || { echo "Error: Failed to copy template file: $TEMPLATE_FILE → $OUTPUT_FILE"; exit 1; }
 
 if [ -n "$MC_IAM_MANAGER_PORT" ]; then
     sed -i "s/\${MC_IAM_MANAGER_PORT}/$MC_IAM_MANAGER_PORT/g" "$OUTPUT_FILE"
@@ -103,14 +112,42 @@ else
     echo "경고: MC_COST_OPTIMIZER_FE_PROXY_PORT 환경변수가 설정되지 않았습니다."
 fi
 
-if [ -n "$MC_COST_OPTIMIZER_FE_PORT" ]; then
-    sed -i "s/\${MC_COST_OPTIMIZER_FE_PORT}/$MC_COST_OPTIMIZER_FE_PORT/g" "$OUTPUT_FILE"
-    echo "✓ MC_COST_OPTIMIZER_FE_PORT 대치 완료: $MC_COST_OPTIMIZER_FE_PORT"
+if [ -n "$MC_COST_OPTIMIZER_BE_PORT" ]; then
+    sed -i "s/\${MC_COST_OPTIMIZER_BE_PORT}/$MC_COST_OPTIMIZER_BE_PORT/g" "$OUTPUT_FILE"
+    echo "✓ MC_COST_OPTIMIZER_BE_PORT substitution done: $MC_COST_OPTIMIZER_BE_PORT"
 else
-    echo "경고: MC_COST_OPTIMIZER_FE_PORT 환경변수가 설정되지 않았습니다."
+    echo "Warning: MC_COST_OPTIMIZER_BE_PORT environment variable is not set."
 fi
 
-# 컨테이너 이름 치환 (템플릿 내 레거시 이름 정정)
+if [ -n "$MC_COST_OPTIMIZER_ALARM_PORT" ]; then
+    sed -i "s/\${MC_COST_OPTIMIZER_ALARM_PORT}/$MC_COST_OPTIMIZER_ALARM_PORT/g" "$OUTPUT_FILE"
+    echo "✓ MC_COST_OPTIMIZER_ALARM_PORT substitution done: $MC_COST_OPTIMIZER_ALARM_PORT"
+else
+    echo "Warning: MC_COST_OPTIMIZER_ALARM_PORT environment variable is not set."
+fi
+
+if [ -n "$MC_WORKFLOW_MANAGER_PROXY_PORT" ]; then
+    sed -i "s/\${MC_WORKFLOW_MANAGER_PROXY_PORT}/$MC_WORKFLOW_MANAGER_PROXY_PORT/g" "$OUTPUT_FILE"
+    echo "✓ MC_WORKFLOW_MANAGER_PROXY_PORT substitution done: $MC_WORKFLOW_MANAGER_PROXY_PORT"
+else
+    echo "Warning: MC_WORKFLOW_MANAGER_PROXY_PORT environment variable is not set."
+fi
+
+if [ -n "$MC_DATA_MANAGER_PROXY_PORT" ]; then
+    sed -i "s/\${MC_DATA_MANAGER_PROXY_PORT}/$MC_DATA_MANAGER_PROXY_PORT/g" "$OUTPUT_FILE"
+    echo "✓ MC_DATA_MANAGER_PROXY_PORT substitution done: $MC_DATA_MANAGER_PROXY_PORT"
+else
+    echo "Warning: MC_DATA_MANAGER_PROXY_PORT environment variable is not set."
+fi
+
+if [ -n "$MC_APPLICATION_MANAGER_PROXY_PORT" ]; then
+    sed -i "s/\${MC_APPLICATION_MANAGER_PROXY_PORT}/$MC_APPLICATION_MANAGER_PROXY_PORT/g" "$OUTPUT_FILE"
+    echo "✓ MC_APPLICATION_MANAGER_PROXY_PORT substitution done: $MC_APPLICATION_MANAGER_PROXY_PORT"
+else
+    echo "Warning: MC_APPLICATION_MANAGER_PROXY_PORT environment variable is not set."
+fi
+
+# Substitute container names (correct legacy names in template)
 sed -i "s/mciam-manager/mc-iam-manager/g" "$OUTPUT_FILE"
 sed -i "s/mciam-keycloak/mc-iam-manager-kc/g" "$OUTPUT_FILE"
 echo "✓ 컨테이너 이름 수정 완료"
