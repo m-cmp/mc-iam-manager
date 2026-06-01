@@ -19,24 +19,29 @@ CERT_PARENT_DIR="${PROJECT_ROOT}/container-volume/mc-iam-manager"
 # --- 3. 필요한 디렉토리 생성 (Let's Encrypt 구조와 동일) ---
 echo "Creating necessary directories..."
 
-# 현재 사용자 정보 가져오기
+# Get current user info
 CURRENT_USER=$(whoami)
+CURRENT_GROUP=$(id -gn)
 
-echo "Current user: ${CURRENT_USER}"
+echo "Current user: ${CURRENT_USER}:${CURRENT_GROUP}"
 
-# 실제 쓰기가 필요한 서브디렉토리만 targeted 생성 (chown -R 없음 — root 소유 Docker 볼륨과 공존)
+# Only the certs/ and nginx/ subdirs need to be writable by this script.
+# postgres/ and keycloak/ are Docker-managed and may be root-owned from a
+# previous run — do not touch them. Newly mkdir'd dirs are user-owned automatically,
+# so chown is unnecessary. If mkdir or the writable check fails, the root-owned
+# state must be cleared first via cleanAll.sh (which handles sudo interactively).
 for _dir in "${CERT_PARENT_DIR}/certs" "${CERT_PARENT_DIR}/nginx"; do
     if ! mkdir -p "$_dir" 2>/dev/null; then
         echo "❌ Error: Cannot create $_dir"
-        echo "   Root-owned files from a previous Docker run may be blocking access."
-        echo "   Clean up with: sudo rm -rf ${CERT_PARENT_DIR}/postgres ${CERT_PARENT_DIR}/keycloak"
-        echo "   Then retry."
+        echo "   A previous Docker run likely left root-owned files in the parent directory."
+        echo "   Please run the cleanup script first, then re-run installAll.sh:"
+        echo "       cd ${SCRIPT_DIR}/../../bin && ./cleanAll.sh"
         exit 1
     fi
     if [ ! -w "$_dir" ]; then
         echo "❌ Error: $_dir exists but is not writable by ${CURRENT_USER}."
-        echo "   Clean up with: sudo rm -rf ${CERT_PARENT_DIR}/postgres ${CERT_PARENT_DIR}/keycloak"
-        echo "   Then retry."
+        echo "   Please run the cleanup script first, then re-run installAll.sh:"
+        echo "       cd ${SCRIPT_DIR}/../../bin && ./cleanAll.sh"
         exit 1
     fi
 done
@@ -61,11 +66,18 @@ if [ ! -f "$TEMPLATE_FILE" ]; then
     exit 1
 fi
 
-# .env 파일을 환경변수로 로드
-echo "환경변수를 로드합니다..."
+# Load .env file as environment variables
+# Use line-by-line parsing instead of source to safely handle unquoted multi-word
+# values (e.g. cron schedules like "0 30 0,6 * * ?") that docker compose .env allows.
+echo "Loading environment variables..."
 
-# .env 파일을 직접 소스로 불러오기
-source "$ENV_FILE"
+while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+        declare "${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
+    fi
+done < "$ENV_FILE"
 
 # 필수 환경변수 검증
 echo "필수 환경변수를 검증합니다..."
@@ -128,31 +140,43 @@ mkdir -p "${CERT_DIR}" || { echo "Error: Failed to create ${CERT_DIR}"; exit 1; 
 echo "✓ Certificate directory created successfully"
 
 
-## 로컬환경(인증서) 설정
-# --- 3. hosts 파일에 도메인 추가 (관리자 권한 필요) ---
-HOSTS_FILE="/etc/hosts"
-echo "Checking ${MC_IAM_MANAGER_PUBLIC_DOMAIN} in ${HOSTS_FILE}..."
-
-if grep -E "^[[:space:]]*127\.0\.0\.1[[:space:]]+${MC_IAM_MANAGER_PUBLIC_DOMAIN}[[:space:]]*$" "${HOSTS_FILE}" > /dev/null; then
-    echo "✓ ${MC_IAM_MANAGER_PUBLIC_DOMAIN} already exists in ${HOSTS_FILE}. Skipping."
+## Local environment (certificate) settings
+# Determine whether PUBLIC_DOMAIN is an IP address or a hostname
+if [[ "${MC_IAM_MANAGER_PUBLIC_DOMAIN}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    IS_IP=true
+    SAN_ENTRY="IP:${MC_IAM_MANAGER_PUBLIC_DOMAIN}"
+    echo "✓ PUBLIC_DOMAIN is an IP address — skipping /etc/hosts modification"
 else
-    echo "Removing any existing entries for ${MC_IAM_MANAGER_PUBLIC_DOMAIN}..."
-    sed -i "/[[:space:]]*127\.0\.0\.1[[:space:]]\+${MC_IAM_MANAGER_PUBLIC_DOMAIN}[[:space:]]*$/d" "${HOSTS_FILE}"
+    IS_IP=false
+    SAN_ENTRY="DNS:${MC_IAM_MANAGER_PUBLIC_DOMAIN}"
+fi
 
-    echo "Adding 127.0.0.1 ${MC_IAM_MANAGER_PUBLIC_DOMAIN} to ${HOSTS_FILE}..."
-    if echo "127.0.0.1 ${MC_IAM_MANAGER_PUBLIC_DOMAIN}" >> "${HOSTS_FILE}" 2>/dev/null; then
-        echo "✓ ${MC_IAM_MANAGER_PUBLIC_DOMAIN} added successfully to ${HOSTS_FILE}."
+# --- 3. Add domain to hosts file (only if it is a hostname) ---
+if [ "$IS_IP" = false ]; then
+    HOSTS_FILE="/etc/hosts"
+    echo "Checking ${MC_IAM_MANAGER_PUBLIC_DOMAIN} in ${HOSTS_FILE}..."
+
+    if grep -E "^[[:space:]]*127\.0\.0\.1[[:space:]]+${MC_IAM_MANAGER_PUBLIC_DOMAIN}[[:space:]]*$" "${HOSTS_FILE}" > /dev/null; then
+        echo "✓ ${MC_IAM_MANAGER_PUBLIC_DOMAIN} already exists in ${HOSTS_FILE}. Skipping."
     else
-        echo "⚠️  Failed to add to ${HOSTS_FILE} — run with sudo or manually add:"
-        echo "    echo '127.0.0.1 ${MC_IAM_MANAGER_PUBLIC_DOMAIN}' | sudo tee -a ${HOSTS_FILE}"
+        echo "Removing any existing entries for ${MC_IAM_MANAGER_PUBLIC_DOMAIN}..."
+        sed -i "/[[:space:]]*127\.0\.0\.1[[:space:]]\+${MC_IAM_MANAGER_PUBLIC_DOMAIN}[[:space:]]*$/d" "${HOSTS_FILE}"
+
+        echo "Adding 127.0.0.1 ${MC_IAM_MANAGER_PUBLIC_DOMAIN} to ${HOSTS_FILE}..."
+        if echo "127.0.0.1 ${MC_IAM_MANAGER_PUBLIC_DOMAIN}" >> "${HOSTS_FILE}" 2>/dev/null; then
+            echo "✓ ${MC_IAM_MANAGER_PUBLIC_DOMAIN} added successfully to ${HOSTS_FILE}."
+        else
+            echo "⚠️  Failed to add to ${HOSTS_FILE} — run with sudo or manually add:"
+            echo "    echo '127.0.0.1 ${MC_IAM_MANAGER_PUBLIC_DOMAIN}' | sudo tee -a ${HOSTS_FILE}"
+        fi
     fi
 fi
 
 
-# --- 4. Self-Signed Certificate 생성 ---
-echo "Generating Self-Signed Certificate for ${MC_IAM_MANAGER_PUBLIC_DOMAIN}... ${CERT_DIR}"
+# --- 4. Generate Self-Signed Certificate (with SAN) ---
+echo "Generating Self-Signed Certificate for ${MC_IAM_MANAGER_PUBLIC_DOMAIN} (SAN: ${SAN_ENTRY})... ${CERT_DIR}"
 
-# 기존 인증서 삭제 (새로 발급하기 위해)
+# Remove existing certificate files (to issue a fresh one)
 if [ -f "${CERT_DIR}/privkey.pem" ]; then
     echo "Removing existing certificate files..."
     rm "${CERT_DIR}/privkey.pem" "${CERT_DIR}/fullchain.pem" 2>/dev/null
@@ -160,8 +184,12 @@ fi
 
 openssl genrsa -out "${CERT_DIR}/privkey.pem" 2048
 openssl req -new -key "${CERT_DIR}/privkey.pem" -out "${CERT_DIR}/csr.pem" -subj "/CN=${MC_IAM_MANAGER_PUBLIC_DOMAIN}"
-openssl x509 -req -days 365 -in "${CERT_DIR}/csr.pem" -signkey "${CERT_DIR}/privkey.pem" -out "${CERT_DIR}/fullchain.pem"
-rm "${CERT_DIR}/csr.pem" # CSR 파일 제거
+openssl x509 -req -days 365 \
+    -in "${CERT_DIR}/csr.pem" \
+    -signkey "${CERT_DIR}/privkey.pem" \
+    -out "${CERT_DIR}/fullchain.pem" \
+    -extfile <(printf "subjectAltName=${SAN_ENTRY}\nbasicConstraints=CA:FALSE\nkeyUsage=digitalSignature,keyEncipherment")
+rm "${CERT_DIR}/csr.pem"
 
 if [ -f "${CERT_DIR}/fullchain.pem" ]; then
     echo "Self-Signed Certificate generated successfully at ${CERT_DIR}."

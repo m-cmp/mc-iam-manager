@@ -1,174 +1,241 @@
 #!/bin/bash
 
-# localhost (plain HTTP) preset — no certs, no /etc/hosts modification
+# Local PC HTTP mode setup script for MC-IAM-Manager
+# - No certificate generation (plain HTTP)
+# - Updates .env PUBLIC_HOST variables from https:// to http://
+# - Conditionally adds /etc/hosts entry for mciam.local
+# - Generates HTTP-only nginx.conf from nginx.template.local.conf
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
+ENV_FILE="${PROJECT_ROOT}/.env"
+IAM_ENV_FILE="${SCRIPT_DIR}/.env"
+
+TEMPLATE_FILE="${SCRIPT_DIR}/nginx.template.local.conf"
+OUTPUT_FILE="${PROJECT_ROOT}/container-volume/mc-iam-manager/nginx/nginx.conf"
+
+NGINX_DIR="${PROJECT_ROOT}/container-volume/mc-iam-manager/nginx"
+
 echo "PROJECT_ROOT: $PROJECT_ROOT"
 
-ENV_FILE="${PROJECT_ROOT}/.env"
+# =============================================================================
+# 1. .env file check
+# =============================================================================
 
 if [ ! -f "$ENV_FILE" ]; then
     echo "Error: .env file not found: $ENV_FILE"
     exit 1
 fi
 
-source "$ENV_FILE"
+if [ ! -f "$TEMPLATE_FILE" ]; then
+    echo "Error: nginx template file not found: $TEMPLATE_FILE"
+    exit 1
+fi
+
+# =============================================================================
+# 2. Load environment variables
+# =============================================================================
+
+# Use line-by-line parsing instead of source to safely handle unquoted multi-word
+# values (e.g. cron schedules like "0 30 0,6 * * ?") that docker compose .env allows.
+echo "Loading environment variables..."
+
+while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+        declare "${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
+    fi
+done < "$ENV_FILE"
+
+# =============================================================================
+# 3. Validate required variables
+# =============================================================================
+
+echo "Validating required environment variables..."
+
+REQUIRED_VARS=(
+    "MC_IAM_MANAGER_PUBLIC_DOMAIN"
+    "MC_IAM_MANAGER_KEYCLOAK_DOMAIN"
+    "MC_IAM_MANAGER_DATABASE_NAME"
+    "MC_IAM_MANAGER_DATABASE_USER"
+    "MC_IAM_MANAGER_DATABASE_PASSWORD"
+    "MC_IAM_MANAGER_DATABASE_HOST"
+    "MC_IAM_MANAGER_PORT"
+)
+
+MISSING_VARS=()
+for var in "${REQUIRED_VARS[@]}"; do
+    if [ -z "${!var}" ]; then
+        MISSING_VARS+=("$var")
+    fi
+done
+
+if [ ${#MISSING_VARS[@]} -gt 0 ]; then
+    echo "❌ Error: The following required environment variables are not set:"
+    for var in "${MISSING_VARS[@]}"; do
+        echo "  - $var"
+    done
+    exit 1
+fi
+
+if [ -z "$MC_IAM_MANAGER_KEYCLOAK_PORT" ]; then
+    MC_IAM_MANAGER_KEYCLOAK_PORT=8080
+fi
+
+echo "✅ All required environment variables loaded."
+echo "  PUBLIC_DOMAIN: $MC_IAM_MANAGER_PUBLIC_DOMAIN"
+echo "  KEYCLOAK_DOMAIN: $MC_IAM_MANAGER_KEYCLOAK_DOMAIN"
+echo "  MC_IAM_MANAGER_PORT: $MC_IAM_MANAGER_PORT"
+
+# =============================================================================
+# 4. Rewrite PUBLIC_HOST variables from https:// to http:// in .env files
+# =============================================================================
+
+_sedi() {
+    if [[ "$(uname)" == "Darwin" ]]; then
+        sed -i '' "$@"
+    else
+        sed -i "$@"
+    fi
+}
+
+rewrite_https_to_http() {
+    local env_file="$1"
+    if [ ! -f "$env_file" ]; then
+        return 0
+    fi
+    echo "Rewriting https:// → http:// in ${env_file##*/conf/docker/}..."
+
+    local vars=(
+        "MC_IAM_MANAGER_PUBLIC_HOST"
+        "MC_OBSERVABILITY_GRAFANA_PUBLIC_HOST"
+        "MC_COST_OPTIMIZER_FE_PUBLIC_HOST"
+        "MC_WORKFLOW_MANAGER_PUBLIC_HOST"
+        "MC_DATA_MANAGER_PUBLIC_HOST"
+        "MC_APPLICATION_MANAGER_PUBLIC_HOST"
+    )
+
+    for var in "${vars[@]}"; do
+        if grep -qE "^${var}=https://" "$env_file"; then
+            _sedi "s|^${var}=https://|${var}=http://|" "$env_file"
+            echo "  ✓ ${var}: https:// → http://"
+        fi
+    done
+}
+
+rewrite_https_to_http "$ENV_FILE"
+rewrite_https_to_http "$IAM_ENV_FILE"
+
+# =============================================================================
+# 5. /etc/hosts entry for mciam.local (skip for localhost/127.0.0.1)
+# =============================================================================
+
+DOMAIN="$MC_IAM_MANAGER_PUBLIC_DOMAIN"
+
+if [ "$DOMAIN" = "localhost" ] || [ "$DOMAIN" = "127.0.0.1" ]; then
+    echo "✓ Domain is $DOMAIN — skipping /etc/hosts modification."
+else
+    HOSTS_FILE="/etc/hosts"
+    echo "Checking $DOMAIN in $HOSTS_FILE..."
+
+    if grep -qE "^[[:space:]]*127\.0\.0\.1[[:space:]]+${DOMAIN}[[:space:]]*$" "$HOSTS_FILE"; then
+        echo "✓ $DOMAIN already exists in $HOSTS_FILE. Skipping."
+    else
+        echo "Removing any existing entries for $DOMAIN..."
+        _sedi "/[[:space:]]*127\.0\.0\.1[[:space:]]\+${DOMAIN}[[:space:]]*$/d" "$HOSTS_FILE" 2>/dev/null || true
+
+        echo "Adding 127.0.0.1 $DOMAIN to $HOSTS_FILE..."
+        if sudo -n true 2>/dev/null; then
+            echo "127.0.0.1 $DOMAIN" | sudo tee -a "$HOSTS_FILE" > /dev/null
+            echo "✓ $DOMAIN added to $HOSTS_FILE."
+        elif echo "127.0.0.1 $DOMAIN" >> "$HOSTS_FILE" 2>/dev/null; then
+            echo "✓ $DOMAIN added to $HOSTS_FILE."
+        else
+            echo "⚠️  Failed to add to $HOSTS_FILE — add manually:"
+            echo "    echo '127.0.0.1 $DOMAIN' | sudo tee -a $HOSTS_FILE"
+        fi
+    fi
+fi
+
+# =============================================================================
+# 6. Create nginx output directory
+# =============================================================================
+
+echo "Creating nginx directory..."
 
 CURRENT_USER=$(whoami)
 CURRENT_GROUP=$(id -gn)
 
-NGINX_DIR="${PROJECT_ROOT}/container-volume/mc-iam-manager/nginx"
-mkdir -p "$NGINX_DIR" || { echo "Error: Failed to create $NGINX_DIR"; exit 1; }
-chown -R "${CURRENT_USER}:${CURRENT_GROUP}" "${PROJECT_ROOT}/container-volume/mc-iam-manager"
-echo "✓ Container volume directory created"
+if ! mkdir -p "$NGINX_DIR" 2>/dev/null; then
+    echo "❌ Error: Cannot create $NGINX_DIR"
+    echo "   A previous Docker run likely left root-owned files in the parent directory."
+    echo "   Please run the cleanup script first:"
+    echo "       cd ${SCRIPT_DIR}/../../bin && ./cleanAll.sh"
+    exit 1
+fi
 
-MC_IAM_MANAGER_PORT="${MC_IAM_MANAGER_PORT:-5005}"
-MC_IAM_MANAGER_KEYCLOAK_PORT="${MC_IAM_MANAGER_KEYCLOAK_PORT:-8080}"
-MC_OBSERVABILITY_GRAFANA_PROXY_PORT="${MC_OBSERVABILITY_GRAFANA_PROXY_PORT:-3010}"
-MC_COST_OPTIMIZER_FE_PROXY_PORT="${MC_COST_OPTIMIZER_FE_PROXY_PORT:-3011}"
-MC_COST_OPTIMIZER_FE_PORT="${MC_COST_OPTIMIZER_FE_PORT:-7780}"
+if [ ! -w "$NGINX_DIR" ]; then
+    echo "❌ Error: $NGINX_DIR exists but is not writable by ${CURRENT_USER}."
+    echo "   Please run the cleanup script first:"
+    echo "       cd ${SCRIPT_DIR}/../../bin && ./cleanAll.sh"
+    exit 1
+fi
 
-OUTPUT_FILE="${NGINX_DIR}/nginx.conf"
+echo "✓ nginx directory ready: $NGINX_DIR"
 
-cat > "$OUTPUT_FILE" << NGINX_EOF
-worker_processes auto;
-pid /run/nginx.pid;
-include /etc/nginx/modules-enabled/*.conf;
+# =============================================================================
+# 7. Generate nginx.conf from HTTP template
+# =============================================================================
 
-events {
-    worker_connections 768;
-}
+echo "Generating nginx configuration file..."
+echo "  Template: $TEMPLATE_FILE"
+echo "  Output:   $OUTPUT_FILE"
 
-http {
-    sendfile on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    keepalive_timeout 65;
-    types_hash_max_size 2048;
+if [ -d "$OUTPUT_FILE" ]; then
+    rm -rf "$OUTPUT_FILE"
+fi
 
-    include /etc/nginx/mime.types;
-    default_type application/octet-stream;
+# Reload env after rewrite so substitutions use updated http:// values
+while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+        declare "${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
+    fi
+done < "$ENV_FILE"
 
-    access_log /var/log/nginx/access.log;
-    error_log /var/log/nginx/error.log;
+if [ -n "$MC_IAM_MANAGER_PUBLIC_DOMAIN" ] && [ -n "$MC_IAM_MANAGER_KEYCLOAK_PORT" ]; then
+    sed -e "s/\${MC_IAM_MANAGER_DOMAIN}/$MC_IAM_MANAGER_DOMAIN/g" \
+        -e "s/\${MC_IAM_MANAGER_PORT}/$MC_IAM_MANAGER_PORT/g" \
+        -e "s/\${MC_IAM_MANAGER_PUBLIC_DOMAIN}/$MC_IAM_MANAGER_PUBLIC_DOMAIN/g" \
+        -e "s/\${MC_IAM_MANAGER_KEYCLOAK_DOMAIN}/$MC_IAM_MANAGER_KEYCLOAK_DOMAIN/g" \
+        -e "s/\${MC_IAM_MANAGER_KEYCLOAK_PORT}/$MC_IAM_MANAGER_KEYCLOAK_PORT/g" \
+        -e "s/\${MC_OBSERVABILITY_GRAFANA_PROXY_PORT}/$MC_OBSERVABILITY_GRAFANA_PROXY_PORT/g" \
+        -e "s/\${MC_COST_OPTIMIZER_FE_PROXY_PORT}/$MC_COST_OPTIMIZER_FE_PROXY_PORT/g" \
+        -e "s/\${MC_COST_OPTIMIZER_BE_PORT}/$MC_COST_OPTIMIZER_BE_PORT/g" \
+        -e "s/\${MC_COST_OPTIMIZER_ALARM_PORT}/$MC_COST_OPTIMIZER_ALARM_PORT/g" \
+        -e "s/\${MC_WORKFLOW_MANAGER_PROXY_PORT}/$MC_WORKFLOW_MANAGER_PROXY_PORT/g" \
+        -e "s/\${MC_DATA_MANAGER_PROXY_PORT}/$MC_DATA_MANAGER_PROXY_PORT/g" \
+        -e "s/\${MC_APPLICATION_MANAGER_PROXY_PORT}/$MC_APPLICATION_MANAGER_PROXY_PORT/g" \
+        "$TEMPLATE_FILE" > "$OUTPUT_FILE"
+    echo "✓ nginx.conf generated (HTTP mode)"
+else
+    echo "Warning: Required variables not set — copying template as-is."
+    cp "$TEMPLATE_FILE" "$OUTPUT_FILE"
+fi
 
-    gzip on;
-
-    server {
-        listen 80;
-        server_name localhost 127.0.0.1;
-
-        location /nginx-health {
-            access_log off;
-            return 200 "nginx is healthy\n";
-            add_header Content-Type text/plain;
-        }
-
-        location /health {
-            proxy_pass http://mc-iam-manager:${MC_IAM_MANAGER_PORT}/readyz;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-            proxy_connect_timeout 10s;
-            proxy_send_timeout 10s;
-            proxy_read_timeout 10s;
-        }
-
-        location /auth/ {
-            proxy_pass http://mc-iam-manager-kc:${MC_IAM_MANAGER_KEYCLOAK_PORT}/auth/;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-            proxy_set_header X-Forwarded-Host \$host;
-            proxy_set_header X-Forwarded-Server \$host;
-            proxy_hide_header X-Frame-Options;
-            add_header X-Frame-Options "SAMEORIGIN" always;
-            proxy_connect_timeout 60s;
-            proxy_send_timeout 60s;
-            proxy_read_timeout 60s;
-        }
-
-        location / {
-            proxy_pass http://mc-iam-manager:${MC_IAM_MANAGER_PORT};
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-            proxy_set_header X-Forwarded-Host \$host;
-            proxy_set_header X-Forwarded-Server \$host;
-            proxy_connect_timeout 60s;
-            proxy_send_timeout 60s;
-            proxy_read_timeout 60s;
-        }
-    }
-
-    server {
-        listen 3001;
-        server_name localhost 127.0.0.1;
-
-        location / {
-            resolver 127.0.0.11 valid=10s;
-            set \$upstream_console mc-web-console-front;
-            proxy_pass http://\$upstream_console:3001\$request_uri;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-            proxy_connect_timeout 60s;
-            proxy_send_timeout 60s;
-            proxy_read_timeout 60s;
-        }
-    }
-
-    server {
-        listen ${MC_OBSERVABILITY_GRAFANA_PROXY_PORT};
-        server_name localhost 127.0.0.1;
-
-        location / {
-            resolver 127.0.0.11 valid=10s;
-            set \$upstream_grafana mc-observability-grafana;
-            proxy_pass http://\$upstream_grafana:3000;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade \$http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-            proxy_connect_timeout 60s;
-            proxy_send_timeout 60s;
-            proxy_read_timeout 60s;
-        }
-    }
-
-    server {
-        listen ${MC_COST_OPTIMIZER_FE_PROXY_PORT};
-        server_name localhost 127.0.0.1;
-
-        location / {
-            resolver 127.0.0.11 valid=10s;
-            set \$upstream_cost_fe mc-cost-optimizer-fe;
-            proxy_pass http://\$upstream_cost_fe:${MC_COST_OPTIMIZER_FE_PORT};
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade \$http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-            proxy_connect_timeout 60s;
-            proxy_send_timeout 60s;
-            proxy_read_timeout 60s;
-        }
-    }
-}
-NGINX_EOF
-
-echo "✓ Plain HTTP nginx.conf generated: $OUTPUT_FILE"
 echo ""
-echo "=== 생성된 nginx.conf ==="
+echo "=== Generated nginx.conf ==="
 cat "$OUTPUT_FILE"
+
+echo ""
+echo "=================================================="
+echo "✓ Local HTTP mode configuration completed."
+echo ""
+echo "  Domain : http://${MC_IAM_MANAGER_PUBLIC_DOMAIN}"
+echo "  Mode   : plain HTTP (no TLS)"
+echo ""
+echo "Now you can run: ./mcc infra run"
+echo "=================================================="

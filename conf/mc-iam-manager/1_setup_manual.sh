@@ -94,7 +94,7 @@ init_menu() {
 
 init_api_resources() {
     echo "Initializing API resources..."
-    wget -q -O ./api.yaml "$MCADMINCLI_APIYAML"
+    wget -q -O ./api.yaml "$MC_ADMIN_CLI_APIYAML"
     response=$(curl -s -X POST \
         --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
         --header 'Content-Type: application/json' \
