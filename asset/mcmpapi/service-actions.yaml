@@ -3,7 +3,7 @@ serviceActions:
         _meta:
             version: 0.5.0
             repository: https://github.com/m-cmp/mc-application-manager
-            generatedAt: "2026-05-12T07:17:42Z"
+            generatedAt: "2026-06-01T02:11:43Z"
         checkConnectionUsingPOST:
             method: post
             resourcePath: /oss/connection-check
@@ -272,7 +272,7 @@ serviceActions:
         _meta:
             version: 0.5.0
             repository: https://github.com/m-cmp/mc-cost-optimizer
-            generatedAt: "2026-05-12T07:17:42Z"
+            generatedAt: "2026-06-01T02:11:43Z"
         getAbrnormalRcmd:
             method: post
             resourcePath: /api/costopti/be/opti/abnormalRcmd
@@ -331,9 +331,13 @@ serviceActions:
             description: ""
     mc-iam-manager:
         _meta:
-            version: 0.3.0
+            version: 0.5.2
             repository: https://github.com/m-cmp/mc-iam-manager
-            generatedAt: "2026-05-12T07:17:42Z"
+            generatedAt: "2026-06-01T02:11:43Z"
+        CreateFrameworkService:
+            method: post
+            resourcePath: /api/mcmp-apis
+            description: Creates a new MCMP API service (framework) record. Returns 409 if a service with the same name already exists.
         ResetUserPassword:
             method: put
             resourcePath: /api/users/id/{userId}/password
@@ -1242,7 +1246,7 @@ serviceActions:
         _meta:
             version: main
             repository: https://github.com/cloud-barista/cb-spider
-            generatedAt: "2026-05-12T07:17:42Z"
+            generatedAt: "2026-06-01T02:11:43Z"
         add-favorite-imagespec:
             method: post
             resourcePath: /vm/imagespecfavorite
@@ -1327,6 +1331,10 @@ serviceActions:
             method: get
             resourcePath: /countnlb
             description: Get the total number of Network Load Balancers (NLBs) across all connections.
+        count-all-rdbms:
+            method: get
+            resourcePath: /countrdbms
+            description: Get the total number of RDBMS instances across all connections.
         count-all-securitygroup:
             method: get
             resourcePath: /countsecuritygroup
@@ -1367,6 +1375,10 @@ serviceActions:
             method: get
             resourcePath: /countnlb/{ConnectionName}
             description: Get the total number of Network Load Balancers (NLBs) for a specific connection.
+        count-rdbms-by-connection:
+            method: get
+            resourcePath: /countrdbms/{ConnectionName}
+            description: Get the total number of RDBMS instances for a specific connection.
         count-s3-by-connection:
             method: get
             resourcePath: /counts3/{ConnectionName}
@@ -1415,6 +1427,10 @@ serviceActions:
             method: post
             resourcePath: /nlb
             description: "Create a new Network Load Balancer (NLB) with specified configurations. \U0001F577️ [[Concept Guide](https://github.com/cloud-barista/cb-spider/wiki/Network-Load-Balancer-and-Driver-API)]"
+        create-rdbms:
+            method: post
+            resourcePath: /rdbms
+            description: Create a new Relational Database (RDBMS) with the specified configuration.
         create-s3-bucket:
             method: put
             resourcePath: /s3/{BucketName}
@@ -1477,6 +1493,10 @@ serviceActions:
             method: delete
             resourcePath: /cspnlb/{Id}
             description: Delete a specified CSP Network Load Balancer (NLB).
+        delete-csp-rdbms:
+            method: delete
+            resourcePath: /csprdbms/{Id}
+            description: Delete a specified CSP RDBMS.
         delete-csp-securitygroup:
             method: delete
             resourcePath: /cspsecuritygroup/{Id}
@@ -1505,6 +1525,10 @@ serviceActions:
             method: delete
             resourcePath: /nlb/{Name}
             description: Delete a specified Network Load Balancer (NLB).
+        delete-rdbms:
+            method: delete
+            resourcePath: /rdbms/{Name}
+            description: Delete a specified RDBMS instance.
         delete-recent-imagespec:
             method: delete
             resourcePath: /vm/imagespecrecent
@@ -1646,6 +1670,18 @@ serviceActions:
             method: get
             resourcePath: /quotainfo
             description: "Retrieve all quota limits and current usage for a given service type. No filtering is applied; all CSP-original quota items for the service type are returned. \U0001F577️ Supported CSPs: AWS, Azure, GCP, Alibaba."
+        get-rdbms:
+            method: get
+            resourcePath: /rdbms/{Name}
+            description: Retrieve details of a specific RDBMS instance.
+        get-rdbms-metainfo:
+            method: get
+            resourcePath: /rdbmsmetainfo
+            description: Retrieve CSP-specific RDBMS capability information (supported engines, features, storage options).
+        get-rdbms-owner-vpc:
+            method: get
+            resourcePath: /getrdbmsowner
+            description: Retrieve the Owner VPC of a given RDBMS CSP ID.
         get-region:
             method: get
             resourcePath: /region/{RegionName}
@@ -1847,6 +1883,14 @@ serviceActions:
             method: get
             resourcePath: /allnlbinfo
             description: Retrieve a comprehensive list of all Network Load Balancers (NLBs) associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP.
+        list-all-rdbms:
+            method: get
+            resourcePath: /allrdbms
+            description: Retrieve a comprehensive list of all RDBMS instances associated with a specific connection, <br> including those mapped between CB-Spider and the CSP, <br> only registered in CB-Spider's metadata, <br> and only existing in the CSP.
+        list-all-rdbms-info:
+            method: get
+            resourcePath: /allrdbmsinfo
+            description: Retrieve a list of all RDBMS information associated with all connections.
         list-all-securitygroup:
             method: get
             resourcePath: /allsecuritygroup
@@ -1939,6 +1983,10 @@ serviceActions:
             method: get
             resourcePath: /quotaservicetype
             description: "Retrieve the list of service type names for which quota information is available. Use a returned service type as input to the GetQuotaInfo API. \U0001F577️ Supported CSPs: AWS, Azure, GCP, Alibaba."
+        list-rdbms:
+            method: get
+            resourcePath: /rdbms
+            description: Retrieve a list of RDBMS instances associated with a specific connection.
         list-recent-imagespec:
             method: get
             resourcePath: /vm/imagespecrecent
@@ -2079,6 +2127,10 @@ serviceActions:
             method: post
             resourcePath: /regnlb
             description: Register a new Network Load Balancer (NLB) with the specified name and CSP ID.
+        register-rdbms:
+            method: post
+            resourcePath: /regrdbms
+            description: Register a new RDBMS with the specified name and CSP ID.
         register-region:
             method: post
             resourcePath: /region
@@ -2169,6 +2221,10 @@ serviceActions:
             method: delete
             resourcePath: /regnlb/{Name}
             description: Unregister a Network Load Balancer (NLB) with the specified name.
+        unregister-rdbms:
+            method: delete
+            resourcePath: /regrdbms/{Name}
+            description: Unregister an RDBMS with the specified name.
         unregister-region:
             method: delete
             resourcePath: /region/{RegionName}
@@ -2205,7 +2261,7 @@ serviceActions:
         _meta:
             version: main
             repository: https://github.com/cloud-barista/cb-tumblebug
-            generatedAt: "2026-05-12T07:17:42Z"
+            generatedAt: "2026-06-01T02:11:43Z"
         AddNLBNodes:
             method: post
             resourcePath: /ns/{nsId}/infra/{infraId}/nlb/{nlbId}/node
@@ -4760,7 +4816,7 @@ serviceActions:
         _meta:
             version: 0.5.0
             repository: https://github.com/m-cmp/mc-workflow-manager
-            generatedAt: "2026-05-12T07:17:42Z"
+            generatedAt: "2026-06-01T02:11:43Z"
         checkConnectionUsingGET:
             method: get
             resourcePath: /readyz
