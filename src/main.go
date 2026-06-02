@@ -350,14 +350,14 @@ func main() {
 	users := api.Group("/users")
 	{
 		users.POST("/list", userHandler.ListUsers, middleware.PlatformRoleMiddleware(middleware.Read))
-		users.POST("", userHandler.CreateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.POST("", userHandler.CreateUser, middleware.PlatformRoleMiddleware(middleware.Write))
 		users.GET("/id/:userId", userHandler.GetUserByID, middleware.PlatformRoleMiddleware(middleware.Read))
 		users.GET("/kc/:kcUserId", userHandler.GetUserByKcID, middleware.PlatformRoleMiddleware(middleware.Read))
 		users.GET("/name/:username", userHandler.GetUserByUsername, middleware.PlatformRoleMiddleware(middleware.Read))
-		users.PUT("/id/:userId", userHandler.UpdateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
-		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
-		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Manage))
-		users.PUT("/id/:userId/password", userHandler.ResetUserPassword, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.PUT("/id/:userId", userHandler.UpdateUser, middleware.PlatformRoleMiddleware(middleware.Write))
+		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Write))
+		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Write))
+		users.PUT("/id/:userId/password", userHandler.ResetUserPassword, middleware.PlatformRoleMiddleware(middleware.Write))
 		users.GET("/me", userHandler.GetMyInfo)                                                            // 사용자 본인 정보 조회
 		users.PUT("/me/password", userHandler.ChangeMyPassword)                                            // 사용자 본인 패스워드 변경
 		users.GET("/me/platform-roles", userHandler.GetMyPlatformRoles)                                    // 내 유효 플랫폼 역할 목록
