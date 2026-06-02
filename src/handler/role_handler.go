@@ -1610,14 +1610,18 @@ func (h *RoleHandler) RemovePlatformRole(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("플랫폼 역할 제거 실패: %v", err)})
 	}
 
-	// Keycloak에서 역할 제거
+	// Keycloak에서 역할 제거 (KC 유저가 없는 경우 404는 무시 — DB는 이미 정리됨)
 	if err := h.keycloakService.RemoveRealmRoleFromUser(c.Request().Context(), user.KcId, role.Name); err != nil {
-		log.Printf("Failed to remove realm role from user: %v", err)
-		// DB 롤백을 위해 역할 재할당
-		if rollbackErr := h.roleService.AssignPlatformRole(userID, roleID); rollbackErr != nil {
-			log.Printf("Failed to rollback platform role removal: %v", rollbackErr)
+		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "User not found") {
+			log.Printf("[WARN] RemovePlatformRole: KC user not found (%s), skipping KC removal", user.KcId)
+		} else {
+			log.Printf("Failed to remove realm role from user: %v", err)
+			// DB 롤백을 위해 역할 재할당
+			if rollbackErr := h.roleService.AssignPlatformRole(userID, roleID); rollbackErr != nil {
+				log.Printf("Failed to rollback platform role removal: %v", rollbackErr)
+			}
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("키클로크 역할 제거 실패: %v", err)})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("키클로크 역할 제거 실패: %v", err)})
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "플랫폼 역할이 성공적으로 제거되었습니다"})
