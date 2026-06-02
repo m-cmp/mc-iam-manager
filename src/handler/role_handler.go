@@ -1431,6 +1431,15 @@ func (h *RoleHandler) AssignPlatformRole(c echo.Context) error {
 		userID = uint(uid)
 	}
 
+	// RoleName이 없으면 DB에서 roleID로 조회
+	if req.RoleName == "" {
+		role, err := h.roleService.GetRoleByID(roleID, constants.RoleTypePlatform)
+		if err != nil || role == nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("역할 조회 실패 (roleId=%d): %v", roleID, err)})
+		}
+		req.RoleName = role.Name
+	}
+
 	// User 찾기
 	//user, err := h.userService.GetUserByUsername(c.Request().Context(), req.Username)
 	user, err := h.userService.GetUserByID(c.Request().Context(), userID)
