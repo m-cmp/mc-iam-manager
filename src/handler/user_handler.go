@@ -298,10 +298,10 @@ func (h *UserHandler) SignupUser(c echo.Context) error {
 // @Id ResetUserPassword
 func (h *UserHandler) ResetUserPassword(c echo.Context) error {
 	// 관리자 권한 확인
-	requiredRoles := []string{"platformAdmin"}
+	requiredRoles := []string{"admin", "platformAdmin"}
 	if !checkRoleFromContext(c, requiredRoles) {
 		return c.JSON(http.StatusForbidden, map[string]string{
-			"error": "Forbidden: Platform Administrator access required",
+			"error": "Forbidden: Administrator access required",
 		})
 	}
 
