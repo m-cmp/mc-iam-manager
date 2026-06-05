@@ -253,7 +253,7 @@ init_predefined_roles() {
     for role in "${ROLES[@]}"; do
         echo "Creating role: $role"
         json_data=$(jq -n --arg name "$role" --arg description "$role Role" \
-            '{name: $name, description: $description, role_types: ["workspace", "platform"]}')
+            '{name: $name, description: $description, roleTypes: ["workspace", "platform"]}')
         response=$(curl -s -X POST \
             --header 'Content-Type: application/json' \
             --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
