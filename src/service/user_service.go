@@ -160,8 +160,10 @@ func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
 	user.KcId = kcId
 	_, err = s.userRepo.Create(user)
 	if err != nil {
-		log.Printf("CRITICAL: Failed to create user in DB after Keycloak creation (kcId: %s). Manual cleanup needed. Error: %v", kcId, err)
-		// TODO: Compensation - delete user from Keycloak?
+		log.Printf("CRITICAL: Failed to create user in DB after Keycloak creation (kcId: %s). Rolling back KC user. Error: %v", kcId, err)
+		if rollbackErr := ks.DeleteUser(ctx, kcId); rollbackErr != nil {
+			log.Printf("CRITICAL: KC rollback also failed (kcId: %s): %v", kcId, rollbackErr)
+		}
 		return fmt.Errorf("failed to create user in DB after Keycloak: %w", err)
 	}
 	return nil
@@ -338,12 +340,12 @@ func (s *UserService) GetUserByID(ctx context.Context, id uint) (*model.User, er
 		// If user not found in Keycloak, maybe return DB data but log inconsistency?
 		return dbUser, nil
 	}
-	dbUser.Email = *kcUser.Email
-	dbUser.FirstName = *kcUser.FirstName
-	dbUser.LastName = *kcUser.LastName
-	dbUser.Enabled = *kcUser.Enabled
-	if dbUser.Username != *kcUser.Username {
-		log.Printf("Warning: Username mismatch for user ID %d (DB: %s, KC: %s)", id, dbUser.Username, *kcUser.Username)
+	dbUser.Email = ptrStr(kcUser.Email)
+	dbUser.FirstName = ptrStr(kcUser.FirstName)
+	dbUser.LastName = ptrStr(kcUser.LastName)
+	dbUser.Enabled = ptrBool(kcUser.Enabled)
+	if dbUser.Username != ptrStr(kcUser.Username) {
+		log.Printf("Warning: Username mismatch for user ID %d (DB: %s, KC: %s)", id, dbUser.Username, ptrStr(kcUser.Username))
 	}
 	return dbUser, nil
 }

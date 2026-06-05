@@ -350,14 +350,14 @@ func main() {
 	users := api.Group("/users")
 	{
 		users.POST("/list", userHandler.ListUsers, middleware.PlatformRoleMiddleware(middleware.Read))
-		users.POST("", userHandler.CreateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.POST("", userHandler.CreateUser, middleware.PlatformRoleMiddleware(middleware.Write))
 		users.GET("/id/:userId", userHandler.GetUserByID, middleware.PlatformRoleMiddleware(middleware.Read))
 		users.GET("/kc/:kcUserId", userHandler.GetUserByKcID, middleware.PlatformRoleMiddleware(middleware.Read))
 		users.GET("/name/:username", userHandler.GetUserByUsername, middleware.PlatformRoleMiddleware(middleware.Read))
-		users.PUT("/id/:userId", userHandler.UpdateUser, middleware.PlatformRoleMiddleware(middleware.Manage))
-		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Manage))
-		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Manage))
-		users.PUT("/id/:userId/password", userHandler.ResetUserPassword, middleware.PlatformRoleMiddleware(middleware.Manage))
+		users.PUT("/id/:userId", userHandler.UpdateUser, middleware.PlatformRoleMiddleware(middleware.Write))
+		users.DELETE("/id/:userId", userHandler.DeleteUser, middleware.PlatformRoleMiddleware(middleware.Write))
+		users.POST("/id/:userId/status", userHandler.UpdateUserStatus, middleware.PlatformRoleMiddleware(middleware.Write))
+		users.PUT("/id/:userId/password", userHandler.ResetUserPassword, middleware.PlatformRoleMiddleware(middleware.Write))
 		users.GET("/me", userHandler.GetMyInfo)                                                            // 사용자 본인 정보 조회
 		users.PUT("/me/password", userHandler.ChangeMyPassword)                                            // 사용자 본인 패스워드 변경
 		users.GET("/me/platform-roles", userHandler.GetMyPlatformRoles)                                    // 내 유효 플랫폼 역할 목록
@@ -489,8 +489,8 @@ func main() {
 		cspIdpConfigs.POST("/health-check", cspIdpConfigHandler.BulkHealthCheck, middleware.PlatformAdminMiddleware)
 	}
 
-	// 조직 관리 라우트 (platformAdmin 전용)
-	organizations := api.Group("/organizations", middleware.PlatformAdminMiddleware)
+	// 조직 관리 라우트 (admin 이상)
+	organizations := api.Group("/organizations", middleware.PlatformRoleMiddleware(middleware.Write))
 	{
 		organizations.POST("", organizationHandler.CreateOrganization)
 		organizations.GET("", organizationHandler.GetOrganizations)
@@ -509,14 +509,14 @@ func main() {
 		organizations.GET("/id/:organizationId/deletable", organizationHandler.GetOrganizationDeletable)
 	}
 
-	// 사용자-조직 라우트 (users 그룹에 추가, platformAdmin 전용)
-	users.POST("/id/:userId/organizations", organizationHandler.AssignUserOrganizations, middleware.PlatformAdminMiddleware)
-	users.GET("/id/:userId/organizations", organizationHandler.GetUserOrganizations, middleware.PlatformAdminMiddleware)
-	users.DELETE("/id/:userId/organizations/:organizationId", organizationHandler.RemoveUserOrganization, middleware.PlatformAdminMiddleware)
+	// 사용자-조직 라우트 (admin 이상)
+	users.POST("/id/:userId/organizations", organizationHandler.AssignUserOrganizations, middleware.PlatformRoleMiddleware(middleware.Write))
+	users.GET("/id/:userId/organizations", organizationHandler.GetUserOrganizations, middleware.PlatformRoleMiddleware(middleware.Read))
+	users.DELETE("/id/:userId/organizations/:organizationId", organizationHandler.RemoveUserOrganization, middleware.PlatformRoleMiddleware(middleware.Write))
 
-	// 그룹 관리 라우트 (/api/groups - organizations의 별칭, platformAdmin 전용)
+	// 그룹 관리 라우트 (/api/groups - organizations의 별칭, admin 이상)
 	// 주의: organizationId 파라미터 이름 유지 (기존 핸들러 호환)
-	groups := api.Group("/groups", middleware.PlatformAdminMiddleware)
+	groups := api.Group("/groups", middleware.PlatformRoleMiddleware(middleware.Write))
 	{
 		groups.POST("", organizationHandler.CreateOrganization)
 		groups.GET("", organizationHandler.GetOrganizations)

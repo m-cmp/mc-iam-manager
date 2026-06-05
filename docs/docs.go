@@ -167,6 +167,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/auth/signup": {
+            "post": {
+                "description": "Public user signup (no authentication required)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User signup",
+                "operationId": "SignupUser",
+                "parameters": [
+                    {
+                        "description": "Signup Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SignupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/temp-credential-csps": {
             "get": {
                 "description": "Get temporary credential provider information for AWS and GCP",
@@ -241,6 +302,773 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/company": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "플랫폼 회사 정보를 조회합니다. (싱글톤)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "company"
+                ],
+                "summary": "Get company",
+                "operationId": "getCompany",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CompanyResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "플랫폼 회사 이름/설명을 수정합니다. (platformAdmin 전용)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "company"
+                ],
+                "summary": "Update company",
+                "operationId": "updateCompany",
+                "parameters": [
+                    {
+                        "description": "Company Update Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CompanyUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CompanyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "플랫폼 회사 정보를 생성합니다. (싱글톤, platformAdmin 전용)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "company"
+                ],
+                "summary": "Create company",
+                "operationId": "createCompany",
+                "parameters": [
+                    {
+                        "description": "Company Info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CompanyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.CompanyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "플랫폼 회사를 비활성화합니다. (platformAdmin 전용, 멱등 처리)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "company"
+                ],
+                "summary": "Deactivate company",
+                "operationId": "deactivateCompany",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CompanyResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/company/activate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "플랫폼 회사를 활성화합니다. (platformAdmin 전용, 멱등 처리)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "company"
+                ],
+                "summary": "Activate company",
+                "operationId": "activateCompany",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CompanyResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-accounts": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new CSP account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-accounts"
+                ],
+                "summary": "Create CSP account",
+                "operationId": "createCspAccount",
+                "parameters": [
+                    {
+                        "description": "CSP Account Info",
+                        "name": "account",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateCspAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspAccount"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-accounts/id/{accountId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve CSP account details by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-accounts"
+                ],
+                "summary": "Get CSP account by ID",
+                "operationId": "getCspAccountByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Account ID",
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspAccount"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update CSP account details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-accounts"
+                ],
+                "summary": "Update CSP account",
+                "operationId": "updateCspAccount",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Account ID",
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "CSP Account Info",
+                        "name": "account",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateCspAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspAccount"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a CSP account by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-accounts"
+                ],
+                "summary": "Delete CSP account",
+                "operationId": "deleteCspAccount",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Account ID",
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-accounts/id/{accountId}/activate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Activate a CSP account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-accounts"
+                ],
+                "summary": "Activate CSP account",
+                "operationId": "activateCspAccount",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Account ID",
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-accounts/id/{accountId}/deactivate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deactivate a CSP account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-accounts"
+                ],
+                "summary": "Deactivate CSP account",
+                "operationId": "deactivateCspAccount",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Account ID",
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-accounts/id/{accountId}/validate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Validate CSP account by checking actual CSP infrastructure (IDP provider existence, role trust policy, or credential validity) for each linked CspRole",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-accounts"
+                ],
+                "summary": "Validate CSP account",
+                "operationId": "validateCspAccount",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Account ID",
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspAccountValidationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-accounts/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of CSP accounts with optional filters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-accounts"
+                ],
+                "summary": "List CSP accounts",
+                "operationId": "listCspAccounts",
+                "parameters": [
+                    {
+                        "description": "Filter options",
+                        "name": "filter",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspAccountFilter"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.CspAccount"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -433,6 +1261,2176 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/csp-idp-configs": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new CSP IDP configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-idp-configs"
+                ],
+                "summary": "Create CSP IDP config",
+                "operationId": "createCspIdpConfig",
+                "parameters": [
+                    {
+                        "description": "CSP IDP Config Info",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateCspIdpConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspIdpConfig"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-idp-configs/health-check": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Check connection status of all active CSP IDP configurations concurrently",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-idp-configs"
+                ],
+                "summary": "Bulk health check for CSP IDP configs",
+                "operationId": "bulkHealthCheckCspIdpConfigs",
+                "parameters": [
+                    {
+                        "description": "Optional filter",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/model.BulkHealthCheckRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.BulkHealthCheckResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-idp-configs/id/{configId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve CSP IDP configuration details by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-idp-configs"
+                ],
+                "summary": "Get CSP IDP config by ID",
+                "operationId": "getCspIdpConfigByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Config ID",
+                        "name": "configId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspIdpConfig"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update CSP IDP configuration details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-idp-configs"
+                ],
+                "summary": "Update CSP IDP config",
+                "operationId": "updateCspIdpConfig",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Config ID",
+                        "name": "configId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "CSP IDP Config Info",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateCspIdpConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspIdpConfig"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a CSP IDP configuration by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-idp-configs"
+                ],
+                "summary": "Delete CSP IDP config",
+                "operationId": "deleteCspIdpConfig",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Config ID",
+                        "name": "configId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-idp-configs/id/{configId}/activate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Activate a CSP IDP configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-idp-configs"
+                ],
+                "summary": "Activate CSP IDP config",
+                "operationId": "activateCspIdpConfig",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Config ID",
+                        "name": "configId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-idp-configs/id/{configId}/deactivate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deactivate a CSP IDP configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-idp-configs"
+                ],
+                "summary": "Deactivate CSP IDP config",
+                "operationId": "deactivateCspIdpConfig",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Config ID",
+                        "name": "configId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-idp-configs/id/{configId}/test": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Test connection to CSP using IDP configuration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-idp-configs"
+                ],
+                "summary": "Test CSP IDP connection",
+                "operationId": "testCspIdpConnection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Config ID",
+                        "name": "configId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-idp-configs/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of CSP IDP configurations with optional filters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-idp-configs"
+                ],
+                "summary": "List CSP IDP configs",
+                "operationId": "listCspIdpConfigs",
+                "parameters": [
+                    {
+                        "description": "Filter options",
+                        "name": "filter",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspIdpConfigFilter"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.CspIdpConfig"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-idp-configs/summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get IDP configuration count summary grouped by CSP account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-idp-configs"
+                ],
+                "summary": "Get CSP IDP config summary",
+                "operationId": "getCspIdpSummary",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.CspIdpSummary"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-policies": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new CSP policy",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-policies"
+                ],
+                "summary": "Create CSP policy",
+                "operationId": "createCspPolicy",
+                "parameters": [
+                    {
+                        "description": "CSP Policy Info",
+                        "name": "policy",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateCspPolicyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspPolicy"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-policies/attach": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Attach a CSP policy to a CSP role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-policies"
+                ],
+                "summary": "Attach policy to role",
+                "operationId": "attachPolicyToRole",
+                "parameters": [
+                    {
+                        "description": "Attach Policy Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AttachPolicyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-policies/detach": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Detach a CSP policy from a CSP role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-policies"
+                ],
+                "summary": "Detach policy from role",
+                "operationId": "detachPolicyFromRole",
+                "parameters": [
+                    {
+                        "description": "Detach Policy Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AttachPolicyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-policies/id/{policyId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve CSP policy details by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-policies"
+                ],
+                "summary": "Get CSP policy by ID",
+                "operationId": "getCspPolicyByID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Policy ID",
+                        "name": "policyId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspPolicy"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update CSP policy details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-policies"
+                ],
+                "summary": "Update CSP policy",
+                "operationId": "updateCspPolicy",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Policy ID",
+                        "name": "policyId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "CSP Policy Info",
+                        "name": "policy",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateCspPolicyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspPolicy"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a CSP policy by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-policies"
+                ],
+                "summary": "Delete CSP policy",
+                "operationId": "deleteCspPolicy",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Policy ID",
+                        "name": "policyId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-policies/id/{policyId}/document": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the policy document content",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-policies"
+                ],
+                "summary": "Get policy document",
+                "operationId": "getPolicyDocument",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Policy ID",
+                        "name": "policyId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-policies/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of CSP policies with optional filters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-policies"
+                ],
+                "summary": "List CSP policies",
+                "operationId": "listCspPolicies",
+                "parameters": [
+                    {
+                        "description": "Filter options",
+                        "name": "filter",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspPolicyFilter"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.CspPolicy"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-policies/role/{roleId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get list of policies attached to a CSP role",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-policies"
+                ],
+                "summary": "Get policies attached to role",
+                "operationId": "getRolePolicies",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.CspPolicy"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp-policies/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Synchronize policies from the CSP cloud",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-policies"
+                ],
+                "summary": "Sync CSP policies from cloud",
+                "operationId": "syncCspPolicies",
+                "parameters": [
+                    {
+                        "description": "Sync Policies Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SyncPoliciesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.CspPolicy"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp/iam/roles": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSP에 IAM 역할을 직접 생성합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-iam"
+                ],
+                "summary": "CSP IAM 역할 생성",
+                "operationId": "createCspIAMRole",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "CSP 계정 ID",
+                        "name": "csp_account_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "IAM 역할 정보",
+                        "name": "role",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/csp.Role"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csp/iam/roles/{roleName}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSP에서 특정 IAM 역할 정보를 조회합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-iam"
+                ],
+                "summary": "CSP IAM 역할 조회",
+                "operationId": "getCspIAMRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IAM 역할명",
+                        "name": "roleName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "CSP 계정 ID",
+                        "name": "csp_account_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/csp.Role"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSP의 IAM 역할 정보를 수정합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-iam"
+                ],
+                "summary": "CSP IAM 역할 수정",
+                "operationId": "updateCspIAMRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IAM 역할명",
+                        "name": "roleName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "CSP 계정 ID",
+                        "name": "csp_account_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "IAM 역할 수정 정보",
+                        "name": "role",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/csp.Role"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSP에서 IAM 역할을 삭제합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-iam"
+                ],
+                "summary": "CSP IAM 역할 삭제",
+                "operationId": "deleteCspIAMRole",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IAM 역할명",
+                        "name": "roleName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "CSP 계정 ID",
+                        "name": "csp_account_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/groups/id/{groupId}/platform-roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "그룹에 할당된 플랫폼 역할 목록을 조회합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "그룹 Platform Role 목록 조회",
+                "operationId": "getGroupPlatformRoles",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.GroupPlatformRoleResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "그룹에 플랫폼 역할을 할당합니다. DB + Keycloak 이중 관리.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "그룹에 Platform Role 할당",
+                "operationId": "assignGroupPlatformRole",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "역할 할당 요청",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignGroupPlatformRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/groups/id/{groupId}/platform-roles/available": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "그룹에 아직 할당되지 않은 플랫폼 역할 목록을 조회합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "그룹에 할당 가능한 Platform Role 목록 조회",
+                "operationId": "getAvailableGroupPlatformRoles",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMaster"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/groups/id/{groupId}/platform-roles/{roleId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "그룹에 할당된 플랫폼 역할을 해제합니다. DB + Keycloak 동시 제거.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "그룹 Platform Role 해제",
+                "operationId": "removeGroupPlatformRole",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "역할 ID",
+                        "name": "roleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/groups/id/{groupId}/users": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "그룹에 사용자 목록을 일괄 할당합니다. DB + Keycloak 그룹 동기화.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "그룹에 사용자 일괄 할당 (Keycloak 동기화 포함)",
+                "operationId": "assignGroupUsers",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "사용자 일괄 할당 요청",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignGroupUsersRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/groups/id/{groupId}/users/{userId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "그룹에서 특정 사용자를 제거합니다. DB + Keycloak 그룹 동기화.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "그룹에서 사용자 제거 (Keycloak 동기화 포함)",
+                "operationId": "removeGroupUser",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "사용자 ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/groups/id/{groupId}/workspaces": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "그룹에 매핑된 워크스페이스 및 역할 목록을 조회합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "그룹 워크스페이스 매핑 목록 조회",
+                "operationId": "getGroupWorkspaces",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.GroupWorkspaceRoleResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "그룹을 워크스페이스에 매핑하고 역할을 지정합니다. DB 전용 관리.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "그룹-워크스페이스 매핑",
+                "operationId": "assignGroupWorkspace",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "워크스페이스 매핑 요청",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignGroupWorkspaceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/groups/id/{groupId}/workspaces/available": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "그룹에 아직 매핑되지 않은 워크스페이스 목록을 조회합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "그룹에 매핑 가능한 워크스페이스 목록 조회",
+                "operationId": "getAvailableGroupWorkspaces",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Workspace"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/groups/id/{groupId}/workspaces/{workspaceId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "그룹-워크스페이스 매핑의 역할을 변경합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "그룹 워크스페이스 역할 변경",
+                "operationId": "updateGroupWorkspaceRole",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 ID",
+                        "name": "workspaceId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "역할 변경 요청",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateGroupWorkspaceRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "그룹-워크스페이스 매핑을 제거합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "그룹-워크스페이스 매핑 제거",
+                "operationId": "removeGroupWorkspaceRole",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "워크스페이스 ID",
+                        "name": "workspaceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/initial-admin": {
             "post": {
                 "description": "Creates the initial platform admin user with necessary permissions. platform admin 생성인데",
@@ -463,6 +3461,146 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/model.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invitations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List all workspace invitations, optionally filtered by status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invitations"
+                ],
+                "summary": "List all invitations (admin)",
+                "operationId": "listAllInvitations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status (PENDING_APPROVAL)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.WorkspaceInvitation"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invitations/{invitationId}/approve": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin approves a workspace invitation and registers the invitee as member",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invitations"
+                ],
+                "summary": "Approve workspace invitation (admin)",
+                "operationId": "approveInvitation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Invitation ID",
+                        "name": "invitationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invitations/{invitationId}/reject": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin rejects a workspace invitation",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invitations"
+                ],
+                "summary": "Reject workspace invitation (admin)",
+                "operationId": "rejectInvitationByAdmin",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Invitation ID",
+                        "name": "invitationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -725,6 +3863,131 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/mcmpapi.McmpApiAction"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mcmp-apis": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new MCMP API service (framework) record. Returns 409 if a service with the same name already exists.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "McmpAPI"
+                ],
+                "summary": "Create MCMP API Service Definition",
+                "operationId": "CreateFrameworkService",
+                "parameters": [
+                    {
+                        "description": "Service definition",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateMcmpApiServiceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/mcmpapi.McmpApiService"
+                        }
+                    },
+                    "400": {
+                        "description": "error: invalid request body or validation failure",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "error: framework service already exists",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mcmp-apis/import": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Fetches API specifications from remote URLs and imports them to the database. Supports swagger and openapi source types. Optionally accepts baseUrl and authentication info to populate the mcmp_api_services table.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "McmpAPI"
+                ],
+                "summary": "Import MCMP APIs from Remote Sources",
+                "operationId": "importAPIs",
+                "parameters": [
+                    {
+                        "description": "Frameworks to import (with optional baseUrl, authType, authUser, authPass)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ImportApiRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Import results",
+                        "schema": {
+                            "$ref": "#/definitions/model.ImportApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "error: Invalid request body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Failed to import APIs",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }
@@ -1116,7 +4379,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new menu",
+                "description": "Create a new menu. If roleIds is provided, the menu is mapped to those platform roles in a single transaction. platform_admin role is always automatically mapped.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1135,7 +4398,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Menu"
+                            "$ref": "#/definitions/model.CreateMenuRequest"
                         }
                     }
                 ],
@@ -1143,7 +4406,34 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/model.Menu"
+                            "$ref": "#/definitions/model.CreateMenuResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -1284,6 +4574,65 @@ const docTemplate = `{
                 ],
                 "summary": "List all menus",
                 "operationId": "listMenus",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.MenuTreeNode"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/menus/menus-tree/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List all menus as a tree structure. Admin permission required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "menus"
+                ],
+                "summary": "List all menus Tree",
+                "operationId": "listMenusTree",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1518,7 +4867,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Register or update menus from a local YAML file specified by the filePath query parameter, or from the MCWEBCONSOLE_MENUYAML URL in .env if not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.",
+                "description": "Register or update menus from a local YAML file specified by the filePath query parameter, or from the MC_WEB_CONSOLE_MENUYAML URL in .env if not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1622,65 +4971,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/menus/tree/list": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "List all menus as a tree structure. Admin permission required.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "menus"
-                ],
-                "summary": "List all menus Tree",
-                "operationId": "listMenusTree",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.MenuTreeNode"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "error: Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "error: Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 서버 내부 오류",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/menus/user-menu-tree": {
             "get": {
                 "security": [
@@ -1707,6 +4997,599 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/model.MenuTreeNode"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "전체 조직 목록을 조회합니다. tree=true이면 Tree 구조로 반환. name/code로 검색 가능 (검색 시 tree 파라미터 무시).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "조직 목록 조회",
+                "operationId": "listOrganizations",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Tree 구조 반환 여부 (기본: false)",
+                        "name": "tree",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "조직명 검색 (부분 일치, ILIKE)",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "조직 코드 검색 (부분 일치, ILIKE)",
+                        "name": "code",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.OrganizationTree"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "플랫폼 관리자가 조직을 생성합니다. parent_id가 없으면 최상위 조직 생성.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "조직 생성",
+                "operationId": "createOrganization",
+                "parameters": [
+                    {
+                        "description": "조직 생성 요청",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateOrganizationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.Organization"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/code/{code}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "조직 코드로 조직 정보를 조회합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "조직 상세 조회 (코드)",
+                "operationId": "getOrganizationByCode",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "조직 코드 (예: 0101)",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Organization"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/id/{organizationId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "조직 ID로 조직 정보를 조회합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "조직 상세 조회 (ID)",
+                "operationId": "getOrganizationByID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "조직 ID",
+                        "name": "organizationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Organization"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "조직 정보를 수정합니다. 부모 변경 시 하위 조직 코드 자동 재생성.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "조직 수정",
+                "operationId": "updateOrganization",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "조직 ID",
+                        "name": "organizationId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "조직 수정 요청",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateOrganizationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "조직을 삭제합니다. cascade=true이면 하위 조직 및 사용자 매핑도 모두 삭제됩니다. 기본(cascade=false)이고 하위 조직이 있으면 400을 반환합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "조직 삭제",
+                "operationId": "deleteOrganization",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "조직 ID",
+                        "name": "organizationId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "하위 조직 cascade 삭제 여부 (기본: false)",
+                        "name": "cascade",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "삭제 성공"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/id/{organizationId}/deletable": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "특정 조직의 삭제 가능 여부와 사유를 반환합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "조직 삭제 가능 여부 확인",
+                "operationId": "getOrganizationDeletable",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "조직 ID",
+                        "name": "organizationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.OrganizationDeletableResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/id/{organizationId}/move": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "조직을 트리 내 다른 위치(다른 부모 조직)로 이동합니다. 하위 조직도 함께 이동하며 조직 코드가 자동 재생성됩니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "조직 이동",
+                "operationId": "moveOrganization",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "조직 ID",
+                        "name": "organizationId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "이동 요청 (new_parent_id: null이면 최상위로 이동)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MoveOrganizationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/id/{organizationId}/subtree": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "지정 조직을 루트로 하는 하위 트리를 반환합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "특정 조직의 하위 트리 조회",
+                "operationId": "getOrganizationSubtree",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "조직 ID",
+                        "name": "organizationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.OrganizationTree"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/id/{organizationId}/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "특정 조직에 소속된 사용자 목록을 조회합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "조직 소속 사용자 조회",
+                "operationId": "getOrganizationUsers",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "조직 ID",
+                        "name": "organizationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.User"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/organizations/tree": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "전체 조직을 계층 트리 구조로 반환합니다. 최대 10단계 깊이를 지원하며 각 노드에 children 배열을 포함합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "전체 조직 트리 조회",
+                "operationId": "getOrganizationTree",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.OrganizationTree"
                             }
                         }
                     },
@@ -2009,7 +5892,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new project with the specified information.",
+                "description": "Create a new project with the specified information. Optionally specify a workspace to assign the project to.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2028,7 +5911,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Project"
+                            "$ref": "#/definitions/model.CreateProjectRequest"
                         }
                     }
                 ],
@@ -2048,8 +5931,149 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/projects/assign/workspaces": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "프로젝트에 워크스페이스를 연결합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "프로젝트에 워크스페이스 연결",
+                "operationId": "addWorkspaceToProject",
+                "parameters": [
+                    {
+                        "description": "Workspace and Project IDs",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.WorkspaceProjectMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "error: 잘못된 ID 형식",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: 프로젝트 또는 워크스페이스를 찾을 수 없습니다",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/projects/id/{projectId}/workspaces": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve list of workspaces that the project is assigned to",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Get workspaces assigned to project",
+                "operationId": "getProjectWorkspaces",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID",
+                        "name": "projectId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Workspace"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "error: Invalid project ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Project not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Internal server error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2147,6 +6171,61 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/projects/unassign/workspaces": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a workspace from a project",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "Remove workspace from project",
+                "operationId": "removeWorkspaceFromProject",
+                "parameters": [
+                    {
+                        "description": "Workspace and Project IDs",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.WorkspaceProjectMappingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "error: Invalid request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Internal server error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2326,75 +6405,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/projects/{id}/workspaces/{workspaceId}": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "프로젝트에 워크스페이스를 연결합니다.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "projects"
-                ],
-                "summary": "프로젝트에 워크스페이스 연결",
-                "operationId": "addWorkspaceToProject",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "프로젝트 ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "워크스페이스 ID",
-                        "name": "workspaceId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "error: 잘못된 ID 형식",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "error: 프로젝트 또는 워크스페이스를 찾을 수 없습니다",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "error: 서버 내부 오류",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -3392,7 +7402,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get a list of all csp roles",
+                "description": "Get a list of all csp roles stored in the database",
                 "consumes": [
                     "application/json"
                 ],
@@ -3410,7 +7420,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/model.RoleMaster"
+                                "$ref": "#/definitions/model.CspRole"
                             }
                         }
                     },
@@ -4810,7 +8820,7 @@ const docTemplate = `{
                     "roles"
                 ],
                 "summary": "List workspace roles",
-                "operationId": "listWorkspaceRoles",
+                "operationId": "listRolesOfWorkspaceType",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -5066,6 +9076,44 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/setup/initial-organizations": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "YAML 시드 파일에서 기본 조직 구조(MZC + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "기본 조직 초기화",
+                "operationId": "setupInitialOrganizations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/setup/initial-role-menu-permission": {
             "get": {
                 "security": [
@@ -5110,6 +9158,99 @@ const docTemplate = `{
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/model.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setup/projects/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "지정된 nsId 목록의 project를 생성하거나 지정된 workspace에 할당합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "선택한 namespace를 특정 workspace에 동기화",
+                "operationId": "applyProjectSync",
+                "parameters": [
+                    {
+                        "description": "Sync Apply Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ProjectSyncApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ProjectSyncApplyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "error: 잘못된 요청",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setup/projects/sync-diff": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "mc-infra-manager의 namespace 목록과 로컬 프로젝트를 비교하여 불일치 목록을 반환합니다. DB 변경 없음.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "projects"
+                ],
+                "summary": "mc-infra-manager와 프로젝트 동기화 차이 조회",
+                "operationId": "getProjectSyncDiff",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ProjectSyncDiffResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "error: 서버 내부 오류",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -5268,6 +9409,602 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the details of an existing user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update user",
+                "operationId": "updateUser",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User Info",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a user by their ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete user",
+                "operationId": "deleteUser",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/access-summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "사용자의 직접 할당 플랫폼 역할, 소속 그룹 목록, 그룹 기반 역할을 통합 조회합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "사용자 접근 권한 요약 조회",
+                "operationId": "getUserAccessSummary",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "사용자 ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.UserAccessSummaryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/activate": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reactivate a deactivated user account (INACTIVE → ACTIVE).",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Activate user account",
+                "operationId": "activateUser",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User DB ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/deactivate": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deactivate a user account (ACTIVE → INACTIVE). Keycloak login is disabled.",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Deactivate user account",
+                "operationId": "deactivateUser",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User DB ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/effective-platform-roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "사용자에게 직접 할당된 역할과 소속 그룹을 통해 상속된 역할을 중복 제거하여 반환합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "사용자 유효 플랫폼 역할 목록 조회 (직접 + 그룹 상속)",
+                "operationId": "getUserEffectivePlatformRoles",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "사용자 ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.EffectivePlatformRoleItem"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/groups": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "사용자의 기존 그룹을 모두 제거하고 지정된 그룹으로 교체합니다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "사용자 그룹 멤버십 전체 교체",
+                "operationId": "replaceUserGroups",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "사용자 ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "교체할 그룹 목록",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignUserGroupsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "사용자를 하나 이상의 그룹에 할당합니다. DB + Keycloak 그룹 동기화.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "사용자를 그룹에 할당 (Keycloak 동기화 포함)",
+                "operationId": "assignUserGroups",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "사용자 ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "그룹 할당 요청",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignUserGroupsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/groups/{groupId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "사용자를 특정 그룹에서 제거합니다. DB + Keycloak 그룹 동기화.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "사용자를 그룹에서 제거 (Keycloak 동기화 포함)",
+                "operationId": "removeUserFromGroup",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "사용자 ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "그룹 ID",
+                        "name": "groupId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/password": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reset a user's password (admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Reset user password",
+                "operationId": "ResetUserPassword",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID (DB)",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New Password",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ResetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/users/id/{userId}/status": {
@@ -5316,6 +10053,71 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/id/{userId}/withdraw": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin processes a withdrawal request: removes all role/org mappings and disables in Keycloak.",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Process user withdrawal",
+                "operationId": "processWithdrawal",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User DB ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -5564,7 +10366,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieve a list of all users.",
+                "description": "Retrieve a list of users. Optionally filter by Keycloak enabled status (true=active, false=pending approval).",
                 "consumes": [
                     "application/json"
                 ],
@@ -5576,6 +10378,16 @@ const docTemplate = `{
                 ],
                 "summary": "List all users",
                 "operationId": "listUsers",
+                "parameters": [
+                    {
+                        "description": "Optional filter",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/handler.UserListRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -5583,6 +10395,431 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/model.User"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the authenticated user's own profile information. No PlatformRole required.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get my info",
+                "operationId": "getMyInfo",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.User"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/invitations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List pending workspace invitations for the current user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List my invitations",
+                "operationId": "listMyInvitations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.WorkspaceInvitation"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/invitations/{invitationId}/accept": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Accept a workspace invitation and join as member",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Accept workspace invitation",
+                "operationId": "acceptInvitation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Invitation ID",
+                        "name": "invitationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/invitations/{invitationId}/reject": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reject a workspace invitation",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Reject workspace invitation",
+                "operationId": "rejectInvitation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Invitation ID",
+                        "name": "invitationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/password": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Change the authenticated user's own password. Requires current password for verification.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Change my password",
+                "operationId": "changeMyPassword",
+                "parameters": [
+                    {
+                        "description": "Current and New Password",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ChangeMyPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/platform-roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "현재 로그인한 사용자에게 실제로 적용되는 플랫폼 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을 통합하여 반환합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "내 유효 플랫폼 역할 목록 조회",
+                "operationId": "getMyPlatformRoles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMaster"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/withdrawal": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Current user requests account withdrawal (ACTIVE → WITHDRAWAL_REQUESTED).",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Request user withdrawal",
+                "operationId": "requestWithdrawal",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/users/me/workspace-roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "현재 로그인한 사용자에게 실제로 적용되는 워크스페이스별 역할 목록을 조회합니다. 직접 할당된 역할과 그룹 상속 역할을 통합하여 반환합니다.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "내 유효 워크스페이스 역할 목록 조회",
+                "operationId": "getMyWorkspaceRoles",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.EffectiveWorkspaceRole"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     },
@@ -5863,48 +11100,45 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/users/{id}": {
-            "put": {
+        "/api/users/{userId}/organizations": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update the details of an existing user.",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "사용자가 소속된 조직 목록을 조회합니다. hierarchy=true이면 path/level 포함.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "organizations"
                 ],
-                "summary": "Update user",
-                "operationId": "updateUser",
+                "summary": "사용자 소속 조직 조회",
+                "operationId": "getUserOrganizations",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "id",
+                        "type": "integer",
+                        "description": "사용자 ID",
+                        "name": "userId",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "User Info",
-                        "name": "user",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.User"
-                        }
+                        "type": "boolean",
+                        "description": "계층 정보(path, level) 포함 여부 (기본: false)",
+                        "name": "hierarchy",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.User"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.OrganizationTree"
+                            }
                         }
                     },
                     "400": {
@@ -5915,9 +11149,48 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "사용자를 하나 이상의 조직에 할당합니다 (다중 소속 가능).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "사용자-조직 할당",
+                "operationId": "assignUserOrganizations",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "사용자 ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
                     },
-                    "404": {
-                        "description": "Not Found",
+                    {
+                        "description": "조직 할당 요청",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignUserOrganizationsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -5925,8 +11198,8 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -5935,40 +11208,43 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
+            }
+        },
+        "/api/users/{userId}/organizations/{organizationId}": {
             "delete": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Delete a user by their ID.",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "사용자를 특정 조직에서 제거합니다.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "users"
+                    "organizations"
                 ],
-                "summary": "Delete user",
-                "operationId": "deleteUser",
+                "summary": "사용자-조직 매핑 제거",
+                "operationId": "removeUserOrganization",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "id",
+                        "type": "integer",
+                        "description": "사용자 ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "조직 ID",
+                        "name": "organizationId",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "404": {
-                        "description": "Not Found",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -5976,8 +11252,8 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -6117,6 +11393,73 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "error: Workspace or Project not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workspaces/credentials/validate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "워크스페이스 사용자의 CSP×AuthMethod 조합 인증 설정을 단계별로 검증하고 임시자격증명 발급까지 확인한다. 실패 여부와 무관하게 모든 단계를 응답에 포함한다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "csp-validation"
+                ],
+                "summary": "CSP 인증 설정 단계별 검증",
+                "operationId": "mciamValidateCredentials",
+                "parameters": [
+                    {
+                        "description": "검증 요청",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CspValidationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.CspValidationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "error: invalid request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: User not found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -6503,6 +11846,116 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/workspaces/id/{wsId}/invitations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List invitations for a specific workspace",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "List workspace invitations",
+                "operationId": "listWorkspaceInvitations",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Workspace ID",
+                        "name": "wsId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status (PENDING/ACCEPTED/REJECTED)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.WorkspaceInvitation"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Send an invitation to a platform user to join the workspace",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "Send workspace invitation",
+                "operationId": "sendWorkspaceInvitation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Workspace ID",
+                        "name": "wsId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Invitation request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SendInvitationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.WorkspaceInvitation"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/workspaces/list": {
             "post": {
                 "security": [
@@ -6667,6 +12120,67 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "error: Workspace not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workspaces/roles/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all workspace-level roles with optional filtering",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workspaces"
+                ],
+                "summary": "List workspace roles",
+                "operationId": "listWorkspaceRoles",
+                "parameters": [
+                    {
+                        "description": "Role filter parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.RoleFilterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved workspace roles",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.RoleMaster"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "error: Invalid request format",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Failed to retrieve workspace roles",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -7068,11 +12582,13 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "OIDC",
-                "SAML"
+                "SAML",
+                "SECRET_KEY"
             ],
             "x-enum-varnames": [
                 "AuthMethodOIDC",
-                "AuthMethodSAML"
+                "AuthMethodSAML",
+                "AuthMethodSecretKey"
             ]
         },
         "constants.CSPType": {
@@ -7080,12 +12596,26 @@ const docTemplate = `{
             "enum": [
                 "aws",
                 "gcp",
-                "azure"
+                "azure",
+                "alibaba",
+                "tencent",
+                "ibm",
+                "ncp",
+                "nhn",
+                "kt",
+                "openstack"
             ],
             "x-enum-varnames": [
                 "CSPTypeAWS",
                 "CSPTypeGCP",
-                "CSPTypeAzure"
+                "CSPTypeAzure",
+                "CSPTypeAlibaba",
+                "CSPTypeTencent",
+                "CSPTypeIBM",
+                "CSPTypeNCP",
+                "CSPTypeNHN",
+                "CSPTypeKT",
+                "CSPTypeOpenStack"
             ]
         },
         "constants.IAMRoleType": {
@@ -7110,6 +12640,88 @@ const docTemplate = `{
                 "RoleTypeWorkspace",
                 "RoleTypeCSP"
             ]
+        },
+        "csp.Principal": {
+            "type": "object",
+            "properties": {
+                "AWS": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Service": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "csp.Role": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "policy": {
+                    "$ref": "#/definitions/csp.RolePolicy"
+                },
+                "tags": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "csp.RolePolicy": {
+            "type": "object",
+            "properties": {
+                "Statement": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/csp.RolePolicyStatement"
+                    }
+                },
+                "Version": {
+                    "type": "string"
+                }
+            }
+        },
+        "csp.RolePolicyStatement": {
+            "type": "object",
+            "properties": {
+                "Action": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Effect": {
+                    "type": "string"
+                },
+                "Principal": {
+                    "$ref": "#/definitions/csp.Principal"
+                },
+                "Resource": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "handler.UserListRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
         },
         "idp.UserLogin": {
             "type": "object",
@@ -7212,6 +12824,41 @@ const docTemplate = `{
                 }
             }
         },
+        "mcmpapi.McmpApiService": {
+            "type": "object",
+            "properties": {
+                "authPass": {
+                    "description": "Consider encryption for password",
+                    "type": "string"
+                },
+                "authType": {
+                    "type": "string"
+                },
+                "authUser": {
+                    "type": "string"
+                },
+                "baseURL": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "description": "Added IsActive field",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "Service name acts as PK",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "mcmpapi.McmpApiServiceAction": {
             "type": "object",
             "properties": {
@@ -7245,6 +12892,47 @@ const docTemplate = `{
                 }
             }
         },
+        "model.AssignGroupPlatformRoleRequest": {
+            "type": "object",
+            "required": [
+                "role_id"
+            ],
+            "properties": {
+                "role_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.AssignGroupUsersRequest": {
+            "type": "object",
+            "required": [
+                "user_ids"
+            ],
+            "properties": {
+                "user_ids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "model.AssignGroupWorkspaceRequest": {
+            "type": "object",
+            "required": [
+                "role_id",
+                "workspace_id"
+            ],
+            "properties": {
+                "role_id": {
+                    "type": "integer"
+                },
+                "workspace_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.AssignRoleRequest": {
             "type": "object",
             "properties": {
@@ -7274,6 +12962,36 @@ const docTemplate = `{
                 }
             }
         },
+        "model.AssignUserGroupsRequest": {
+            "type": "object",
+            "required": [
+                "group_ids"
+            ],
+            "properties": {
+                "group_ids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "model.AssignUserOrganizationsRequest": {
+            "type": "object",
+            "required": [
+                "organization_ids"
+            ],
+            "properties": {
+                "organization_ids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "model.AssignWorkspaceRoleRequest": {
             "type": "object",
             "properties": {
@@ -7299,9 +13017,270 @@ const docTemplate = `{
                 }
             }
         },
+        "model.AttachPolicyRequest": {
+            "type": "object",
+            "required": [
+                "csp_policy_id",
+                "csp_role_id"
+            ],
+            "properties": {
+                "csp_policy_id": {
+                    "type": "integer"
+                },
+                "csp_role_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.AuthMethodType": {
+            "type": "string",
+            "enum": [
+                "OIDC",
+                "SAML",
+                "SECRET_KEY"
+            ],
+            "x-enum-varnames": [
+                "AuthMethodOIDC",
+                "AuthMethodSAML",
+                "AuthMethodSecretKey"
+            ]
+        },
+        "model.BulkHealthCheckRequest": {
+            "type": "object",
+            "properties": {
+                "csp_account_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.BulkHealthCheckResponse": {
+            "type": "object",
+            "properties": {
+                "connected_count": {
+                    "type": "integer"
+                },
+                "failed_count": {
+                    "type": "integer"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.HealthCheckResult"
+                    }
+                },
+                "total_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.ChangeMyPasswordRequest": {
+            "type": "object",
+            "required": [
+                "currentPassword",
+                "newPassword"
+            ],
+            "properties": {
+                "currentPassword": {
+                    "type": "string"
+                },
+                "newPassword": {
+                    "type": "string",
+                    "minLength": 8
+                }
+            }
+        },
+        "model.CompanyRequest": {
+            "type": "object",
+            "required": [
+                "kc_client_id",
+                "kc_client_secret",
+                "name",
+                "realm_name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "kc_client_id": {
+                    "type": "string"
+                },
+                "kc_client_secret": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "realm_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CompanyResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "kc_client_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "realm_name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CompanyUpdateRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateCspAccountRequest": {
+            "type": "object",
+            "required": [
+                "csp_type",
+                "name"
+            ],
+            "properties": {
+                "account_info": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "csp_type": {
+                    "type": "string",
+                    "enum": [
+                        "aws",
+                        "gcp",
+                        "azure",
+                        "alibaba",
+                        "tencent",
+                        "ibm",
+                        "ncp",
+                        "nhn",
+                        "kt",
+                        "openstack"
+                    ]
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateCspIdpConfigRequest": {
+            "type": "object",
+            "required": [
+                "auth_method",
+                "config",
+                "csp_account_id",
+                "name"
+            ],
+            "properties": {
+                "auth_method": {
+                    "enum": [
+                        "OIDC",
+                        "SAML",
+                        "SECRET_KEY"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AuthMethodType"
+                        }
+                    ]
+                },
+                "config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "csp_account_id": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateCspPolicyRequest": {
+            "type": "object",
+            "required": [
+                "csp_account_id",
+                "name",
+                "policy_type"
+            ],
+            "properties": {
+                "csp_account_id": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "policy_arn": {
+                    "type": "string"
+                },
+                "policy_doc": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "policy_type": {
+                    "enum": [
+                        "inline",
+                        "managed",
+                        "custom"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.PolicyType"
+                        }
+                    ]
+                }
+            }
+        },
         "model.CreateCspRoleRequest": {
             "type": "object",
             "properties": {
+                "authMethod": {
+                    "description": "인증방식 (OIDC/SAML/SECRET_KEY), 미지정 시 OIDC 기본값",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/constants.AuthMethod"
+                        }
+                    ]
+                },
                 "cspRoleName": {
                     "description": "csp의 RoleName. 여러 role이 있기때문에 csp에 정의한 role로 구분하기 위해 사용",
                     "type": "string"
@@ -7352,6 +13331,44 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CreateMcmpApiServiceRequest": {
+            "type": "object",
+            "required": [
+                "baseUrl",
+                "name",
+                "version"
+            ],
+            "properties": {
+                "authPass": {
+                    "type": "string"
+                },
+                "authType": {
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "basic",
+                        "bearer"
+                    ]
+                },
+                "authUser": {
+                    "type": "string"
+                },
+                "baseUrl": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "version": {
+                    "type": "string",
+                    "maxLength": 50
+                }
+            }
+        },
         "model.CreateMenuMappingRequest": {
             "type": "object",
             "required": [
@@ -7366,6 +13383,98 @@ const docTemplate = `{
                     }
                 },
                 "roleId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateMenuRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isAction": {
+                    "type": "boolean"
+                },
+                "menuNumber": {
+                    "type": "string"
+                },
+                "parentId": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "resType": {
+                    "type": "string"
+                },
+                "roleIds": {
+                    "description": "생성과 동시에 매핑할 역할 ID 목록 (platform_admin은 항상 자동 매핑)",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "model.CreateMenuResponse": {
+            "type": "object",
+            "properties": {
+                "menu": {
+                    "$ref": "#/definitions/model.Menu"
+                },
+                "roleMappings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.RoleMenuMapping"
+                    }
+                }
+            }
+        },
+        "model.CreateOrganizationRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "organization_code": {
+                    "description": "비어있으면 자동 생성",
+                    "type": "string"
+                },
+                "parent_id": {
+                    "description": "nil = 최상위 조직",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.CreateProjectRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "workspaceId": {
+                    "description": "optional workspace to assign project to",
                     "type": "string"
                 }
             }
@@ -7406,6 +13515,251 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CredentialSummary": {
+            "type": "object",
+            "properties": {
+                "accessKeyId": {
+                    "type": "string"
+                },
+                "expiration": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CspAccount": {
+            "type": "object",
+            "properties": {
+                "account_info": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "csp_type": {
+                    "description": "aws, gcp, azure",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CspAccountFilter": {
+            "type": "object",
+            "properties": {
+                "csp_type": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CspAccountValidationResponse": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "integer"
+                },
+                "account_name": {
+                    "type": "string"
+                },
+                "csp_type": {
+                    "type": "string"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CspAccountValidationResult"
+                    }
+                }
+            }
+        },
+        "model.CspAccountValidationResult": {
+            "type": "object",
+            "properties": {
+                "auth_method": {
+                    "type": "string"
+                },
+                "csp_role_id": {
+                    "type": "integer"
+                },
+                "csp_role_name": {
+                    "type": "string"
+                },
+                "csp_type": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "model.CspIdpConfig": {
+            "type": "object",
+            "properties": {
+                "auth_method": {
+                    "description": "OIDC, SAML, SECRET_KEY",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AuthMethodType"
+                        }
+                    ]
+                },
+                "config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "csp_account": {
+                    "$ref": "#/definitions/model.CspAccount"
+                },
+                "csp_account_id": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CspIdpConfigFilter": {
+            "type": "object",
+            "properties": {
+                "auth_method": {
+                    "$ref": "#/definitions/model.AuthMethodType"
+                },
+                "csp_account_id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CspIdpSummary": {
+            "type": "object",
+            "properties": {
+                "active_count": {
+                    "type": "integer"
+                },
+                "csp_account_id": {
+                    "type": "integer"
+                },
+                "csp_account_name": {
+                    "type": "string"
+                },
+                "csp_type": {
+                    "type": "string"
+                },
+                "method_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "total_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.CspPolicy": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "csp_account": {
+                    "$ref": "#/definitions/model.CspAccount"
+                },
+                "csp_account_id": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "policy_arn": {
+                    "type": "string"
+                },
+                "policy_doc": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "policy_type": {
+                    "description": "inline, managed, custom",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.PolicyType"
+                        }
+                    ]
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CspPolicyFilter": {
+            "type": "object",
+            "properties": {
+                "csp_account_id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "policy_type": {
+                    "$ref": "#/definitions/model.PolicyType"
+                }
+            }
+        },
         "model.CspRole": {
             "type": "object",
             "properties": {
@@ -7415,6 +13769,19 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "csp_account": {
+                    "$ref": "#/definitions/model.CspAccount"
+                },
+                "csp_account_id": {
+                    "description": "CSP 계정 및 IDP 설정 참조 (신규 추가)",
+                    "type": "integer"
+                },
+                "csp_idp_config": {
+                    "$ref": "#/definitions/model.CspIdpConfig"
+                },
+                "csp_idp_config_id": {
+                    "type": "integer"
+                },
                 "csp_type": {
                     "type": "string"
                 },
@@ -7423,6 +13790,10 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
+                },
+                "extended_config": {
+                    "type": "object",
+                    "additionalProperties": true
                 },
                 "iam_identifier": {
                     "type": "string"
@@ -7471,6 +13842,94 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CspValidationRequest": {
+            "type": "object",
+            "properties": {
+                "authMethod": {
+                    "description": "인증방식 (OIDC, SAML, SECRET_KEY)",
+                    "type": "string"
+                },
+                "cspType": {
+                    "description": "CSP 유형 (aws, gcp, ...)",
+                    "type": "string"
+                },
+                "workspaceId": {
+                    "description": "대상 워크스페이스 ID",
+                    "type": "string"
+                }
+            }
+        },
+        "model.CspValidationResponse": {
+            "type": "object",
+            "properties": {
+                "authMethod": {
+                    "type": "string"
+                },
+                "credentials": {
+                    "description": "valid=true일 때만",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.CredentialSummary"
+                        }
+                    ]
+                },
+                "cspType": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "failedStep": {
+                    "description": "0=전체성공, N=N번 단계 실패",
+                    "type": "integer"
+                },
+                "steps": {
+                    "description": "항상 전체 단계 포함",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ValidationStep"
+                    }
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "model.EffectivePlatformRoleItem": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "integer"
+                },
+                "role_name": {
+                    "type": "string"
+                },
+                "source": {
+                    "description": "\"direct\" 또는 \"group:{groupName}\"",
+                    "type": "string"
+                }
+            }
+        },
+        "model.EffectiveWorkspaceRole": {
+            "type": "object",
+            "properties": {
+                "role_id": {
+                    "type": "integer"
+                },
+                "role_name": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "integer"
+                },
+                "workspace_name": {
+                    "type": "string"
+                }
+            }
+        },
         "model.FilterRoleMasterMappingRequest": {
             "type": "object",
             "properties": {
@@ -7514,6 +13973,222 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.GroupAccessInfo": {
+            "type": "object",
+            "properties": {
+                "group_id": {
+                    "type": "integer"
+                },
+                "group_name": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlatformRoleSimple"
+                    }
+                }
+            }
+        },
+        "model.GroupPlatformRoleResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "type": "integer"
+                },
+                "group_name": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "integer"
+                },
+                "role_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.GroupWorkspaceRoleResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "type": "integer"
+                },
+                "group_name": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "integer"
+                },
+                "role_name": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "integer"
+                },
+                "workspace_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.HealthCheckResult": {
+            "type": "object",
+            "properties": {
+                "auth_method": {
+                    "type": "string"
+                },
+                "checked_at": {
+                    "type": "string"
+                },
+                "config_id": {
+                    "type": "integer"
+                },
+                "config_name": {
+                    "type": "string"
+                },
+                "csp_type": {
+                    "type": "string"
+                },
+                "error_message": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "CONNECTED, FAILED, TIMEOUT",
+                    "type": "string"
+                }
+            }
+        },
+        "model.ImportApiFramework": {
+            "type": "object",
+            "required": [
+                "name",
+                "sourceType",
+                "sourceUrl",
+                "version"
+            ],
+            "properties": {
+                "authPass": {
+                    "description": "Password for basic auth or token for bearer auth",
+                    "type": "string"
+                },
+                "authType": {
+                    "description": "Authentication type: \"none\", \"basic\", \"bearer\"",
+                    "type": "string"
+                },
+                "authUser": {
+                    "description": "Username for basic auth",
+                    "type": "string"
+                },
+                "baseUrl": {
+                    "description": "Base URL for the service (e.g., \"http://localhost:1323/tumblebug\")",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Framework name (e.g., \"mc-infra-manager\")",
+                    "type": "string"
+                },
+                "repository": {
+                    "description": "Repository URL (e.g., \"https://github.com/...\")",
+                    "type": "string"
+                },
+                "sourceType": {
+                    "description": "Source type: \"swagger\" or \"openapi\"",
+                    "type": "string"
+                },
+                "sourceUrl": {
+                    "description": "URL to fetch the API specification from",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "Framework version (e.g., \"0.9.22\")",
+                    "type": "string"
+                }
+            }
+        },
+        "model.ImportApiFrameworkResult": {
+            "type": "object",
+            "properties": {
+                "actionCount": {
+                    "description": "Number of actions imported (on success)",
+                    "type": "integer"
+                },
+                "errorMessage": {
+                    "description": "Error message (on failure)",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Framework name",
+                    "type": "string"
+                },
+                "success": {
+                    "description": "Whether the import was successful",
+                    "type": "boolean"
+                },
+                "version": {
+                    "description": "Framework version",
+                    "type": "string"
+                }
+            }
+        },
+        "model.ImportApiRequest": {
+            "type": "object",
+            "required": [
+                "frameworks"
+            ],
+            "properties": {
+                "frameworks": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/model.ImportApiFramework"
+                    }
+                }
+            }
+        },
+        "model.ImportApiResponse": {
+            "type": "object",
+            "properties": {
+                "failureCount": {
+                    "description": "Number of failed frameworks",
+                    "type": "integer"
+                },
+                "frameworkResults": {
+                    "description": "Detailed results for each framework",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ImportApiFrameworkResult"
+                    }
+                },
+                "successCount": {
+                    "description": "Number of successfully imported frameworks",
+                    "type": "integer"
+                },
+                "totalFrameworks": {
+                    "description": "Total number of frameworks in request",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.InvitationStatus": {
+            "type": "string",
+            "enum": [
+                "PENDING",
+                "PENDING_APPROVAL",
+                "ACCEPTED",
+                "REJECTED"
+            ],
+            "x-enum-varnames": [
+                "InvitationStatusPending",
+                "InvitationStatusPendingApproval",
+                "InvitationStatusAccepted",
+                "InvitationStatusRejected"
+            ]
         },
         "model.MciamPermission": {
             "type": "object",
@@ -7656,6 +14331,151 @@ const docTemplate = `{
                 }
             }
         },
+        "model.MoveOrganizationRequest": {
+            "type": "object",
+            "properties": {
+                "new_parent_id": {
+                    "description": "nil = 최상위로 이동",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Organization": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Organization"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "organization_code": {
+                    "type": "string"
+                },
+                "parent": {
+                    "description": "관계 정의 (API 응답 전용 - 필요 시 Preload)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.Organization"
+                        }
+                    ]
+                },
+                "parent_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.User"
+                    }
+                }
+            }
+        },
+        "model.OrganizationDeletableResponse": {
+            "type": "object",
+            "properties": {
+                "deletable": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.OrganizationTree": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OrganizationTree"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "level": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "organization_code": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "integer"
+                },
+                "path": {
+                    "description": "예: \"/조직A/개발팀\"",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.PlatformRoleSimple": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "integer"
+                },
+                "role_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.PolicyType": {
+            "type": "string",
+            "enum": [
+                "inline",
+                "managed",
+                "custom"
+            ],
+            "x-enum-comments": {
+                "PolicyTypeCustom": "사용자 정의 정책",
+                "PolicyTypeInline": "인라인 정책 (역할에 직접 포함)",
+                "PolicyTypeManaged": "관리형 정책 (독립 정책)"
+            },
+            "x-enum-descriptions": [
+                "인라인 정책 (역할에 직접 포함)",
+                "관리형 정책 (독립 정책)",
+                "사용자 정의 정책"
+            ],
+            "x-enum-varnames": [
+                "PolicyTypeInline",
+                "PolicyTypeManaged",
+                "PolicyTypeCustom"
+            ]
+        },
         "model.Project": {
             "type": "object",
             "properties": {
@@ -7684,6 +14504,163 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.Workspace"
                     }
+                }
+            }
+        },
+        "model.ProjectSyncApplyAssignedItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nsId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ProjectSyncApplyCreatedItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nsId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ProjectSyncApplyFailedItem": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "nsId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ProjectSyncApplyRequest": {
+            "type": "object",
+            "required": [
+                "nsIds",
+                "workspaceId"
+            ],
+            "properties": {
+                "nsIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "workspaceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ProjectSyncApplyResponse": {
+            "type": "object",
+            "properties": {
+                "assigned": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ProjectSyncApplyAssignedItem"
+                    }
+                },
+                "created": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ProjectSyncApplyCreatedItem"
+                    }
+                },
+                "failed": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ProjectSyncApplyFailedItem"
+                    }
+                },
+                "skipped": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ProjectSyncApplySkippedItem"
+                    }
+                }
+            }
+        },
+        "model.ProjectSyncApplySkippedItem": {
+            "type": "object",
+            "properties": {
+                "nsId": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ProjectSyncDiffMissingItem": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nsId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ProjectSyncDiffResponse": {
+            "type": "object",
+            "properties": {
+                "missingProjects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ProjectSyncDiffMissingItem"
+                    }
+                },
+                "unassignedProjects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ProjectSyncDiffUnassignedItem"
+                    }
+                }
+            }
+        },
+        "model.ProjectSyncDiffUnassignedItem": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nsId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ResetPasswordRequest": {
+            "type": "object",
+            "required": [
+                "newPassword"
+            ],
+            "properties": {
+                "newPassword": {
+                    "type": "string",
+                    "minLength": 8
                 }
             }
         },
@@ -7721,6 +14698,23 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "model.RoleFilterRequest": {
+            "type": "object",
+            "properties": {
+                "roleId": {
+                    "type": "string"
+                },
+                "roleName": {
+                    "type": "string"
+                },
+                "roleTypes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/constants.IAMRoleType"
+                    }
                 }
             }
         },
@@ -7855,6 +14849,28 @@ const docTemplate = `{
                 }
             }
         },
+        "model.RoleMenuMapping": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "menu_id": {
+                    "description": "메뉴 ID",
+                    "type": "string"
+                },
+                "role_id": {
+                    "description": "역할 ID",
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "model.RoleSub": {
             "type": "object",
             "properties": {
@@ -7875,6 +14891,20 @@ const docTemplate = `{
                 }
             }
         },
+        "model.SendInvitationRequest": {
+            "type": "object",
+            "required": [
+                "inviteeUserId"
+            ],
+            "properties": {
+                "inviteeUserId": {
+                    "type": "integer"
+                },
+                "roleId": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.SetupInitialAdminRequest": {
             "type": "object",
             "properties": {
@@ -7889,6 +14919,49 @@ const docTemplate = `{
                 }
             }
         },
+        "model.SignupRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "firstName",
+                "lastName",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "organization": {
+                    "description": "선택 필드",
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8
+                }
+            }
+        },
+        "model.SyncPoliciesRequest": {
+            "type": "object",
+            "required": [
+                "csp_account_id"
+            ],
+            "properties": {
+                "csp_account_id": {
+                    "type": "integer"
+                },
+                "policy_scope": {
+                    "description": "All, AWS, Local",
+                    "type": "string"
+                }
+            }
+        },
         "model.Tag": {
             "type": "object",
             "properties": {
@@ -7897,6 +14970,96 @@ const docTemplate = `{
                 },
                 "value": {
                     "type": "string"
+                }
+            }
+        },
+        "model.UpdateCspAccountRequest": {
+            "type": "object",
+            "properties": {
+                "account_info": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateCspIdpConfigRequest": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateCspPolicyRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "policy_arn": {
+                    "type": "string"
+                },
+                "policy_doc": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "model.UpdateGroupWorkspaceRoleRequest": {
+            "type": "object",
+            "required": [
+                "role_id"
+            ],
+            "properties": {
+                "role_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.UpdateOrganizationRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "organization_code": {
+                    "description": "코드 수정 시 입력",
+                    "type": "string"
+                },
+                "parent_id": {
+                    "description": "부모 변경 시 입력",
+                    "type": "integer"
                 }
             }
         },
@@ -7933,12 +15096,24 @@ const docTemplate = `{
                     "description": "Ignore LastName for DB",
                     "type": "string"
                 },
+                "organization": {
+                    "description": "Organization stored in Keycloak attributes",
+                    "type": "string"
+                },
                 "platform_roles": {
                     "description": "관계 정의",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.RoleMaster"
                     }
+                },
+                "status": {
+                    "description": "사용자 계정 상태",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.UserStatus"
+                        }
+                    ]
                 },
                 "updated_at": {
                     "type": "string"
@@ -7952,6 +15127,26 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.RoleMaster"
                     }
+                }
+            }
+        },
+        "model.UserAccessSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "direct_roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlatformRoleSimple"
+                    }
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.GroupAccessInfo"
+                    }
+                },
+                "user_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -7972,6 +15167,21 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.UserStatus": {
+            "type": "string",
+            "enum": [
+                "ACTIVE",
+                "INACTIVE",
+                "WITHDRAWAL_REQUESTED",
+                "WITHDRAWN"
+            ],
+            "x-enum-varnames": [
+                "UserStatusActive",
+                "UserStatusInactive",
+                "UserStatusWithdrawalRequested",
+                "UserStatusWithdrawn"
+            ]
         },
         "model.UserStatusRequest": {
             "type": "object",
@@ -8025,6 +15235,44 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ValidationStep": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "description": "수행 내역 또는 오류 안내 (skipped면 \"\")",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "단계명",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "ok | failed | skipped",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ValidationStepStatus"
+                        }
+                    ]
+                },
+                "step": {
+                    "description": "순번 (1부터)",
+                    "type": "integer"
+                }
+            }
+        },
+        "model.ValidationStepStatus": {
+            "type": "string",
+            "enum": [
+                "ok",
+                "failed",
+                "skipped"
+            ],
+            "x-enum-varnames": [
+                "ValidationStepOk",
+                "ValidationStepFailed",
+                "ValidationStepSkipped"
+            ]
+        },
         "model.Workspace": {
             "type": "object",
             "properties": {
@@ -8047,6 +15295,53 @@ const docTemplate = `{
                     }
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.WorkspaceInvitation": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "inviteeUserId": {
+                    "type": "integer"
+                },
+                "inviterUserId": {
+                    "type": "integer"
+                },
+                "roleId": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.InvitationStatus"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "workspaceId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.WorkspaceProjectMappingRequest": {
+            "type": "object",
+            "required": [
+                "projectIds",
+                "workspaceId"
+            ],
+            "properties": {
+                "projectIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "workspaceId": {
                     "type": "string"
                 }
             }
