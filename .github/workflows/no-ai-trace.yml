@@ -1,0 +1,145 @@
+# ------------------------------------------------------------
+# Policy enforcement for open-source contributions: block AI direct commit signoff and co-authored-by attribution from being merged.
+#
+# In open-source contributions, the human author is expected to create commits and open pull requests. Under current open-source license frameworks (DCO, Sign-off, CLA, etc.) AI-attributed commits may have unclear implications. Following the community proposal from 2026-05-08, until the project policy is finalized, AI direct commit signoff and co-authored-by records are prohibited.
+#
+# Canonical source: https://github.com/MZC-CSC/cmig-workflow/blob/main/conf/workflow-templates/no-ai-trace.yml
+# Reference policy: https://github.com/MZC-CSC/cmig-workflow/blob/main/POLICY-AI-TRACE-GUARD.md
+# Local path in target repo: .github/workflows/no-ai-trace.yml
+# ------------------------------------------------------------
+
+name: AI Direct Commit Attribution Check
+
+on:
+  pull_request:
+    branches: [main, develop, master]
+  push:
+    branches: [main, develop, master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  block-ai-attribution:
+    name: Block AI direct commit signoff and co-authored-by
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine commit range to scan
+        id: range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "from=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+            echo "to=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+          else
+            BEFORE="${{ github.event.before }}"
+            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE" ]; then
+              echo "from=${{ github.sha }}~1" >> $GITHUB_OUTPUT
+            else
+              echo "from=$BEFORE" >> $GITHUB_OUTPUT
+            fi
+            echo "to=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Scan commits for AI direct attribution
+        id: scan
+        run: |
+          FROM="${{ steps.range.outputs.from }}"
+          TO="${{ steps.range.outputs.to }}"
+
+          # Patterns matched against commit message body and trailers
+          BODY_PATTERNS='Co-Authored-By:.*[Cc]laude|Co-Authored-By:.*[Aa]nthropic|Co-Authored-By:.*[Cc]opilot|Generated-By:.*[Cc]laude|Generated-By:.*[Cc]ode|Assisted-By|Co-Developed-By|noreply@anthropic\.com'
+
+          # Patterns matched against author and committer email
+          EMAIL_PATTERNS='@anthropic\.com|copilot-swe-agent'
+
+          FOUND=""
+          for sha in $(git rev-list "$FROM..$TO" 2>/dev/null); do
+            SUBJECT=$(git log -1 --pretty='%s' "$sha")
+            BODY=$(git log -1 --pretty='%B' "$sha")
+            AUTHOR_EMAIL=$(git log -1 --pretty='%ae' "$sha")
+            COMMITTER_EMAIL=$(git log -1 --pretty='%ce' "$sha")
+
+            BAD=""
+            HIT=$(echo "$BODY" | grep -iE "$BODY_PATTERNS" | head -3)
+            if [ -n "$HIT" ]; then
+              BAD="$BAD"$'\n'"  - body/trailer match:"$'\n'"$(echo "$HIT" | sed 's/^/      /')"
+            fi
+
+            for email in "$AUTHOR_EMAIL" "$COMMITTER_EMAIL"; do
+              if echo "$email" | grep -iqE "$EMAIL_PATTERNS"; then
+                BAD="$BAD"$'\n'"  - AI tool email match: $email"
+              fi
+            done
+
+            if [ -n "$BAD" ]; then
+              FOUND="$FOUND"$'\n\n'"### $sha"$'\n'"  subject: $SUBJECT$BAD"
+            fi
+          done
+
+          if [ -n "$FOUND" ]; then
+            {
+              echo "found=true"
+              echo "details<<EOF"
+              echo "$FOUND"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+
+            echo "::error::AI direct commit signoff or co-authored-by attribution detected. See logs and PR comment for details."
+            echo "$FOUND"
+            exit 1
+          fi
+
+          echo "found=false" >> $GITHUB_OUTPUT
+          echo "OK: no AI direct commit signoff or co-authored-by attribution found."
+
+      - name: Post failure comment on PR
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const details = `${{ steps.scan.outputs.details }}`;
+            const body = [
+              '## AI Direct Commit Attribution Blocked',
+              '',
+              'This pull request cannot be merged because it contains commits with AI tool attribution (Claude, Anthropic, GitHub Copilot, etc.) in commit message trailers (for example `Co-Authored-By`, `Signed-off-by`, `Generated-By`) or in the author/committer email.',
+              '',
+              '### Why this is blocked',
+              '',
+              'In open-source contributions, the human author is expected to create commits and open pull requests. Under current open-source license frameworks (DCO, Sign-off, CLA, etc.) AI-attributed commits may have unclear implications. Following the community proposal from 2026-05-08, until the project policy is finalized, **AI direct commit signoff and co-authored-by records are prohibited** in this repository.',
+              '',
+              '<details><summary>Matched commits</summary>',
+              '',
+              '```',
+              details,
+              '```',
+              '',
+              '</details>',
+              '',
+              '### How to fix',
+              '',
+              'Most recent commit only - strip the attribution trailers:',
+              '```bash',
+              'git commit --amend --message="$(git log -1 --pretty=\'%s%n%n%b\' | grep -vE \'Co-Authored-By:|Generated-By:|Assisted-By:|Co-Developed-By:\')"',
+              'git push --force-with-lease',
+              '```',
+              '',
+              'Multiple commits - use interactive rebase:',
+              '```bash',
+              'git rebase -i HEAD~5',
+              '# Mark each commit as `reword` and remove the trailer lines in the editor',
+              'git push --force-with-lease',
+              '```',
+              '',
+              'The check will re-run automatically after the force-push, and the merge can proceed once the AI direct commit signoff and co-authored-by records are removed. Repository administrators may also enforce this check via Branch Protection rules.'
+            ].join('\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
