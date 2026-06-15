@@ -461,6 +461,11 @@ func (s *UserService) DeleteUser(ctx context.Context, id uint) error {
 		log.Printf("Warning: User with DB ID %d has no KcId. Skipping Keycloak deletion.", id)
 	}
 
+	if err = s.userRepo.DeleteAllRoleMappings(id); err != nil {
+		log.Printf("CRITICAL: Failed to delete role mappings for user (ID: %d). Manual cleanup needed. Error: %v", id, err)
+		return fmt.Errorf("failed to delete role mappings for user (id: %d): %w", id, err)
+	}
+
 	err = s.userRepo.Delete(id)
 	if err != nil {
 		log.Printf("CRITICAL: Failed to delete user from DB (ID: %d) after Keycloak deletion attempt. Manual cleanup needed. Error: %v", id, err)
