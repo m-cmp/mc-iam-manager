@@ -7942,112 +7942,6 @@ paths:
       summary: Create new user
       tags:
       - users
-  /api/users/{userId}/organizations:
-    get:
-      description: 사용자가 소속된 조직 목록을 조회합니다. hierarchy=true이면 path/level 포함.
-      operationId: getUserOrganizations
-      parameters:
-      - description: 사용자 ID
-        in: path
-        name: userId
-        required: true
-        type: integer
-      - description: '계층 정보(path, level) 포함 여부 (기본: false)'
-        in: query
-        name: hierarchy
-        type: boolean
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/model.OrganizationTree'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 사용자 소속 조직 조회
-      tags:
-      - organizations
-    post:
-      consumes:
-      - application/json
-      description: 사용자를 하나 이상의 조직에 할당합니다 (다중 소속 가능).
-      operationId: assignUserOrganizations
-      parameters:
-      - description: 사용자 ID
-        in: path
-        name: userId
-        required: true
-        type: integer
-      - description: 조직 할당 요청
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/model.AssignUserOrganizationsRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 사용자-조직 할당
-      tags:
-      - organizations
-  /api/users/{userId}/organizations/{organizationId}:
-    delete:
-      description: 사용자를 특정 조직에서 제거합니다.
-      operationId: removeUserOrganization
-      parameters:
-      - description: 사용자 ID
-        in: path
-        name: userId
-        required: true
-        type: integer
-      - description: 조직 ID
-        in: path
-        name: organizationId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 사용자-조직 매핑 제거
-      tags:
-      - organizations
   /api/users/id/{userId}:
     delete:
       consumes:
@@ -8417,6 +8311,112 @@ paths:
       summary: 사용자를 그룹에서 제거 (Keycloak 동기화 포함)
       tags:
       - groups
+  /api/users/id/{userId}/organizations:
+    get:
+      description: 사용자가 소속된 조직 목록을 조회합니다. hierarchy=true이면 path/level 포함.
+      operationId: getUserOrganizations
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: '계층 정보(path, level) 포함 여부 (기본: false)'
+        in: query
+        name: hierarchy
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.OrganizationTree'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자 소속 조직 조회
+      tags:
+      - organizations
+    post:
+      consumes:
+      - application/json
+      description: 사용자를 하나 이상의 조직에 할당합니다 (다중 소속 가능).
+      operationId: assignUserOrganizations
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 조직 할당 요청
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignUserOrganizationsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자-조직 할당
+      tags:
+      - organizations
+  /api/users/id/{userId}/organizations/{organizationId}:
+    delete:
+      description: 사용자를 특정 조직에서 제거합니다.
+      operationId: removeUserOrganization
+      parameters:
+      - description: 사용자 ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 조직 ID
+        in: path
+        name: organizationId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 사용자-조직 매핑 제거
+      tags:
+      - organizations
   /api/users/id/{userId}/password:
     put:
       consumes:
