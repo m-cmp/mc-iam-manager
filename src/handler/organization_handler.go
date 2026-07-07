@@ -391,7 +391,7 @@ func (h *OrganizationHandler) GetOrganizationDeletable(c echo.Context) error {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users/{userId}/organizations [post]
+// @Router /api/users/id/{userId}/organizations [post]
 // @Id assignUserOrganizations
 func (h *OrganizationHandler) AssignUserOrganizations(c echo.Context) error {
 	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
@@ -427,7 +427,7 @@ func (h *OrganizationHandler) AssignUserOrganizations(c echo.Context) error {
 // @Success 200 {array} model.OrganizationTree
 // @Failure 400 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users/{userId}/organizations [get]
+// @Router /api/users/id/{userId}/organizations [get]
 // @Id getUserOrganizations
 func (h *OrganizationHandler) GetUserOrganizations(c echo.Context) error {
 	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
@@ -493,7 +493,7 @@ func (h *OrganizationHandler) ReplaceUserGroups(c echo.Context) error {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/users/{userId}/organizations/{organizationId} [delete]
+// @Router /api/users/id/{userId}/organizations/{organizationId} [delete]
 // @Id removeUserOrganization
 func (h *OrganizationHandler) RemoveUserOrganization(c echo.Context) error {
 	userID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
