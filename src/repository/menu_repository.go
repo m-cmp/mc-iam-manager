@@ -107,6 +107,9 @@ func (r *MenuRepository) CreateMenu(req *model.CreateMenuRequest) error {
 		IsAction:    isAction,
 		Priority:    priorityInt,
 		MenuNumber:  menuNumberInt,
+		ViewType:         req.ViewType,
+		FrameworkService: req.FrameworkService,
+		Path:             req.Path,
 	}
 	return r.db.Create(menu).Error
 }
@@ -226,7 +229,10 @@ func (r *MenuRepository) UpsertMenus(menus []model.Menu) error {
 	// 모든 컬럼에 대해 충돌 시 업데이트 (ID 기준)
 	if err := tx.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"parent_id", "display_name", "res_type", "is_action", "priority", "menu_number"}),
+		DoUpdates: clause.AssignmentColumns([]string{
+			"parent_id", "display_name", "res_type", "is_action", "priority", "menu_number",
+			"view_type", "framework_service", "path",
+		}),
 	}).Create(&menus).Error; err != nil {
 		tx.Rollback() // 롤백
 		tx.Rollback() // 롤백

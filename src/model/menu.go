@@ -13,6 +13,9 @@ type Menu struct {
 	IsAction    bool      `json:"isAction" yaml:"isaction" gorm:"column:is_action;default:false"`
 	Priority    uint      `json:"priority" yaml:"priority" gorm:"column:priority;not null"`
 	MenuNumber  uint      `json:"menuNumber" yaml:"menunumber" gorm:"column:menu_number;not null"`
+	ViewType         string `json:"viewType" yaml:"viewtype" gorm:"column:view_type;not null;default:local"`
+	FrameworkService string `json:"frameworkService" yaml:"frameworkservice" gorm:"column:framework_service;not null;default:mc-web-console-front"`
+	Path             string `json:"path" yaml:"path" gorm:"column:path;not null;default:''"`
 	CreatedAt   time.Time `json:"-" yaml:"-" gorm:"column:created_at;autoCreateTime"` // GORM이 자동 처리
 	UpdatedAt   time.Time `json:"-" yaml:"-" gorm:"column:updated_at;autoUpdateTime"` // GORM이 자동 처리
 }
