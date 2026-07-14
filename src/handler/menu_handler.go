@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"io" // Ensure io package is imported
 	"net/http"
@@ -383,6 +384,11 @@ func (h *MenuHandler) CreateMenu(c echo.Context) error {
 	if err != nil {
 		c.Logger().Debugf("CreateMenu err %v", err)
 		errMsg := err.Error()
+		if errors.Is(err, service.ErrInvalidViewType) ||
+			errors.Is(err, service.ErrFrameworkServiceRequired) ||
+			errors.Is(err, service.ErrPathTooLong) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": errMsg})
+		}
 		if len(errMsg) >= len("존재하지 않는 역할") && errMsg[:len("존재하지 않는 역할")] == "존재하지 않는 역할" {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": errMsg})
 		}
@@ -452,6 +458,15 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 		}
 		updates["menu_number"] = menuNumberInt
 	}
+	if menu.ViewType != "" {
+		updates["view_type"] = menu.ViewType
+	}
+	if menu.FrameworkService != "" {
+		updates["framework_service"] = menu.FrameworkService
+	}
+	if menu.Path != "" {
+		updates["path"] = menu.Path
+	}
 
 	if len(updates) == 0 {
 		return c.JSON(http.StatusBadRequest, map[string]string{
@@ -461,8 +476,13 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 
 	// Call the service method with id and the map of updates
 	if err := h.menuService.Update(id, updates); err != nil {
+		if errors.Is(err, service.ErrInvalidViewType) ||
+			errors.Is(err, service.ErrFrameworkServiceRequired) ||
+			errors.Is(err, service.ErrPathTooLong) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
 		// Handle specific errors like "not found" if needed
-		if err.Error() == "menu not found" { // Assuming service/repo returns this specific error string
+		if err == repository.ErrMenuNotFound || err.Error() == "menu not found" {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{

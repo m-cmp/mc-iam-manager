@@ -2,6 +2,7 @@ package service
 
 import (
 	"context" // Added
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,6 +21,64 @@ import (
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm" // Import gorm
 )
+
+const (
+	defaultMenuViewType         = "local"
+	defaultMenuFrameworkService = "mc-web-console-front"
+	maxMenuPathLength           = 500
+)
+
+var (
+	ErrInvalidViewType            = errors.New("invalid viewType")
+	ErrFrameworkServiceRequired   = errors.New("frameworkService required")
+	ErrPathTooLong                = errors.New("path too long")
+)
+
+func normalizeMenuResource(viewType, frameworkService, path string) (string, string, string) {
+	if viewType == "" {
+		viewType = defaultMenuViewType
+	}
+	if frameworkService == "" {
+		frameworkService = defaultMenuFrameworkService
+	}
+	return viewType, frameworkService, path
+}
+
+func validateMenuResource(viewType, frameworkService, path string) error {
+	switch viewType {
+	case "local", "iframe", "popup":
+	default:
+		return ErrInvalidViewType
+	}
+	if (viewType == "iframe" || viewType == "popup") && frameworkService == "" {
+		return ErrFrameworkServiceRequired
+	}
+	if len(path) > maxMenuPathLength {
+		return ErrPathTooLong
+	}
+	return nil
+}
+
+func normalizeAndValidateMenuResource(viewType, frameworkService, path string) (string, string, string, error) {
+	viewType, frameworkService, path = normalizeMenuResource(viewType, frameworkService, path)
+	if err := validateMenuResource(viewType, frameworkService, path); err != nil {
+		return "", "", "", err
+	}
+	return viewType, frameworkService, path, nil
+}
+
+func applyMenuResourceDefaults(menu *model.Menu) error {
+	viewType, frameworkService, path, err := normalizeAndValidateMenuResource(
+		menu.ViewType, menu.FrameworkService, menu.Path,
+	)
+	if err != nil {
+		return err
+	}
+	menu.ViewType = viewType
+	menu.FrameworkService = frameworkService
+	menu.Path = path
+	return nil
+}
 
 // MenuService 메뉴 관련 비즈니스 로직
 type MenuService struct {
@@ -277,7 +336,15 @@ func (s *MenuService) GetMenuByID(id *string) (*model.Menu, error) {
 
 // Create 새 메뉴 생성
 func (s *MenuService) Create(req *model.CreateMenuRequest) error {
-	// TODO: 필요한 비즈니스 로직 추가 (예: 유효성 검사)
+	viewType, frameworkService, path, err := normalizeAndValidateMenuResource(
+		req.ViewType, req.FrameworkService, req.Path,
+	)
+	if err != nil {
+		return err
+	}
+	req.ViewType = viewType
+	req.FrameworkService = frameworkService
+	req.Path = path
 	return s.menuRepo.CreateMenu(req)
 }
 
@@ -339,6 +406,12 @@ func (s *MenuService) CreateWithRoleMappings(req *model.CreateMenuRequest) (*mod
 		IsAction:    isAction,
 		Priority:    priorityInt,
 		MenuNumber:  menuNumberInt,
+		ViewType:         req.ViewType,
+		FrameworkService: req.FrameworkService,
+		Path:             req.Path,
+	}
+	if err := applyMenuResourceDefaults(menu); err != nil {
+		return nil, err
 	}
 
 	// 6. 트랜잭션: 메뉴 생성 + 역할 매핑
@@ -355,13 +428,39 @@ func (s *MenuService) CreateWithRoleMappings(req *model.CreateMenuRequest) (*mod
 
 // Update 메뉴 정보 부분 업데이트
 func (s *MenuService) Update(id string, updates map[string]interface{}) error {
-	// TODO: 필요한 비즈니스 로직 추가 (예: 유효성 검사, 업데이트 가능 필드 제한 등)
-
-	// 업데이트 전 레코드 존재 여부 확인 (선택 사항, Repository에서도 확인)
-	// _, err := s.GetByID(id)
-	// if err != nil {
-	// 	 return err
-	// }
+	_, hasViewType := updates["view_type"]
+	_, hasFramework := updates["framework_service"]
+	_, hasPath := updates["path"]
+	if hasViewType || hasFramework || hasPath {
+		existing, err := s.menuRepo.FindMenuByID(&id)
+		if err != nil {
+			return err
+		}
+		if existing == nil {
+			return repository.ErrMenuNotFound
+		}
+		viewType := existing.ViewType
+		frameworkService := existing.FrameworkService
+		path := existing.Path
+		if v, ok := updates["view_type"].(string); ok {
+			viewType = v
+		}
+		if v, ok := updates["framework_service"].(string); ok {
+			frameworkService = v
+		}
+		if v, ok := updates["path"].(string); ok {
+			path = v
+		}
+		viewType, frameworkService, path, err = normalizeAndValidateMenuResource(
+			viewType, frameworkService, path,
+		)
+		if err != nil {
+			return err
+		}
+		updates["view_type"] = viewType
+		updates["framework_service"] = frameworkService
+		updates["path"] = path
+	}
 
 	return s.menuRepo.UpdateMenu(id, updates)
 }
@@ -454,12 +553,19 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 	for _, menu := range menus {
 		if menu.ID == "home" {
 			// home 메뉴가 있으면 업데이트
+			homeMenu := menu
+			if err := applyMenuResourceDefaults(&homeMenu); err != nil {
+				return fmt.Errorf("invalid home menu resource: %w", err)
+			}
 			if err := s.menuRepo.UpdateMenu("home", map[string]interface{}{
-				"display_name": menu.DisplayName,
-				"res_type":     menu.ResType,
-				"is_action":    menu.IsAction,
-				"priority":     menu.Priority,
-				"menu_number":  menu.MenuNumber,
+				"display_name":      homeMenu.DisplayName,
+				"res_type":          homeMenu.ResType,
+				"is_action":         homeMenu.IsAction,
+				"priority":          homeMenu.Priority,
+				"menu_number":       homeMenu.MenuNumber,
+				"view_type":         homeMenu.ViewType,
+				"framework_service": homeMenu.FrameworkService,
+				"path":              homeMenu.Path,
 			}); err != nil {
 				fmt.Printf("Warning: Failed to update home menu: %v\n", err)
 			}
@@ -483,9 +589,14 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 	// 4. DB에 Upsert (home 메뉴 제외)
 	var menusToUpsert []model.Menu
 	for _, menu := range menus {
-		if menu.ID != "home" {
-			menusToUpsert = append(menusToUpsert, menu)
+		if menu.ID == "home" {
+			continue
 		}
+		menuCopy := menu
+		if err := applyMenuResourceDefaults(&menuCopy); err != nil {
+			return fmt.Errorf("invalid menu resource for %s: %w", menu.ID, err)
+		}
+		menusToUpsert = append(menusToUpsert, menuCopy)
 	}
 
 	if len(menusToUpsert) > 0 {
@@ -513,6 +624,12 @@ func (s *MenuService) RegisterMenusFromContent(yamlContent []byte) error {
 	if len(menus) == 0 {
 		// log.Printf("No menus found in YAML content, skipping registration.")
 		return nil // 처리할 메뉴 없음
+	}
+
+	for i := range menus {
+		if err := applyMenuResourceDefaults(&menus[i]); err != nil {
+			return fmt.Errorf("invalid menu resource for %s: %w", menus[i].ID, err)
+		}
 	}
 
 	// 2. DB에 Upsert
