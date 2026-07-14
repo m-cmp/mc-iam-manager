@@ -308,6 +308,9 @@ menus:
     parentid: manage
     displayname: Workflows
     restype: menu
+    viewtype: iframe
+    frameworkservice: mc-workflow-manager-fe
+    path: /web/workflow/list
     isaction: true
     priority: 2
     menunumber: 1998
@@ -316,6 +319,9 @@ menus:
     parentid: manage
     displayname: SW Catalogs
     restype: menu
+    viewtype: iframe
+    frameworkservice: mc-application-manager-fe
+    path: /web/softwareCatalog
     isaction: true
     priority: 2
     menunumber: 1998
@@ -324,6 +330,9 @@ menus:
     parentid: manage
     displayname: Data Migrations
     restype: menu
+    viewtype: iframe
+    frameworkservice: mc-data-manager-fe
+    path: /
     isaction: true
     priority: 2
     menunumber: 1998
@@ -364,6 +373,9 @@ menus:
     parentid: monitorings
     displayname: Monitoring Config
     restype: menu
+    viewtype: local
+    frameworkservice: mc-web-console-front
+    path: /operations/analytics/monitorings/monitoringconfig
     isaction: true
     priority: 2
     menunumber: 1940
@@ -420,6 +432,20 @@ menus:
     parentid: analytics
     displayname: Cost Analysis
     restype: menu
+    viewtype: iframe
+    frameworkservice: mc-cost-optimizer-fe
+    path: /
     isaction: true
     priority: 2
     menunumber: 1998
+
+  - id: observability
+    parentid: analytics
+    displayname: Monitorings
+    restype: menu
+    viewtype: iframe
+    frameworkservice: mc-observability-fe
+    path: /
+    isaction: true
+    priority: 3
+    menunumber: 1999
