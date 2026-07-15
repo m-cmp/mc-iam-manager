@@ -90,6 +90,14 @@ menus:
     priority: 2
     menunumber: 1790
 
+  - id: infratemplates
+    parentid: workloads
+    displayname: Infra Templates
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1780
+
   - id: workflows
     parentid: manage
     displayname: Workflows
@@ -338,22 +346,6 @@ menus:
     priority: 2
     menunumber: 1410
 
-  - id: specs
-    parentid: cloudresources
-    displayname: Specs
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1410
-
-  - id: images
-    parentid: cloudresources
-    displayname: Images
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1420
-
   - id: serverimages
     parentid: cloudresources
     displayname: Images
@@ -378,14 +370,6 @@ menus:
     priority: 2
     menunumber: 1520
 
-  - id: securitys
-    parentid: cloudresources
-    displayname: Securitys
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1520
-
   - id: myimages
     parentid: cloudresources
     displayname: MyImages
@@ -394,7 +378,7 @@ menus:
     priority: 2
     menunumber: 1530
 
-  - id: disks
+  - id: datadisk
     parentid: cloudresources
     displayname: Disks
     restype: menu
@@ -433,6 +417,14 @@ menus:
     isaction: true
     priority: 3
     menunumber: 1595
+
+  - id: networktemplates
+    parentid: cloudresources
+    displayname: Network Templates
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1598
 
   - id: cloudrescatalogs
     parentid: environment
