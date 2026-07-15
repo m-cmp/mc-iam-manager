@@ -55,3 +55,29 @@ type CreateMenuResponse struct {
 	Menu         *Menu              `json:"menu"`
 	RoleMappings []*RoleMenuMapping `json:"roleMappings"`
 }
+
+// RolePermissionEntry 역할 단위 권한 (permission.yaml / role-permission-backup 공통)
+type RolePermissionEntry struct {
+	Role       string   `json:"role" yaml:"role"`
+	Menus      []string `json:"menus" yaml:"menus"`
+	Operations []string `json:"operations" yaml:"operations"`
+	Csps       []string `json:"csps" yaml:"csps"`
+}
+
+// RolePermissionBackup DB 역할 권한 백업 문서 (kind: role-permission-backup)
+type RolePermissionBackup struct {
+	Kind        string                `json:"kind" yaml:"kind"`
+	BackupAt    string                `json:"backupAt" yaml:"backupAt"`
+	Source      string                `json:"source" yaml:"source"`
+	Sections    []string              `json:"sections" yaml:"sections"`
+	Permissions []RolePermissionEntry `json:"permissions" yaml:"permissions"`
+}
+
+// RolePermissionRestoreResult restore 결과 요약
+type RolePermissionRestoreResult struct {
+	Mode           string `json:"mode"`
+	RolesProcessed int    `json:"rolesProcessed"`
+	MenusAdded     int    `json:"menusAdded"`
+	MenusRemoved   int    `json:"menusRemoved"`
+	Message        string `json:"message"`
+}
