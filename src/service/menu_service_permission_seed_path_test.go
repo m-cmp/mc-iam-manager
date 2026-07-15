@@ -30,12 +30,28 @@ func TestPermissionSeedSourceMatchesExt(t *testing.T) {
 	}
 }
 
-func TestResolvePermissionSeedPathCSVEnvNotUsedForYAML(t *testing.T) {
+func TestResolvePermissionSeedPathSharedEnvYAMLPreferred(t *testing.T) {
+	yamlPath := filepath.Join(t.TempDir(), "custom-permission.yaml")
+	t.Setenv("MC_WEB_CONSOLE_MENU_PERMISSIONS", yamlPath)
+
+	svc := &MenuService{}
+	got, cleanup, err := svc.resolvePermissionSeedPath("", "permission.yaml", ".yaml")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cleanup != "" {
+		t.Fatalf("cleanup=%q, want empty", cleanup)
+	}
+	if got != yamlPath {
+		t.Fatalf("got %q, want shared YAML path %q", got, yamlPath)
+	}
+}
+
+func TestResolvePermissionSeedPathCSVEnvIgnoredForYAML(t *testing.T) {
 	t.Setenv(
 		"MC_WEB_CONSOLE_MENU_PERMISSIONS",
 		"https://example.com/webconsole_menu_permissions.csv",
 	)
-	t.Setenv("MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML", "")
 
 	svc := &MenuService{}
 	got, cleanup, err := svc.resolvePermissionSeedPath("", "permission.yaml", ".yaml")
@@ -50,31 +66,9 @@ func TestResolvePermissionSeedPathCSVEnvNotUsedForYAML(t *testing.T) {
 	}
 }
 
-func TestResolvePermissionSeedPathYAMLEnvPreferred(t *testing.T) {
-	yamlPath := filepath.Join(t.TempDir(), "custom-permission.yaml")
-	t.Setenv(
-		"MC_WEB_CONSOLE_MENU_PERMISSIONS",
-		"https://example.com/webconsole_menu_permissions.csv",
-	)
-	t.Setenv("MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML", yamlPath)
-
-	svc := &MenuService{}
-	got, cleanup, err := svc.resolvePermissionSeedPath("", "permission.yaml", ".yaml")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if cleanup != "" {
-		t.Fatalf("cleanup=%q, want empty", cleanup)
-	}
-	if got != yamlPath {
-		t.Fatalf("got %q, want YAML-specific path %q", got, yamlPath)
-	}
-}
-
 func TestResolvePermissionSeedPathCSVEnvUsedForCSV(t *testing.T) {
 	csvPath := filepath.Join(t.TempDir(), "custom-permission.csv")
 	t.Setenv("MC_WEB_CONSOLE_MENU_PERMISSIONS", csvPath)
-	t.Setenv("MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML", "")
 
 	svc := &MenuService{}
 	got, cleanup, err := svc.resolvePermissionSeedPath("", "permission.csv", ".csv")
@@ -92,11 +86,7 @@ func TestResolvePermissionSeedPathCSVEnvUsedForCSV(t *testing.T) {
 func TestResolvePermissionSeedPathExplicitFilePathWins(t *testing.T) {
 	t.Setenv(
 		"MC_WEB_CONSOLE_MENU_PERMISSIONS",
-		"https://example.com/webconsole_menu_permissions.csv",
-	)
-	t.Setenv(
-		"MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML",
-		"/should/not/use/permission.yaml",
+		"/env/should/not/use/permission.yaml",
 	)
 
 	explicit := "/explicit/permission.yaml"

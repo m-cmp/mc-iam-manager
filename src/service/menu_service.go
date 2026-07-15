@@ -691,8 +691,8 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 }
 
 // InitializeMenuPermissionsFromYAML 역할 중심 permission.yaml으로 권한을 시드합니다.
-// filePath가 비어 있으면 MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML,
-// 확장자가 .yaml/.yml인 MC_WEB_CONSOLE_MENU_PERMISSIONS, 또는 asset/menu/permission.yaml을 사용합니다.
+// filePath가 비어 있으면 확장자가 맞는 MC_WEB_CONSOLE_MENU_PERMISSIONS,
+// 또는 asset/menu/permission.yaml을 사용합니다.
 // 스키마: permissions → role → menus | operations | csps
 func (s *MenuService) InitializeMenuPermissionsFromYAML(filePath string) error {
 	effectiveFilePath, cleanup, err := s.resolvePermissionSeedPath(
@@ -719,14 +719,9 @@ func permissionSeedSourceMatchesExt(source, defaultExt string) bool {
 	return ext == want
 }
 
-func isYAMLPermissionSeedExt(defaultExt string) bool {
-	ext := strings.ToLower(defaultExt)
-	return ext == ".yaml" || ext == ".yml"
-}
-
 // resolvePermissionSeedPath 시드 파일 경로를 결정합니다.
-// 우선순위: query filePath → (YAML) MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML →
-// 확장자가 맞는 MC_WEB_CONSOLE_MENU_PERMISSIONS → asset/menu/{defaultFileName}
+// 우선순위: query filePath → 확장자가 맞는 MC_WEB_CONSOLE_MENU_PERMISSIONS →
+// asset/menu/{defaultFileName}
 // 공유 env의 확장자가 기대 포맷과 다르면 다운로드하지 않고 로컬 기본 파일로 fallback합니다.
 func (s *MenuService) resolvePermissionSeedPath(
 	filePath, defaultFileName, defaultExt string,
@@ -740,34 +735,16 @@ func (s *MenuService) resolvePermissionSeedPath(
 	defaultLocalPath := filepath.Join(assetPath, "menu", defaultFileName)
 
 	permissionSource := ""
-	if isYAMLPermissionSeedExt(defaultExt) {
-		permissionSource = strings.TrimSpace(os.Getenv("MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML"))
-		if permissionSource == "" {
-			shared := strings.TrimSpace(os.Getenv("MC_WEB_CONSOLE_MENU_PERMISSIONS"))
-			if shared != "" {
-				if permissionSeedSourceMatchesExt(shared, defaultExt) {
-					permissionSource = shared
-				} else {
-					fmt.Printf(
-						"Warning: MC_WEB_CONSOLE_MENU_PERMISSIONS (%s) is not a YAML source; "+
-							"falling back to local %s. Set MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML for remote YAML.\n",
-						shared, defaultLocalPath,
-					)
-				}
-			}
-		}
-	} else {
-		shared := strings.TrimSpace(os.Getenv("MC_WEB_CONSOLE_MENU_PERMISSIONS"))
-		if shared != "" {
-			if permissionSeedSourceMatchesExt(shared, defaultExt) {
-				permissionSource = shared
-			} else {
-				fmt.Printf(
-					"Warning: MC_WEB_CONSOLE_MENU_PERMISSIONS (%s) is not a %s source; "+
-						"falling back to local %s.\n",
-					shared, defaultExt, defaultLocalPath,
-				)
-			}
+	shared := strings.TrimSpace(os.Getenv("MC_WEB_CONSOLE_MENU_PERMISSIONS"))
+	if shared != "" {
+		if permissionSeedSourceMatchesExt(shared, defaultExt) {
+			permissionSource = shared
+		} else {
+			fmt.Printf(
+				"Warning: MC_WEB_CONSOLE_MENU_PERMISSIONS (%s) is not a %s source; "+
+					"falling back to local %s.\n",
+				shared, defaultExt, defaultLocalPath,
+			)
 		}
 	}
 
