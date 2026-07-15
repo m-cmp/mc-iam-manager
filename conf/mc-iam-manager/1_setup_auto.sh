@@ -326,17 +326,17 @@ init_menu_permissions() {
     # Prefer: query filePath only when a local path is known
     # Default call without filePath (server resolvePermissionSeedPath)
     file_path=""
-    yaml_src="${MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML:-}"
+    yaml_src="${MC_WEB_CONSOLE_MENU_PERMISSIONS:-}"
     if [ -n "$yaml_src" ]; then
         case "$yaml_src" in
             http://*|https://*)
-                # Rely on server-side MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML (no filePath query)
+                # Rely on server-side MC_WEB_CONSOLE_MENU_PERMISSIONS (no filePath query)
                 ;;
             *)
                 if [ -f "$yaml_src" ]; then
                     file_path="$yaml_src"
                 else
-                    echo "WARNING: MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML is set but local file not found: $yaml_src"
+                    echo "WARNING: MC_WEB_CONSOLE_MENU_PERMISSIONS is set but local file not found: $yaml_src"
                     echo "Falling back to server-side path resolution"
                 fi
                 ;;
