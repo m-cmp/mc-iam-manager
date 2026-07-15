@@ -834,6 +834,14 @@ serviceActions:
             method: get
             resourcePath: /api/setup/initial-role-menu-permission
             description: CSV 파일을 읽어서 메뉴 권한을 초기화합니다
+        backupRolePermissions:
+            method: get
+            resourcePath: /api/setup/backup-role-permissions
+            description: DB의 현재 플랫폼 역할 권한을 role-permission-backup 문서로 내보냅니다
+        restoreRolePermissions:
+            method: post
+            resourcePath: /api/setup/restore-role-permissions
+            description: role-permission-backup 문서로 역할 권한을 복구합니다 (additive|replace-role)
         listAllInvitations:
             method: get
             resourcePath: /api/invitations

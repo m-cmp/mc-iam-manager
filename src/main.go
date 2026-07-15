@@ -233,6 +233,8 @@ func main() {
 		setup.POST("/initial-menus", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
 		setup.POST("/initial-menus2", menuHandler.RegisterMenusFromBody, middleware.PlatformAdminMiddleware)
 		setup.GET("/initial-role-menu-permission", adminHandler.InitializeMenuPermissions, middleware.PlatformAdminMiddleware)
+		setup.GET("/backup-role-permissions", adminHandler.BackupRolePermissions, middleware.PlatformAdminMiddleware)
+		setup.POST("/restore-role-permissions", adminHandler.RestoreRolePermissions, middleware.PlatformAdminMiddleware)
 		setup.POST("/initial-organizations", organizationHandler.SetupInitialOrganizations, middleware.PlatformAdminMiddleware)
 	}
 

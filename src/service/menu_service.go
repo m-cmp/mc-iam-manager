@@ -11,6 +11,7 @@ import (
 	"sort" // Added
 	"strconv"
 	"strings"
+	"time"
 
 	"encoding/csv"
 
@@ -838,4 +839,309 @@ func (s *MenuService) DeleteRoleMenuMappingByRoleAndMenu(roleID uint, menuID str
 // 해당 role 과 매핑된 메뉴 삭제
 func (s *MenuService) DeleteRoleMenuMappingsByRoleID(roleID uint) error {
 	return s.menuRepo.DeleteRoleMenuMappingsByRoleID(roleID)
+}
+
+const (
+	rolePermissionBackupKind     = "role-permission-backup"
+	rolePermissionSectionMenus   = "menus"
+	rolePermissionSectionOps     = "operations"
+	rolePermissionSectionCsps    = "csps"
+	rolePermissionRestoreAdd     = "additive"
+	rolePermissionRestoreReplace = "replace-role"
+)
+
+// BackupRolePermissions 현재 DB의 플랫폼 역할 권한을 백업 문서로 내보냅니다.
+// roleNames가 비어 있으면 플랫폼 역할 전체. sections 기본값은 menus.
+// role_masters.name 기준으로 직렬화합니다 (numeric role_id 미사용).
+func (s *MenuService) BackupRolePermissions(
+	roleNames []string, sections []string,
+) (*model.RolePermissionBackup, error) {
+	sections = normalizeRolePermissionSections(sections)
+	roles, err := s.resolvePlatformRolesForBackup(roleNames)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(roles, func(i, j int) bool {
+		return roles[i].Name < roles[j].Name
+	})
+
+	entries := make([]model.RolePermissionEntry, 0, len(roles))
+	for _, role := range roles {
+		entry := model.RolePermissionEntry{
+			Role:       role.Name,
+			Menus:      []string{},
+			Operations: []string{},
+			Csps:       []string{},
+		}
+		if containsSection(sections, rolePermissionSectionMenus) {
+			menuIDs, err := s.menuMappingRepo.GetMappedMenuIDs(role.ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to list menus for role %s: %w", role.Name, err)
+			}
+			sort.Strings(menuIDs)
+			entry.Menus = menuIDs
+		}
+		if containsSection(sections, rolePermissionSectionOps) ||
+			containsSection(sections, rolePermissionSectionCsps) {
+			// reserved: 스키마 자리만 유지 (1단계는 menus)
+			fmt.Printf(
+				"Note: backup role %s — operations/csps sections reserved (empty)\n",
+				role.Name,
+			)
+		}
+		entries = append(entries, entry)
+	}
+
+	return &model.RolePermissionBackup{
+		Kind:        rolePermissionBackupKind,
+		BackupAt:    time.Now().Format(time.RFC3339),
+		Source:      "db",
+		Sections:    sections,
+		Permissions: entries,
+	}, nil
+}
+
+// SaveRolePermissionBackupFile 백업 문서를 asset/menu/backups/ 에 저장합니다.
+func (s *MenuService) SaveRolePermissionBackupFile(
+	backup *model.RolePermissionBackup, fileName string,
+) (string, error) {
+	if backup == nil {
+		return "", fmt.Errorf("backup is nil")
+	}
+	assetPath := util.GetAssetPath()
+	dir := filepath.Join(assetPath, "menu", "backups")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("failed to create backup dir: %w", err)
+	}
+	if fileName == "" {
+		fileName = fmt.Sprintf(
+			"role-permission-backup-%s.yaml",
+			time.Now().Format("20060102-150405"),
+		)
+	}
+	path := filepath.Join(dir, fileName)
+	body, err := yaml.Marshal(backup)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal backup: %w", err)
+	}
+	if err := os.WriteFile(path, body, 0o644); err != nil {
+		return "", fmt.Errorf("failed to write backup file: %w", err)
+	}
+	return path, nil
+}
+
+// RestoreRolePermissions 역할 권한 백업 문서를 DB에 복구합니다.
+// mode: additive | replace-role
+func (s *MenuService) RestoreRolePermissions(
+	backup *model.RolePermissionBackup, mode string, sections []string,
+) (*model.RolePermissionRestoreResult, error) {
+	if backup == nil {
+		return nil, fmt.Errorf("backup is nil")
+	}
+	if len(backup.Permissions) == 0 {
+		return nil, fmt.Errorf("backup has no permissions entries")
+	}
+	mode = strings.TrimSpace(strings.ToLower(mode))
+	if mode == "" {
+		mode = rolePermissionRestoreAdd
+	}
+	if mode != rolePermissionRestoreAdd && mode != rolePermissionRestoreReplace {
+		return nil, fmt.Errorf(
+			"invalid mode %q (use %s or %s)",
+			mode, rolePermissionRestoreAdd, rolePermissionRestoreReplace,
+		)
+	}
+	sections = normalizeRolePermissionSections(sections)
+	if backup.Kind != "" && backup.Kind != rolePermissionBackupKind {
+		fmt.Printf(
+			"Warning: backup kind=%q (expected %q); proceeding\n",
+			backup.Kind, rolePermissionBackupKind,
+		)
+	}
+
+	result := &model.RolePermissionRestoreResult{
+		Mode:    mode,
+		Message: "role permission restore completed",
+	}
+
+	for _, entry := range backup.Permissions {
+		roleName := strings.TrimSpace(entry.Role)
+		if roleName == "" {
+			return nil, fmt.Errorf("permission entry missing role")
+		}
+		role, err := s.roleRepo.FindRoleByRoleName(roleName, constants.RoleTypePlatform)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find role %s: %w", roleName, err)
+		}
+		if role == nil {
+			return nil, fmt.Errorf("role not found: %s", roleName)
+		}
+		result.RolesProcessed++
+
+		if !containsSection(sections, rolePermissionSectionMenus) {
+			continue
+		}
+
+		desired := uniqueNonEmpty(entry.Menus)
+		if mode == rolePermissionRestoreReplace {
+			removed, err := s.replaceRoleMenuMappings(role.ID, desired)
+			if err != nil {
+				return nil, fmt.Errorf("replace-role failed for %s: %w", roleName, err)
+			}
+			result.MenusRemoved += removed
+			result.MenusAdded += len(desired)
+			continue
+		}
+
+		added, err := s.addMissingRoleMenuMappings(role.ID, desired)
+		if err != nil {
+			return nil, fmt.Errorf("additive restore failed for %s: %w", roleName, err)
+		}
+		result.MenusAdded += added
+	}
+
+	return result, nil
+}
+
+// ParseRolePermissionBackupYAML YAML 바이트를 RolePermissionBackup으로 파싱합니다.
+func ParseRolePermissionBackupYAML(body []byte) (*model.RolePermissionBackup, error) {
+	var backup model.RolePermissionBackup
+	if err := yaml.Unmarshal(body, &backup); err != nil {
+		return nil, fmt.Errorf("failed to parse role permission backup: %w", err)
+	}
+	return &backup, nil
+}
+
+// LoadRolePermissionBackupFile 파일에서 백업 문서를 로드합니다.
+func (s *MenuService) LoadRolePermissionBackupFile(filePath string) (*model.RolePermissionBackup, error) {
+	body, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read backup file: %w", err)
+	}
+	return ParseRolePermissionBackupYAML(body)
+}
+
+func (s *MenuService) resolvePlatformRolesForBackup(
+	roleNames []string,
+) ([]*model.RoleMaster, error) {
+	if len(roleNames) > 0 {
+		out := make([]*model.RoleMaster, 0, len(roleNames))
+		for _, name := range roleNames {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			role, err := s.roleRepo.FindRoleByRoleName(name, constants.RoleTypePlatform)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find role %s: %w", name, err)
+			}
+			if role == nil {
+				return nil, fmt.Errorf("role not found: %s", name)
+			}
+			out = append(out, role)
+		}
+		return out, nil
+	}
+
+	roles, err := s.roleRepo.FindRoles(&model.RoleFilterRequest{
+		RoleTypes: []constants.IAMRoleType{constants.RoleTypePlatform},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list platform roles: %w", err)
+	}
+	return roles, nil
+}
+
+func (s *MenuService) addMissingRoleMenuMappings(roleID uint, menuIDs []string) (int, error) {
+	existing, err := s.menuMappingRepo.GetMappedMenuIDs(roleID)
+	if err != nil {
+		return 0, err
+	}
+	have := make(map[string]bool, len(existing))
+	for _, id := range existing {
+		have[id] = true
+	}
+	added := 0
+	for _, menuID := range menuIDs {
+		if have[menuID] {
+			continue
+		}
+		mapping := &model.RoleMenuMapping{RoleID: roleID, MenuID: menuID}
+		if err := s.menuRepo.CreateRoleMenuMappings([]*model.RoleMenuMapping{mapping}); err != nil {
+			return added, err
+		}
+		added++
+		have[menuID] = true
+	}
+	return added, nil
+}
+
+func (s *MenuService) replaceRoleMenuMappings(roleID uint, menuIDs []string) (int, error) {
+	existing, err := s.menuMappingRepo.GetMappedMenuIDs(roleID)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.menuRepo.DeleteRoleMenuMappingsByRoleID(roleID); err != nil {
+		return 0, err
+	}
+	if len(menuIDs) > 0 {
+		mappings := make([]*model.RoleMenuMapping, 0, len(menuIDs))
+		for _, menuID := range menuIDs {
+			mappings = append(mappings, &model.RoleMenuMapping{
+				RoleID: roleID,
+				MenuID: menuID,
+			})
+		}
+		if err := s.menuRepo.CreateRoleMenuMappings(mappings); err != nil {
+			return 0, err
+		}
+	}
+	return len(existing), nil
+}
+
+func normalizeRolePermissionSections(sections []string) []string {
+	if len(sections) == 0 {
+		return []string{rolePermissionSectionMenus}
+	}
+	seen := map[string]bool{}
+	out := make([]string, 0, len(sections))
+	for _, s := range sections {
+		s = strings.TrimSpace(strings.ToLower(s))
+		if s == "" || seen[s] {
+			continue
+		}
+		switch s {
+		case rolePermissionSectionMenus, rolePermissionSectionOps, rolePermissionSectionCsps:
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	if len(out) == 0 {
+		return []string{rolePermissionSectionMenus}
+	}
+	return out
+}
+
+func containsSection(sections []string, target string) bool {
+	for _, s := range sections {
+		if s == target {
+			return true
+		}
+	}
+	return false
+}
+
+func uniqueNonEmpty(ids []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
 }
