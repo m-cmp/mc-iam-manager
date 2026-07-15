@@ -18,6 +18,7 @@ permissions:
       - workloads
       - mciworkloads
       - pmkworkloads
+      - infratemplates
       - workflows
       - swcatalogs
       - mcdatamanager
@@ -46,18 +47,16 @@ permissions:
       - cspaccounts
       - cloudresources
       - serverspecs
-      - specs
-      - images
       - serverimages
       - networks
       - securitygroups
-      - securitys
       - myimages
-      - disks
+      - datadisk
       - sshkeys
       - csp
       - cspschedule
       - resourcesync
+      - networktemplates
       - cloudrescatalogs
       - workspacessettings
       - allocatedprojects
@@ -106,12 +105,9 @@ permissions:
       - cloudoverview
       - regions
       - cloudresources
-      - specs
-      - images
       - networks
-      - securitys
       - myimages
-      - disks
+      - datadisk
       - sshkeys
       - cloudrescatalogs
     operations: []
