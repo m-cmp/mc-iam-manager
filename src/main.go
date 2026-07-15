@@ -232,7 +232,9 @@ func main() {
 		setup.POST("/sync-mcmp-apis", mcmpApiHandler.SyncMcmpAPIs)
 		setup.POST("/initial-menus", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
 		setup.POST("/initial-menus2", menuHandler.RegisterMenusFromBody, middleware.PlatformAdminMiddleware)
+		// Deprecated: CSV 기반 시드 — 제거 예정. YAML API를 사용하세요.
 		setup.GET("/initial-role-menu-permission", adminHandler.InitializeMenuPermissions, middleware.PlatformAdminMiddleware)
+		setup.GET("/initial-role-menu-permission-yaml", adminHandler.InitializeMenuPermissionsFromYAML, middleware.PlatformAdminMiddleware)
 		setup.GET("/backup-role-permissions", adminHandler.BackupRolePermissions, middleware.PlatformAdminMiddleware)
 		setup.POST("/restore-role-permissions", adminHandler.RestoreRolePermissions, middleware.PlatformAdminMiddleware)
 		setup.POST("/initial-organizations", organizationHandler.SetupInitialOrganizations, middleware.PlatformAdminMiddleware)

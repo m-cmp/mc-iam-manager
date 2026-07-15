@@ -7900,10 +7900,12 @@ paths:
     get:
       consumes:
       - application/json
-      description: CSV 파일을 읽어서 메뉴 권한을 초기화합니다
+      deprecated: true
+      description: Deprecated. permission.csv로 메뉴 권한을 초기화합니다. 제거 예정이니 InitializeMenuPermissionsFromYAML을
+        사용하세요.
       operationId: initializeMenuPermissions
       parameters:
-      - description: CSV file path (optional, uses default if not provided)
+      - description: CSV file path (optional, default asset/menu/permission.csv)
         in: query
         name: filePath
         type: string
@@ -7924,7 +7926,39 @@ paths:
             $ref: '#/definitions/model.Response'
       security:
       - BearerAuth: []
-      summary: Initialize menu permissions from CSV
+      summary: Initialize menu permissions from CSV (deprecated)
+      tags:
+      - admin
+  /api/setup/initial-role-menu-permission-yaml:
+    get:
+      consumes:
+      - application/json
+      description: asset/menu/permission.yaml(permissions→role→menus|operations|csps)을
+        읽어 역할-메뉴 매핑을 DB에 시드합니다
+      operationId: initializeMenuPermissionsFromYAML
+      parameters:
+      - description: YAML file path (optional, default asset/menu/permission.yaml)
+        in: query
+        name: filePath
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Response'
+      security:
+      - BearerAuth: []
+      summary: Initialize role-menu permissions from YAML
       tags:
       - admin
   /api/setup/projects/sync:

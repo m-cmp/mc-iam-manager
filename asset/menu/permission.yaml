@@ -1,0 +1,129 @@
+# asset/menu/permission.yaml
+# Role-centric permissions: permissions → role → menus | operations | csps
+# - menus: mcmp_menus.id 목록 (역할별 접근 가능 메뉴)
+# - operations: (reserved) framework/API operation 권한 ID — 향후 시드
+# - csps: (reserved) CSP 관련 권한/역할 키 — 향후 시드
+# Source: permission.csv invert + remote menu ID remaps (2026-07-15)
+permissions:
+  - role: admin
+    menus:
+      - operations
+      - manage
+      - workspaces
+      - projects
+      - projectboard
+      - members
+      - roles
+      - csproles
+      - workloads
+      - mciworkloads
+      - pmkworkloads
+      - workflows
+      - swcatalogs
+      - mcdatamanager
+      - datamigrations
+      - generateobjectstorage
+      - generaterdb
+      - analytics
+      - costanalysis
+      - observability
+      - settings
+      - accountnaccess
+      - organizations
+      - companyinfo
+      - users
+      - groups
+      - approvals
+      - accesscontrols
+      - menus
+      - environment
+      - cloudsps
+      - cloudoverview
+      - regions
+      - connections
+      - clouddrivers
+      - credentials
+      - cspaccounts
+      - cloudresources
+      - serverspecs
+      - specs
+      - images
+      - serverimages
+      - networks
+      - securitygroups
+      - securitys
+      - myimages
+      - disks
+      - sshkeys
+      - csp
+      - cspschedule
+      - resourcesync
+      - cloudrescatalogs
+      - workspacessettings
+      - allocatedprojects
+      - sharemembers
+      - allocaterolesws
+    operations: []
+    csps: []
+
+  - role: billadmin
+    menus:
+      - operations
+      - manage
+      - workloads
+      - mciworkloads
+      - analytics
+      - costanalysis
+    operations: []
+    csps: []
+
+  - role: billviewer
+    menus:
+      - operations
+      - analytics
+      - costanalysis
+    operations: []
+    csps: []
+
+  - role: operator
+    menus:
+      - operations
+      - manage
+      - workloads
+      - mciworkloads
+      - pmkworkloads
+      - workflows
+      - swcatalogs
+      - mcdatamanager
+      - datamigrations
+      - generateobjectstorage
+      - generaterdb
+      - analytics
+      - observability
+      - settings
+      - environment
+      - cloudsps
+      - cloudoverview
+      - regions
+      - cloudresources
+      - specs
+      - images
+      - networks
+      - securitys
+      - myimages
+      - disks
+      - sshkeys
+      - cloudrescatalogs
+    operations: []
+    csps: []
+
+  - role: viewer
+    menus:
+      - operations
+      - analytics
+      - observability
+      - settings
+      - environment
+      - cloudrescatalogs
+    operations: []
+    csps: []

@@ -9186,7 +9186,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "CSV 파일을 읽어서 메뉴 권한을 초기화합니다",
+                "description": "Deprecated. permission.csv로 메뉴 권한을 초기화합니다. 제거 예정이니 InitializeMenuPermissionsFromYAML을 사용하세요.",
                 "consumes": [
                     "application/json"
                 ],
@@ -9196,12 +9196,62 @@ const docTemplate = `{
                 "tags": [
                     "admin"
                 ],
-                "summary": "Initialize menu permissions from CSV",
+                "summary": "Initialize menu permissions from CSV (deprecated)",
                 "operationId": "initializeMenuPermissions",
+                "deprecated": true,
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "CSV file path (optional, uses default if not provided)",
+                        "description": "CSV file path (optional, default asset/menu/permission.csv)",
+                        "name": "filePath",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setup/initial-role-menu-permission-yaml": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "asset/menu/permission.yaml(permissions→role→menus|operations|csps)을 읽어 역할-메뉴 매핑을 DB에 시드합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Initialize role-menu permissions from YAML",
+                "operationId": "initializeMenuPermissionsFromYAML",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "YAML file path (optional, default asset/menu/permission.yaml)",
                         "name": "filePath",
                         "in": "query"
                     }
