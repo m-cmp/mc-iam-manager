@@ -833,7 +833,11 @@ serviceActions:
         initializeMenuPermissions:
             method: get
             resourcePath: /api/setup/initial-role-menu-permission
-            description: CSV 파일을 읽어서 메뉴 권한을 초기화합니다
+            description: "(Deprecated) CSV 파일을 읽어서 메뉴 권한을 초기화합니다. Use initializeMenuPermissionsFromYAML."
+        initializeMenuPermissionsFromYAML:
+            method: get
+            resourcePath: /api/setup/initial-role-menu-permission-yaml
+            description: permission.yaml(permissions→role→menus|operations|csps)을 읽어 역할-메뉴 권한을 초기화합니다
         backupRolePermissions:
             method: get
             resourcePath: /api/setup/backup-role-permissions
