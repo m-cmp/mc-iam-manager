@@ -17,6 +17,7 @@ This repository provides a multi-cloud IAM management framework as a subsystem o
 - [System Architecture](#system-architecture)
 - [Quick Start](#quick-start)
 - [Installation and Configuration](#installation-and-configuration)
+- [Menu Management](#menu-management)
 - [API Documentation](#api-documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -235,7 +236,7 @@ curl https://<your domain or localhost>:<port>/readyz
    - Create Keycloak Client
    - Create and register default roles
    - Create default workspace
-   - Register menus and role mapping
+   - Load menus (`menu.yaml`) and role-menu seed (`permission.yaml`) — see [Menu Management](#menu-management)
    - Create platform administrator user
 
 2. **API Resource Configuration**
@@ -258,6 +259,34 @@ curl https://<your domain or localhost>:<port>/readyz
 2. **MC-IAM-Manager Configuration**
    - Add CSP roles
    - Configure role mapping
+
+
+## Menu Management
+
+Seed and runtime role-menu mapping for the platform console.
+
+### Seed files (`asset/menu/`)
+
+- `menu.yaml` — menu tree (ids, parents, paths, menu resources)
+- `permission.yaml` — role-centric seed: `permissions → role → menus | operations | csps` (`operations` / `csps` reserved)
+- `MC_WEB_CONSOLE_MENU_PERMISSIONS` — path or YAML URL to the permission seed (samples default to `asset/menu/permission.yaml`). Extension must be `.yaml` / `.yml`. Deprecated CSV URL is no longer the seed source.
+- `MC_WEB_CONSOLE_MENUYAML` (optional) — remote menu tree YAML URL
+
+### Initial / re-seed APIs (Platform Admin Bearer)
+
+- `POST /api/setup/initial-menus` — load `menu.yaml`
+- `GET /api/setup/initial-role-menu-permission-yaml` — seed from `permission.yaml` (also runs inside `POST /api/initial-admin`)
+- `GET /api/setup/initial-role-menu-permission` — **Deprecated** CSV; do not use for new installs
+- Setup scripts (`conf/mc-iam-manager/1_setup_auto.sh`): after menus, Step 4-1 calls the YAML seed without `filePath` (server resolves env / local asset)
+
+### Runtime change safety
+
+- Before changing role-menu mappings: `GET /api/setup/backup-role-permissions?save=true`
+- Restore: `POST /api/setup/restore-role-permissions?mode=additive|replace-role`
+- Detail: [`docs/ROLE-PERMISSION-BACKUP-USAGE.md`](docs/ROLE-PERMISSION-BACKUP-USAGE.md)
+- Day-to-day: `POST` / `DELETE` `/api/menus/platform-roles` for individual mappings
+
+Distinguish: `permission.yaml` is the desired seed template; `role-permission-backup` is an actual DB snapshot.
 
 ## Operations Management
 

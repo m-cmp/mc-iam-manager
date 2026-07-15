@@ -17,6 +17,7 @@
 - [시스템 아키텍처](#시스템-아키텍처)
 - [빠른 시작](#빠른-시작)
 - [설치 및 설정](#설치-및-설정)
+- [메뉴 관리](#메뉴-관리)
 - [API 문서](#api-문서)
 - [기여하기](#기여하기)
 - [라이선스](#라이선스)
@@ -236,7 +237,7 @@ curl https://<your domain or localhost>:<port>/readyz
    - Keycloak Client 생성
    - 기본 역할 생성 및 등록
    - 기본 워크스페이스 생성
-   - 메뉴 등록 및 역할 매핑
+   - 메뉴(`menu.yaml`) 및 역할-메뉴 시드(`permission.yaml`) 로드 — [메뉴 관리](#메뉴-관리) 참고
    - 플랫폼 관리자 사용자 생성
 
 2. **API 리소스 설정**
@@ -259,6 +260,34 @@ curl https://<your domain or localhost>:<port>/readyz
 2. **MC-IAM-Manager 설정**
    - CSP 역할 추가
    - 역할 매핑 설정
+
+
+## 메뉴 관리
+
+플랫폼 콘솔 메뉴 시드 및 런타임 역할-메뉴 매핑.
+
+### 시드 파일 (`asset/menu/`)
+
+- `menu.yaml` — 메뉴 트리 (id, parent, path, menu resource)
+- `permission.yaml` — 역할 중심 시드: `permissions → role → menus | operations | csps` (`operations` / `csps`는 예약)
+- `MC_WEB_CONSOLE_MENU_PERMISSIONS` — permission 시드의 경로 또는 YAML URL (샘플 기본값: `asset/menu/permission.yaml`). 확장자는 `.yaml` / `.yml`이어야 함. 구 CSV URL은 더 이상 시드 소스가 아님.
+- `MC_WEB_CONSOLE_MENUYAML` (선택) — 원격 메뉴 트리 YAML URL
+
+### 초기 / 재시드 API (Platform Admin Bearer)
+
+- `POST /api/setup/initial-menus` — `menu.yaml` 로드
+- `GET /api/setup/initial-role-menu-permission-yaml` — `permission.yaml`에서 시드 (`POST /api/initial-admin` 내부에서도 실행)
+- `GET /api/setup/initial-role-menu-permission` — **Deprecated** CSV; 신규 설치에 사용하지 말 것
+- 설정 스크립트 (`conf/mc-iam-manager/1_setup_auto.sh`): 메뉴 등록 후 Step 4-1에서 `filePath` 없이 YAML 시드 호출 (서버가 env / 로컬 asset 해석)
+
+### 런타임 변경 시 안전장치
+
+- 역할-메뉴 매핑 변경 전: `GET /api/setup/backup-role-permissions?save=true`
+- 복원: `POST /api/setup/restore-role-permissions?mode=additive|replace-role`
+- 상세: [`docs/ROLE-PERMISSION-BACKUP-USAGE.md`](docs/ROLE-PERMISSION-BACKUP-USAGE.md)
+- 일상 변경: 개별 매핑은 `POST` / `DELETE` `/api/menus/platform-roles`
+
+구분: `permission.yaml`은 시드용 목표 템플릿이고, `role-permission-backup`은 실제 DB 스냅샷입니다.
 
 ## 운영 관리
 
