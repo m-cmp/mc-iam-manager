@@ -691,7 +691,8 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 }
 
 // InitializeMenuPermissionsFromYAML 역할 중심 permission.yaml으로 권한을 시드합니다.
-// filePath가 비어 있으면 asset/menu/permission.yaml (또는 MC_WEB_CONSOLE_MENU_PERMISSIONS)을 사용합니다.
+// filePath가 비어 있으면 MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML,
+// 확장자가 .yaml/.yml인 MC_WEB_CONSOLE_MENU_PERMISSIONS, 또는 asset/menu/permission.yaml을 사용합니다.
 // 스키마: permissions → role → menus | operations | csps
 func (s *MenuService) InitializeMenuPermissionsFromYAML(filePath string) error {
 	effectiveFilePath, cleanup, err := s.resolvePermissionSeedPath(
@@ -706,8 +707,27 @@ func (s *MenuService) InitializeMenuPermissionsFromYAML(filePath string) error {
 	return s.loadAndApplyMenuPermissionsFromYAML(effectiveFilePath)
 }
 
+// permissionSeedSourceMatchesExt는 source 경로/URL 확장자가 defaultExt와 맞는지 확인합니다.
+// YAML(.yaml/.yml)은 서로 호환으로 취급하며, 쿼리스트링은 확장자 검사 전에 제거합니다.
+func permissionSeedSourceMatchesExt(source, defaultExt string) bool {
+	pathPart := strings.SplitN(source, "?", 2)[0]
+	ext := strings.ToLower(filepath.Ext(pathPart))
+	want := strings.ToLower(defaultExt)
+	if want == ".yaml" || want == ".yml" {
+		return ext == ".yaml" || ext == ".yml"
+	}
+	return ext == want
+}
+
+func isYAMLPermissionSeedExt(defaultExt string) bool {
+	ext := strings.ToLower(defaultExt)
+	return ext == ".yaml" || ext == ".yml"
+}
+
 // resolvePermissionSeedPath 시드 파일 경로를 결정합니다.
-// 우선순위: query filePath → env URL/path → asset/menu/{defaultFileName}
+// 우선순위: query filePath → (YAML) MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML →
+// 확장자가 맞는 MC_WEB_CONSOLE_MENU_PERMISSIONS → asset/menu/{defaultFileName}
+// 공유 env의 확장자가 기대 포맷과 다르면 다운로드하지 않고 로컬 기본 파일로 fallback합니다.
 func (s *MenuService) resolvePermissionSeedPath(
 	filePath, defaultFileName, defaultExt string,
 ) (string, string, error) {
@@ -716,65 +736,97 @@ func (s *MenuService) resolvePermissionSeedPath(
 	}
 
 	util.LoadEnvFiles()
-	permissionURL := os.Getenv("MC_WEB_CONSOLE_MENU_PERMISSIONS")
 	assetPath := util.GetAssetPath()
 	defaultLocalPath := filepath.Join(assetPath, "menu", defaultFileName)
 
-	if permissionURL != "" &&
-		(strings.HasPrefix(permissionURL, "http://") ||
-			strings.HasPrefix(permissionURL, "https://")) {
-		fmt.Printf("Attempting to download permission seed from URL: %s\n", permissionURL)
-		resp, err := http.Get(permissionURL)
-		if err != nil {
-			fmt.Printf(
-				"Warning: Failed to download permission seed from %s: %v. Falling back to local file.\n",
-				permissionURL, err,
-			)
-		} else {
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				fmt.Printf(
-					"Warning: Failed to download permission seed from %s (Status: %s). Falling back to local file.\n",
-					permissionURL, resp.Status,
-				)
-			} else {
-				bodyBytes, err := io.ReadAll(resp.Body)
-				if err != nil {
-					fmt.Printf(
-						"Warning: Failed to read permission seed from %s: %v. Falling back to local file.\n",
-						permissionURL, err,
-					)
+	permissionSource := ""
+	if isYAMLPermissionSeedExt(defaultExt) {
+		permissionSource = strings.TrimSpace(os.Getenv("MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML"))
+		if permissionSource == "" {
+			shared := strings.TrimSpace(os.Getenv("MC_WEB_CONSOLE_MENU_PERMISSIONS"))
+			if shared != "" {
+				if permissionSeedSourceMatchesExt(shared, defaultExt) {
+					permissionSource = shared
 				} else {
-					ext := filepath.Ext(strings.Split(permissionURL, "?")[0])
-					if ext == "" {
-						ext = defaultExt
-					}
-					tempFile, err := os.CreateTemp("", "permission-*"+ext)
-					if err != nil {
-						fmt.Printf(
-							"Warning: Failed to create temp file: %v. Falling back to local file.\n", err,
-						)
-					} else {
-						if _, err := tempFile.Write(bodyBytes); err != nil {
-							tempFile.Close()
-							os.Remove(tempFile.Name())
-							fmt.Printf(
-								"Warning: Failed to write temp permission file: %v. Falling back to local file.\n",
-								err,
-							)
-						} else {
-							tempFile.Close()
-							return tempFile.Name(), tempFile.Name(), nil
-						}
-					}
+					fmt.Printf(
+						"Warning: MC_WEB_CONSOLE_MENU_PERMISSIONS (%s) is not a YAML source; "+
+							"falling back to local %s. Set MC_WEB_CONSOLE_MENU_PERMISSIONS_YAML for remote YAML.\n",
+						shared, defaultLocalPath,
+					)
 				}
 			}
 		}
-	} else if permissionURL != "" {
-		return permissionURL, "", nil
+	} else {
+		shared := strings.TrimSpace(os.Getenv("MC_WEB_CONSOLE_MENU_PERMISSIONS"))
+		if shared != "" {
+			if permissionSeedSourceMatchesExt(shared, defaultExt) {
+				permissionSource = shared
+			} else {
+				fmt.Printf(
+					"Warning: MC_WEB_CONSOLE_MENU_PERMISSIONS (%s) is not a %s source; "+
+						"falling back to local %s.\n",
+					shared, defaultExt, defaultLocalPath,
+				)
+			}
+		}
 	}
 
-	return defaultLocalPath, "", nil
+	if permissionSource == "" {
+		return defaultLocalPath, "", nil
+	}
+
+	if strings.HasPrefix(permissionSource, "http://") ||
+		strings.HasPrefix(permissionSource, "https://") {
+		fmt.Printf("Attempting to download permission seed from URL: %s\n", permissionSource)
+		resp, err := http.Get(permissionSource)
+		if err != nil {
+			fmt.Printf(
+				"Warning: Failed to download permission seed from %s: %v. Falling back to local file.\n",
+				permissionSource, err,
+			)
+			return defaultLocalPath, "", nil
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			fmt.Printf(
+				"Warning: Failed to download permission seed from %s (Status: %s). Falling back to local file.\n",
+				permissionSource, resp.Status,
+			)
+			return defaultLocalPath, "", nil
+		}
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf(
+				"Warning: Failed to read permission seed from %s: %v. Falling back to local file.\n",
+				permissionSource, err,
+			)
+			return defaultLocalPath, "", nil
+		}
+		ext := filepath.Ext(strings.SplitN(permissionSource, "?", 2)[0])
+		if ext == "" {
+			ext = defaultExt
+		}
+		tempFile, err := os.CreateTemp("", "permission-*"+ext)
+		if err != nil {
+			fmt.Printf(
+				"Warning: Failed to create temp file: %v. Falling back to local file.\n", err,
+			)
+			return defaultLocalPath, "", nil
+		}
+		if _, err := tempFile.Write(bodyBytes); err != nil {
+			tempFile.Close()
+			os.Remove(tempFile.Name())
+			fmt.Printf(
+				"Warning: Failed to write temp permission file: %v. Falling back to local file.\n",
+				err,
+			)
+			return defaultLocalPath, "", nil
+		}
+		tempFile.Close()
+		return tempFile.Name(), tempFile.Name(), nil
+	}
+
+	return permissionSource, "", nil
 }
 
 // loadAndApplyMenuPermissionsFromYAML 역할 중심 permission.yaml을 적용합니다.
