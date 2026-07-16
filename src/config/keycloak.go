@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -34,6 +35,27 @@ type KeycloakConfig struct {
 }
 
 var KC *KeycloakConfig
+
+const defaultAccessTokenLifespanSec = 1800
+
+// AccessTokenLifespanSec returns Keycloak access token TTL in seconds.
+// mc-web-console proactive refresh interval (5m) should stay below this value.
+func AccessTokenLifespanSec() int {
+	raw := os.Getenv("MC_IAM_MANAGER_ACCESS_TOKEN_LIFESPAN")
+	if raw == "" {
+		return defaultAccessTokenLifespanSec
+	}
+	seconds, err := strconv.Atoi(raw)
+	if err != nil || seconds < 300 {
+		log.Printf(
+			"[WARN] invalid MC_IAM_MANAGER_ACCESS_TOKEN_LIFESPAN=%q, using default %d",
+			raw,
+			defaultAccessTokenLifespanSec,
+		)
+		return defaultAccessTokenLifespanSec
+	}
+	return seconds
+}
 
 // InitKeycloak Keycloak 초기화
 func InitKeycloak() error {
