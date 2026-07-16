@@ -567,12 +567,12 @@ func (s *keycloakService) CheckRealm(ctx context.Context) (bool, error) {
 }
 
 func (s *keycloakService) CreateRealm(ctx context.Context, accessToken string) (bool, error) {
+	lifespanSec := config.AccessTokenLifespanSec()
 	newRealm := gocloak.RealmRepresentation{
 		Realm:               gocloak.StringP(config.KC.Realm),
 		Enabled:             gocloak.BoolP(true),
-		DisplayName:         gocloak.StringP(config.KC.Realm), // 선택 사항
-		AccessTokenLifespan: gocloak.IntP(300),                // Access Token 유효 기간 (초)
-		// 필요한 다른 Realm 설정들을 여기에 추가할 수 있습니다.
+		DisplayName:         gocloak.StringP(config.KC.Realm),
+		AccessTokenLifespan: gocloak.IntP(lifespanSec),
 	}
 	realmInfo, err := config.KC.Client.CreateRealm(ctx, accessToken, newRealm)
 	if err != nil {
@@ -580,6 +580,23 @@ func (s *keycloakService) CreateRealm(ctx context.Context, accessToken string) (
 	}
 	log.Printf("[DEBUG] Realm '%s' created successfully", realmInfo)
 	return true, nil
+}
+
+func (s *keycloakService) ensureAccessTokenLifespan(ctx context.Context, accessToken string) error {
+	lifespanSec := config.AccessTokenLifespanSec()
+	realm, err := config.KC.Client.GetRealm(ctx, accessToken, config.KC.Realm)
+	if err != nil {
+		return fmt.Errorf("failed to get realm '%s': %w", config.KC.Realm, err)
+	}
+	if realm.AccessTokenLifespan != nil && *realm.AccessTokenLifespan == lifespanSec {
+		return nil
+	}
+	realm.AccessTokenLifespan = gocloak.IntP(lifespanSec)
+	if err := config.KC.Client.UpdateRealm(ctx, accessToken, *realm); err != nil {
+		return fmt.Errorf("failed to update access token lifespan for realm '%s': %w", config.KC.Realm, err)
+	}
+	log.Printf("[INFO] Keycloak realm '%s' access token lifespan set to %ds", config.KC.Realm, lifespanSec)
+	return nil
 }
 
 // CheckRealm checks if the configured realm exists. Requires admin token.
@@ -855,6 +872,8 @@ func (s *keycloakService) SetupInitialKeycloakAdmin(ctx context.Context, adminTo
 			}
 			log.Print("[DEBUG] createRealm ", createRealm)
 		}
+	} else if err := s.ensureAccessTokenLifespan(ctx, adminToken.AccessToken); err != nil {
+		log.Printf("[WARN] failed to ensure access token lifespan: %v", err)
 	}
 
 	existClient, err := s.ExistClient(ctx, adminToken.AccessToken)

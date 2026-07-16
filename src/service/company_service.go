@@ -185,9 +185,11 @@ func (s *CompanyService) ensureRealm(realmName string) error {
 	}
 
 	enabled := true
+	lifespanSec := config.AccessTokenLifespanSec()
 	_, err = config.KC.Client.CreateRealm(context.Background(), adminToken.AccessToken, gocloak.RealmRepresentation{
-		Realm:   &realmName,
-		Enabled: &enabled,
+		Realm:               &realmName,
+		Enabled:             &enabled,
+		AccessTokenLifespan: gocloak.IntP(lifespanSec),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create realm '%s': %w", realmName, err)

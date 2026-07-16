@@ -1518,6 +1518,10 @@ serviceActions:
       method: post
       resourcePath: /ns/{nsId}/mciDynamic
       description: "Create MCI Dynamically from common spec and image"
+    Postinfradynamicreview:
+      method: post
+      resourcePath: /ns/{nsId}/infraDynamicReview
+      description: "Review and validate Infra dynamic request comprehensively before actual provisioning"
     Putdatadisk:
       method: put
       resourcePath: /ns/{nsId}/resources/dataDisk/{dataDiskId}
