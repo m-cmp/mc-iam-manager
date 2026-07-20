@@ -41,6 +41,9 @@ mc-web-console,pmkworkloads,TRUE,,,TRUE,
 mc-web-console,workflows,TRUE,,,TRUE,
 mc-web-console,swcatalogs,TRUE,,,TRUE,
 mc-web-console,datamigrations,TRUE,,,TRUE,
+mc-web-console,mcdatamanager,TRUE,,,TRUE,
+mc-web-console,generateobjectstorage,TRUE,,,TRUE,
+mc-web-console,generaterdb,TRUE,,,TRUE,
 mc-web-console,analytics,TRUE,TRUE,TRUE,TRUE,TRUE
 mc-web-console,monitorings,TRUE,,,TRUE,TRUE
 mc-web-console,mcismonitoring,TRUE,,,TRUE,TRUE
