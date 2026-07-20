@@ -906,13 +906,24 @@ func (h *UserHandler) ListUserProjectsByWorkspace(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Retrieved invalid local user database ID (0)"})
 	}
 
-	// Get user's workspace
-	//ListWorkspacesProjects
-	//workspaces, err := h.workspaceService.ListWorkspaces(&model.WorkspaceFilterRequest{
+	// 1. 사용자가 실제로 해당 workspace에 소속되어 있는지 먼저 검증한다.
+	//    (WorkspaceID + UserID 조건을 함께 걸어야 하므로 project 정보가 없는 ListWorkspaces를 사용한다.
+	//     FindWorkspacesProjects는 WorkspaceID가 있으면 UserID를 확인하기 전에 바로 return해버려서 사용할 수 없다.)
+	memberWorkspaces, err := h.workspaceService.ListWorkspaces(&model.WorkspaceFilterRequest{
+		WorkspaceID: fmt.Sprintf("%d", workspaceIdInt),
+		UserID:      fmt.Sprintf("%d", localUserID),
+	})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to verify workspace membership: %v", err)})
+	}
+	if len(memberWorkspaces) == 0 {
+		return c.JSON(http.StatusForbidden, map[string]string{"error": "user does not belong to the requested workspace"})
+	}
+
+	// 2. 소속이 확인된 workspace에 한해 project 목록(NsId 포함)을 조회한다.
 	workspaces, err := h.workspaceService.ListWorkspacesProjects(&model.WorkspaceFilterRequest{
 		WorkspaceID: fmt.Sprintf("%d", workspaceIdInt),
 	})
-	//workspace, err := h.workspaceService.GetWorkspaceByID(workspaceIdInt)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to get user workspace roles: %v", err)})
 	}
