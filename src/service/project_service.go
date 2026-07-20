@@ -243,7 +243,7 @@ func (s *ProjectService) DeleteProject(id uint) error {
 		ctx := context.Background()
 		callReq := &model.McmpApiCallRequest{
 			ServiceName: "mc-infra-manager",
-			ActionName:  "DeleteNs",
+			ActionName:  "DelNs",
 			RequestParams: model.McmpApiRequestParams{
 				PathParams: map[string]string{
 					"nsId": project.NsId,
@@ -256,7 +256,7 @@ func (s *ProjectService) DeleteProject(id uint) error {
 			log.Printf("Warning: failed to delete namespace %s from mc-infra-manager: %v", project.NsId, err)
 			// 계속 진행 (DB 정리는 수행)
 		} else if statusCode < 200 || statusCode >= 300 {
-			log.Printf("Warning: mc-infra-manager DeleteNs failed (status %d): %s", statusCode, string(respBody))
+			log.Printf("Warning: mc-infra-manager DelNs failed (status %d): %s", statusCode, string(respBody))
 			// 계속 진행 (DB 정리는 수행)
 		} else {
 			log.Printf("Successfully deleted namespace %s from mc-infra-manager", project.NsId)
