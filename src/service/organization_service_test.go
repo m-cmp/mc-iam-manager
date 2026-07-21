@@ -13,18 +13,21 @@ package service
 //   - DeleteOrganizationCascade:      존재하지 않는 ID → not found
 //   - AssignUserToOrganizations:      조직 미존재 → 오류, 정상 할당
 //   - RemoveUserFromOrganization:     매핑 없음 → ErrUserOrganizationNotFound
-//   - GetUserOrganizations:           정상 조회 (빈 목록)
 //   - ReplaceUserGroups:              그룹 미존재 → 오류
 //   - GetOrganizationSubtree:         존재하지 않는 조직 → not found
 //   - MoveOrganization:               존재하지 않는 조직, 자기 자신으로 이동 → 순환 참조
 //   - UpdateOrganization:             존재하지 않는 조직 → not found
 //
-// NOTE: FindTreeFlat, FindSubtreeFlat, GetSubtreeDepth, GetAncestorDepth,
-//       UpdateDescendantCodes 는 PostgreSQL CTE / SUBSTRING FROM 구문을 사용하므로
-//       SQLite in-memory DB 에서는 실행할 수 없습니다.
-//       해당 경로를 거치는 MoveOrganization 의 정상 경로와
-//       GetOrganizationTree / GetOrganizationSubtree 의 정상 경로는
-//       통합 테스트(PostgreSQL)로 별도 검증합니다.
+// NOTE: FindUserOrganizations(GetUserOrganizations/ReplaceUserGroups 정상 경로),
+//       FindTreeFlat, FindSubtreeFlat, GetSubtreeDepth, GetAncestorDepth,
+//       UpdateDescendantCodes 는 PostgreSQL CTE / `::text` 캐스팅 / SUBSTRING FROM
+//       구문을 사용하므로 SQLite in-memory DB 에서는 실행할 수 없습니다.
+//       해당 경로를 거치는 GetUserOrganizations, ReplaceUserGroups 정상 경로,
+//       MoveOrganization 정상 경로, GetOrganizationTree / GetOrganizationSubtree
+//       정상 경로, 그리고 OrganizationRepository 의 위 메서드들은
+//       organization_service_integration_test.go / organization_repository_integration_test.go
+//       에서 실제 PostgreSQL 을 사용한 통합 테스트로 검증합니다.
+//       (INTEGRATION_TEST=1 로 게이팅, DB 미연결 시 skip)
 
 import (
 	"errors"
@@ -477,32 +480,10 @@ func TestRemoveUserFromOrganization_Success(t *testing.T) {
 }
 
 // ── GetUserOrganizations 테스트 ───────────────────────────────────────────────
-
-// TC-GU-01: 소속 조직 없는 사용자 → 빈 슬라이스
-func TestGetUserOrganizations_Empty(t *testing.T) {
-	svc, _ := newTestOrgService(t)
-
-	orgs, err := svc.GetUserOrganizations(99999)
-
-	require.NoError(t, err)
-	assert.Empty(t, orgs)
-}
-
-// TC-GU-02: 소속 조직 목록 정상 반환
-func TestGetUserOrganizations_WithOrgs(t *testing.T) {
-	svc, db := newTestOrgService(t)
-	org1 := createOrg(t, db, "01", "Alpha", nil)
-	org2 := createOrg(t, db, "02", "Beta", nil)
-	user := createOrgUser(t, db, "frank", "kc-frank-01")
-
-	require.NoError(t, db.Create(&model.UserOrganization{UserID: user.ID, OrganizationID: org1.ID}).Error)
-	require.NoError(t, db.Create(&model.UserOrganization{UserID: user.ID, OrganizationID: org2.ID}).Error)
-
-	orgs, err := svc.GetUserOrganizations(user.ID)
-
-	require.NoError(t, err)
-	assert.Len(t, orgs, 2)
-}
+//
+// NOTE: TestGetUserOrganizations_Empty / TestGetUserOrganizations_WithOrgs 는
+//       FindUserOrganizations(PostgreSQL CTE + ::text 캐스팅)를 거치므로
+//       organization_service_integration_test.go 로 이동했습니다.
 
 // ── ReplaceUserGroups 테스트 ──────────────────────────────────────────────────
 
@@ -516,39 +497,9 @@ func TestReplaceUserGroups_GroupNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "group not found")
 }
 
-// TC-RG-02: 기존 그룹 전부 제거 후 신규 할당 (빈 배열)
-func TestReplaceUserGroups_RemoveAll(t *testing.T) {
-	svc, db := newTestOrgService(t)
-	org := createOrg(t, db, "01", "Old", nil)
-	user := createOrgUser(t, db, "grace", "kc-grace-01")
-	require.NoError(t, db.Create(&model.UserOrganization{UserID: user.ID, OrganizationID: org.ID}).Error)
-
-	err := svc.ReplaceUserGroups(user.ID, []uint{})
-
-	require.NoError(t, err)
-
-	var count int64
-	db.Model(&model.UserOrganization{}).Where("user_id = ?", user.ID).Count(&count)
-	assert.Equal(t, int64(0), count)
-}
-
-// TC-RG-03: 기존 그룹 교체 성공
-func TestReplaceUserGroups_Replace(t *testing.T) {
-	svc, db := newTestOrgService(t)
-	org1 := createOrg(t, db, "01", "OldGroup", nil)
-	org2 := createOrg(t, db, "02", "NewGroup", nil)
-	user := createOrgUser(t, db, "henry", "kc-henry-01")
-	require.NoError(t, db.Create(&model.UserOrganization{UserID: user.ID, OrganizationID: org1.ID}).Error)
-
-	err := svc.ReplaceUserGroups(user.ID, []uint{org2.ID})
-
-	require.NoError(t, err)
-
-	orgs, err := svc.GetUserOrganizations(user.ID)
-	require.NoError(t, err)
-	require.Len(t, orgs, 1)
-	assert.Equal(t, "NewGroup", orgs[0].Name)
-}
+// NOTE: TestReplaceUserGroups_RemoveAll / TestReplaceUserGroups_Replace 는
+//       내부적으로 FindUserOrganizations(PostgreSQL CTE + ::text 캐스팅)를 거치므로
+//       organization_service_integration_test.go 로 이동했습니다.
 
 // ── GetOrganizationSubtree 테스트 ─────────────────────────────────────────────
 
