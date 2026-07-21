@@ -210,7 +210,7 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 	// Convert permissions to scope format
 	scopes := make([]string, 0)
 	for _, role := range workspaceRoles {
-		scopes = append(scopes, fmt.Sprintf("workspace:%s", role))
+		scopes = append(scopes, fmt.Sprintf("workspace:%s", role.RoleName))
 	}
 
 	// 6. Use KeycloakService to issue RPT

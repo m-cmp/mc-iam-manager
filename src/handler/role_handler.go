@@ -478,7 +478,7 @@ func (h *RoleHandler) AssignRole(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "User ID or username is required"})
 	}
 
-	log.Printf("Role assignment request - UserID: %d, Username: %s, RoleID: %d, RoleType: %s, WorkspaceID: %d",
+	log.Printf("Role assignment request - UserID: %s, Username: %s, RoleID: %s, RoleType: %s, WorkspaceID: %s",
 		req.UserID, req.Username, req.RoleID, reqRoleType, req.WorkspaceID)
 
 	if err := c.Validate(&req); err != nil {
@@ -508,7 +508,7 @@ func (h *RoleHandler) AssignRole(c echo.Context) error {
 		}
 		userID = user.ID
 	} else {
-		log.Printf("User identifier missing - UserID: %d, Username: %s", req.UserID, req.Username)
+		log.Printf("User identifier missing - UserID: %s, Username: %s", req.UserID, req.Username)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "User ID or username is required"})
 	}
 
@@ -523,11 +523,11 @@ func (h *RoleHandler) AssignRole(c echo.Context) error {
 	// Check if role exists
 	role, err := h.roleService.GetRoleByID(roleID, reqRoleType)
 	if err != nil {
-		log.Printf("Failed to retrieve role - roleID: %d, error: %v", req.RoleID, err)
+		log.Printf("Failed to retrieve role - roleID: %s, error: %v", req.RoleID, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve role: %v", err)})
 	}
 	if role == nil {
-		log.Printf("Role not found - roleID: %d", req.RoleID)
+		log.Printf("Role not found - roleID: %s", req.RoleID)
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Role with the specified ID not found"})
 	}
 
@@ -540,7 +540,7 @@ func (h *RoleHandler) AssignRole(c echo.Context) error {
 		}
 	}
 	if !hasRoleType {
-		log.Printf("Unsupported role type - roleID: %d, requested type: %s", req.RoleID, reqRoleType)
+		log.Printf("Unsupported role type - roleID: %s, requested type: %s", req.RoleID, reqRoleType)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("This role does not support %s type", reqRoleType)})
 	}
 
@@ -556,22 +556,22 @@ func (h *RoleHandler) AssignRole(c echo.Context) error {
 	// Assign role
 	if reqRoleType == constants.RoleTypePlatform {
 		if err := h.roleService.AssignPlatformRole(userID, roleID); err != nil {
-			log.Printf("Failed to assign platform role - userID: %d, roleID: %d, error: %v", userID, req.RoleID, err)
+			log.Printf("Failed to assign platform role - userID: %d, roleID: %s, error: %v", userID, req.RoleID, err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to assign platform role: %v", err)})
 		}
 	} else if reqRoleType == constants.RoleTypeWorkspace {
 		if workspaceID == 0 {
-			log.Printf("Workspace ID missing - userID: %d, roleID: %d", userID, req.RoleID)
+			log.Printf("Workspace ID missing - userID: %d, roleID: %s", userID, req.RoleID)
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Workspace ID is required"})
 		}
 		if err := h.roleService.AssignWorkspaceRole(userID, workspaceID, roleID); err != nil {
-			log.Printf("Failed to assign workspace role - userID: %d, workspaceID: %d, roleID: %d, error: %v",
+			log.Printf("Failed to assign workspace role - userID: %d, workspaceID: %d, roleID: %s, error: %v",
 				userID, workspaceID, req.RoleID, err)
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to assign workspace role: %v", err)})
 		}
 	}
 
-	log.Printf("Successfully assigned role - userID: %d, roleID: %d, roleType: %s", userID, req.RoleID, reqRoleType)
+	log.Printf("Successfully assigned role - userID: %d, roleID: %s, roleType: %s", userID, req.RoleID, reqRoleType)
 	return c.JSON(http.StatusOK, map[string]string{"message": fmt.Sprintf("%s role assigned successfully", reqRoleType)})
 }
 
@@ -1891,7 +1891,7 @@ func (h *RoleHandler) AddCspRoleMappings(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 할당 실패: %v", err)})
 	}
 
-	log.Printf("Master 역할-CSP 역할 매핑 생성 성공 - ID: %d")
+	log.Printf("Master 역할-CSP 역할 매핑 생성 성공 - ID: %d", roleIDInt)
 	return c.JSON(http.StatusCreated, map[string]string{"message": "Master 역할-CSP 역할 매핑 생성 성공"})
 }
 

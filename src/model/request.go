@@ -69,8 +69,8 @@ type CreateRoleRequest struct {
 // RoleRequest 역할 조회 요청 구조체
 type RoleFilterRequest struct {
 	RoleID    string                  `json:"roleId,omitempty"`
-	RoleName  string                  `json:"roleName",omitempty"`
-	RoleTypes []constants.IAMRoleType `json:"roleTypes",omitempty"`
+	RoleName  string                  `json:"roleName,omitempty"`
+	RoleTypes []constants.IAMRoleType `json:"roleTypes,omitempty"`
 }
 
 // 워크스페이스와 프로젝트 매핑 추가 또는 해제
@@ -135,8 +135,8 @@ type CreateMenuRequests struct {
 }
 
 type MenuFilterRequest struct {
-	MenuIDs   []*string `json:"menuIds",omitempty"`
-	MenuNames []*string `json:"menuNames",omitempty"`
+	MenuIDs   []*string `json:"menuIds,omitempty"`
+	MenuNames []*string `json:"menuNames,omitempty"`
 }
 
 // CreateMenuMappingRequest 메뉴 매핑 생성을 위한 요청 구조체
@@ -146,8 +146,8 @@ type CreateMenuMappingRequest struct {
 }
 
 type MenuMappingFilterRequest struct {
-	RoleIDs []string `json:"roleId",omitempty"`
-	MenuID  string   `json:"menuIds",omitempty"`
+	RoleIDs []string `json:"roleId,omitempty"`
+	MenuID  string   `json:"menuIds,omitempty"`
 }
 
 // AssignWorkspaceRoleRequest 워크스페이스 역할 할당 요청 구조체
