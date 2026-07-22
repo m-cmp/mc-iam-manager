@@ -240,7 +240,7 @@ func (h *OrganizationHandler) DeleteOrganization(c echo.Context) error {
 	cascade := c.QueryParam("cascade") == "true"
 
 	if cascade {
-		if err := h.orgService.DeleteOrganizationCascade(uint(id)); err != nil {
+		if err := h.orgService.DeleteOrganizationCascade(c.Request().Context(), uint(id)); err != nil {
 			if errors.Is(err, repository.ErrOrganizationNotFound) {
 				return c.JSON(http.StatusNotFound, map[string]string{"error": "조직을 찾을 수 없습니다"})
 			}
@@ -249,7 +249,7 @@ func (h *OrganizationHandler) DeleteOrganization(c echo.Context) error {
 		return c.NoContent(http.StatusNoContent)
 	}
 
-	if err := h.orgService.DeleteOrganization(uint(id)); err != nil {
+	if err := h.orgService.DeleteOrganization(c.Request().Context(), uint(id)); err != nil {
 		switch {
 		case errors.Is(err, repository.ErrOrganizationNotFound):
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "조직을 찾을 수 없습니다"})

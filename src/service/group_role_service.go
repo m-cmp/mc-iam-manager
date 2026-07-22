@@ -72,6 +72,16 @@ func (s *GroupRoleService) GetAvailablePlatformRoles(groupID uint) ([]model.Role
 	return s.groupRoleRepo.FindAvailablePlatformRoles(groupID)
 }
 
+// ListGroupsByPlatformRole 특정 platform role이 부여된 그룹 목록 조회 (역할→그룹 역방향 조회)
+func (s *GroupRoleService) ListGroupsByPlatformRole(roleID uint) ([]model.GroupPlatformRoleResponse, error) {
+	return s.groupRoleRepo.FindGroupsByPlatformRoleID(roleID)
+}
+
+// ListGroupsByWorkspaceRole 특정 workspace role이 부여된 그룹 목록 조회 (역할→그룹 역방향 조회)
+func (s *GroupRoleService) ListGroupsByWorkspaceRole(roleID uint) ([]model.GroupWorkspaceRoleResponse, error) {
+	return s.groupRoleRepo.FindGroupsByWorkspaceRoleID(roleID)
+}
+
 // GetAvailableWorkspaces 그룹에 매핑되지 않은 워크스페이스 목록 조회
 func (s *GroupRoleService) GetAvailableWorkspaces(groupID uint) ([]model.Workspace, error) {
 	return s.groupRoleRepo.FindAvailableWorkspaces(groupID)
@@ -146,11 +156,6 @@ func (s *GroupRoleService) RemoveGroupWorkspaceRole(groupID, workspaceID uint) e
 	return s.groupRoleRepo.DeleteGroupWorkspaceRole(groupID, workspaceID)
 }
 
-// GetAvailableGroupWorkspaces 그룹에 미매핑된 워크스페이스 목록 조회
-func (s *GroupRoleService) GetAvailableGroupWorkspaces(groupID uint) ([]*model.Workspace, error) {
-	return s.groupRoleRepo.FindAvailableWorkspacesForGroup(groupID)
-}
-
 // --- User-Group (with Keycloak sync) ---
 
 // AssignUserToGroups 사용자를 그룹에 할당 (DB + Keycloak 동기화)
@@ -201,6 +206,36 @@ func (s *GroupRoleService) AssignUsersToGroup(ctx context.Context, groupID uint,
 		if user.KcId != "" {
 			if err := s.kcService.EnsureGroupExistsAndAssignUser(ctx, user.KcId, org.Name); err != nil {
 				return fmt.Errorf("failed to assign user %d to keycloak group '%s': %w", userID, org.Name, err)
+			}
+		}
+	}
+	return nil
+}
+
+// RemoveUsersFromGroup 그룹에서 사용자 일괄 제거 (그룹 입장, DB + Keycloak 동기화)
+func (s *GroupRoleService) RemoveUsersFromGroup(ctx context.Context, groupID uint, userIDs []uint) error {
+	// 그룹 존재 확인
+	org, err := s.orgRepo.FindByID(groupID)
+	if err != nil {
+		return err
+	}
+
+	for _, userID := range userIDs {
+		// 사용자 KC ID 조회
+		var user model.User
+		if err := s.db.First(&user, userID).Error; err != nil {
+			return fmt.Errorf("user not found: %d", userID)
+		}
+
+		// DB 삭제
+		if err := s.orgRepo.RemoveUserFromOrganization(userID, groupID); err != nil {
+			return fmt.Errorf("failed to remove user %d from group in DB: %w", userID, err)
+		}
+
+		// Keycloak 동기화
+		if user.KcId != "" {
+			if err := s.kcService.RemoveUserFromGroup(ctx, user.KcId, org.Name); err != nil {
+				return fmt.Errorf("keycloak group removal failed for user %d (DB already updated): %w", userID, err)
 			}
 		}
 	}
