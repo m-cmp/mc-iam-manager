@@ -69,8 +69,11 @@ func TestCspAccountValidate_AWS_MissingAccountID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "AWS account_id is required")
+	// NOTE: AWS 필드 검증은 아직 미구현(no-op)이라 이 assertion은 현재 실패한다 (별도 PR에서 구현 예정).
+	// err가 nil일 수 있으므로 err.Error() 호출로 인한 패닉을 막기 위해 assert.Error 결과로 가드한다.
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "AWS account_id is required")
+	}
 }
 
 // TestValidateCspAccount_GCP_Valid: GCP 계정에 project_id가 있으면 검증 통과
@@ -102,8 +105,10 @@ func TestCspAccountValidate_GCP_MissingProjectID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "GCP project_id is required")
+	// NOTE: GCP 필드 검증은 아직 미구현(no-op)이라 이 assertion은 현재 실패한다 (별도 PR에서 구현 예정).
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "GCP project_id is required")
+	}
 }
 
 // TestValidateCspAccount_Azure_Valid: Azure 계정에 subscription_id와 tenant_id가 있으면 통과
@@ -138,8 +143,10 @@ func TestCspAccountValidate_Azure_MissingSubscriptionID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Azure subscription_id is required")
+	// NOTE: Azure 필드 검증은 아직 미구현(no-op)이라 이 assertion은 현재 실패한다 (별도 PR에서 구현 예정).
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Azure subscription_id is required")
+	}
 }
 
 // TestValidateCspAccount_Azure_MissingTenantID: Azure 계정에 tenant_id가 없으면 에러
@@ -156,8 +163,44 @@ func TestCspAccountValidate_Azure_MissingTenantID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
+	// NOTE: Azure 필드 검증은 아직 미구현(no-op)이라 이 assertion은 현재 실패한다 (별도 PR에서 구현 예정).
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "Azure tenant_id is required")
+	}
+}
+
+// TestCspAccountValidate_Alibaba_Valid: Alibaba 계정에 account_id가 있으면 검증 통과
+// (연결된 CspRole이 없어도 AccountInfo 검증만 통과하면 빈 결과로 성공한다)
+func TestCspAccountValidate_Alibaba_Valid(t *testing.T) {
+	svc, _ := newTestService(t)
+
+	created, err := svc.CreateCspAccount(&model.CreateCspAccountRequest{
+		Name:    "test-alibaba",
+		CspType: "alibaba",
+		AccountInfo: map[string]string{
+			"account_id": "1234567890123456",
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
+	assert.NoError(t, err)
+}
+
+// TestCspAccountValidate_Alibaba_MissingAccountID: Alibaba 계정에 account_id가 없으면 에러
+func TestCspAccountValidate_Alibaba_MissingAccountID(t *testing.T) {
+	svc, _ := newTestService(t)
+
+	created, err := svc.CreateCspAccount(&model.CreateCspAccountRequest{
+		Name:        "test-alibaba-missing",
+		CspType:     "alibaba",
+		AccountInfo: map[string]string{},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Azure tenant_id is required")
+	assert.Contains(t, err.Error(), "Alibaba account_id is required")
 }
 
 // TestValidateCspAccount_UnsupportedType: 지원하지 않는 CSP 타입은 에러
