@@ -105,10 +105,8 @@ func TestCspAccountValidate_GCP_MissingProjectID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
-	// NOTE: GCP 필드 검증은 아직 미구현(no-op)이라 이 assertion은 현재 실패한다 (별도 PR에서 구현 예정).
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "GCP project_id is required")
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "GCP project_id is required")
 }
 
 // TestValidateCspAccount_Azure_Valid: Azure 계정에 subscription_id와 tenant_id가 있으면 통과
