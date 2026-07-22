@@ -93,6 +93,14 @@ func (c *CspAccount) GetAlibabaAccountID() string {
 	return c.GetAccountID()
 }
 
+// GetTencentAppID Tencent Cloud APPID 반환
+func (c *CspAccount) GetTencentAppID() string {
+	if c.AccountInfo == nil {
+		return ""
+	}
+	return c.AccountInfo["app_id"]
+}
+
 // CspAccountFilter CSP 계정 조회 필터
 type CspAccountFilter struct {
 	CspType  string `json:"csp_type,omitempty"`

@@ -201,6 +201,39 @@ func TestCspAccountValidate_Alibaba_MissingAccountID(t *testing.T) {
 	assert.Contains(t, err.Error(), "Alibaba account_id is required")
 }
 
+// TestCspAccountValidate_Tencent_Valid: Tencent 계정에 app_id가 있으면 검증 통과
+func TestCspAccountValidate_Tencent_Valid(t *testing.T) {
+	svc, _ := newTestService(t)
+
+	created, err := svc.CreateCspAccount(&model.CreateCspAccountRequest{
+		Name:    "test-tencent",
+		CspType: "tencent",
+		AccountInfo: map[string]string{
+			"app_id": "1234567890",
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
+	assert.NoError(t, err)
+}
+
+// TestCspAccountValidate_Tencent_MissingAppID: Tencent 계정에 app_id가 없으면 에러
+func TestCspAccountValidate_Tencent_MissingAppID(t *testing.T) {
+	svc, _ := newTestService(t)
+
+	created, err := svc.CreateCspAccount(&model.CreateCspAccountRequest{
+		Name:        "test-tencent-missing",
+		CspType:     "tencent",
+		AccountInfo: map[string]string{},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Tencent app_id is required")
+}
+
 // TestValidateCspAccount_UnsupportedType: 지원하지 않는 CSP 타입은 에러
 func TestCspAccountValidate_UnsupportedType(t *testing.T) {
 	svc, db := newTestService(t)
