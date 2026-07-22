@@ -74,6 +74,13 @@ func createGRTestWorkspace(t *testing.T, db *gorm.DB, name string) *model.Worksp
 	return ws
 }
 
+func createGRTestUser(t *testing.T, db *gorm.DB, username, kcID string) *model.User {
+	t.Helper()
+	u := &model.User{Username: username, KcId: kcID}
+	require.NoError(t, db.Create(u).Error)
+	return u
+}
+
 // ── AssignGroupPlatformRole — KC 호출 전 검증 실패 케이스 ─────────────────────
 
 // TC-GR-APR-01: 그룹(조직)이 존재하지 않는 경우 → 오류 반환
@@ -219,6 +226,66 @@ func TestGroupRoleGetAvailableWorkspaces_ReturnsUnassigned(t *testing.T) {
 	}
 	assert.Contains(t, ids, ws2.ID)
 	assert.NotContains(t, ids, ws1.ID)
+}
+
+// ── ListGroupsByPlatformRole / ListGroupsByWorkspaceRole (역할→그룹 역방향 조회) ──
+
+// TC-GR-LGPR-01: 특정 platform role이 부여된 그룹만 반환, 다른 역할을 가진 그룹은 제외
+func TestGroupRoleListGroupsByPlatformRole_ReturnsAssignedGroupsOnly(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	orgA := createGRTestOrg(t, db, "test-group-lgpr01-a", "LGPR01A")
+	orgB := createGRTestOrg(t, db, "test-group-lgpr01-b", "LGPR01B")
+	roleX := createGRTestRole(t, db, "role-lgpr01-x")
+	roleY := createGRTestRole(t, db, "role-lgpr01-y")
+
+	svc.kcService = &mockKeycloakService{}
+	require.NoError(t, svc.AssignGroupPlatformRole(context.Background(), orgA.ID, roleX.ID))
+	require.NoError(t, svc.AssignGroupPlatformRole(context.Background(), orgB.ID, roleY.ID))
+
+	results, err := svc.ListGroupsByPlatformRole(roleX.ID)
+
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, orgA.ID, results[0].GroupID)
+}
+
+// TC-GR-LGPR-02: 아무 그룹에도 할당되지 않은 역할 → 빈 슬라이스
+func TestGroupRoleListGroupsByPlatformRole_Empty(t *testing.T) {
+	svc, _ := newTestGroupRoleService(t)
+
+	results, err := svc.ListGroupsByPlatformRole(99999)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 0)
+}
+
+// TC-GR-LGWR-01: 특정 workspace role이 부여된 그룹만 반환
+func TestGroupRoleListGroupsByWorkspaceRole_ReturnsAssignedGroupsOnly(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	orgA := createGRTestOrg(t, db, "test-group-lgwr01-a", "LGWR01A")
+	orgB := createGRTestOrg(t, db, "test-group-lgwr01-b", "LGWR01B")
+	ws := createGRTestWorkspace(t, db, "ws-lgwr01")
+	roleX := createGRTestRole(t, db, "role-lgwr01-x")
+	roleY := createGRTestRole(t, db, "role-lgwr01-y")
+
+	require.NoError(t, svc.AssignGroupWorkspace(orgA.ID, ws.ID, roleX.ID))
+	require.NoError(t, svc.AssignGroupWorkspace(orgB.ID, ws.ID, roleY.ID))
+
+	results, err := svc.ListGroupsByWorkspaceRole(roleX.ID)
+
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, orgA.ID, results[0].GroupID)
+}
+
+// TC-GR-LGWR-02: 아무 그룹에도 할당되지 않은 역할 → 빈 슬라이스
+func TestGroupRoleListGroupsByWorkspaceRole_Empty(t *testing.T) {
+	svc, _ := newTestGroupRoleService(t)
+
+	results, err := svc.ListGroupsByWorkspaceRole(99999)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 0)
 }
 
 // ── GetUserAccessSummary ──────────────────────────────────────────────────────
@@ -408,20 +475,43 @@ func TestGroupRoleService_RemoveGroupWorkspaceRole_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, repository.ErrGroupWorkspaceRoleNotFound)
 }
 
-// GetAvailableGroupWorkspaces
-func TestGroupRoleService_GetAvailableGroupWorkspaces(t *testing.T) {
-	db := setupGroupRoleServiceTestDB(t)
-	svc := NewGroupRoleService(db)
+// ── RemoveUsersFromGroup (bulk) ──────────────────────────────────────────────
 
-	org := seedOrg(t, db, "Group-I", "SVC-009")
-	ws1 := seedWs(t, db, "Workspace-H")
-	ws2 := seedWs(t, db, "Workspace-I")
-	role := seedRole(t, db, "svc-lead")
+// TC-GR-RUFG-01: 그룹이 존재하지 않는 경우 → ErrOrganizationNotFound
+func TestGroupRoleRemoveUsersFromGroup_OrgNotFound(t *testing.T) {
+	svc, _ := newTestGroupRoleService(t)
 
-	require.NoError(t, svc.AssignGroupWorkspace(org.ID, ws1.ID, role.ID))
+	err := svc.RemoveUsersFromGroup(context.Background(), 99999, []uint{1})
 
-	available, err := svc.GetAvailableGroupWorkspaces(org.ID)
-	assert.NoError(t, err)
-	assert.Len(t, available, 1)
-	assert.Equal(t, ws2.ID, available[0].ID)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, repository.ErrOrganizationNotFound)
+}
+
+// TC-GR-RUFG-02: 존재하지 않는 사용자 ID가 포함된 경우 → 오류 반환
+func TestGroupRoleRemoveUsersFromGroup_UserNotFound(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	org := createGRTestOrg(t, db, "test-group-rufg02", "RUFG02")
+
+	err := svc.RemoveUsersFromGroup(context.Background(), org.ID, []uint{99999})
+
+	require.Error(t, err)
+}
+
+// TC-GR-RUFG-03: 여러 사용자를 그룹에서 일괄 제거 → 모두 제거됨
+func TestGroupRoleRemoveUsersFromGroup_Success(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	svc.kcService = &mockKeycloakService{}
+	org := createGRTestOrg(t, db, "test-group-rufg03", "RUFG03")
+	userA := createGRTestUser(t, db, "user-rufg03-a", "kc-rufg03-a")
+	userB := createGRTestUser(t, db, "user-rufg03-b", "kc-rufg03-b")
+
+	require.NoError(t, db.Create(&model.UserOrganization{UserID: userA.ID, OrganizationID: org.ID}).Error)
+	require.NoError(t, db.Create(&model.UserOrganization{UserID: userB.ID, OrganizationID: org.ID}).Error)
+
+	err := svc.RemoveUsersFromGroup(context.Background(), org.ID, []uint{userA.ID, userB.ID})
+	require.NoError(t, err)
+
+	var count int64
+	db.Model(&model.UserOrganization{}).Where("organization_id = ?", org.ID).Count(&count)
+	assert.Equal(t, int64(0), count)
 }

@@ -109,16 +109,25 @@ func (r *OrganizationRepository) Update(id uint, updates map[string]interface{})
 	return nil
 }
 
-// Delete 조직 삭제
+// Delete 조직 삭제 (group-role 매핑도 함께 정리)
 func (r *OrganizationRepository) Delete(id uint) error {
-	result := r.db.Delete(&model.Organization{}, "id = ?", id)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return ErrOrganizationNotFound
-	}
-	return nil
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("group_id = ?", id).Delete(&model.GroupPlatformRole{}).Error; err != nil {
+			return fmt.Errorf("error deleting group platform role mappings: %w", err)
+		}
+		if err := tx.Where("group_id = ?", id).Delete(&model.GroupWorkspaceRole{}).Error; err != nil {
+			return fmt.Errorf("error deleting group workspace role mappings: %w", err)
+		}
+
+		result := tx.Delete(&model.Organization{}, "id = ?", id)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrOrganizationNotFound
+		}
+		return nil
+	})
 }
 
 // UpsertOrganizations 조직 목록을 Upsert (organization_code 기준, 멱등성 보장)
@@ -644,6 +653,14 @@ func (r *OrganizationRepository) DeleteCascade(orgID uint) error {
 			return fmt.Errorf("error deleting user mappings for cascade: %w", err)
 		}
 
+		// group-role 매핑 삭제 (platform role, workspace role)
+		if err := tx.Where("group_id IN ?", ids).Delete(&model.GroupPlatformRole{}).Error; err != nil {
+			return fmt.Errorf("error deleting group platform role mappings for cascade: %w", err)
+		}
+		if err := tx.Where("group_id IN ?", ids).Delete(&model.GroupWorkspaceRole{}).Error; err != nil {
+			return fmt.Errorf("error deleting group workspace role mappings for cascade: %w", err)
+		}
+
 		// 하위 조직 먼저 삭제 (코드 DESC 정렬 = 깊은 자식 먼저)
 		if err := tx.Where("id IN ? AND id != ?", ids, orgID).
 			Order("organization_code DESC").
@@ -658,6 +675,25 @@ func (r *OrganizationRepository) DeleteCascade(orgID uint) error {
 
 		return nil
 	})
+}
+
+// FindSubtreeOrganizations 조직과 모든 하위 조직(자신 포함)을 조회
+// DeleteCascade로 삭제되기 전에 Keycloak 그룹 정리 대상(이름 목록)을 파악하는 용도로 사용
+func (r *OrganizationRepository) FindSubtreeOrganizations(orgID uint) ([]model.Organization, error) {
+	var orgs []model.Organization
+	query := `
+        WITH RECURSIVE subtree AS (
+            SELECT id FROM mcmp_organizations WHERE id = ?
+            UNION ALL
+            SELECT o.id FROM mcmp_organizations o
+            INNER JOIN subtree s ON o.parent_id = s.id
+        )
+        SELECT o.* FROM mcmp_organizations o WHERE o.id IN (SELECT id FROM subtree)
+    `
+	if err := r.db.Raw(query, orgID).Scan(&orgs).Error; err != nil {
+		return nil, fmt.Errorf("error querying subtree organizations: %w", err)
+	}
+	return orgs, nil
 }
 
 func init() {

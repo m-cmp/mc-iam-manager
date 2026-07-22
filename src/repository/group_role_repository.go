@@ -59,6 +59,21 @@ func (r *GroupRoleRepository) FindGroupPlatformRoles(groupID uint) ([]model.Grou
 	return results, nil
 }
 
+// FindGroupsByPlatformRoleID 특정 platform role이 부여된 그룹 목록 조회 (역할→그룹 역방향 조회)
+func (r *GroupRoleRepository) FindGroupsByPlatformRoleID(roleID uint) ([]model.GroupPlatformRoleResponse, error) {
+	results := make([]model.GroupPlatformRoleResponse, 0)
+	err := r.db.Table("mcmp_group_platform_roles gpr").
+		Select("gpr.group_id, o.name as group_name, gpr.role_id, rm.name as role_name, gpr.created_at").
+		Joins("JOIN mcmp_organizations o ON o.id = gpr.group_id").
+		Joins("JOIN mcmp_role_masters rm ON rm.id = gpr.role_id").
+		Where("gpr.role_id = ?", roleID).
+		Scan(&results).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding groups by platform role: %w", err)
+	}
+	return results, nil
+}
+
 // FindGroupPlatformRoleByRoleID 특정 그룹-역할 매핑 조회
 func (r *GroupRoleRepository) FindGroupPlatformRoleByRoleID(groupID, roleID uint) (*model.GroupPlatformRole, error) {
 	var record model.GroupPlatformRole
@@ -135,6 +150,22 @@ func (r *GroupRoleRepository) FindGroupWorkspaceRoles(groupID uint) ([]model.Gro
 	return results, nil
 }
 
+// FindGroupsByWorkspaceRoleID 특정 workspace role이 부여된 그룹 목록 조회 (역할→그룹 역방향 조회)
+func (r *GroupRoleRepository) FindGroupsByWorkspaceRoleID(roleID uint) ([]model.GroupWorkspaceRoleResponse, error) {
+	results := make([]model.GroupWorkspaceRoleResponse, 0)
+	err := r.db.Table("mcmp_group_workspace_roles gwr").
+		Select("gwr.group_id, o.name as group_name, gwr.workspace_id, w.name as workspace_name, gwr.role_id, rm.name as role_name, gwr.created_at").
+		Joins("JOIN mcmp_organizations o ON o.id = gwr.group_id").
+		Joins("JOIN mcmp_workspaces w ON w.id = gwr.workspace_id").
+		Joins("JOIN mcmp_role_masters rm ON rm.id = gwr.role_id").
+		Where("gwr.role_id = ?", roleID).
+		Scan(&results).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding groups by workspace role: %w", err)
+	}
+	return results, nil
+}
+
 // UpdateGroupWorkspaceRole 그룹-워크스페이스 역할 변경
 func (r *GroupRoleRepository) UpdateGroupWorkspaceRole(groupID, workspaceID, roleID uint) error {
 	result := r.db.Model(&model.GroupWorkspaceRole{}).
@@ -147,20 +178,6 @@ func (r *GroupRoleRepository) UpdateGroupWorkspaceRole(groupID, workspaceID, rol
 		return ErrGroupWorkspaceRoleNotFound
 	}
 	return nil
-}
-
-// FindAvailableWorkspacesForGroup 그룹에 미매핑된 워크스페이스 목록 조회
-func (r *GroupRoleRepository) FindAvailableWorkspacesForGroup(groupID uint) ([]*model.Workspace, error) {
-	var workspaces []*model.Workspace
-	err := r.db.Where("id NOT IN (?)",
-		r.db.Table("mcmp_group_workspace_roles").
-			Select("workspace_id").
-			Where("group_id = ?", groupID),
-	).Find(&workspaces).Error
-	if err != nil {
-		return nil, fmt.Errorf("error finding available workspaces: %w", err)
-	}
-	return workspaces, nil
 }
 
 // DeleteGroupWorkspaceRole 그룹-워크스페이스 매핑 삭제

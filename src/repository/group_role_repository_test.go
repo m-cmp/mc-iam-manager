@@ -177,28 +177,61 @@ func TestGroupRoleRepository_DeleteGroupWorkspaceRole_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, ErrGroupWorkspaceRoleNotFound)
 }
 
-// --- FindAvailableWorkspacesForGroup ---
+// --- FindGroupsByPlatformRoleID / FindGroupsByWorkspaceRoleID (역할→그룹 역방향 조회) ---
 
-func TestGroupRoleRepository_FindAvailableWorkspacesForGroup(t *testing.T) {
+func TestGroupRoleRepository_FindGroupsByPlatformRoleID(t *testing.T) {
 	db := setupGroupRoleTestDB(t)
 	repo := NewGroupRoleRepository(db)
 
-	org := seedOrganization(t, db, "AvailGroup", "GRP-007")
-	ws1 := seedWorkspace(t, db, "Workspace-E")
-	ws2 := seedWorkspace(t, db, "Workspace-F")
-	ws3 := seedWorkspace(t, db, "Workspace-G")
-	role := seedRoleMaster(t, db, "dev")
+	orgA := seedOrganization(t, db, "PlatformRoleGroupA", "GRP-008")
+	orgB := seedOrganization(t, db, "PlatformRoleGroupB", "GRP-009")
+	roleX := seedRoleMaster(t, db, "role-x")
+	roleY := seedRoleMaster(t, db, "role-y")
 
-	// ws1만 매핑
-	require.NoError(t, repo.CreateGroupWorkspaceRole(org.ID, ws1.ID, role.ID))
+	require.NoError(t, db.Create(&model.GroupPlatformRole{GroupID: orgA.ID, RoleID: roleX.ID}).Error)
+	require.NoError(t, db.Create(&model.GroupPlatformRole{GroupID: orgB.ID, RoleID: roleY.ID}).Error)
 
-	available, err := repo.FindAvailableWorkspacesForGroup(org.ID)
+	results, err := repo.FindGroupsByPlatformRoleID(roleX.ID)
 	assert.NoError(t, err)
-	// ws2, ws3은 미매핑 → 2개 반환
-	assert.Len(t, available, 2)
+	require.Len(t, results, 1)
+	assert.Equal(t, orgA.ID, results[0].GroupID)
+	assert.Equal(t, "role-x", results[0].RoleName)
+}
 
-	ids := []uint{available[0].ID, available[1].ID}
-	assert.Contains(t, ids, ws2.ID)
-	assert.Contains(t, ids, ws3.ID)
-	assert.NotContains(t, ids, ws1.ID)
+func TestGroupRoleRepository_FindGroupsByPlatformRoleID_Empty(t *testing.T) {
+	db := setupGroupRoleTestDB(t)
+	repo := NewGroupRoleRepository(db)
+
+	results, err := repo.FindGroupsByPlatformRoleID(9999)
+	assert.NoError(t, err)
+	assert.Len(t, results, 0)
+}
+
+func TestGroupRoleRepository_FindGroupsByWorkspaceRoleID(t *testing.T) {
+	db := setupGroupRoleTestDB(t)
+	repo := NewGroupRoleRepository(db)
+
+	orgA := seedOrganization(t, db, "WorkspaceRoleGroupA", "GRP-010")
+	orgB := seedOrganization(t, db, "WorkspaceRoleGroupB", "GRP-011")
+	ws := seedWorkspace(t, db, "Workspace-Reverse")
+	roleX := seedRoleMaster(t, db, "ws-role-x")
+	roleY := seedRoleMaster(t, db, "ws-role-y")
+
+	require.NoError(t, repo.CreateGroupWorkspaceRole(orgA.ID, ws.ID, roleX.ID))
+	require.NoError(t, repo.CreateGroupWorkspaceRole(orgB.ID, ws.ID, roleY.ID))
+
+	results, err := repo.FindGroupsByWorkspaceRoleID(roleX.ID)
+	assert.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, orgA.ID, results[0].GroupID)
+	assert.Equal(t, ws.ID, results[0].WorkspaceID)
+}
+
+func TestGroupRoleRepository_FindGroupsByWorkspaceRoleID_Empty(t *testing.T) {
+	db := setupGroupRoleTestDB(t)
+	repo := NewGroupRoleRepository(db)
+
+	results, err := repo.FindGroupsByWorkspaceRoleID(9999)
+	assert.NoError(t, err)
+	assert.Len(t, results, 0)
 }

@@ -345,8 +345,10 @@ func main() {
 		roles.POST("/mappings/list", roleHandler.ListRoleMasterMappings)
 		roles.GET("/mappings/role/id/:roleId", roleHandler.GetRoleMasterMappings)
 		roles.POST("/mappings/platform-roles/users/list", roleHandler.ListUsersByPlatformRole)
+		roles.GET("/mappings/platform-roles/id/:roleId/groups", groupRoleHandler.ListGroupsByPlatformRole, middleware.PlatformRoleMiddleware(middleware.Write))
 
 		roles.POST("/mappings/workspace-roles/users/list", roleHandler.ListUsersByWorkspaceRole)
+		roles.GET("/mappings/workspace-roles/id/:roleId/groups", groupRoleHandler.ListGroupsByWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
 		roles.POST("/mappings/csp-roles/list", roleHandler.ListRoleMasterMappingsByCspRole)
 	}
 
@@ -532,6 +534,7 @@ func main() {
 		// 그룹 사용자 관리 (그룹 입장, Keycloak 동기화 포함)
 		groups.POST("/id/:groupId/users", groupRoleHandler.AssignGroupUsers)
 		groups.DELETE("/id/:groupId/users/:userId", groupRoleHandler.RemoveGroupUser)
+		groups.DELETE("/id/:groupId/users", groupRoleHandler.RemoveGroupUsers)
 
 		// 그룹 플랫폼 역할 관리 (DB + Keycloak)
 		groups.POST("/id/:groupId/platform-roles", groupRoleHandler.AssignGroupPlatformRole)

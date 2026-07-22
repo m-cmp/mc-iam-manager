@@ -92,6 +92,8 @@ type KeycloakService interface {
 	AddRealmRoleToGroup(ctx context.Context, groupName, roleName string) error
 	// RemoveRealmRoleFromGroup removes a realm role from a Keycloak group
 	RemoveRealmRoleFromGroup(ctx context.Context, groupName, roleName string) error
+	// DeleteGroup deletes a Keycloak group by name (no-op if the group doesn't exist)
+	DeleteGroup(ctx context.Context, groupName string) error
 	// CheckSAMLClientConfig Keycloak SAML 클라이언트 존재 및 protocol mapper 구성 확인
 	CheckSAMLClientConfig(ctx context.Context, clientID string) (string, error)
 }
@@ -1891,6 +1893,34 @@ func (s *keycloakService) RemoveRealmRoleFromGroup(ctx context.Context, groupNam
 	}
 
 	log.Printf("Successfully removed realm role '%s' from Keycloak group '%s'", roleName, groupName)
+	return nil
+}
+
+// DeleteGroup deletes a Keycloak group by name. No-op (not an error) if the group doesn't exist.
+func (s *keycloakService) DeleteGroup(ctx context.Context, groupName string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	groupID, err := s.findGroupByName(ctx, token.AccessToken, groupName)
+	if err != nil {
+		return err
+	}
+	if groupID == "" {
+		log.Printf("Keycloak group '%s' not found, skipping deletion", groupName)
+		return nil
+	}
+
+	if err := config.KC.Client.DeleteGroup(ctx, token.AccessToken, config.KC.Realm, groupID); err != nil {
+		return fmt.Errorf("failed to delete keycloak group '%s': %w", groupName, err)
+	}
+
+	log.Printf("Successfully deleted Keycloak group '%s'", groupName)
 	return nil
 }
 
