@@ -234,9 +234,27 @@ func validateAccountInfo(account *model.CspAccount) error {
 			return fmt.Errorf("GCP project_id is required")
 		}
 		return nil
-	case "aws", "azure", "tencent", "ibm", "ncp", "nhn", "kt", "openstack":
+	case "tencent":
+		if account.GetTencentAppID() == "" {
+			return fmt.Errorf("Tencent app_id is required")
+		}
+		return nil
+	case "aws":
+		if account.GetAccountID() == "" {
+			return fmt.Errorf("AWS account_id is required")
+		}
+		return nil
+	case "azure":
+		if account.GetSubscriptionID() == "" {
+			return fmt.Errorf("Azure subscription_id is required")
+		}
+		if account.GetTenantID() == "" {
+			return fmt.Errorf("Azure tenant_id is required")
+		}
+		return nil
+	case "ibm", "ncp", "nhn", "kt", "openstack":
 		// TODO: 각 CSP 타입별 필수 필드 검증은 이후 PR에서 순차적으로 추가 예정.
-		// 지금은 no-op으로 통과시킨다 (이번 PR 범위는 Alibaba, GCP만).
+		// 지금은 no-op으로 통과시킨다 (이번 PR 범위는 Alibaba, GCP, Tencent, AWS, Azure만).
 		return nil
 	default:
 		return fmt.Errorf("unsupported CSP type: %s", account.CspType)
