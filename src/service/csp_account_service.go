@@ -229,9 +229,14 @@ func validateAccountInfo(account *model.CspAccount) error {
 			return fmt.Errorf("Alibaba account_id is required")
 		}
 		return nil
-	case "aws", "gcp", "azure", "tencent", "ibm", "ncp", "nhn", "kt", "openstack":
+	case "gcp":
+		if account.GetProjectID() == "" {
+			return fmt.Errorf("GCP project_id is required")
+		}
+		return nil
+	case "aws", "azure", "tencent", "ibm", "ncp", "nhn", "kt", "openstack":
 		// TODO: 각 CSP 타입별 필수 필드 검증은 이후 PR에서 순차적으로 추가 예정.
-		// 지금은 no-op으로 통과시킨다 (이번 PR 범위는 Alibaba만).
+		// 지금은 no-op으로 통과시킨다 (이번 PR 범위는 Alibaba, GCP만).
 		return nil
 	default:
 		return fmt.Errorf("unsupported CSP type: %s", account.CspType)
