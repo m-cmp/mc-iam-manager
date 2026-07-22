@@ -97,11 +97,15 @@ func (s *CspRoleService) CreateCspRole(req *model.CreateCspRoleRequest) (*model.
 		cspRole, err = s.createAwsIamRole(req)
 	default:
 		// AWS 이외 CSP: DB 등록만 수행 (클라우드 역할 생성은 향후 확장)
+		// idp/iam identifier는 admin이 CSP 콘솔에서 수동 생성한 리소스의 ARN/이메일을 그대로 등록하는 값이므로
+		// 요청에서 받은 값을 반드시 저장해야 한다 (OI-24: 이전에는 여기서 누락되어 항상 빈 값으로 저장됐음).
 		cspRole = &model.CspRole{
-			Name:        req.CspRoleName,
-			Description: req.Description,
-			CspType:     req.CspType,
-			Status:      "created",
+			Name:          req.CspRoleName,
+			Description:   req.Description,
+			CspType:       req.CspType,
+			Status:        "created",
+			IdpIdentifier: req.IdpIdentifier,
+			IamIdentifier: req.IamIdentifier,
 		}
 		if err := s.cspRoleRepo.CreateCspRoleRecord(cspRole); err != nil {
 			return nil, fmt.Errorf("failed to create CSP role record: %w", err)
