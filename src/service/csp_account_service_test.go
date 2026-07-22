@@ -69,11 +69,8 @@ func TestCspAccountValidate_AWS_MissingAccountID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
-	// NOTE: AWS 필드 검증은 아직 미구현(no-op)이라 이 assertion은 현재 실패한다 (별도 PR에서 구현 예정).
-	// err가 nil일 수 있으므로 err.Error() 호출로 인한 패닉을 막기 위해 assert.Error 결과로 가드한다.
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "AWS account_id is required")
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "AWS account_id is required")
 }
 
 // TestValidateCspAccount_GCP_Valid: GCP 계정에 project_id가 있으면 검증 통과
@@ -141,10 +138,8 @@ func TestCspAccountValidate_Azure_MissingSubscriptionID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
-	// NOTE: Azure 필드 검증은 아직 미구현(no-op)이라 이 assertion은 현재 실패한다 (별도 PR에서 구현 예정).
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Azure subscription_id is required")
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Azure subscription_id is required")
 }
 
 // TestValidateCspAccount_Azure_MissingTenantID: Azure 계정에 tenant_id가 없으면 에러
@@ -161,10 +156,8 @@ func TestCspAccountValidate_Azure_MissingTenantID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
-	// NOTE: Azure 필드 검증은 아직 미구현(no-op)이라 이 assertion은 현재 실패한다 (별도 PR에서 구현 예정).
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "Azure tenant_id is required")
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Azure tenant_id is required")
 }
 
 // TestCspAccountValidate_Alibaba_Valid: Alibaba 계정에 account_id가 있으면 검증 통과
