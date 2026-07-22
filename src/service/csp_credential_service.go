@@ -244,7 +244,9 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 				return nil, fmt.Errorf("failed to get impersonation token: %w", err)
 			}
 			log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate (OIDC)...")
-			return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.AccessToken, "jwt")
+			// GCP WIF STS는 단일 문자열 aud를 요구하므로 Access Token(aud가 "account")이 아니라
+			// ID Token(aud=OIDC 클라이언트 ID)을 사용해야 한다 — Alibaba OIDC(OI-1)와 동일한 이유.
+			return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.IDToken, "jwt")
 		case model.AuthMethodSAML:
 			samlClientAudience := idpArn
 			if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {
