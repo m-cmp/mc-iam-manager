@@ -107,7 +107,6 @@ func (s *tencentCredentialService) AssumeRoleWithSAML(
 		"PrincipalArn":    principalArn,
 		"SAMLAssertion":   samlAssertion,
 		"RoleSessionName": sessionName,
-		"Region":          region,
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
@@ -126,6 +125,7 @@ func (s *tencentCredentialService) AssumeRoleWithSAML(
 	req.Header.Set("X-TC-Action", "AssumeRoleWithSAML")
 	req.Header.Set("X-TC-Version", tencentStsVersion)
 	req.Header.Set("X-TC-Timestamp", timestamp)
+	req.Header.Set("X-TC-Region", region)
 	// AssumeRoleWithSAML은 AWS/Alibaba/GCP의 SAML/OIDC federation entry point와 마찬가지로
 	// 사전 자격증명 없이 호출 가능한 진입점이라 TC3-HMAC-SHA256 서명을 요구하지 않는다.
 	// Tencent 문서상 Authorization 헤더는 리터럴 문자열 "SKIP"이어야 한다 — 서명을 보내면
