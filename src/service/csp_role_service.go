@@ -588,6 +588,9 @@ func (s *CspRoleService) UpdateCspRole(id uint, req *model.CreateCspRoleRequest)
 	if len(req.ExtendedConfig) > 0 {
 		existingRole.ExtendedConfig = req.ExtendedConfig
 	}
+	if req.CspIdpConfigID != nil {
+		existingRole.CspIdpConfigID = req.CspIdpConfigID
+	}
 	// DB 전용 업데이트로 변경 (기존에는 CspType 무관하게 항상 AWS UpdateRoleDescription을
 	// 호출해 GCP/Alibaba 등 비-AWS CspRole 수정 시 항상 실패했다 — SAML ExtendedConfig를
 	// 모든 CSP에서 API로 설정 가능하게 하려면 이 경로도 함께 고쳐야 한다).

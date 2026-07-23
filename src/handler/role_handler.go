@@ -901,6 +901,44 @@ func (h *RoleHandler) CreateCspRole(c echo.Context) error {
 	return c.JSON(http.StatusCreated, createdRole)
 }
 
+// @Summary Update CSP role
+// @Description CspRole(mcmp_role_csp_roles) 레코드를 수정합니다. Name/Description/ExtendedConfig를 반영합니다.
+// @Description AWS의 경우 클라우드 측 리소스는 건드리지 않고 DB만 갱신합니다(SAML saml_client_id 등 설정용).
+// @Tags roles
+// @Accept json
+// @Produce json
+// @Param roleId path string true "CSP Role ID"
+// @Param role body model.CreateCspRoleRequest true "CSP Role Info"
+// @Success 200 {object} model.CspRole
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/roles/csp/id/{roleId} [put]
+// @Id updateCspRoleRecord
+func (h *RoleHandler) UpdateCspRoleRecord(c echo.Context) error {
+	roleIDInt, err := util.StringToUint(c.Param("roleId"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 csp 역할 ID 형식입니다"})
+	}
+
+	var req model.CreateCspRoleRequest
+	if err := c.Bind(&req); err != nil {
+		c.Logger().Debugf("Bind error: %v", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "잘못된 요청 형식입니다"})
+	}
+
+	if err := h.cspRoleService.UpdateCspRole(roleIDInt, &req); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	updatedRole, err := h.cspRoleService.GetCspRoleByID(roleIDInt)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, updatedRole)
+}
+
 // @Summary Get platform role by ID
 // @Description Get platform role details by ID
 // @Tags roles
