@@ -107,6 +107,7 @@ func (s *tencentCredentialService) AssumeRoleWithSAML(
 		"PrincipalArn":    principalArn,
 		"SAMLAssertion":   samlAssertion,
 		"RoleSessionName": sessionName,
+		"Region":          region,
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
