@@ -184,7 +184,13 @@ func (s *CspRoleService) createAwsIamRole(req *model.CreateCspRoleRequest) (*mod
 func (s *CspRoleService) createAndPollAwsIamRole(awsIamClient *iam.Client, newRole *model.CspRole, req *model.CreateCspRoleRequest) (*model.CspRole, error) {
 	idpIdentifier := ""
 
-	assumeRolePolicyDocument, err := getAwsAssumeRolePolicyDocument(newRole)
+	var assumeRolePolicyDocument string
+	var err error
+	if req.AuthMethod == constants.AuthMethodSAML {
+		assumeRolePolicyDocument, err = getAwsSamlAssumeRolePolicyDocument(req)
+	} else {
+		assumeRolePolicyDocument, err = getAwsAssumeRolePolicyDocument(newRole)
+	}
 	if err != nil {
 		newRole.Status = "failed"
 		s.cspRoleRepo.UpdateCspRoleRecord(newRole)
@@ -377,6 +383,55 @@ func getAwsAssumeRolePolicyDocument(role *model.CspRole) (string, error) {
 	return buf.String(), nil
 }
 
+// awsSamlPolicyValues AWS SAML AssumeRole 정책 문서 템플릿에 채울 값
+type awsSamlPolicyValues struct {
+	SamlProviderArn string
+}
+
+// getAwsSamlAssumeRolePolicyDocument SAML federation용 AssumeRole 정책 문서를 반환합니다.
+// SAML Provider ARN(req.IdpIdentifier, 사전에 `aws iam create-saml-provider`로 등록된 값)을
+// Federated principal로 사용한다. OIDC와 달리 발급자 정보가 env var로 결정되지 않고
+// 호출자가 등록한 SAML Provider 하나하나가 곧 신뢰 대상이므로 req에서 직접 받는다.
+func getAwsSamlAssumeRolePolicyDocument(req *model.CreateCspRoleRequest) (string, error) {
+	const policyTemplate = `{
+		"Version": "2012-10-17",
+		"Statement": [
+			{
+				"Effect": "Allow",
+				"Principal": {
+					"Federated": "{{.SamlProviderArn}}"
+				},
+				"Action": "sts:AssumeRoleWithSAML",
+				"Condition": {
+					"StringEquals": {
+						"SAML:aud": "https://signin.aws.amazon.com/saml"
+					}
+				}
+			}
+		]
+	}`
+
+	if req.IdpIdentifier == "" {
+		return "", fmt.Errorf("idpIdentifier (SAML provider ARN) is required for SAML CSP role creation")
+	}
+
+	values := awsSamlPolicyValues{
+		SamlProviderArn: req.IdpIdentifier,
+	}
+
+	tmpl, err := template.New("samlPolicy").Parse(policyTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, values)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
 // mapAwsRoleToModel AWS IAM GetRole 응답을 CspRole 모델로 매핑합니다.
 func mapAwsRoleToModel(id uint, cspType string, idpIdentifier string, getRoleResult *iam.GetRoleOutput) *model.CspRole {
 	createdRole := &model.CspRole{
@@ -530,7 +585,13 @@ func (s *CspRoleService) UpdateCspRole(id uint, req *model.CreateCspRoleRequest)
 	}
 	existingRole.Name = req.CspRoleName
 	existingRole.Description = req.Description
-	return s.cspRoleRepo.UpdateCSPRole(existingRole)
+	if len(req.ExtendedConfig) > 0 {
+		existingRole.ExtendedConfig = req.ExtendedConfig
+	}
+	// DB 전용 업데이트로 변경 (기존에는 CspType 무관하게 항상 AWS UpdateRoleDescription을
+	// 호출해 GCP/Alibaba 등 비-AWS CspRole 수정 시 항상 실패했다 — SAML ExtendedConfig를
+	// 모든 CSP에서 API로 설정 가능하게 하려면 이 경로도 함께 고쳐야 한다).
+	return s.cspRoleRepo.UpdateCspRoleRecord(existingRole)
 }
 
 // DeleteCspRole CSP 역할을 삭제합니다.
