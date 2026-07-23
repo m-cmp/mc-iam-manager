@@ -102,6 +102,7 @@ type CreateCspRoleRequest struct {
 	IamRoleId      string                 `json:"iamRoleId,omitempty"`
 	Tags           []Tag                  `json:"tags,omitempty" gorm:"-"`
 	ExtendedConfig map[string]interface{} `json:"extendedConfig,omitempty"`
+	CspIdpConfigID *uint                  `json:"cspIdpConfigId,omitempty"` // 이 CspRole이 사용할 CspIdpConfig(OIDC/SAML 등 트러스트 설정) 연결
 }
 
 // CreateCspRolesRequest 복수 CSP 역할 생성 요청 구조체

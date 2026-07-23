@@ -127,3 +127,31 @@ func TestUpdateCspRole_PersistsExtendedConfig(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "urn:amazon:webservices", updated.ExtendedConfig["saml_client_id"])
 }
+
+// TestUpdateCspRole_PersistsCspIdpConfigID: CspRole이 어떤 CspIdpConfig(OIDC/SAML
+// 트러스트 설정)를 쓸지는 CspIdpConfigID FK로 연결되는데, 이 필드를 설정할 API가
+// 없었다(raw SQL만 가능). UpdateCspRole로 설정 가능해야 한다.
+func TestUpdateCspRole_PersistsCspIdpConfigID(t *testing.T) {
+	svc := newTestCspRoleService(t)
+
+	created, err := svc.CreateCspRole(&model.CreateCspRoleRequest{
+		CspRoleName:   "mcmp-admin-idpcfg",
+		CspType:       "gcp",
+		AuthMethod:    constants.AuthMethodOIDC,
+		IdpIdentifier: "//iam.googleapis.com/projects/x/locations/global/workloadIdentityPools/p/providers/pr",
+		IamIdentifier: "sa@project.iam.gserviceaccount.com",
+	})
+	require.NoError(t, err)
+
+	idpConfigID := uint(42)
+	err = svc.UpdateCspRole(created.ID, &model.CreateCspRoleRequest{
+		CspRoleName:    created.Name,
+		CspIdpConfigID: &idpConfigID,
+	})
+	require.NoError(t, err)
+
+	updated, err := svc.GetCspRoleByID(created.ID)
+	require.NoError(t, err)
+	require.NotNil(t, updated.CspIdpConfigID)
+	assert.Equal(t, idpConfigID, *updated.CspIdpConfigID)
+}
