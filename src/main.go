@@ -339,6 +339,7 @@ func main() {
 		roles.POST("/csp/batch", roleHandler.CreateCspRoles)
 		//roles.DELETE("/csp", roleHandler.DeleteCspRole)
 		roles.DELETE("/csp/id/:roleId", roleHandler.DeleteCspRole) //단건삭제
+		roles.PUT("/csp/id/:roleId", roleHandler.UpdateCspRoleRecord)
 		roles.GET("/csp/id/:roleId", roleHandler.GetCspRoleByID)
 		roles.GET("/csp/name/:roleName", roleHandler.GetCspRoleByName)
 
