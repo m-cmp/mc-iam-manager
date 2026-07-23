@@ -115,12 +115,6 @@ func (s *tencentCredentialService) AssumeRoleWithSAML(
 
 	now := time.Now().UTC()
 	timestamp := fmt.Sprintf("%d", now.Unix())
-	date := now.Format("2006-01-02")
-
-	authHeader, err := buildTencentTC3Auth(secretID, secretKey, date, timestamp, string(payloadBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to build Tencent TC3 signature: %w", err)
-	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tencentStsEndpoint, strings.NewReader(string(payloadBytes)))
 	if err != nil {
@@ -131,7 +125,11 @@ func (s *tencentCredentialService) AssumeRoleWithSAML(
 	req.Header.Set("X-TC-Action", "AssumeRoleWithSAML")
 	req.Header.Set("X-TC-Version", tencentStsVersion)
 	req.Header.Set("X-TC-Timestamp", timestamp)
-	req.Header.Set("Authorization", authHeader)
+	// AssumeRoleWithSAML은 AWS/Alibaba/GCP의 SAML/OIDC federation entry point와 마찬가지로
+	// 사전 자격증명 없이 호출 가능한 진입점이라 TC3-HMAC-SHA256 서명을 요구하지 않는다.
+	// Tencent 문서상 Authorization 헤더는 리터럴 문자열 "SKIP"이어야 한다 — 서명을 보내면
+	// "Must be SKIP" 오류로 거부된다(실 API 호출로 확인, 039 Phase 2).
+	req.Header.Set("Authorization", "SKIP")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
