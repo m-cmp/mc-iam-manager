@@ -10,6 +10,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/stretchr/testify/assert"
@@ -48,6 +49,7 @@ func newTestGroupRoleService(t *testing.T) (*GroupRoleService, *gorm.DB) {
 		db:            db,
 		groupRoleRepo: repository.NewGroupRoleRepository(db),
 		orgRepo:       repository.NewOrganizationRepository(db),
+		roleRepo:      repository.NewRoleRepository(db),
 		kcService:     nil, // KC 불필요한 메서드만 테스트
 	}
 	return svc, db
@@ -64,6 +66,8 @@ func createGRTestRole(t *testing.T, db *gorm.DB, name string) *model.RoleMaster 
 	t.Helper()
 	role := &model.RoleMaster{Name: name}
 	require.NoError(t, db.Create(role).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: role.ID, RoleType: constants.RoleTypePlatform}).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: role.ID, RoleType: constants.RoleTypeWorkspace}).Error)
 	return role
 }
 
@@ -99,6 +103,22 @@ func TestGroupRoleAssignPlatformRole_RoleNotFound(t *testing.T) {
 	svc.kcService = nil // KC nil이면 KC 이전에서 실패
 
 	err := svc.AssignGroupPlatformRole(context.Background(), org.ID, 99999)
+
+	require.Error(t, err)
+	assert.Equal(t, repository.ErrRoleMasterNotFound, err)
+}
+
+// TC-GR-APR-03: workspace 전용 역할을 플랫폼 역할로 할당 시도 → ErrRoleMasterNotFound
+// (roleMaster-roleSub에서 workspace 타입인 역할은 platform-role 자리에 할당될 수 없어야 한다)
+func TestGroupRoleAssignPlatformRole_WrongRoleType(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	org := createGRTestOrg(t, db, "test-group-apr03", "GR03")
+
+	workspaceOnlyRole := &model.RoleMaster{Name: "workspace-only-apr03"}
+	require.NoError(t, db.Create(workspaceOnlyRole).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: workspaceOnlyRole.ID, RoleType: constants.RoleTypeWorkspace}).Error)
+
+	err := svc.AssignGroupPlatformRole(context.Background(), org.ID, workspaceOnlyRole.ID)
 
 	require.Error(t, err)
 	assert.Equal(t, repository.ErrRoleMasterNotFound, err)
@@ -140,6 +160,23 @@ func TestGroupRoleAssignGroupWorkspace_Success(t *testing.T) {
 	err := svc.AssignGroupWorkspace(org.ID, ws.ID, role.ID)
 
 	require.NoError(t, err)
+}
+
+// TC-GR-AGW-04: platform 전용 역할을 워크스페이스 역할로 할당 시도 → ErrRoleMasterNotFound
+// (roleMaster-roleSub에서 platform 타입인 역할은 group-workspace 자리에 할당될 수 없어야 한다)
+func TestGroupRoleAssignGroupWorkspace_WrongRoleType(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	org := createGRTestOrg(t, db, "test-group-agw04", "GW04")
+	ws := createGRTestWorkspace(t, db, "ws-agw04")
+
+	platformOnlyRole := &model.RoleMaster{Name: "platform-only-agw04"}
+	require.NoError(t, db.Create(platformOnlyRole).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: platformOnlyRole.ID, RoleType: constants.RoleTypePlatform}).Error)
+
+	err := svc.AssignGroupWorkspace(org.ID, ws.ID, platformOnlyRole.ID)
+
+	require.Error(t, err)
+	assert.Equal(t, repository.ErrRoleMasterNotFound, err)
 }
 
 // ── GetGroupWorkspaces ────────────────────────────────────────────────────────
@@ -315,6 +352,7 @@ func setupGroupRoleServiceTestDB(t *testing.T) *gorm.DB {
 		&model.Organization{},
 		&model.Workspace{},
 		&model.RoleMaster{},
+		&model.RoleSub{},
 		&model.GroupPlatformRole{},
 		&model.GroupWorkspaceRole{},
 	)
@@ -340,6 +378,8 @@ func seedRole(t *testing.T, db *gorm.DB, name string) *model.RoleMaster {
 	t.Helper()
 	role := &model.RoleMaster{Name: name}
 	require.NoError(t, db.Create(role).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: role.ID, RoleType: constants.RoleTypePlatform}).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: role.ID, RoleType: constants.RoleTypeWorkspace}).Error)
 	return role
 }
 
@@ -446,8 +486,9 @@ func TestGroupRoleService_UpdateGroupWorkspaceRole(t *testing.T) {
 func TestGroupRoleService_UpdateGroupWorkspaceRole_NotFound(t *testing.T) {
 	db := setupGroupRoleServiceTestDB(t)
 	svc := NewGroupRoleService(db)
+	role := seedRole(t, db, "svc-notfound-role")
 
-	err := svc.UpdateGroupWorkspaceRole(9999, 9999, 1)
+	err := svc.UpdateGroupWorkspaceRole(9999, 9999, role.ID)
 	assert.ErrorIs(t, err, repository.ErrGroupWorkspaceRoleNotFound)
 }
 

@@ -342,10 +342,14 @@ func (h *GroupRoleHandler) UpdateGroupWorkspaceRole(c echo.Context) error {
 	}
 
 	if err := h.groupRoleService.UpdateGroupWorkspaceRole(uint(groupID), uint(workspaceID), req.RoleID); err != nil {
-		if errors.Is(err, repository.ErrGroupWorkspaceRoleNotFound) {
+		switch {
+		case errors.Is(err, repository.ErrGroupWorkspaceRoleNotFound):
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "매핑을 찾을 수 없습니다"})
+		case errors.Is(err, repository.ErrRoleMasterNotFound):
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "워크스페이스 역할을 찾을 수 없습니다"})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"message": "그룹 워크스페이스 역할이 변경되었습니다."})

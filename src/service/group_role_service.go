@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
 	"gorm.io/gorm"
@@ -15,6 +16,7 @@ type GroupRoleService struct {
 	db            *gorm.DB
 	groupRoleRepo *repository.GroupRoleRepository
 	orgRepo       *repository.OrganizationRepository
+	roleRepo      *repository.RoleRepository
 	kcService     KeycloakService
 }
 
@@ -24,6 +26,7 @@ func NewGroupRoleService(db *gorm.DB) *GroupRoleService {
 		db:            db,
 		groupRoleRepo: repository.NewGroupRoleRepository(db),
 		orgRepo:       repository.NewOrganizationRepository(db),
+		roleRepo:      repository.NewRoleRepository(db),
 		kcService:     NewKeycloakService(),
 	}
 }
@@ -38,13 +41,13 @@ func (s *GroupRoleService) AssignGroupPlatformRole(ctx context.Context, groupID,
 		return err
 	}
 
-	// 2. Role 이름 조회
-	var roleMaster model.RoleMaster
-	if err := s.db.First(&roleMaster, roleID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return repository.ErrRoleMasterNotFound
-		}
+	// 2. Role 조회 (platform 타입 역할만 그룹에 할당 가능)
+	role, err := s.roleRepo.FindRoleByRoleID(roleID, constants.RoleTypePlatform)
+	if err != nil {
 		return fmt.Errorf("role not found: %w", err)
+	}
+	if role == nil {
+		return repository.ErrRoleMasterNotFound
 	}
 
 	// 3. DB에 저장
@@ -53,7 +56,7 @@ func (s *GroupRoleService) AssignGroupPlatformRole(ctx context.Context, groupID,
 	}
 
 	// 4. Keycloak: 그룹에 realm role 추가
-	if err := s.kcService.AddRealmRoleToGroup(ctx, org.Name, roleMaster.Name); err != nil {
+	if err := s.kcService.AddRealmRoleToGroup(ctx, org.Name, role.Name); err != nil {
 		// DB rollback
 		_ = s.groupRoleRepo.DeleteGroupPlatformRole(groupID, roleID)
 		return fmt.Errorf("failed to assign role to keycloak group: %w", err)
@@ -130,13 +133,13 @@ func (s *GroupRoleService) AssignGroupWorkspace(groupID, workspaceID, roleID uin
 		}
 		return fmt.Errorf("error checking workspace: %w", err)
 	}
-	// role 존재 여부 확인
-	var roleMaster model.RoleMaster
-	if err := s.db.First(&roleMaster, roleID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return repository.ErrRoleMasterNotFound
-		}
+	// role 존재 여부 확인 (workspace 타입 역할만 그룹-워크스페이스에 할당 가능)
+	role, err := s.roleRepo.FindRoleByRoleID(roleID, constants.RoleTypeWorkspace)
+	if err != nil {
 		return fmt.Errorf("error checking role: %w", err)
+	}
+	if role == nil {
+		return repository.ErrRoleMasterNotFound
 	}
 	return s.groupRoleRepo.CreateGroupWorkspaceRole(groupID, workspaceID, roleID)
 }
@@ -148,6 +151,14 @@ func (s *GroupRoleService) GetGroupWorkspaces(groupID uint) ([]model.GroupWorksp
 
 // UpdateGroupWorkspaceRole 그룹-워크스페이스 역할 변경
 func (s *GroupRoleService) UpdateGroupWorkspaceRole(groupID, workspaceID, roleID uint) error {
+	// role 존재 여부 확인 (workspace 타입 역할만 할당 가능)
+	role, err := s.roleRepo.FindRoleByRoleID(roleID, constants.RoleTypeWorkspace)
+	if err != nil {
+		return fmt.Errorf("error checking role: %w", err)
+	}
+	if role == nil {
+		return repository.ErrRoleMasterNotFound
+	}
 	return s.groupRoleRepo.UpdateGroupWorkspaceRole(groupID, workspaceID, roleID)
 }
 
