@@ -16,8 +16,8 @@ permissions:
       - roles
       - csproles
       - workloads
-      - mciworkloads
-      - pmkworkloads
+      - infraworkloads
+      - k8sworkloads
       - infratemplates
       - workflows
       - swcatalogs
@@ -70,7 +70,7 @@ permissions:
       - operations
       - manage
       - workloads
-      - mciworkloads
+      - infraworkloads
       - analytics
       - costanalysis
     operations: []
@@ -89,8 +89,8 @@ permissions:
       - operations
       - manage
       - workloads
-      - mciworkloads
-      - pmkworkloads
+      - infraworkloads
+      - k8sworkloads
       - workflows
       - swcatalogs
       - mcdatamanager

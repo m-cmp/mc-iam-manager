@@ -74,17 +74,17 @@ menus:
     priority: 2
     menunumber: 1750
 
-  - id: mciworkloads
+  - id: infraworkloads
     parentid: workloads
-    displayname: MCI Workloads
+    displayname: Infra Workloads
     restype: menu
     isaction: true
     priority: 2
     menunumber: 1760
 
-  - id: pmkworkloads
+  - id: k8sworkloads
     parentid: workloads
-    displayname: PMK Workloads
+    displayname: K8s Workloads
     restype: menu
     isaction: true
     priority: 2
