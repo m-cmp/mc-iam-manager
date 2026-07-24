@@ -69,8 +69,8 @@ type CreateRoleRequest struct {
 // RoleRequest 역할 조회 요청 구조체
 type RoleFilterRequest struct {
 	RoleID    string                  `json:"roleId,omitempty"`
-	RoleName  string                  `json:"roleName",omitempty"`
-	RoleTypes []constants.IAMRoleType `json:"roleTypes",omitempty"`
+	RoleName  string                  `json:"roleName,omitempty"`
+	RoleTypes []constants.IAMRoleType `json:"roleTypes,omitempty"`
 }
 
 // 워크스페이스와 프로젝트 매핑 추가 또는 해제
@@ -90,17 +90,19 @@ type WorkspaceFilterRequest struct {
 }
 
 type CreateCspRoleRequest struct {
-	ID            string               `json:"id,omitempty"`
-	CspRoleName   string               `json:"cspRoleName,omitempty"` // csp의 RoleName. 여러 role이 있기때문에 csp에 정의한 role로 구분하기 위해 사용
-	Description   string               `json:"description,omitempty"`
-	CspType       string               `json:"cspType,omitempty"`
-	AuthMethod    constants.AuthMethod `json:"authMethod,omitempty"` // 인증방식 (OIDC/SAML/SECRET_KEY), 미지정 시 OIDC 기본값
-	IdpIdentifier string               `json:"idpIdentifier,omitempty"`
-	IamIdentifier string               `json:"iamIdentifier,omitempty"`
-	Status        string               `json:"status,omitempty"`
-	Path          string               `json:"path,omitempty"`
-	IamRoleId     string               `json:"iamRoleId,omitempty"`
-	Tags          []Tag                `json:"tags,omitempty" gorm:"-"`
+	ID             string                 `json:"id,omitempty"`
+	CspRoleName    string                 `json:"cspRoleName,omitempty"` // csp의 RoleName. 여러 role이 있기때문에 csp에 정의한 role로 구분하기 위해 사용
+	Description    string                 `json:"description,omitempty"`
+	CspType        string                 `json:"cspType,omitempty"`
+	AuthMethod     constants.AuthMethod   `json:"authMethod,omitempty"` // 인증방식 (OIDC/SAML/SECRET_KEY), 미지정 시 OIDC 기본값
+	IdpIdentifier  string                 `json:"idpIdentifier,omitempty"`
+	IamIdentifier  string                 `json:"iamIdentifier,omitempty"`
+	Status         string                 `json:"status,omitempty"`
+	Path           string                 `json:"path,omitempty"`
+	IamRoleId      string                 `json:"iamRoleId,omitempty"`
+	Tags           []Tag                  `json:"tags,omitempty" gorm:"-"`
+	ExtendedConfig map[string]interface{} `json:"extendedConfig,omitempty"`
+	CspIdpConfigID *uint                  `json:"cspIdpConfigId,omitempty"` // 이 CspRole이 사용할 CspIdpConfig(OIDC/SAML 등 트러스트 설정) 연결
 }
 
 // CreateCspRolesRequest 복수 CSP 역할 생성 요청 구조체
@@ -135,8 +137,8 @@ type CreateMenuRequests struct {
 }
 
 type MenuFilterRequest struct {
-	MenuIDs   []*string `json:"menuIds",omitempty"`
-	MenuNames []*string `json:"menuNames",omitempty"`
+	MenuIDs   []*string `json:"menuIds,omitempty"`
+	MenuNames []*string `json:"menuNames,omitempty"`
 }
 
 // CreateMenuMappingRequest 메뉴 매핑 생성을 위한 요청 구조체
@@ -146,8 +148,8 @@ type CreateMenuMappingRequest struct {
 }
 
 type MenuMappingFilterRequest struct {
-	RoleIDs []string `json:"roleId",omitempty"`
-	MenuID  string   `json:"menuIds",omitempty"`
+	RoleIDs []string `json:"roleId,omitempty"`
+	MenuID  string   `json:"menuIds,omitempty"`
 }
 
 // AssignWorkspaceRoleRequest 워크스페이스 역할 할당 요청 구조체

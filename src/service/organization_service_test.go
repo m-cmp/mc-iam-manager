@@ -13,20 +13,24 @@ package service
 //   - DeleteOrganizationCascade:      존재하지 않는 ID → not found
 //   - AssignUserToOrganizations:      조직 미존재 → 오류, 정상 할당
 //   - RemoveUserFromOrganization:     매핑 없음 → ErrUserOrganizationNotFound
-//   - GetUserOrganizations:           정상 조회 (빈 목록)
 //   - ReplaceUserGroups:              그룹 미존재 → 오류
 //   - GetOrganizationSubtree:         존재하지 않는 조직 → not found
 //   - MoveOrganization:               존재하지 않는 조직, 자기 자신으로 이동 → 순환 참조
 //   - UpdateOrganization:             존재하지 않는 조직 → not found
 //
-// NOTE: FindTreeFlat, FindSubtreeFlat, GetSubtreeDepth, GetAncestorDepth,
-//       UpdateDescendantCodes 는 PostgreSQL CTE / SUBSTRING FROM 구문을 사용하므로
-//       SQLite in-memory DB 에서는 실행할 수 없습니다.
-//       해당 경로를 거치는 MoveOrganization 의 정상 경로와
-//       GetOrganizationTree / GetOrganizationSubtree 의 정상 경로는
-//       통합 테스트(PostgreSQL)로 별도 검증합니다.
+// NOTE: FindUserOrganizations(GetUserOrganizations/ReplaceUserGroups 정상 경로),
+//       FindTreeFlat, FindSubtreeFlat, GetSubtreeDepth, GetAncestorDepth,
+//       UpdateDescendantCodes 는 PostgreSQL CTE / `::text` 캐스팅 / SUBSTRING FROM
+//       구문을 사용하므로 SQLite in-memory DB 에서는 실행할 수 없습니다.
+//       해당 경로를 거치는 GetUserOrganizations, ReplaceUserGroups 정상 경로,
+//       MoveOrganization 정상 경로, GetOrganizationTree / GetOrganizationSubtree
+//       정상 경로, 그리고 OrganizationRepository 의 위 메서드들은
+//       organization_service_integration_test.go / organization_repository_integration_test.go
+//       에서 실제 PostgreSQL 을 사용한 통합 테스트로 검증합니다.
+//       (INTEGRATION_TEST=1 로 게이팅, DB 미연결 시 skip)
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -52,6 +56,9 @@ func setupOrgServiceTestDB(t *testing.T) *gorm.DB {
 		&model.Organization{},
 		&model.User{},
 		&model.UserOrganization{},
+		&model.RoleMaster{},
+		&model.GroupPlatformRole{},
+		&model.GroupWorkspaceRole{},
 	))
 	return db
 }
@@ -60,6 +67,7 @@ func newTestOrgService(t *testing.T) (*OrganizationService, *gorm.DB) {
 	t.Helper()
 	db := setupOrgServiceTestDB(t)
 	svc := NewOrganizationService(db)
+	svc.kcService = &mockKeycloakService{} // 실제 Keycloak 연동 없이 DB 로직만 검증
 	return svc, db
 }
 
@@ -282,7 +290,7 @@ func TestGetOrganizationByCode_Success(t *testing.T) {
 func TestDeleteOrganization_NotFound(t *testing.T) {
 	svc, _ := newTestOrgService(t)
 
-	err := svc.DeleteOrganization(99999)
+	err := svc.DeleteOrganization(context.Background(), 99999)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, repository.ErrOrganizationNotFound)
@@ -294,7 +302,7 @@ func TestDeleteOrganization_HasChildren(t *testing.T) {
 	parent := createOrg(t, db, "01", "Parent", nil)
 	createOrg(t, db, "0101", "Child", &parent.ID)
 
-	err := svc.DeleteOrganization(parent.ID)
+	err := svc.DeleteOrganization(context.Background(), parent.ID)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, repository.ErrOrganizationHasChildren)
@@ -312,7 +320,7 @@ func TestDeleteOrganization_HasUsers(t *testing.T) {
 		OrganizationID: org.ID,
 	}).Error)
 
-	err := svc.DeleteOrganization(org.ID)
+	err := svc.DeleteOrganization(context.Background(), org.ID)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, repository.ErrOrganizationHasUsers)
@@ -323,7 +331,7 @@ func TestDeleteOrganization_Success(t *testing.T) {
 	svc, db := newTestOrgService(t)
 	org := createOrg(t, db, "01", "Temp", nil)
 
-	err := svc.DeleteOrganization(org.ID)
+	err := svc.DeleteOrganization(context.Background(), org.ID)
 
 	require.NoError(t, err)
 
@@ -331,6 +339,26 @@ func TestDeleteOrganization_Success(t *testing.T) {
 	var count int64
 	db.Model(&model.Organization{}).Where("id = ?", org.ID).Count(&count)
 	assert.Equal(t, int64(0), count)
+}
+
+// TC-DO-05: 조직 삭제 시 group_platform_roles/group_workspace_roles 매핑도 함께 정리됨
+func TestDeleteOrganization_CleansUpGroupRoleMappings(t *testing.T) {
+	svc, db := newTestOrgService(t)
+	org := createOrg(t, db, "01", "Temp", nil)
+
+	role := &model.RoleMaster{Name: "role-do-05"}
+	require.NoError(t, db.Create(role).Error)
+	require.NoError(t, db.Create(&model.GroupPlatformRole{GroupID: org.ID, RoleID: role.ID}).Error)
+	require.NoError(t, db.Create(&model.GroupWorkspaceRole{GroupID: org.ID, WorkspaceID: 1, RoleID: role.ID}).Error)
+
+	err := svc.DeleteOrganization(context.Background(), org.ID)
+	require.NoError(t, err)
+
+	var gprCount, gwrCount int64
+	db.Model(&model.GroupPlatformRole{}).Where("group_id = ?", org.ID).Count(&gprCount)
+	db.Model(&model.GroupWorkspaceRole{}).Where("group_id = ?", org.ID).Count(&gwrCount)
+	assert.Equal(t, int64(0), gprCount)
+	assert.Equal(t, int64(0), gwrCount)
 }
 
 // ── CheckOrganizationDeletable 테스트 ─────────────────────────────────────────
@@ -393,10 +421,33 @@ func TestCheckOrganizationDeletable_Deletable(t *testing.T) {
 func TestDeleteOrganizationCascade_NotFound(t *testing.T) {
 	svc, _ := newTestOrgService(t)
 
-	err := svc.DeleteOrganizationCascade(99999)
+	err := svc.DeleteOrganizationCascade(context.Background(), 99999)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, repository.ErrOrganizationNotFound)
+}
+
+// TC-DC-02: 하위 조직 및 group-role 매핑까지 함께 cascade 삭제됨
+func TestDeleteOrganizationCascade_Success(t *testing.T) {
+	svc, db := newTestOrgService(t)
+	parent := createOrg(t, db, "01", "Parent", nil)
+	child := createOrg(t, db, "0101", "Child", &parent.ID)
+
+	role := &model.RoleMaster{Name: "role-dc-02"}
+	require.NoError(t, db.Create(role).Error)
+	require.NoError(t, db.Create(&model.GroupPlatformRole{GroupID: parent.ID, RoleID: role.ID}).Error)
+	require.NoError(t, db.Create(&model.GroupWorkspaceRole{GroupID: child.ID, WorkspaceID: 1, RoleID: role.ID}).Error)
+
+	err := svc.DeleteOrganizationCascade(context.Background(), parent.ID)
+	require.NoError(t, err)
+
+	var orgCount, gprCount, gwrCount int64
+	db.Model(&model.Organization{}).Where("id IN ?", []uint{parent.ID, child.ID}).Count(&orgCount)
+	db.Model(&model.GroupPlatformRole{}).Where("group_id = ?", parent.ID).Count(&gprCount)
+	db.Model(&model.GroupWorkspaceRole{}).Where("group_id = ?", child.ID).Count(&gwrCount)
+	assert.Equal(t, int64(0), orgCount)
+	assert.Equal(t, int64(0), gprCount)
+	assert.Equal(t, int64(0), gwrCount)
 }
 
 // ── AssignUserToOrganizations 테스트 ─────────────────────────────────────────
@@ -477,32 +528,10 @@ func TestRemoveUserFromOrganization_Success(t *testing.T) {
 }
 
 // ── GetUserOrganizations 테스트 ───────────────────────────────────────────────
-
-// TC-GU-01: 소속 조직 없는 사용자 → 빈 슬라이스
-func TestGetUserOrganizations_Empty(t *testing.T) {
-	svc, _ := newTestOrgService(t)
-
-	orgs, err := svc.GetUserOrganizations(99999)
-
-	require.NoError(t, err)
-	assert.Empty(t, orgs)
-}
-
-// TC-GU-02: 소속 조직 목록 정상 반환
-func TestGetUserOrganizations_WithOrgs(t *testing.T) {
-	svc, db := newTestOrgService(t)
-	org1 := createOrg(t, db, "01", "Alpha", nil)
-	org2 := createOrg(t, db, "02", "Beta", nil)
-	user := createOrgUser(t, db, "frank", "kc-frank-01")
-
-	require.NoError(t, db.Create(&model.UserOrganization{UserID: user.ID, OrganizationID: org1.ID}).Error)
-	require.NoError(t, db.Create(&model.UserOrganization{UserID: user.ID, OrganizationID: org2.ID}).Error)
-
-	orgs, err := svc.GetUserOrganizations(user.ID)
-
-	require.NoError(t, err)
-	assert.Len(t, orgs, 2)
-}
+//
+// NOTE: TestGetUserOrganizations_Empty / TestGetUserOrganizations_WithOrgs 는
+//       FindUserOrganizations(PostgreSQL CTE + ::text 캐스팅)를 거치므로
+//       organization_service_integration_test.go 로 이동했습니다.
 
 // ── ReplaceUserGroups 테스트 ──────────────────────────────────────────────────
 
@@ -516,39 +545,9 @@ func TestReplaceUserGroups_GroupNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "group not found")
 }
 
-// TC-RG-02: 기존 그룹 전부 제거 후 신규 할당 (빈 배열)
-func TestReplaceUserGroups_RemoveAll(t *testing.T) {
-	svc, db := newTestOrgService(t)
-	org := createOrg(t, db, "01", "Old", nil)
-	user := createOrgUser(t, db, "grace", "kc-grace-01")
-	require.NoError(t, db.Create(&model.UserOrganization{UserID: user.ID, OrganizationID: org.ID}).Error)
-
-	err := svc.ReplaceUserGroups(user.ID, []uint{})
-
-	require.NoError(t, err)
-
-	var count int64
-	db.Model(&model.UserOrganization{}).Where("user_id = ?", user.ID).Count(&count)
-	assert.Equal(t, int64(0), count)
-}
-
-// TC-RG-03: 기존 그룹 교체 성공
-func TestReplaceUserGroups_Replace(t *testing.T) {
-	svc, db := newTestOrgService(t)
-	org1 := createOrg(t, db, "01", "OldGroup", nil)
-	org2 := createOrg(t, db, "02", "NewGroup", nil)
-	user := createOrgUser(t, db, "henry", "kc-henry-01")
-	require.NoError(t, db.Create(&model.UserOrganization{UserID: user.ID, OrganizationID: org1.ID}).Error)
-
-	err := svc.ReplaceUserGroups(user.ID, []uint{org2.ID})
-
-	require.NoError(t, err)
-
-	orgs, err := svc.GetUserOrganizations(user.ID)
-	require.NoError(t, err)
-	require.Len(t, orgs, 1)
-	assert.Equal(t, "NewGroup", orgs[0].Name)
-}
+// NOTE: TestReplaceUserGroups_RemoveAll / TestReplaceUserGroups_Replace 는
+//       내부적으로 FindUserOrganizations(PostgreSQL CTE + ::text 캐스팅)를 거치므로
+//       organization_service_integration_test.go 로 이동했습니다.
 
 // ── GetOrganizationSubtree 테스트 ─────────────────────────────────────────────
 

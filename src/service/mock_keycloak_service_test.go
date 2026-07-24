@@ -29,6 +29,7 @@ func (m *mockKeycloakService) CreateUser(ctx context.Context, user *model.User) 
 func (m *mockKeycloakService) UpdateUser(ctx context.Context, user *model.User) error { return nil }
 func (m *mockKeycloakService) DeleteUser(ctx context.Context, kcId string) error      { return nil }
 func (m *mockKeycloakService) EnableUser(ctx context.Context, kcUserID string) error  { return nil }
+func (m *mockKeycloakService) DisableUser(ctx context.Context, kcUserID string) error { return nil }
 func (m *mockKeycloakService) CheckAdminLogin(ctx context.Context) (bool, error)      { return false, nil }
 func (m *mockKeycloakService) CheckRealm(ctx context.Context) (bool, error)           { return false, nil }
 func (m *mockKeycloakService) CreateRealm(ctx context.Context, accessToken string) (bool, error) {
@@ -122,6 +123,9 @@ func (m *mockKeycloakService) AddRealmRoleToGroup(ctx context.Context, groupName
 	return nil
 }
 func (m *mockKeycloakService) RemoveRealmRoleFromGroup(ctx context.Context, groupName, roleName string) error {
+	return nil
+}
+func (m *mockKeycloakService) DeleteGroup(ctx context.Context, groupName string) error {
 	return nil
 }
 func (m *mockKeycloakService) CheckSAMLClientConfig(ctx context.Context, clientID string) (string, error) {

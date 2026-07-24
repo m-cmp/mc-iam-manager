@@ -9031,6 +9031,71 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/setup/backup-role-permissions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "플랫폼 역할의 현재 메뉴(및 reserved ops/csp) 권한을 role-permission-backup 문서로 내보냅니다",
+                "produces": [
+                    "application/json",
+                    "application/yaml"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Backup current role permissions from DB",
+                "operationId": "backupRolePermissions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Comma-separated role names (default: all platform roles)",
+                        "name": "roles",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated sections (menus,operations,csps). Default: menus",
+                        "name": "sections",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "yaml or json (default yaml)",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "If true, also write under asset/menu/backups/",
+                        "name": "save",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RolePermissionBackup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/setup/check-user-roles": {
             "get": {
                 "description": "Check all roles assigned to a user. 특정 유저가 가진 role 목록을 조회합니다.",
@@ -9121,7 +9186,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "CSV 파일을 읽어서 메뉴 권한을 초기화합니다",
+                "description": "Deprecated. permission.csv로 메뉴 권한을 초기화합니다. 제거 예정이니 InitializeMenuPermissionsFromYAML을 사용하세요.",
                 "consumes": [
                     "application/json"
                 ],
@@ -9131,12 +9196,62 @@ const docTemplate = `{
                 "tags": [
                     "admin"
                 ],
-                "summary": "Initialize menu permissions from CSV",
+                "summary": "Initialize menu permissions from CSV (deprecated)",
                 "operationId": "initializeMenuPermissions",
+                "deprecated": true,
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "CSV file path (optional, uses default if not provided)",
+                        "description": "CSV file path (optional, default asset/menu/permission.csv)",
+                        "name": "filePath",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setup/initial-role-menu-permission-yaml": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "asset/menu/permission.yaml(permissions→role→menus|operations|csps)을 읽어 역할-메뉴 매핑을 DB에 시드합니다",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Initialize role-menu permissions from YAML",
+                "operationId": "initializeMenuPermissionsFromYAML",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "YAML file path (optional, default asset/menu/permission.yaml)",
                         "name": "filePath",
                         "in": "query"
                     }
@@ -9251,6 +9366,76 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/setup/restore-role-permissions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "role-permission-backup YAML/JSON(또는 filePath)으로 역할 메뉴 권한을 복구합니다. mode=additive|replace-role",
+                "consumes": [
+                    "application/json",
+                    "application/yaml"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Restore role permissions from backup document",
+                "operationId": "restoreRolePermissions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "additive (default) or replace-role",
+                        "name": "mode",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated sections. Default: menus",
+                        "name": "sections",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Local backup file path (if body empty)",
+                        "name": "filePath",
+                        "in": "query"
+                    },
+                    {
+                        "description": "Backup document",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/model.RolePermissionBackup"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.RolePermissionRestoreResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
                         }
                     }
                 }
@@ -13396,6 +13581,9 @@ const docTemplate = `{
                 "displayName": {
                     "type": "string"
                 },
+                "frameworkService": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -13406,6 +13594,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "parentId": {
+                    "type": "string"
+                },
+                "path": {
                     "type": "string"
                 },
                 "priority": {
@@ -13420,6 +13611,9 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                },
+                "viewType": {
+                    "type": "string"
                 }
             }
         },
@@ -14278,6 +14472,9 @@ const docTemplate = `{
                 "displayName": {
                     "type": "string"
                 },
+                "frameworkService": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -14290,10 +14487,16 @@ const docTemplate = `{
                 "parentId": {
                     "type": "string"
                 },
+                "path": {
+                    "type": "string"
+                },
                 "priority": {
                     "type": "integer"
                 },
                 "resType": {
+                    "type": "string"
+                },
+                "viewType": {
                     "type": "string"
                 }
             }
@@ -14311,6 +14514,9 @@ const docTemplate = `{
                 "displayName": {
                     "type": "string"
                 },
+                "frameworkService": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -14323,10 +14529,16 @@ const docTemplate = `{
                 "parentId": {
                     "type": "string"
                 },
+                "path": {
+                    "type": "string"
+                },
                 "priority": {
                     "type": "integer"
                 },
                 "resType": {
+                    "type": "string"
+                },
+                "viewType": {
                     "type": "string"
                 }
             }
@@ -14868,6 +15080,78 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "model.RolePermissionBackup": {
+            "type": "object",
+            "properties": {
+                "backupAt": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.RolePermissionEntry"
+                    }
+                },
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "source": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RolePermissionEntry": {
+            "type": "object",
+            "properties": {
+                "csps": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "menus": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "operations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RolePermissionRestoreResult": {
+            "type": "object",
+            "properties": {
+                "menusAdded": {
+                    "type": "integer"
+                },
+                "menusRemoved": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "rolesProcessed": {
+                    "type": "integer"
                 }
             }
         },

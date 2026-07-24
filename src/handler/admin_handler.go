@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +15,7 @@ import (
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service"
+	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 )
 
@@ -176,10 +180,10 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 		// })
 	}
 
-	// 메뉴와 기본 역할 매핑
-	err = h.menuService.InitializeMenuPermissionsFromCSV("")
+	// 메뉴와 기본 역할 매핑 (permission.yaml)
+	err = h.menuService.InitializeMenuPermissionsFromYAML("")
 	if err != nil {
-		log.Printf("[ERROR] Initialize Menu Permissions failed: %v", err)
+		log.Printf("[ERROR] Initialize Menu Permissions (YAML) failed: %v", err)
 		// return c.JSON(http.StatusInternalServerError, model.Response{
 		// 	Error:   true,
 		// 	Message: "Failed to initialize menu permissions",
@@ -245,35 +249,244 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 }
 
 // InitializeMenuPermissions godoc
-// @Summary Initialize menu permissions from CSV
-// @Description CSV 파일을 읽어서 메뉴 권한을 초기화합니다
+// @Summary Initialize menu permissions from CSV (deprecated)
+// @Description Deprecated. permission.csv로 메뉴 권한을 초기화합니다. 제거 예정이니 InitializeMenuPermissionsFromYAML을 사용하세요.
 // @Tags admin
 // @Accept json
 // @Produce json
-// @Param filePath query string false "CSV file path (optional, uses default if not provided)"
+// @Param filePath query string false "CSV file path (optional, default asset/menu/permission.csv)"
 // @Success 200 {object} model.Response
 // @Failure 400 {object} model.Response
 // @Failure 500 {object} model.Response
 // @Security BearerAuth
+// @Deprecated
 // @Router /api/setup/initial-role-menu-permission [get]
 // @Id initializeMenuPermissions
 func (h *AdminHandler) InitializeMenuPermissions(c echo.Context) error {
 	filePath := c.QueryParam("filePath")
 
-	log.Printf("[INFO] Initializing menu permissions from CSV file: %s", filePath)
+	log.Printf(
+		"[WARN] Deprecated API /api/setup/initial-role-menu-permission (CSV). "+
+			"Use /api/setup/initial-role-menu-permission-yaml instead. filePath=%s",
+		filePath,
+	)
 
 	err := h.menuService.InitializeMenuPermissionsFromCSV(filePath)
 	if err != nil {
-		log.Printf("[ERROR] Initialize Menu Permissions failed: %v", err)
+		log.Printf("[ERROR] Initialize Menu Permissions (CSV) failed: %v", err)
 		return c.JSON(http.StatusInternalServerError, model.Response{
 			Error:   true,
-			Message: fmt.Sprintf("Failed to initialize menu permissions: %v", err),
+			Message: fmt.Sprintf("Failed to initialize menu permissions from CSV: %v", err),
 		})
 	}
 
-	log.Printf("[INFO] Menu permissions initialized successfully")
+	log.Printf("[INFO] Menu permissions initialized successfully from CSV (deprecated)")
 	return c.JSON(http.StatusOK, model.Response{
 		Error:   false,
-		Message: "Menu permissions initialized successfully",
+		Message: "Menu permissions initialized successfully from CSV (deprecated; prefer YAML API)",
 	})
+}
+
+// InitializeMenuPermissionsFromYAML godoc
+// @Summary Initialize role-menu permissions from YAML
+// @Description asset/menu/permission.yaml(permissions→role→menus|operations|csps)을 읽어 역할-메뉴 매핑을 DB에 시드합니다
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param filePath query string false "YAML file path (optional, default asset/menu/permission.yaml)"
+// @Success 200 {object} model.Response
+// @Failure 400 {object} model.Response
+// @Failure 500 {object} model.Response
+// @Security BearerAuth
+// @Router /api/setup/initial-role-menu-permission-yaml [get]
+// @Id initializeMenuPermissionsFromYAML
+func (h *AdminHandler) InitializeMenuPermissionsFromYAML(c echo.Context) error {
+	filePath := c.QueryParam("filePath")
+
+	log.Printf("[INFO] Initializing menu permissions from YAML: %s", filePath)
+
+	err := h.menuService.InitializeMenuPermissionsFromYAML(filePath)
+	if err != nil {
+		log.Printf("[ERROR] Initialize Menu Permissions (YAML) failed: %v", err)
+		return c.JSON(http.StatusInternalServerError, model.Response{
+			Error:   true,
+			Message: fmt.Sprintf("Failed to initialize menu permissions from YAML: %v", err),
+		})
+	}
+
+	log.Printf("[INFO] Menu permissions initialized successfully from YAML")
+	return c.JSON(http.StatusOK, model.Response{
+		Error:   false,
+		Message: "Menu permissions initialized successfully from YAML",
+	})
+}
+
+// BackupRolePermissions godoc
+// @Summary Backup current role permissions from DB
+// @Description 플랫폼 역할의 현재 메뉴(및 reserved ops/csp) 권한을 role-permission-backup 문서로 내보냅니다
+// @Tags admin
+// @Produce json
+// @Produce application/yaml
+// @Param roles query string false "Comma-separated role names (default: all platform roles)"
+// @Param sections query string false "Comma-separated sections (menus,operations,csps). Default: menus"
+// @Param format query string false "yaml or json (default yaml)"
+// @Param save query bool false "If true, also write under asset/menu/backups/"
+// @Success 200 {object} model.RolePermissionBackup
+// @Failure 400 {object} model.Response
+// @Failure 500 {object} model.Response
+// @Security BearerAuth
+// @Router /api/setup/backup-role-permissions [get]
+// @Id backupRolePermissions
+func (h *AdminHandler) BackupRolePermissions(c echo.Context) error {
+	roleNames := splitCSVQuery(c.QueryParam("roles"))
+	sections := splitCSVQuery(c.QueryParam("sections"))
+	format := strings.ToLower(strings.TrimSpace(c.QueryParam("format")))
+	if format == "" {
+		format = "yaml"
+	}
+	save := strings.EqualFold(c.QueryParam("save"), "true") || c.QueryParam("save") == "1"
+
+	backup, err := h.menuService.BackupRolePermissions(roleNames, sections)
+	if err != nil {
+		log.Printf("[ERROR] BackupRolePermissions failed: %v", err)
+		return c.JSON(http.StatusInternalServerError, model.Response{
+			Error:   true,
+			Message: fmt.Sprintf("Failed to backup role permissions: %v", err),
+		})
+	}
+
+	savedPath := ""
+	if save {
+		savedPath, err = h.menuService.SaveRolePermissionBackupFile(backup, "")
+		if err != nil {
+			log.Printf("[ERROR] SaveRolePermissionBackupFile failed: %v", err)
+			return c.JSON(http.StatusInternalServerError, model.Response{
+				Error:   true,
+				Message: fmt.Sprintf("Failed to save role permission backup file: %v", err),
+			})
+		}
+		log.Printf("[INFO] Role permission backup saved: %s", savedPath)
+	}
+
+	if format == "json" {
+		if savedPath != "" {
+			c.Response().Header().Set("X-Role-Permission-Backup-Path", savedPath)
+		}
+		return c.JSON(http.StatusOK, backup)
+	}
+
+	body, err := yaml.Marshal(backup)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, model.Response{
+			Error:   true,
+			Message: fmt.Sprintf("Failed to marshal backup yaml: %v", err),
+		})
+	}
+	if savedPath != "" {
+		c.Response().Header().Set("X-Role-Permission-Backup-Path", savedPath)
+	}
+	c.Response().Header().Set(
+		"Content-Disposition",
+		`attachment; filename="role-permission-backup.yaml"`,
+	)
+	return c.Blob(http.StatusOK, "application/yaml", body)
+}
+
+// RestoreRolePermissions godoc
+// @Summary Restore role permissions from backup document
+// @Description role-permission-backup YAML/JSON(또는 filePath)으로 역할 메뉴 권한을 복구합니다. mode=additive|replace-role
+// @Tags admin
+// @Accept json
+// @Accept application/yaml
+// @Produce json
+// @Param mode query string false "additive (default) or replace-role"
+// @Param sections query string false "Comma-separated sections. Default: menus"
+// @Param filePath query string false "Local backup file path (if body empty)"
+// @Param body body model.RolePermissionBackup false "Backup document"
+// @Success 200 {object} model.RolePermissionRestoreResult
+// @Failure 400 {object} model.Response
+// @Failure 500 {object} model.Response
+// @Security BearerAuth
+// @Router /api/setup/restore-role-permissions [post]
+// @Id restoreRolePermissions
+func (h *AdminHandler) RestoreRolePermissions(c echo.Context) error {
+	mode := c.QueryParam("mode")
+	sections := splitCSVQuery(c.QueryParam("sections"))
+	filePath := strings.TrimSpace(c.QueryParam("filePath"))
+
+	var backup *model.RolePermissionBackup
+	var err error
+
+	if filePath != "" {
+		backup, err = h.menuService.LoadRolePermissionBackupFile(filePath)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, model.Response{
+				Error:   true,
+				Message: fmt.Sprintf("Failed to load backup file: %v", err),
+			})
+		}
+	} else {
+		bodyBytes, readErr := io.ReadAll(c.Request().Body)
+		if readErr != nil {
+			return c.JSON(http.StatusBadRequest, model.Response{
+				Error:   true,
+				Message: fmt.Sprintf("Failed to read request body: %v", readErr),
+			})
+		}
+		if len(bytes.TrimSpace(bodyBytes)) == 0 {
+			return c.JSON(http.StatusBadRequest, model.Response{
+				Error:   true,
+				Message: "request body or filePath is required",
+			})
+		}
+		ct := strings.ToLower(c.Request().Header.Get(echo.HeaderContentType))
+		if strings.Contains(ct, "json") {
+			backup = &model.RolePermissionBackup{}
+			if err := json.Unmarshal(bodyBytes, backup); err != nil {
+				return c.JSON(http.StatusBadRequest, model.Response{
+					Error:   true,
+					Message: fmt.Sprintf("Invalid backup JSON: %v", err),
+				})
+			}
+		} else {
+			backup, err = service.ParseRolePermissionBackupYAML(bodyBytes)
+			if err != nil {
+				return c.JSON(http.StatusBadRequest, model.Response{
+					Error:   true,
+					Message: err.Error(),
+				})
+			}
+		}
+	}
+
+	result, err := h.menuService.RestoreRolePermissions(backup, mode, sections)
+	if err != nil {
+		log.Printf("[ERROR] RestoreRolePermissions failed: %v", err)
+		return c.JSON(http.StatusInternalServerError, model.Response{
+			Error:   true,
+			Message: fmt.Sprintf("Failed to restore role permissions: %v", err),
+		})
+	}
+
+	log.Printf(
+		"[INFO] Role permissions restored: mode=%s roles=%d added=%d removed=%d",
+		result.Mode, result.RolesProcessed, result.MenusAdded, result.MenusRemoved,
+	)
+	return c.JSON(http.StatusOK, result)
+}
+
+func splitCSVQuery(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

@@ -556,6 +556,8 @@ definitions:
     properties:
       displayName:
         type: string
+      frameworkService:
+        type: string
       id:
         type: string
       isAction:
@@ -563,6 +565,8 @@ definitions:
       menuNumber:
         type: string
       parentId:
+        type: string
+      path:
         type: string
       priority:
         type: string
@@ -573,6 +577,8 @@ definitions:
         items:
           type: integer
         type: array
+      viewType:
+        type: string
     required:
     - id
     type: object
@@ -1151,6 +1157,8 @@ definitions:
     properties:
       displayName:
         type: string
+      frameworkService:
+        type: string
       id:
         type: string
       isAction:
@@ -1159,9 +1167,13 @@ definitions:
         type: integer
       parentId:
         type: string
+      path:
+        type: string
       priority:
         type: integer
       resType:
+        type: string
+      viewType:
         type: string
     type: object
   model.MenuTreeNode:
@@ -1173,6 +1185,8 @@ definitions:
         type: array
       displayName:
         type: string
+      frameworkService:
+        type: string
       id:
         type: string
       isAction:
@@ -1181,9 +1195,13 @@ definitions:
         type: integer
       parentId:
         type: string
+      path:
+        type: string
       priority:
         type: integer
       resType:
+        type: string
+      viewType:
         type: string
     type: object
   model.MoveOrganizationRequest:
@@ -1542,6 +1560,53 @@ definitions:
         type: integer
       updated_at:
         type: string
+    type: object
+  model.RolePermissionBackup:
+    properties:
+      backupAt:
+        type: string
+      kind:
+        type: string
+      permissions:
+        items:
+          $ref: '#/definitions/model.RolePermissionEntry'
+        type: array
+      sections:
+        items:
+          type: string
+        type: array
+      source:
+        type: string
+    type: object
+  model.RolePermissionEntry:
+    properties:
+      csps:
+        items:
+          type: string
+        type: array
+      menus:
+        items:
+          type: string
+        type: array
+      operations:
+        items:
+          type: string
+        type: array
+      role:
+        type: string
+    type: object
+  model.RolePermissionRestoreResult:
+    properties:
+      menusAdded:
+        type: integer
+      menusRemoved:
+        type: integer
+      message:
+        type: string
+      mode:
+        type: string
+      rolesProcessed:
+        type: integer
     type: object
   model.RoleSub:
     properties:
@@ -7734,6 +7799,49 @@ paths:
       summary: Get workspace role by Name
       tags:
       - roles
+  /api/setup/backup-role-permissions:
+    get:
+      description: 플랫폼 역할의 현재 메뉴(및 reserved ops/csp) 권한을 role-permission-backup 문서로
+        내보냅니다
+      operationId: backupRolePermissions
+      parameters:
+      - description: 'Comma-separated role names (default: all platform roles)'
+        in: query
+        name: roles
+        type: string
+      - description: 'Comma-separated sections (menus,operations,csps). Default: menus'
+        in: query
+        name: sections
+        type: string
+      - description: yaml or json (default yaml)
+        in: query
+        name: format
+        type: string
+      - description: If true, also write under asset/menu/backups/
+        in: query
+        name: save
+        type: boolean
+      produces:
+      - application/json
+      - application/yaml
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RolePermissionBackup'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Response'
+      security:
+      - BearerAuth: []
+      summary: Backup current role permissions from DB
+      tags:
+      - admin
   /api/setup/check-user-roles:
     get:
       consumes:
@@ -7792,10 +7900,12 @@ paths:
     get:
       consumes:
       - application/json
-      description: CSV 파일을 읽어서 메뉴 권한을 초기화합니다
+      deprecated: true
+      description: Deprecated. permission.csv로 메뉴 권한을 초기화합니다. 제거 예정이니 InitializeMenuPermissionsFromYAML을
+        사용하세요.
       operationId: initializeMenuPermissions
       parameters:
-      - description: CSV file path (optional, uses default if not provided)
+      - description: CSV file path (optional, default asset/menu/permission.csv)
         in: query
         name: filePath
         type: string
@@ -7816,7 +7926,39 @@ paths:
             $ref: '#/definitions/model.Response'
       security:
       - BearerAuth: []
-      summary: Initialize menu permissions from CSV
+      summary: Initialize menu permissions from CSV (deprecated)
+      tags:
+      - admin
+  /api/setup/initial-role-menu-permission-yaml:
+    get:
+      consumes:
+      - application/json
+      description: asset/menu/permission.yaml(permissions→role→menus|operations|csps)을
+        읽어 역할-메뉴 매핑을 DB에 시드합니다
+      operationId: initializeMenuPermissionsFromYAML
+      parameters:
+      - description: YAML file path (optional, default asset/menu/permission.yaml)
+        in: query
+        name: filePath
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Response'
+      security:
+      - BearerAuth: []
+      summary: Initialize role-menu permissions from YAML
       tags:
       - admin
   /api/setup/projects/sync:
@@ -7879,6 +8021,52 @@ paths:
       summary: mc-infra-manager와 프로젝트 동기화 차이 조회
       tags:
       - projects
+  /api/setup/restore-role-permissions:
+    post:
+      consumes:
+      - application/json
+      - application/yaml
+      description: role-permission-backup YAML/JSON(또는 filePath)으로 역할 메뉴 권한을 복구합니다.
+        mode=additive|replace-role
+      operationId: restoreRolePermissions
+      parameters:
+      - description: additive (default) or replace-role
+        in: query
+        name: mode
+        type: string
+      - description: 'Comma-separated sections. Default: menus'
+        in: query
+        name: sections
+        type: string
+      - description: Local backup file path (if body empty)
+        in: query
+        name: filePath
+        type: string
+      - description: Backup document
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/model.RolePermissionBackup'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.RolePermissionRestoreResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.Response'
+      security:
+      - BearerAuth: []
+      summary: Restore role permissions from backup document
+      tags:
+      - admin
   /api/setup/sync-projects:
     post:
       consumes:

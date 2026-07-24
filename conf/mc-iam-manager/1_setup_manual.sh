@@ -90,6 +90,77 @@ init_menu() {
         "$MC_IAM_MANAGER_HOST/api/setup/initial-menus")
     echo "Menu initialization response: $response"
     echo "Menu data initialized"
+
+    # Also seed role-menu permissions from YAML after menus are loaded
+    init_menu_permissions
+}
+
+
+init_menu_permissions() {
+    echo "Initializing role-menu permissions from YAML..."
+
+    # Prefer: query filePath only when a local path is known
+    # Default call without filePath (server resolvePermissionSeedPath)
+    file_path=""
+    yaml_src="${MC_WEB_CONSOLE_MENU_PERMISSIONS:-}"
+    if [ -n "$yaml_src" ]; then
+        case "$yaml_src" in
+            http://*|https://*)
+                # Rely on server-side MC_WEB_CONSOLE_MENU_PERMISSIONS (no filePath query)
+                ;;
+            *)
+                if [ -f "$yaml_src" ]; then
+                    file_path="$yaml_src"
+                else
+                    echo "WARNING: MC_WEB_CONSOLE_MENU_PERMISSIONS is set but local file not found: $yaml_src"
+                    echo "Falling back to server-side path resolution"
+                fi
+                ;;
+        esac
+    elif [ -f "asset/menu/permission.yaml" ]; then
+        file_path="asset/menu/permission.yaml"
+    elif [ -f "./permission.yaml" ]; then
+        file_path="./permission.yaml"
+    fi
+
+    url="$MC_IAM_MANAGER_HOST/api/setup/initial-role-menu-permission-yaml"
+    if [ -n "$file_path" ]; then
+        echo "Using local permission YAML filePath=$file_path"
+        http_and_body=$(curl -s -w "\n%{http_code}" -G \
+            --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+            --header 'Content-Type: application/json' \
+            --data-urlencode "filePath=$file_path" \
+            "$url")
+    else
+        echo "Calling YAML permission seed without filePath (server resolvePermissionSeedPath)"
+        http_and_body=$(curl -s -w "\n%{http_code}" -X GET \
+            --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+            --header 'Content-Type: application/json' \
+            "$url")
+    fi
+
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Failed to call initial-role-menu-permission-yaml"
+        return 1
+    fi
+
+    http_code=$(printf '%s\n' "$http_and_body" | tail -n1)
+    response=$(printf '%s\n' "$http_and_body" | sed '$d')
+
+    echo "Menu permission (YAML) initialization response (HTTP $http_code): $response"
+
+    if [ "$http_code" != "200" ]; then
+        echo "ERROR: Menu permission (YAML) initialization failed (HTTP $http_code)"
+        return 1
+    fi
+
+    if echo "$response" | jq -e '.error' > /dev/null 2>&1; then
+        echo "ERROR: Menu permission (YAML) initialization failed"
+        return 1
+    fi
+
+    echo "Role-menu permissions initialized from YAML"
+    return 0
 }
 
 init_api_resources() {
@@ -223,7 +294,8 @@ while true; do
     echo "1. Init Platform And PlatformAdmin"
     echo "2. PlatformAdmin Login"
     echo "3. Init Role Data"
-    echo "4. Init Menu Data"
+    echo "4. Init Menu Data (includes YAML role-menu permissions)"
+    echo "4a. Init Menu Role Permissions (YAML) (re-seed only)"
     echo "5. Init API Resource Data"
     echo "6. Init Cloud Resource Data"
     echo "7. Map API-Cloud Resources"
@@ -259,6 +331,14 @@ while true; do
                 echo "Current token value: '$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN'"
             else
                 init_menu
+            fi
+            ;;
+        4a)
+            if [ -z "$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" ]; then
+                echo "Please login first (option 2)"
+                echo "Current token value: '$MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN'"
+            else
+                init_menu_permissions
             fi
             ;;
         5)

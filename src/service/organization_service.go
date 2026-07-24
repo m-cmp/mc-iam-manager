@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -19,15 +20,17 @@ var ErrMaxDepthExceeded = errors.New("organization tree depth would exceed maxim
 
 // OrganizationService 조직 비즈니스 로직
 type OrganizationService struct {
-	db      *gorm.DB
-	orgRepo *repository.OrganizationRepository
+	db        *gorm.DB
+	orgRepo   *repository.OrganizationRepository
+	kcService KeycloakService
 }
 
 // NewOrganizationService OrganizationService 생성자
 func NewOrganizationService(db *gorm.DB) *OrganizationService {
 	return &OrganizationService{
-		db:      db,
-		orgRepo: repository.NewOrganizationRepository(db),
+		db:        db,
+		orgRepo:   repository.NewOrganizationRepository(db),
+		kcService: NewKeycloakService(),
 	}
 }
 
@@ -241,11 +244,30 @@ func (s *OrganizationService) CheckOrganizationDeletable(orgID uint) (*model.Org
 }
 
 // DeleteOrganizationCascade 조직 및 모든 하위 조직/사용자 매핑을 cascade 삭제 (RQ-M2-UG-036-02)
-func (s *OrganizationService) DeleteOrganizationCascade(orgID uint) error {
-	if _, err := s.orgRepo.FindByID(orgID); err != nil {
+func (s *OrganizationService) DeleteOrganizationCascade(ctx context.Context, orgID uint) error {
+	subtree, err := s.orgRepo.FindSubtreeOrganizations(orgID)
+	if err != nil {
 		return err
 	}
-	return s.orgRepo.DeleteCascade(orgID)
+	if len(subtree) == 0 {
+		return repository.ErrOrganizationNotFound
+	}
+
+	if err := s.orgRepo.DeleteCascade(orgID); err != nil {
+		return err
+	}
+
+	// Keycloak 그룹 정리 (DB는 이미 삭제됨, best-effort)
+	var kcErrs []error
+	for _, org := range subtree {
+		if err := s.kcService.DeleteGroup(ctx, org.Name); err != nil {
+			kcErrs = append(kcErrs, fmt.Errorf("group '%s': %w", org.Name, err))
+		}
+	}
+	if len(kcErrs) > 0 {
+		return fmt.Errorf("keycloak group cleanup failed for %d group(s) (DB already updated): %w", len(kcErrs), errors.Join(kcErrs...))
+	}
+	return nil
 }
 
 // SearchOrganizations name/code 필터로 조직 목록 검색 (평면 목록 반환)
@@ -364,9 +386,10 @@ func (s *OrganizationService) UpdateOrganization(id uint, req *model.UpdateOrgan
 }
 
 // DeleteOrganization 조직 삭제 (하위 조직/소속 사용자 존재 시 차단)
-func (s *OrganizationService) DeleteOrganization(id uint) error {
+func (s *OrganizationService) DeleteOrganization(ctx context.Context, id uint) error {
 	// 조직 존재 확인
-	if _, err := s.orgRepo.FindByID(id); err != nil {
+	org, err := s.orgRepo.FindByID(id)
+	if err != nil {
 		return err
 	}
 
@@ -388,7 +411,15 @@ func (s *OrganizationService) DeleteOrganization(id uint) error {
 		return repository.ErrOrganizationHasUsers
 	}
 
-	return s.orgRepo.Delete(id)
+	if err := s.orgRepo.Delete(id); err != nil {
+		return err
+	}
+
+	// Keycloak 그룹 정리 (DB는 이미 삭제됨, best-effort)
+	if err := s.kcService.DeleteGroup(ctx, org.Name); err != nil {
+		return fmt.Errorf("keycloak group cleanup failed (DB already updated): %w", err)
+	}
+	return nil
 }
 
 // --- 사용자-조직 매핑 ---

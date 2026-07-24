@@ -6,12 +6,11 @@ import (
 	"errors"
 
 	// "errors"        // Remove unused import
-	"fmt"     // Add fmt import for errors
-	"log"     // Add log import
+	"fmt" // Add fmt import for errors
+	"log" // Add log import
+	"net/http"
 	"os"      // Import os package to read environment variables
 	"strings" // Add strings import for string operations
-
-	// "net/http"      // Remove unused import
 
 	// Import godotenv for loading environment variables
 	"github.com/m-cmp/mc-iam-manager/model" // Import mcmpapi model
@@ -243,7 +242,7 @@ func (s *ProjectService) DeleteProject(id uint) error {
 		ctx := context.Background()
 		callReq := &model.McmpApiCallRequest{
 			ServiceName: "mc-infra-manager",
-			ActionName:  "DeleteNs",
+			ActionName:  "DelNs",
 			RequestParams: model.McmpApiRequestParams{
 				PathParams: map[string]string{
 					"nsId": project.NsId,
@@ -253,14 +252,13 @@ func (s *ProjectService) DeleteProject(id uint) error {
 
 		statusCode, respBody, _, _, err := s.mcmpApiService.McmpApiCall(ctx, callReq)
 		if err != nil {
-			log.Printf("Warning: failed to delete namespace %s from mc-infra-manager: %v", project.NsId, err)
-			// 계속 진행 (DB 정리는 수행)
-		} else if statusCode < 200 || statusCode >= 300 {
-			log.Printf("Warning: mc-infra-manager DeleteNs failed (status %d): %s", statusCode, string(respBody))
-			// 계속 진행 (DB 정리는 수행)
-		} else {
-			log.Printf("Successfully deleted namespace %s from mc-infra-manager", project.NsId)
+			return fmt.Errorf("mc-infra-manager 네임스페이스(%s) 삭제 호출 실패: %v", project.NsId, err)
 		}
+		// 404는 네임스페이스가 이미 없는 상태(idempotent)로 간주해 성공 처리, 그 외 비2xx는 실패로 취급해 DB 삭제를 막는다.
+		if (statusCode < 200 || statusCode >= 300) && statusCode != http.StatusNotFound {
+			return fmt.Errorf("mc-infra-manager 네임스페이스(%s) 삭제 실패 (status %d): %s", project.NsId, statusCode, string(respBody))
+		}
+		log.Printf("Successfully deleted (or already absent) namespace %s from mc-infra-manager (status %d)", project.NsId, statusCode)
 	}
 
 	// 5. DB에서 프로젝트 삭제

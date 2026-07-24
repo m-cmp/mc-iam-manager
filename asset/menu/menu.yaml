@@ -1,4 +1,198 @@
+# Synchronized from remote mcmp_menus (15.164.139.37) + iframe path fixes — 2026-07-15
+# Removed obsolete monitorings/eventsntraces local trees; use observability iframe.
 menus:
+
+  - id: operations
+    parentid: home
+    displayname: Operations
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1700
+
+  - id: manage
+    parentid: operations
+    displayname: Manage
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1701
+
+  - id: workspaces
+    parentid: manage
+    displayname: Workspaces
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1710
+
+  - id: projects
+    parentid: workspaces
+    displayname: Projects
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1720
+
+  - id: projectboard
+    parentid: workspaces
+    displayname: Project board
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1728
+
+  - id: members
+    parentid: workspaces
+    displayname: Members
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1730
+
+  - id: roles
+    parentid: workspaces
+    displayname: Roles
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1740
+
+  - id: csproles
+    parentid: workspaces
+    displayname: CSP Roles
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1741
+
+  - id: workloads
+    parentid: manage
+    displayname: Workloads
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1750
+
+  - id: infraworkloads
+    parentid: workloads
+    displayname: Infra Workloads
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1760
+
+  - id: k8sworkloads
+    parentid: workloads
+    displayname: K8s Workloads
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1790
+
+  - id: infratemplates
+    parentid: workloads
+    displayname: Infra Templates
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1780
+
+  - id: workflows
+    parentid: manage
+    displayname: Workflows
+    restype: menu
+    viewtype: iframe
+    frameworkservice: mc-workflow-manager-fe
+    path: /web/workflows/workflow/list
+    isaction: true
+    priority: 2
+    menunumber: 1998
+
+  - id: swcatalogs
+    parentid: manage
+    displayname: SW Catalogs
+    restype: menu
+    viewtype: iframe
+    frameworkservice: mc-application-manager-fe
+    path: /web/softwareCatalog
+    isaction: true
+    priority: 2
+    menunumber: 1998
+
+  - id: mcdatamanager
+    parentid: manage
+    displayname: Data Migrations
+    restype: menu
+    viewtype: iframe
+    frameworkservice: mc-data-manager-fe
+    path: /migrate/objectstorage
+    isaction: false
+    priority: 3
+    menunumber: 1997
+
+  - id: datamigrations
+    parentid: mcdatamanager
+    displayname: Data Migrations
+    restype: menu
+    viewtype: iframe
+    frameworkservice: mc-data-manager-fe
+    path: /
+    isaction: true
+    priority: 1
+    menunumber: 1998
+
+  - id: generateobjectstorage
+    parentid: mcdatamanager
+    displayname: Generate OSS
+    restype: menu
+    viewtype: iframe
+    frameworkservice: mc-data-manager-fe
+    path: /generate/objectstorage
+    isaction: true
+    priority: 2
+    menunumber: 19971
+
+  - id: generaterdb
+    parentid: mcdatamanager
+    displayname: GenerateRDB
+    restype: menu
+    viewtype: iframe
+    frameworkservice: mc-data-manager-fe
+    path: /generate/mysql
+    isaction: true
+    priority: 2
+    menunumber: 19972
+
+  - id: analytics
+    parentid: operations
+    displayname: Analytics
+    restype: menu
+    isaction: false
+    priority: 3
+    menunumber: 1901
+
+  - id: costanalysis
+    parentid: analytics
+    displayname: Cost Analysis
+    restype: menu
+    viewtype: iframe
+    frameworkservice: mc-cost-optimizer-fe
+    path: /
+    isaction: true
+    priority: 2
+    menunumber: 1998
+
+  - id: observability
+    parentid: analytics
+    displayname: Monitorings
+    restype: menu
+    viewtype: iframe
+    frameworkservice: mc-observability-fe
+    path: /
+    isaction: true
+    priority: 3
+    menunumber: 1999
 
   - id: settings
     parentid: home
@@ -39,6 +233,14 @@ menus:
     isaction: false
     priority: 2
     menunumber: 1220
+
+  - id: groups
+    parentid: organizations
+    displayname: Groups
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1225
 
   - id: approvals
     parentid: organizations
@@ -120,6 +322,14 @@ menus:
     priority: 2
     menunumber: 1350
 
+  - id: cspaccounts
+    parentid: cloudsps
+    displayname: CSP Accounts
+    restype: menu
+    isaction: false
+    priority: 2
+    menunumber: 1360
+
   - id: cloudresources
     parentid: environment
     displayname: Cloud Resources
@@ -128,7 +338,7 @@ menus:
     priority: 2
     menunumber: 1405
 
-  - id: specs
+  - id: serverspecs
     parentid: cloudresources
     displayname: Specs
     restype: menu
@@ -136,7 +346,7 @@ menus:
     priority: 2
     menunumber: 1410
 
-  - id: images
+  - id: serverimages
     parentid: cloudresources
     displayname: Images
     restype: menu
@@ -152,9 +362,9 @@ menus:
     priority: 2
     menunumber: 1510
 
-  - id: securitys
+  - id: securitygroups
     parentid: cloudresources
-    displayname: Securitys
+    displayname: Security Groups
     restype: menu
     isaction: false
     priority: 2
@@ -168,7 +378,7 @@ menus:
     priority: 2
     menunumber: 1530
 
-  - id: disks
+  - id: datadisk
     parentid: cloudresources
     displayname: Disks
     restype: menu
@@ -183,6 +393,38 @@ menus:
     isaction: false
     priority: 2
     menunumber: 1550
+
+  - id: csp
+    parentid: cloudresources
+    displayname: CSP Overview
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1580
+
+  - id: cspschedule
+    parentid: cloudresources
+    displayname: CSP Schedule
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1590
+
+  - id: resourcesync
+    parentid: cloudresources
+    displayname: Resource Sync
+    restype: menu
+    isaction: true
+    priority: 3
+    menunumber: 1595
+
+  - id: networktemplates
+    parentid: cloudresources
+    displayname: Network Templates
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 1598
 
   - id: cloudrescatalogs
     parentid: environment
@@ -223,229 +465,3 @@ menus:
     isaction: false
     priority: 2
     menunumber: 1667
-
-  - id: operations
-    parentid: home
-    displayname: Operations
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1700
-
-  - id: manage
-    parentid: operations
-    displayname: Manage
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1701
-
-  - id: workspaces
-    parentid: manage
-    displayname: Workspaces
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1710
-
-  - id: projects
-    parentid: workspaces
-    displayname: Projects
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1720
-
-  - id: members
-    parentid: workspaces
-    displayname: Members
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1730
-
-  - id: roles
-    parentid: workspaces
-    displayname: Roles
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1740
-
-  - id: projectboard
-    parentid: workspaces
-    displayname: Project board
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1728
-
-  - id: workloads
-    parentid: manage
-    displayname: Workloads
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1750
-
-  - id: mciworkloads
-    parentid: workloads
-    displayname: MCI Workloads
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1760
-
-  - id: pmkworkloads
-    parentid: workloads
-    displayname: PMK Workloads
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1790
-
-  - id: workflows
-    parentid: manage
-    displayname: Workflows
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-workflow-manager-fe
-    path: /web/workflow/list
-    isaction: true
-    priority: 2
-    menunumber: 1998
-
-  - id: swcatalogs
-    parentid: manage
-    displayname: SW Catalogs
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-application-manager-fe
-    path: /web/softwareCatalog
-    isaction: true
-    priority: 2
-    menunumber: 1998
-
-  - id: datamigrations
-    parentid: manage
-    displayname: Data Migrations
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-data-manager-fe
-    path: /
-    isaction: true
-    priority: 2
-    menunumber: 1998
-
-  - id: analytics
-    parentid: operations
-    displayname: Analytics
-    restype: menu
-    isaction: false
-    priority: 3
-    menunumber: 1901
-
-  - id: monitorings
-    parentid: analytics
-    displayname: Monitorings
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1905
-
-  - id: mcismonitoring
-    parentid: monitorings
-    displayname: MCIs Monitoring
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1910
-
-  - id: 3rdpartymonitoring
-    parentid: monitorings
-    displayname: 3rd party Monitoring
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1930
-
-  - id: monitoringconfig
-    parentid: monitorings
-    displayname: Monitoring Config
-    restype: menu
-    viewtype: local
-    frameworkservice: mc-web-console-front
-    path: /operations/analytics/monitorings/monitoringconfig
-    isaction: true
-    priority: 2
-    menunumber: 1940
-
-  - id: eventsntraces
-    parentid: analytics
-    displayname: Events & Traces
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1950
-
-  - id: alarmshistory
-    parentid: eventsntraces
-    displayname: Alarms History
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1960
-
-  - id: thresholdconfig
-    parentid: eventsntraces
-    displayname: Threshold Config
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1970
-
-  - id: logmanage
-    parentid: eventsntraces
-    displayname: Log Manage
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1980
-
-  - id: logconfig
-    parentid: eventsntraces
-    displayname: Log Config
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1990
-
-  - id: eventtrace
-    parentid: eventsntraces
-    displayname: Event Trace
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1996
-
-  - id: costanalysis
-    parentid: analytics
-    displayname: Cost Analysis
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-cost-optimizer-fe
-    path: /
-    isaction: true
-    priority: 2
-    menunumber: 1998
-
-  - id: observability
-    parentid: analytics
-    displayname: Monitorings
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-observability-fe
-    path: /
-    isaction: true
-    priority: 3
-    menunumber: 1999

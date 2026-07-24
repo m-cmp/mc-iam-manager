@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -52,7 +53,7 @@ func TestCspAccountValidate_AWS_Valid(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = svc.ValidateCspAccount(created.ID)
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
 	assert.NoError(t, err)
 }
 
@@ -67,7 +68,7 @@ func TestCspAccountValidate_AWS_MissingAccountID(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = svc.ValidateCspAccount(created.ID)
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "AWS account_id is required")
 }
@@ -85,7 +86,7 @@ func TestCspAccountValidate_GCP_Valid(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = svc.ValidateCspAccount(created.ID)
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
 	assert.NoError(t, err)
 }
 
@@ -100,7 +101,7 @@ func TestCspAccountValidate_GCP_MissingProjectID(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = svc.ValidateCspAccount(created.ID)
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "GCP project_id is required")
 }
@@ -119,7 +120,7 @@ func TestCspAccountValidate_Azure_Valid(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = svc.ValidateCspAccount(created.ID)
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
 	assert.NoError(t, err)
 }
 
@@ -136,7 +137,7 @@ func TestCspAccountValidate_Azure_MissingSubscriptionID(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = svc.ValidateCspAccount(created.ID)
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Azure subscription_id is required")
 }
@@ -154,9 +155,76 @@ func TestCspAccountValidate_Azure_MissingTenantID(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = svc.ValidateCspAccount(created.ID)
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Azure tenant_id is required")
+}
+
+// TestCspAccountValidate_Alibaba_Valid: Alibaba 계정에 account_id가 있으면 검증 통과
+// (연결된 CspRole이 없어도 AccountInfo 검증만 통과하면 빈 결과로 성공한다)
+func TestCspAccountValidate_Alibaba_Valid(t *testing.T) {
+	svc, _ := newTestService(t)
+
+	created, err := svc.CreateCspAccount(&model.CreateCspAccountRequest{
+		Name:    "test-alibaba",
+		CspType: "alibaba",
+		AccountInfo: map[string]string{
+			"account_id": "1234567890123456",
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
+	assert.NoError(t, err)
+}
+
+// TestCspAccountValidate_Alibaba_MissingAccountID: Alibaba 계정에 account_id가 없으면 에러
+func TestCspAccountValidate_Alibaba_MissingAccountID(t *testing.T) {
+	svc, _ := newTestService(t)
+
+	created, err := svc.CreateCspAccount(&model.CreateCspAccountRequest{
+		Name:        "test-alibaba-missing",
+		CspType:     "alibaba",
+		AccountInfo: map[string]string{},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Alibaba account_id is required")
+}
+
+// TestCspAccountValidate_Tencent_Valid: Tencent 계정에 app_id가 있으면 검증 통과
+func TestCspAccountValidate_Tencent_Valid(t *testing.T) {
+	svc, _ := newTestService(t)
+
+	created, err := svc.CreateCspAccount(&model.CreateCspAccountRequest{
+		Name:    "test-tencent",
+		CspType: "tencent",
+		AccountInfo: map[string]string{
+			"app_id": "1234567890",
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
+	assert.NoError(t, err)
+}
+
+// TestCspAccountValidate_Tencent_MissingAppID: Tencent 계정에 app_id가 없으면 에러
+func TestCspAccountValidate_Tencent_MissingAppID(t *testing.T) {
+	svc, _ := newTestService(t)
+
+	created, err := svc.CreateCspAccount(&model.CreateCspAccountRequest{
+		Name:        "test-tencent-missing",
+		CspType:     "tencent",
+		AccountInfo: map[string]string{},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "Tencent app_id is required")
 }
 
 // TestValidateCspAccount_UnsupportedType: 지원하지 않는 CSP 타입은 에러
@@ -175,7 +243,7 @@ func TestCspAccountValidate_UnsupportedType(t *testing.T) {
 	err := db.Create(account).Error
 	require.NoError(t, err)
 
-	err = svc.ValidateCspAccount(account.ID)
+	_, err = svc.ValidateCspAccount(context.Background(), account.ID)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported CSP type")
 }
@@ -184,7 +252,7 @@ func TestCspAccountValidate_UnsupportedType(t *testing.T) {
 func TestCspAccountValidate_NotFound(t *testing.T) {
 	svc, _ := newTestService(t)
 
-	err := svc.ValidateCspAccount(9999)
+	_, err := svc.ValidateCspAccount(context.Background(), 9999)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "CSP account not found with ID: 9999")
 }
@@ -272,7 +340,7 @@ func TestCspAccountDelete_Success(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 삭제 후 조회 시 에러 확인
-	err = svc.ValidateCspAccount(created.ID)
+	_, err = svc.ValidateCspAccount(context.Background(), created.ID)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), fmt.Sprintf("CSP account not found with ID: %d", created.ID))
 }

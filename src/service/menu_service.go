@@ -11,6 +11,7 @@ import (
 	"sort" // Added
 	"strconv"
 	"strings"
+	"time"
 
 	"encoding/csv"
 
@@ -659,83 +660,254 @@ func (s *MenuService) ListMappedMenusByRole(req *model.MenuMappingFilterRequest)
 	return menus, nil
 }
 
-// InitializeMenuPermissionsFromCSV CSV 파일을 읽어서 메뉴 권한을 초기화합니다.
-// filePath 쿼리 파라미터가 없으면 기본 경로인 asset/menu/permission.csv를 사용
+// rolePermissionEntry permission.yaml 역할 단위 권한 정의
+// permissions → role → menus | operations | csps
+type rolePermissionEntry struct {
+	Role       string   `yaml:"role"`
+	Menus      []string `yaml:"menus"`
+	Operations []string `yaml:"operations"`
+	Csps       []string `yaml:"csps"`
+}
+
+type rolePermissionFile struct {
+	Permissions []rolePermissionEntry `yaml:"permissions"`
+}
+
+// InitializeMenuPermissionsFromCSV CSV 매트릭스로 역할-메뉴 권한을 시드합니다.
+//
+// Deprecated: permission.csv 시드는 제거 예정입니다.
+// 신규/운영 시드는 InitializeMenuPermissionsFromYAML(asset/menu/permission.yaml)을 사용하세요.
 func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
-	effectiveFilePath := filePath
+	effectiveFilePath, cleanup, err := s.resolvePermissionSeedPath(
+		filePath, "permission.csv", ".csv",
+	)
+	if err != nil {
+		return err
+	}
+	if cleanup != "" {
+		defer os.Remove(cleanup)
+	}
+	return s.initializeMenuPermissionsFromCSVFile(effectiveFilePath)
+}
 
-	// If filePath is not provided via query param
-	if effectiveFilePath == "" {
-		// Load .env file to get the URL (assuming .env is at project root)
-		util.LoadEnvFiles()
-		permissionURL := os.Getenv("MC_WEB_CONSOLE_MENU_PERMISSIONS")
+// InitializeMenuPermissionsFromYAML 역할 중심 permission.yaml으로 권한을 시드합니다.
+// filePath가 비어 있으면 확장자가 맞는 MC_WEB_CONSOLE_MENU_PERMISSIONS,
+// 또는 asset/menu/permission.yaml을 사용합니다.
+// 스키마: permissions → role → menus | operations | csps
+func (s *MenuService) InitializeMenuPermissionsFromYAML(filePath string) error {
+	effectiveFilePath, cleanup, err := s.resolvePermissionSeedPath(
+		filePath, "permission.yaml", ".yaml",
+	)
+	if err != nil {
+		return err
+	}
+	if cleanup != "" {
+		defer os.Remove(cleanup)
+	}
+	return s.loadAndApplyMenuPermissionsFromYAML(effectiveFilePath)
+}
 
-		// Default local path relative to project root
-		assetPath := util.GetAssetPath()
-		defaultLocalPath := filepath.Join(assetPath, "menu", "permission.csv")
+// permissionSeedSourceMatchesExt는 source 경로/URL 확장자가 defaultExt와 맞는지 확인합니다.
+// YAML(.yaml/.yml)은 서로 호환으로 취급하며, 쿼리스트링은 확장자 검사 전에 제거합니다.
+func permissionSeedSourceMatchesExt(source, defaultExt string) bool {
+	pathPart := strings.SplitN(source, "?", 2)[0]
+	ext := strings.ToLower(filepath.Ext(pathPart))
+	want := strings.ToLower(defaultExt)
+	if want == ".yaml" || want == ".yml" {
+		return ext == ".yaml" || ext == ".yml"
+	}
+	return ext == want
+}
 
-		if permissionURL != "" && (strings.HasPrefix(permissionURL, "http://") || strings.HasPrefix(permissionURL, "https://")) {
-			// Attempt to download from URL
-			fmt.Printf("Attempting to download permission CSV from URL: %s\n", permissionURL)
-			resp, err := http.Get(permissionURL)
-			if err != nil {
-				fmt.Printf("Warning: Failed to download permission CSV from %s: %v. Falling back to local path: %s\n", permissionURL, err, defaultLocalPath)
-				effectiveFilePath = defaultLocalPath
-			} else {
-				defer resp.Body.Close()
-				if resp.StatusCode != http.StatusOK {
-					fmt.Printf("Warning: Failed to download permission CSV from %s (Status: %s). Falling back to local path: %s\n", permissionURL, resp.Status, defaultLocalPath)
-					effectiveFilePath = defaultLocalPath
-				} else {
-					bodyBytes, err := io.ReadAll(resp.Body)
-					if err != nil {
-						fmt.Printf("Warning: Failed to read response body from %s: %v. Falling back to local path: %s\n", permissionURL, err, defaultLocalPath)
-						effectiveFilePath = defaultLocalPath
-					} else {
-						// Create a temporary file
-						tempFile, err := os.CreateTemp("", "permission-*.csv")
-						if err != nil {
-							fmt.Printf("Warning: Failed to create temp file: %v. Falling back to local path: %s\n", err, defaultLocalPath)
-							effectiveFilePath = defaultLocalPath
-						} else {
-							defer os.Remove(tempFile.Name()) // Clean up temp file when done
-							if _, err := tempFile.Write(bodyBytes); err != nil {
-								fmt.Printf("Warning: Failed to write to temp file: %v. Falling back to local path: %s\n", err, defaultLocalPath)
-								effectiveFilePath = defaultLocalPath
-							} else {
-								effectiveFilePath = tempFile.Name()
-							}
-						}
-					}
-				}
-			}
+// resolvePermissionSeedPath 시드 파일 경로를 결정합니다.
+// 우선순위: query filePath → 확장자가 맞는 MC_WEB_CONSOLE_MENU_PERMISSIONS →
+// asset/menu/{defaultFileName}
+// 공유 env의 확장자가 기대 포맷과 다르면 다운로드하지 않고 로컬 기본 파일로 fallback합니다.
+func (s *MenuService) resolvePermissionSeedPath(
+	filePath, defaultFileName, defaultExt string,
+) (string, string, error) {
+	if filePath != "" {
+		return filePath, "", nil
+	}
+
+	util.LoadEnvFiles()
+	assetPath := util.GetAssetPath()
+	defaultLocalPath := filepath.Join(assetPath, "menu", defaultFileName)
+
+	permissionSource := ""
+	shared := strings.TrimSpace(os.Getenv("MC_WEB_CONSOLE_MENU_PERMISSIONS"))
+	if shared != "" {
+		if permissionSeedSourceMatchesExt(shared, defaultExt) {
+			permissionSource = shared
 		} else {
-			effectiveFilePath = defaultLocalPath
+			fmt.Printf(
+				"Warning: MC_WEB_CONSOLE_MENU_PERMISSIONS (%s) is not a %s source; "+
+					"falling back to local %s.\n",
+				shared, defaultExt, defaultLocalPath,
+			)
 		}
 	}
 
-	// CSV 파일 열기
-	file, err := os.Open(effectiveFilePath)
+	if permissionSource == "" {
+		return defaultLocalPath, "", nil
+	}
+
+	if strings.HasPrefix(permissionSource, "http://") ||
+		strings.HasPrefix(permissionSource, "https://") {
+		fmt.Printf("Attempting to download permission seed from URL: %s\n", permissionSource)
+		resp, err := http.Get(permissionSource)
+		if err != nil {
+			fmt.Printf(
+				"Warning: Failed to download permission seed from %s: %v. Falling back to local file.\n",
+				permissionSource, err,
+			)
+			return defaultLocalPath, "", nil
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			fmt.Printf(
+				"Warning: Failed to download permission seed from %s (Status: %s). Falling back to local file.\n",
+				permissionSource, resp.Status,
+			)
+			return defaultLocalPath, "", nil
+		}
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf(
+				"Warning: Failed to read permission seed from %s: %v. Falling back to local file.\n",
+				permissionSource, err,
+			)
+			return defaultLocalPath, "", nil
+		}
+		ext := filepath.Ext(strings.SplitN(permissionSource, "?", 2)[0])
+		if ext == "" {
+			ext = defaultExt
+		}
+		tempFile, err := os.CreateTemp("", "permission-*"+ext)
+		if err != nil {
+			fmt.Printf(
+				"Warning: Failed to create temp file: %v. Falling back to local file.\n", err,
+			)
+			return defaultLocalPath, "", nil
+		}
+		if _, err := tempFile.Write(bodyBytes); err != nil {
+			tempFile.Close()
+			os.Remove(tempFile.Name())
+			fmt.Printf(
+				"Warning: Failed to write temp permission file: %v. Falling back to local file.\n",
+				err,
+			)
+			return defaultLocalPath, "", nil
+		}
+		tempFile.Close()
+		return tempFile.Name(), tempFile.Name(), nil
+	}
+
+	return permissionSource, "", nil
+}
+
+// loadAndApplyMenuPermissionsFromYAML 역할 중심 permission.yaml을 적용합니다.
+func (s *MenuService) loadAndApplyMenuPermissionsFromYAML(filePath string) error {
+	body, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read permission YAML: %w", err)
+	}
+
+	var data rolePermissionFile
+	if err := yaml.Unmarshal(body, &data); err != nil {
+		return fmt.Errorf("failed to parse permission YAML: %w", err)
+	}
+	if len(data.Permissions) == 0 {
+		return fmt.Errorf("no permissions entries found in %s", filePath)
+	}
+
+	roleMenus := make(map[string][]string)
+	for _, entry := range data.Permissions {
+		roleName := strings.TrimSpace(entry.Role)
+		if roleName == "" {
+			return fmt.Errorf("permission entry missing role in %s", filePath)
+		}
+		if len(entry.Operations) > 0 {
+			fmt.Printf(
+				"Note: role %s operations(%d) reserved — menu seed only in this pass\n",
+				roleName, len(entry.Operations),
+			)
+		}
+		if len(entry.Csps) > 0 {
+			fmt.Printf(
+				"Note: role %s csps(%d) reserved — menu seed only in this pass\n",
+				roleName, len(entry.Csps),
+			)
+		}
+		menus := make([]string, 0, len(entry.Menus))
+		for _, menuID := range entry.Menus {
+			menuID = strings.TrimSpace(menuID)
+			if menuID != "" {
+				menus = append(menus, menuID)
+			}
+		}
+		roleMenus[roleName] = menus
+	}
+
+	return s.applyRoleMenuPermissionSeed(roleMenus)
+}
+
+// initializeMenuPermissionsFromCSVFile 기존 CSV 매트릭스를 적용합니다.
+// Deprecated path helper — CSV API 제거 시 함께 삭제 예정.
+func (s *MenuService) initializeMenuPermissionsFromCSVFile(filePath string) error {
+	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open CSV file: %w", err)
 	}
 	defer file.Close()
 
-	// CSV 리더 생성
 	reader := csv.NewReader(file)
-
-	// 첫 번째 행 읽기 (헤더)
 	headers, err := reader.Read()
 	if err != nil {
 		return fmt.Errorf("failed to read CSV headers: %w", err)
 	}
+	if len(headers) < 3 {
+		return fmt.Errorf("invalid CSV headers in %s", filePath)
+	}
 
-	// 역할 이름 목록 추출 (framework, resource 이후의 컬럼들)
 	roleNames := headers[2:]
-
-	// DB에서 역할 ID 조회
-	roleIDs := make(map[string]uint)
+	roleMenus := make(map[string][]string, len(roleNames))
 	for _, roleName := range roleNames {
+		roleMenus[roleName] = []string{}
+	}
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read CSV record: %w", err)
+		}
+		if len(record) < 3 {
+			continue
+		}
+		menuID := strings.TrimSpace(record[1])
+		if menuID == "" {
+			continue
+		}
+		for i, roleName := range roleNames {
+			if i+2 >= len(record) {
+				continue
+			}
+			if strings.EqualFold(strings.TrimSpace(record[i+2]), "TRUE") {
+				roleMenus[roleName] = append(roleMenus[roleName], menuID)
+			}
+		}
+	}
+
+	return s.applyRoleMenuPermissionSeed(roleMenus)
+}
+
+// applyRoleMenuPermissionSeed 역할→메뉴 목록을 DB 매핑으로 upsert(존재 시 skip)합니다.
+func (s *MenuService) applyRoleMenuPermissionSeed(roleMenus map[string][]string) error {
+	roleIDs := make(map[string]uint, len(roleMenus))
+	for roleName := range roleMenus {
 		role, err := s.roleRepo.FindRoleByRoleName(roleName, constants.RoleTypePlatform)
 		if err != nil {
 			return fmt.Errorf("failed to find role %s: %w", roleName, err)
@@ -746,8 +918,7 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 		roleIDs[roleName] = role.ID
 	}
 
-	// 기존 매핑 조회
-	existingMappings := make(map[string]map[uint]bool) // menuID -> roleID -> exists
+	existingMappings := make(map[string]map[uint]bool)
 	for _, roleID := range roleIDs {
 		req := &model.MenuMappingFilterRequest{
 			RoleIDs: []string{strconv.FormatUint(uint64(roleID), 10)},
@@ -764,56 +935,25 @@ func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
 		}
 	}
 
-	// 나머지 행 읽기
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("failed to read CSV record: %w", err)
-		}
-
-		// framework와 resource 추출
-		// framework := record[0]
-		// resource := record[1]
-		// 메뉴 ID 생성 (framework:resource 형식)
-		//menuID := fmt.Sprintf("%s:%s", framework, resource)
-		menuID := record[1] // menuId 그대로 넣도록 한다.
-
-		// 각 역할별 권한 확인
-		for i, roleName := range roleNames {
-			hasPermission := record[i+2] == "TRUE" // +2 because first two columns are framework and resource
-
-			if hasPermission {
-				roleID := roleIDs[roleName]
-
-				// 중복 매핑 체크
-				if roleMappings, exists := existingMappings[menuID]; exists {
-					if roleMappings[roleID] {
-						// 이미 매핑이 존재하면 스킵
-						continue
-					}
-				}
-
-				// 새 매핑 생성
-				mappings := []*model.RoleMenuMapping{
-					{
-						RoleID: roleID,
-						MenuID: menuID,
-					},
-				}
-				err := s.menuRepo.CreateRoleMenuMappings(mappings)
-				if err != nil {
-					return fmt.Errorf("failed to create menu mapping for %s with role %s: %w", menuID, roleName, err)
-				}
-
-				// 매핑 정보 업데이트
-				if _, exists := existingMappings[menuID]; !exists {
-					existingMappings[menuID] = make(map[uint]bool)
-				}
-				existingMappings[menuID][roleID] = true
+	for roleName, menus := range roleMenus {
+		roleID := roleIDs[roleName]
+		for _, menuID := range menus {
+			if roleMappings, exists := existingMappings[menuID]; exists && roleMappings[roleID] {
+				continue
 			}
+			mappings := []*model.RoleMenuMapping{
+				{RoleID: roleID, MenuID: menuID},
+			}
+			if err := s.menuRepo.CreateRoleMenuMappings(mappings); err != nil {
+				return fmt.Errorf(
+					"failed to create menu mapping for %s with role %s: %w",
+					menuID, roleName, err,
+				)
+			}
+			if _, exists := existingMappings[menuID]; !exists {
+				existingMappings[menuID] = make(map[uint]bool)
+			}
+			existingMappings[menuID][roleID] = true
 		}
 	}
 
@@ -838,4 +978,309 @@ func (s *MenuService) DeleteRoleMenuMappingByRoleAndMenu(roleID uint, menuID str
 // 해당 role 과 매핑된 메뉴 삭제
 func (s *MenuService) DeleteRoleMenuMappingsByRoleID(roleID uint) error {
 	return s.menuRepo.DeleteRoleMenuMappingsByRoleID(roleID)
+}
+
+const (
+	rolePermissionBackupKind     = "role-permission-backup"
+	rolePermissionSectionMenus   = "menus"
+	rolePermissionSectionOps     = "operations"
+	rolePermissionSectionCsps    = "csps"
+	rolePermissionRestoreAdd     = "additive"
+	rolePermissionRestoreReplace = "replace-role"
+)
+
+// BackupRolePermissions 현재 DB의 플랫폼 역할 권한을 백업 문서로 내보냅니다.
+// roleNames가 비어 있으면 플랫폼 역할 전체. sections 기본값은 menus.
+// role_masters.name 기준으로 직렬화합니다 (numeric role_id 미사용).
+func (s *MenuService) BackupRolePermissions(
+	roleNames []string, sections []string,
+) (*model.RolePermissionBackup, error) {
+	sections = normalizeRolePermissionSections(sections)
+	roles, err := s.resolvePlatformRolesForBackup(roleNames)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(roles, func(i, j int) bool {
+		return roles[i].Name < roles[j].Name
+	})
+
+	entries := make([]model.RolePermissionEntry, 0, len(roles))
+	for _, role := range roles {
+		entry := model.RolePermissionEntry{
+			Role:       role.Name,
+			Menus:      []string{},
+			Operations: []string{},
+			Csps:       []string{},
+		}
+		if containsSection(sections, rolePermissionSectionMenus) {
+			menuIDs, err := s.menuMappingRepo.GetMappedMenuIDs(role.ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to list menus for role %s: %w", role.Name, err)
+			}
+			sort.Strings(menuIDs)
+			entry.Menus = menuIDs
+		}
+		if containsSection(sections, rolePermissionSectionOps) ||
+			containsSection(sections, rolePermissionSectionCsps) {
+			// reserved: 스키마 자리만 유지 (1단계는 menus)
+			fmt.Printf(
+				"Note: backup role %s — operations/csps sections reserved (empty)\n",
+				role.Name,
+			)
+		}
+		entries = append(entries, entry)
+	}
+
+	return &model.RolePermissionBackup{
+		Kind:        rolePermissionBackupKind,
+		BackupAt:    time.Now().Format(time.RFC3339),
+		Source:      "db",
+		Sections:    sections,
+		Permissions: entries,
+	}, nil
+}
+
+// SaveRolePermissionBackupFile 백업 문서를 asset/menu/backups/ 에 저장합니다.
+func (s *MenuService) SaveRolePermissionBackupFile(
+	backup *model.RolePermissionBackup, fileName string,
+) (string, error) {
+	if backup == nil {
+		return "", fmt.Errorf("backup is nil")
+	}
+	assetPath := util.GetAssetPath()
+	dir := filepath.Join(assetPath, "menu", "backups")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("failed to create backup dir: %w", err)
+	}
+	if fileName == "" {
+		fileName = fmt.Sprintf(
+			"role-permission-backup-%s.yaml",
+			time.Now().Format("20060102-150405"),
+		)
+	}
+	path := filepath.Join(dir, fileName)
+	body, err := yaml.Marshal(backup)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal backup: %w", err)
+	}
+	if err := os.WriteFile(path, body, 0o644); err != nil {
+		return "", fmt.Errorf("failed to write backup file: %w", err)
+	}
+	return path, nil
+}
+
+// RestoreRolePermissions 역할 권한 백업 문서를 DB에 복구합니다.
+// mode: additive | replace-role
+func (s *MenuService) RestoreRolePermissions(
+	backup *model.RolePermissionBackup, mode string, sections []string,
+) (*model.RolePermissionRestoreResult, error) {
+	if backup == nil {
+		return nil, fmt.Errorf("backup is nil")
+	}
+	if len(backup.Permissions) == 0 {
+		return nil, fmt.Errorf("backup has no permissions entries")
+	}
+	mode = strings.TrimSpace(strings.ToLower(mode))
+	if mode == "" {
+		mode = rolePermissionRestoreAdd
+	}
+	if mode != rolePermissionRestoreAdd && mode != rolePermissionRestoreReplace {
+		return nil, fmt.Errorf(
+			"invalid mode %q (use %s or %s)",
+			mode, rolePermissionRestoreAdd, rolePermissionRestoreReplace,
+		)
+	}
+	sections = normalizeRolePermissionSections(sections)
+	if backup.Kind != "" && backup.Kind != rolePermissionBackupKind {
+		fmt.Printf(
+			"Warning: backup kind=%q (expected %q); proceeding\n",
+			backup.Kind, rolePermissionBackupKind,
+		)
+	}
+
+	result := &model.RolePermissionRestoreResult{
+		Mode:    mode,
+		Message: "role permission restore completed",
+	}
+
+	for _, entry := range backup.Permissions {
+		roleName := strings.TrimSpace(entry.Role)
+		if roleName == "" {
+			return nil, fmt.Errorf("permission entry missing role")
+		}
+		role, err := s.roleRepo.FindRoleByRoleName(roleName, constants.RoleTypePlatform)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find role %s: %w", roleName, err)
+		}
+		if role == nil {
+			return nil, fmt.Errorf("role not found: %s", roleName)
+		}
+		result.RolesProcessed++
+
+		if !containsSection(sections, rolePermissionSectionMenus) {
+			continue
+		}
+
+		desired := uniqueNonEmpty(entry.Menus)
+		if mode == rolePermissionRestoreReplace {
+			removed, err := s.replaceRoleMenuMappings(role.ID, desired)
+			if err != nil {
+				return nil, fmt.Errorf("replace-role failed for %s: %w", roleName, err)
+			}
+			result.MenusRemoved += removed
+			result.MenusAdded += len(desired)
+			continue
+		}
+
+		added, err := s.addMissingRoleMenuMappings(role.ID, desired)
+		if err != nil {
+			return nil, fmt.Errorf("additive restore failed for %s: %w", roleName, err)
+		}
+		result.MenusAdded += added
+	}
+
+	return result, nil
+}
+
+// ParseRolePermissionBackupYAML YAML 바이트를 RolePermissionBackup으로 파싱합니다.
+func ParseRolePermissionBackupYAML(body []byte) (*model.RolePermissionBackup, error) {
+	var backup model.RolePermissionBackup
+	if err := yaml.Unmarshal(body, &backup); err != nil {
+		return nil, fmt.Errorf("failed to parse role permission backup: %w", err)
+	}
+	return &backup, nil
+}
+
+// LoadRolePermissionBackupFile 파일에서 백업 문서를 로드합니다.
+func (s *MenuService) LoadRolePermissionBackupFile(filePath string) (*model.RolePermissionBackup, error) {
+	body, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read backup file: %w", err)
+	}
+	return ParseRolePermissionBackupYAML(body)
+}
+
+func (s *MenuService) resolvePlatformRolesForBackup(
+	roleNames []string,
+) ([]*model.RoleMaster, error) {
+	if len(roleNames) > 0 {
+		out := make([]*model.RoleMaster, 0, len(roleNames))
+		for _, name := range roleNames {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			role, err := s.roleRepo.FindRoleByRoleName(name, constants.RoleTypePlatform)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find role %s: %w", name, err)
+			}
+			if role == nil {
+				return nil, fmt.Errorf("role not found: %s", name)
+			}
+			out = append(out, role)
+		}
+		return out, nil
+	}
+
+	roles, err := s.roleRepo.FindRoles(&model.RoleFilterRequest{
+		RoleTypes: []constants.IAMRoleType{constants.RoleTypePlatform},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list platform roles: %w", err)
+	}
+	return roles, nil
+}
+
+func (s *MenuService) addMissingRoleMenuMappings(roleID uint, menuIDs []string) (int, error) {
+	existing, err := s.menuMappingRepo.GetMappedMenuIDs(roleID)
+	if err != nil {
+		return 0, err
+	}
+	have := make(map[string]bool, len(existing))
+	for _, id := range existing {
+		have[id] = true
+	}
+	added := 0
+	for _, menuID := range menuIDs {
+		if have[menuID] {
+			continue
+		}
+		mapping := &model.RoleMenuMapping{RoleID: roleID, MenuID: menuID}
+		if err := s.menuRepo.CreateRoleMenuMappings([]*model.RoleMenuMapping{mapping}); err != nil {
+			return added, err
+		}
+		added++
+		have[menuID] = true
+	}
+	return added, nil
+}
+
+func (s *MenuService) replaceRoleMenuMappings(roleID uint, menuIDs []string) (int, error) {
+	existing, err := s.menuMappingRepo.GetMappedMenuIDs(roleID)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.menuRepo.DeleteRoleMenuMappingsByRoleID(roleID); err != nil {
+		return 0, err
+	}
+	if len(menuIDs) > 0 {
+		mappings := make([]*model.RoleMenuMapping, 0, len(menuIDs))
+		for _, menuID := range menuIDs {
+			mappings = append(mappings, &model.RoleMenuMapping{
+				RoleID: roleID,
+				MenuID: menuID,
+			})
+		}
+		if err := s.menuRepo.CreateRoleMenuMappings(mappings); err != nil {
+			return 0, err
+		}
+	}
+	return len(existing), nil
+}
+
+func normalizeRolePermissionSections(sections []string) []string {
+	if len(sections) == 0 {
+		return []string{rolePermissionSectionMenus}
+	}
+	seen := map[string]bool{}
+	out := make([]string, 0, len(sections))
+	for _, s := range sections {
+		s = strings.TrimSpace(strings.ToLower(s))
+		if s == "" || seen[s] {
+			continue
+		}
+		switch s {
+		case rolePermissionSectionMenus, rolePermissionSectionOps, rolePermissionSectionCsps:
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	if len(out) == 0 {
+		return []string{rolePermissionSectionMenus}
+	}
+	return out
+}
+
+func containsSection(sections []string, target string) bool {
+	for _, s := range sections {
+		if s == target {
+			return true
+		}
+	}
+	return false
+}
+
+func uniqueNonEmpty(ids []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
 }

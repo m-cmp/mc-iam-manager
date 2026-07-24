@@ -181,12 +181,24 @@ func (s *CspAccountService) ValidateCspAccount(ctx context.Context, id uint) (*m
 		return nil, fmt.Errorf("CSP account not found with ID: %d", id)
 	}
 
+	// CSP 타입별 AccountInfo 필수 필드 검증 (역할 조회보다 먼저 수행)
+	if err := validateAccountInfo(account); err != nil {
+		return nil, err
+	}
+
 	roles, err := s.cspRoleRepo.GetByCspAccountID(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CSP roles: %w", err)
 	}
 	if len(roles) == 0 {
-		return nil, fmt.Errorf("no CSP roles found for account ID: %d", id)
+		// AccountInfo 검증은 통과했으나 연결된 CspRole이 없는 경우 —
+		// 더 이상 하드 에러가 아니라, 검증할 역할이 없다는 의미로 빈 결과를 반환한다.
+		return &model.CspAccountValidationResponse{
+			AccountID:   account.ID,
+			AccountName: account.Name,
+			CspType:     account.CspType,
+			Results:     []model.CspAccountValidationResult{},
+		}, nil
 	}
 
 	resp := &model.CspAccountValidationResponse{
@@ -203,6 +215,50 @@ func (s *CspAccountService) ValidateCspAccount(ctx context.Context, id uint) (*m
 
 	log.Printf("Validated CSP account: %s (ID: %d), roles: %d", account.Name, account.ID, len(roles))
 	return resp, nil
+}
+
+// validateAccountInfo CSP 타입별 CspAccount.AccountInfo 필수 필드 검증
+//
+// 새로운 CSP 타입을 지원하려면 이 switch 문에 case를 추가하기만 하면 된다
+// (구조 변경 불필요). 아직 필드 검증이 구현되지 않은 CSP 타입은 no-op(nil)으로
+// 통과시키며, 목록에 없는 타입은 unsupported 에러를 반환한다.
+func validateAccountInfo(account *model.CspAccount) error {
+	switch account.CspType {
+	case "alibaba":
+		if account.GetAlibabaAccountID() == "" {
+			return fmt.Errorf("Alibaba account_id is required")
+		}
+		return nil
+	case "gcp":
+		if account.GetProjectID() == "" {
+			return fmt.Errorf("GCP project_id is required")
+		}
+		return nil
+	case "tencent":
+		if account.GetTencentAppID() == "" {
+			return fmt.Errorf("Tencent app_id is required")
+		}
+		return nil
+	case "aws":
+		if account.GetAccountID() == "" {
+			return fmt.Errorf("AWS account_id is required")
+		}
+		return nil
+	case "azure":
+		if account.GetSubscriptionID() == "" {
+			return fmt.Errorf("Azure subscription_id is required")
+		}
+		if account.GetTenantID() == "" {
+			return fmt.Errorf("Azure tenant_id is required")
+		}
+		return nil
+	case "ibm", "ncp", "nhn", "kt", "openstack":
+		// TODO: 각 CSP 타입별 필수 필드 검증은 이후 PR에서 순차적으로 추가 예정.
+		// 지금은 no-op으로 통과시킨다 (이번 PR 범위는 Alibaba, GCP, Tencent, AWS, Azure만).
+		return nil
+	default:
+		return fmt.Errorf("unsupported CSP type: %s", account.CspType)
+	}
 }
 
 // validateCspRole CspRole 단위로 CSP 인프라 검증

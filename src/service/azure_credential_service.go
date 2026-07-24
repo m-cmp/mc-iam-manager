@@ -62,7 +62,7 @@ func (s *azureCredentialService) GetTokenByFederatedCredential(
 	tokenURL := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/v2.0/token", tenantID)
 
 	formData := url.Values{}
-	formData.Set("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer")
+	formData.Set("grant_type", "client_credentials")
 	formData.Set("client_id", clientID)
 	formData.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
 	formData.Set("client_assertion", keycloakJWT)

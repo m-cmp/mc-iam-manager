@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -244,7 +245,9 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 				return nil, fmt.Errorf("failed to get impersonation token: %w", err)
 			}
 			log.Printf("[CSP_CREDENTIAL] Calling GCP WIF ExchangeTokenAndImpersonate (OIDC)...")
-			return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.AccessToken, "jwt")
+			// GCP WIF STS는 단일 문자열 aud를 요구하므로 Access Token(aud가 "account")이 아니라
+			// ID Token(aud=OIDC 클라이언트 ID)을 사용해야 한다 — Alibaba OIDC(OI-1)와 동일한 이유.
+			return s.gcpCredService.ExchangeTokenAndImpersonate(ctx, idpArn, roleArn, impersonationToken.IDToken, "jwt")
 		case model.AuthMethodSAML:
 			samlClientAudience := idpArn
 			if extConfig, ok := targetCspRole.ExtendedConfig["saml_client_id"].(string); ok && extConfig != "" {
@@ -347,6 +350,36 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 		}
 	case "tencent":
 		switch authMethod {
+		case model.AuthMethodOIDC:
+			secretID := ""
+			secretKey := ""
+			if targetCspRole.CspIdpConfig != nil {
+				secretID = targetCspRole.CspIdpConfig.Config["secret_id"]
+				secretKey = targetCspRole.CspIdpConfig.Config["secret_key"]
+			}
+			// SAML 경로와 동일하게 secret_id/secret_key 설정을 요구한다. Authorization: SKIP 특성상
+			// STS 호출 자체에는 필요 없을 수 있지만(SAML에서 확인된 내용), 일관성을 위해 유지 —
+			// 불필요 여부 확인 및 요건 완화는 이 작업 범위 밖.
+			if secretID == "" || secretKey == "" {
+				return nil, fmt.Errorf("Tencent OIDC requires secret_id and secret_key in CspIdpConfig")
+			}
+			impersonationToken, err := s.keycloakService.GetImpersonationTokenByServiceAccount(ctx)
+			if err != nil {
+				log.Printf("[CSP_CREDENTIAL] Error getting impersonation token for Tencent: %v", err)
+				return nil, fmt.Errorf("failed to get impersonation token for Tencent: %w", err)
+			}
+			// GCP/Alibaba OIDC와 동일한 이유로 AccessToken이 아니라 IDToken을 사용해야 한다 —
+			// Tencent STS의 aud 검증은 등록된 OIDC Provider의 Client ID와 일치하는 ID Token을 요구한다.
+			// ProviderId는 실 API 검증 결과 문서 예시의 리터럴 "OIDC"가 아니라 CAM에 등록한
+			// OIDC Provider의 실제 Name이어야 한다 — 리터럴 "OIDC"를 보내면 "identity no exist"로
+			// 항상 실패한다(034 태스크 Tencent OIDC 실인프라 검증에서 발견). idpArn은
+			// "qcs::cam::uin/{uin}:oidc-provider/{name}" 형식이므로 마지막 "/" 뒤의 Name을 추출한다.
+			providerName := idpArn
+			if idx := strings.LastIndex(idpArn, "/"); idx != -1 {
+				providerName = idpArn[idx+1:]
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling Tencent AssumeRoleWithWebIdentity... ProviderId: %s", providerName)
+			return s.tencentCredService.AssumeRoleWithWebIdentity(ctx, secretID, secretKey, roleArn, providerName, impersonationToken.IDToken, region)
 		case model.AuthMethodSAML:
 			secretID := ""
 			secretKey := ""

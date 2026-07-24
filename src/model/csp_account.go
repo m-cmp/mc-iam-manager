@@ -86,6 +86,21 @@ func (c *CspAccount) GetRegion() string {
 	return c.AccountInfo["region"]
 }
 
+// GetAlibabaAccountID Alibaba Cloud Account ID 반환
+// Alibaba는 AWS와 동일하게 "account_id" 키를 사용하므로 GetAccountID()와 동일 동작이지만,
+// CSP별 getter 네이밍 컨벤션(Get<Csp>ID)을 맞추기 위해 별도로 노출한다.
+func (c *CspAccount) GetAlibabaAccountID() string {
+	return c.GetAccountID()
+}
+
+// GetTencentAppID Tencent Cloud APPID 반환
+func (c *CspAccount) GetTencentAppID() string {
+	if c.AccountInfo == nil {
+		return ""
+	}
+	return c.AccountInfo["app_id"]
+}
+
 // CspAccountFilter CSP 계정 조회 필터
 type CspAccountFilter struct {
 	CspType  string `json:"csp_type,omitempty"`

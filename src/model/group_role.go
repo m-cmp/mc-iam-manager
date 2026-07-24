@@ -88,6 +88,11 @@ type AssignGroupUsersRequest struct {
 	UserIDs []uint `json:"user_ids" validate:"required,min=1"`
 }
 
+// RemoveGroupUsersRequest 그룹에서 사용자 일괄 제거 요청 (group 입장)
+type RemoveGroupUsersRequest struct {
+	UserIDs []uint `json:"user_ids" validate:"required,min=1"`
+}
+
 // PlatformRoleSimple 플랫폼 역할 간단 정보
 type PlatformRoleSimple struct {
 	RoleID      uint   `json:"role_id"`
