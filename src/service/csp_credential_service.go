@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -368,9 +369,17 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 				return nil, fmt.Errorf("failed to get impersonation token for Tencent: %w", err)
 			}
 			// GCP/Alibaba OIDC와 동일한 이유로 AccessToken이 아니라 IDToken을 사용해야 한다 —
-			// Tencent STS ProviderId="OIDC" 검증은 aud가 등록된 Client ID와 일치하는 ID Token을 요구한다.
-			log.Printf("[CSP_CREDENTIAL] Calling Tencent AssumeRoleWithWebIdentity...")
-			return s.tencentCredService.AssumeRoleWithWebIdentity(ctx, secretID, secretKey, roleArn, "OIDC", impersonationToken.IDToken, region)
+			// Tencent STS의 aud 검증은 등록된 OIDC Provider의 Client ID와 일치하는 ID Token을 요구한다.
+			// ProviderId는 실 API 검증 결과 문서 예시의 리터럴 "OIDC"가 아니라 CAM에 등록한
+			// OIDC Provider의 실제 Name이어야 한다 — 리터럴 "OIDC"를 보내면 "identity no exist"로
+			// 항상 실패한다(034 태스크 Tencent OIDC 실인프라 검증에서 발견). idpArn은
+			// "qcs::cam::uin/{uin}:oidc-provider/{name}" 형식이므로 마지막 "/" 뒤의 Name을 추출한다.
+			providerName := idpArn
+			if idx := strings.LastIndex(idpArn, "/"); idx != -1 {
+				providerName = idpArn[idx+1:]
+			}
+			log.Printf("[CSP_CREDENTIAL] Calling Tencent AssumeRoleWithWebIdentity... ProviderId: %s", providerName)
+			return s.tencentCredService.AssumeRoleWithWebIdentity(ctx, secretID, secretKey, roleArn, providerName, impersonationToken.IDToken, region)
 		case model.AuthMethodSAML:
 			secretID := ""
 			secretKey := ""

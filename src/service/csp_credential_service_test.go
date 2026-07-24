@@ -507,6 +507,33 @@ func TestGetTemporaryCredentials_Tencent_OIDC_Success(t *testing.T) {
 	assert.Equal(t, "tencent", cred.CspType)
 }
 
+// TC-CRED-17c-2: Tencent OIDC — ProviderId는 CAM OIDC Provider ARN의 리터럴 "OIDC"가
+// 아니라 등록된 Provider Name(ARN 마지막 세그먼트)이어야 한다. 실 API 검증에서 리터럴
+// "OIDC"를 보내면 "identity no exist"로 항상 실패함을 확인한 회귀 방지 테스트.
+func TestGetTemporaryCredentials_Tencent_OIDC_ProviderIdExtractedFromArn(t *testing.T) {
+	config := map[string]string{
+		"secret_id":  "my-secret-id",
+		"secret_key": "my-secret-key",
+	}
+	tencentIdpArn := "qcs::cam::uin/200043476729:oidc-provider/mcmp-dev-keycloak-oidc"
+	mockTencent := &mockTencentCredService{oidcResult: tencentOidcCred}
+	svc := newCredServiceWithMocks(credServiceDeps{
+		aws:      &mockAwsCredService{},
+		gcp:      &mockGcpCredService{},
+		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  mockTencent,
+		ibm:      &mockIbmCredService{},
+		kc:       oidcKC(),
+		userRepo: &mockUserRepoForCred{role: stdUserRole()},
+		mapRepo:  &mockCspMappingRepo{mapping: buildMapping(constants.AuthMethodOIDC, tencentIdpArn, roleArn, model.AuthMethodOIDC, config)},
+	})
+
+	_, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("tencent", "OIDC"))
+	require.NoError(t, err)
+	assert.Equal(t, "mcmp-dev-keycloak-oidc", mockTencent.capturedProviderId)
+}
+
 // TC-CRED-17d: Tencent OIDC — config 누락 → 에러
 func TestGetTemporaryCredentials_Tencent_OIDC_MissingConfig(t *testing.T) {
 	svc := newCredServiceWithMocks(credServiceDeps{
