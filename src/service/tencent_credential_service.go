@@ -198,7 +198,8 @@ func (s *tencentCredentialService) AssumeRoleWithSAML(
 //                    호출 자체에는 사용되지 않지만, 설정 검증 용도로 SAML과 동일하게 요구한다)
 // secretKey:         Tencent Cloud API Secret Key (위와 동일한 이유로 유지)
 // roleArn:           Tencent CAM Role ARN (e.g., qcs::cam::uin/123:roleName/myRole)
-// providerId:        OIDC IdP 식별자 — SAML의 PrincipalArn(전체 ARN)과 달리 리터럴 문자열 "OIDC"
+// providerId:        CAM에 등록한 OIDC Provider의 Name(전체 ARN이 아님). 문서 예시의 리터럴
+//                    "OIDC"를 그대로 보내면 "identity no exist"로 항상 실패함을 실 API로 확인함.
 // webIdentityToken:  Keycloak이 발급한 OIDC ID Token (AccessToken이 아님 — aud가 클라이언트 ID인 ID Token 필요)
 // region:            Tencent Cloud region (X-TC-Region 헤더로 전달; STS 자체는 글로벌 엔드포인트)
 func (s *tencentCredentialService) AssumeRoleWithWebIdentity(

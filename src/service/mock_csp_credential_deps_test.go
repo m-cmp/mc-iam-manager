@@ -82,10 +82,11 @@ func (m *mockAzureCredService) GetTokenByFederatedCredential(_ context.Context, 
 // ── Tencent ───────────────────────────────────────────────────────────────────
 
 type mockTencentCredService struct {
-	result     *model.CspCredentialResponse
-	err        error
-	oidcResult *model.CspCredentialResponse
-	oidcErr    error
+	result             *model.CspCredentialResponse
+	err                error
+	oidcResult         *model.CspCredentialResponse
+	oidcErr            error
+	capturedProviderId string
 }
 
 func (m *mockTencentCredService) AssumeRoleWithSAML(_ context.Context, secretID, secretKey, roleArn, principalArn, samlAssertion, region string) (*model.CspCredentialResponse, error) {
@@ -93,6 +94,7 @@ func (m *mockTencentCredService) AssumeRoleWithSAML(_ context.Context, secretID,
 }
 
 func (m *mockTencentCredService) AssumeRoleWithWebIdentity(_ context.Context, secretID, secretKey, roleArn, providerId, webIdentityToken, region string) (*model.CspCredentialResponse, error) {
+	m.capturedProviderId = providerId
 	if m.oidcResult != nil || m.oidcErr != nil {
 		return m.oidcResult, m.oidcErr
 	}
