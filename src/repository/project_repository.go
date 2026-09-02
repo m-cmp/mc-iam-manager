@@ -61,6 +61,10 @@ func (r *ProjectRepository) FindProjects(req *model.ProjectFilterRequest) ([]*mo
 		query = query.Where("name = ?", req.ProjectName)
 	}
 
+	if req.NsId != "" {
+		query = query.Where("nsid = ?", req.NsId)
+	}
+
 	if err := query.Find(&projects).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
