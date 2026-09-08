@@ -149,8 +149,9 @@ func main() {
 	// Validator 설정
 	e.Validator = &CustomValidator{validator: validator.New()}
 
-	// 로그 레벨 설정
-	e.Debug = true
+	// 디버그 모드: MC_IAM_MANAGER_DEBUG=true 일 때만 에러 응답에 내부 에러 문자열 포함
+	e.Debug = config.DebugEnabled()
+	log.Printf("Echo debug mode: %v", e.Debug)
 
 	// 미들웨어 설정
 	e.Use(echomiddleware.LoggerWithConfig(echomiddleware.LoggerConfig{
