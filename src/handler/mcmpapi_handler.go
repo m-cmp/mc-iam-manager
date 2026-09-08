@@ -168,6 +168,9 @@ func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body: " + err.Error()})
 	}
+	if err := c.Validate(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "serviceName and actionName are required"})
+	}
 
 	// --- RPT Validation and Permission Check START ---
 	authHeader := c.Request().Header.Get("Authorization")
@@ -195,20 +198,13 @@ func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
 		return c.JSON(http.StatusForbidden, map[string]string{"error": "권한 거부: RPT에 permissions 클레임이 없습니다."})
 	}
 
-	// Check if the required permission is in the RPT claims
-	// Required permission format: "serviceName#actionName" (based on Keycloak UMA resource/scope)
-	requiredPermission := fmt.Sprintf("%s#%s", req.ServiceName, req.ActionName)
+	// Check if the required permission is in the RPT claims.
+	// Keycloak UMA resource = serviceName, scope = actionName; both are required
+	// (validated above) so an empty scope can never act as a wildcard.
+	requiredResource := req.ServiceName
+	requiredScope := req.ActionName
+	requiredPermission := requiredResource + "#" + requiredScope
 	hasPermission := false
-	requiredParts := strings.SplitN(requiredPermission, "#", 2)
-	requiredResource := requiredParts[0]
-	requiredScope := ""
-	if len(requiredParts) > 1 {
-		requiredScope = requiredParts[1]
-	} else {
-		log.Printf("경고: requiredPermission 형식 오류 (McmpApiCall): %s", requiredPermission)
-		// Decide how to handle - maybe deny access if format is wrong?
-		// return c.JSON(http.StatusInternalServerError, map[string]string{"error": "서버 설정 오류: 잘못된 내부 권한 형식"})
-	}
 
 	for _, p := range permissionsClaim {
 		permMap, ok := p.(map[string]interface{})
@@ -224,7 +220,7 @@ func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
 		if rsname == requiredResource {
 			for _, scopeInterface := range scopes {
 				scope, ok := scopeInterface.(string)
-				if ok && (requiredScope == "" || scope == requiredScope) {
+				if ok && scope == requiredScope {
 					hasPermission = true
 					break
 				}
