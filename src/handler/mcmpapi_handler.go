@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"github.com/m-cmp/mc-iam-manager/config" // Import config for Keycloak client
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/model/mcmpapi"
+	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/service"
 	"gorm.io/gorm" // Import gorm
 )
@@ -19,7 +21,11 @@ const apiYamlEnvVar = "MC_ADMIN_CLI_APIYAML"
 
 // McmpApiHandler handles requests related to mcmp API definitions. (Renamed)
 type McmpApiHandler struct {
-	service service.McmpApiService // Use renamed service interface
+	service          service.McmpApiService // Use renamed service interface
+	projectService   *service.ProjectService
+	workspaceService *service.WorkspaceService
+	userService      *service.UserService
+	mcmpApiRepo      repository.McmpApiRepository
 	// db *gorm.DB // Not needed directly in handler
 }
 
@@ -27,7 +33,13 @@ type McmpApiHandler struct {
 func NewMcmpApiHandler(db *gorm.DB) *McmpApiHandler { // Accept db, remove service param
 	// Initialize service internally
 	mcmpApiService := service.NewMcmpApiService(db)
-	return &McmpApiHandler{service: mcmpApiService} // Renamed struct type
+	return &McmpApiHandler{
+		service:          mcmpApiService, // Renamed struct type
+		projectService:   service.NewProjectService(db),
+		workspaceService: service.NewWorkspaceService(db),
+		userService:      service.NewUserService(db),
+		mcmpApiRepo:      repository.NewMcmpApiRepository(db),
+	}
 }
 
 // SyncMcmpAPIs godoc
@@ -229,6 +241,14 @@ func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
 	}
 	// --- RPT Validation and Permission Check END ---
 
+	// --- IAM-TECH-003 방안2: nsId 소유권 기반 세밀 권한 제어 START ---
+	isPlatformAdmin := checkRoleFromContext(c, []string{"platformAdmin"})
+	kcUserID, _ := c.Get("kcUserId").(string)
+	if status, msg := h.authorizeMcmpApiAction(c.Request().Context(), isPlatformAdmin, kcUserID, &req); status != 0 {
+		return c.JSON(status, map[string]string{"error": msg})
+	}
+	// --- IAM-TECH-003 방안2: nsId 소유권 기반 세밀 권한 제어 END ---
+
 	// If permission check passed, proceed to call the service
 	statusCode, respBody, serviceVersion, calledURL, err := h.service.McmpApiCall(c.Request().Context(), &req) // Get new return values
 	if err != nil {
@@ -260,6 +280,71 @@ func (h *McmpApiHandler) McmpApiCall(c echo.Context) error { // Renamed function
 		return writeErr
 	}
 	return nil // Response already written
+}
+
+// authorizeMcmpApiAction은 IAM-TECH-003 방안2의 nsId 소유권 검증을 수행한다.
+// platformAdmin은 무조건 통과하고, 액션의 resourcePath에 {nsId}가 있으면 요청된 nsId가
+// 속한 프로젝트의 워크스페이스에 사용자가 소속되어 있는지 확인한다. {nsId}가 없는
+// "전체 목록"류 액션은 platformAdmin 전용을 유지한다. 통과하면 (0, ""),
+// 거부되면 (HTTP status, 사용자 노출용 메시지)를 반환한다.
+func (h *McmpApiHandler) authorizeMcmpApiAction(ctx context.Context, isPlatformAdmin bool, kcUserID string, req *model.McmpApiCallRequest) (int, string) {
+	if isPlatformAdmin {
+		return 0, ""
+	}
+
+	action, err := h.mcmpApiRepo.GetServiceAction(req.ServiceName, req.ActionName)
+	if err != nil || action == nil {
+		return http.StatusForbidden, fmt.Sprintf("권한 거부: 정의되지 않은 액션 '%s#%s'입니다.", req.ServiceName, req.ActionName)
+	}
+
+	if !strings.Contains(action.ResourcePath, "{nsId}") {
+		return http.StatusForbidden, "권한 거부: platformAdmin만 호출할 수 있는 액션입니다."
+	}
+
+	nsId := req.RequestParams.PathParams["nsId"]
+	if nsId == "" {
+		return http.StatusBadRequest, "요청 requestParams.pathParams에 nsId가 필요합니다."
+	}
+
+	if kcUserID == "" {
+		return http.StatusUnauthorized, "인증 정보(kcUserId)를 확인할 수 없습니다."
+	}
+
+	localUserID, err := h.userService.GetUserIDByKcID(ctx, kcUserID)
+	if err != nil || localUserID == 0 {
+		return http.StatusInternalServerError, "사용자 정보를 확인할 수 없습니다."
+	}
+
+	return h.authorizeNsOwnership(nsId, localUserID)
+}
+
+// authorizeNsOwnership은 nsId가 속한 프로젝트의 워크스페이스에 localUserID가 소속되어
+// 있는지 확인한다. kcUserID→localUserID 변환(Keycloak 동기화를 유발할 수 있는
+// UserService.GetUserIDByKcID)과 분리해두어, Project/Workspace/UserWorkspaceRole
+// 픽스처만으로 독립적으로 단위 테스트할 수 있다.
+func (h *McmpApiHandler) authorizeNsOwnership(nsId string, localUserID uint) (int, string) {
+	projects, err := h.projectService.ListProjects(&model.ProjectFilterRequest{NsId: nsId})
+	if err != nil {
+		return http.StatusInternalServerError, fmt.Sprintf("프로젝트 조회 실패: %v", err)
+	}
+	if len(projects) == 0 {
+		return http.StatusForbidden, fmt.Sprintf("권한 거부: nsId '%s'에 해당하는 프로젝트를 찾을 수 없습니다.", nsId)
+	}
+
+	for _, project := range projects {
+		memberWorkspaces, err := h.workspaceService.ListWorkspaces(&model.WorkspaceFilterRequest{
+			ProjectID: fmt.Sprintf("%d", project.ID),
+			UserID:    fmt.Sprintf("%d", localUserID),
+		})
+		if err != nil {
+			return http.StatusInternalServerError, fmt.Sprintf("워크스페이스 소속 확인 실패: %v", err)
+		}
+		if len(memberWorkspaces) > 0 {
+			return 0, ""
+		}
+	}
+
+	return http.StatusForbidden, fmt.Sprintf("권한 거부: nsId '%s'에 대한 접근 권한이 없습니다.", nsId)
 }
 
 // GetAllAPIDefinitions godoc

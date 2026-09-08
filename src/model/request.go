@@ -20,6 +20,7 @@ type SetupInitialAdminRequest struct {
 type ProjectFilterRequest struct {
 	ProjectID     string `json:"projectId"`
 	ProjectName   string `json:"projectName"`
+	NsId          string `json:"nsId"`
 	WorkspaceID   string `json:"workspaceId"`
 	WorkspaceName string `json:"workspaceName"`
 }
