@@ -239,7 +239,6 @@ func (h *AuthHandler) WorkspaceTicket(c echo.Context) error {
 	if err != nil {
 		//log.Printf("Audience: %v", config.KC.OIDCClientID)
 		log.Printf("Audience: %v", config.KC.OIDCClientName)
-		log.Printf("ClaimToken: %v", claimToken)
 		log.Printf("Failed to issue RPT: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get RPT"})
 	}
