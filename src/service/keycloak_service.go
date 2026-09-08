@@ -708,7 +708,6 @@ func (s *keycloakService) Login(ctx context.Context, username, password string) 
 	log.Printf("[DEBUG] - Host: %s", config.KC.Host)
 	log.Printf("[DEBUG] - Realm: %s", config.KC.Realm)
 	log.Printf("[DEBUG] - ClientID: %s", config.KC.ClientName)
-	log.Printf("[DEBUG] - ClientSecret: %s", config.KC.ClientSecret)
 	log.Printf("[DEBUG] - Username: %s", username)
 
 	token, err := config.KC.Client.Login(ctx, config.KC.ClientName, config.KC.ClientSecret, config.KC.Realm, username, password)
@@ -884,8 +883,6 @@ func (s *keycloakService) SetupInitialKeycloakAdmin(ctx context.Context, adminTo
 	if config.KC == nil || config.KC.Client == nil {
 		return "", fmt.Errorf("keycloak configuration not initialized")
 	}
-
-	log.Printf("[DEBUG] adminToken: %s", adminToken.AccessToken)
 
 	existRealm, err := s.ExistRealm(ctx, adminToken.AccessToken)
 	if err != nil {
@@ -1250,7 +1247,6 @@ func (s *keycloakService) GetImpersonationToken(ctx context.Context) (*gocloak.J
 		RequestedSubject:   &kcUserId,
 		Username:           &username,
 	}
-	log.Printf("[DEBUG] adminToken: %s", accessToken)
 	// Get impersonation token using TokenExchange
 	token, err := config.KC.Client.GetToken(ctx, config.KC.Realm, tokenOptions)
 	if err != nil {
@@ -1281,7 +1277,6 @@ func (s *keycloakService) GetImpersonationTokenByAdminToken(ctx context.Context,
 	// 	return nil, err
 	// }
 
-	log.Printf("[DEBUG] adminToken: %s", adminToken.AccessToken)
 	// 2. Keycloak REST API로 impersonation 요청
 	url := fmt.Sprintf("%s/admin/realms/%s/users/%s/impersonation", config.KC.Host, config.KC.Realm, userID)
 	body := map[string]interface{}{}
@@ -1358,7 +1353,6 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 
 	log.Printf("[DEBUG] Impersonation clientID: %s", clientID)
 	log.Printf("[DEBUG] Impersonation clientName: %s", clientName)
-	log.Printf("[DEBUG] Impersonation clientSecret: %s", clientSecret)
 	log.Printf("[DEBUG] Impersonation realm: %s", config.KC.Realm)
 
 	// 서비스 계정으로 로그인 (openid scope 포함 → id_token 발급)
@@ -1662,7 +1656,6 @@ func (s *keycloakService) GetClientCredentialsToken(ctx context.Context) (*goclo
 	log.Printf("[DEBUG] Impersonation realm: %s", realm)
 	log.Printf("[DEBUG] Impersonation clientID: %s", oidcClientID)
 	log.Printf("[DEBUG] Impersonation clientName: %s", oidcClientName)
-	log.Printf("[DEBUG] Impersonation clientSecret: %s", oidcClientSecret)
 
 	// Login with client credentials
 	token, err := config.KC.Client.LoginClient(ctx, oidcClientName, oidcClientSecret, realm)

@@ -86,6 +86,7 @@ nano .env
 - `MC_IAM_MANAGER_KEYCLOAK_ADMIN`: Keycloak 관리자 계정
 - `MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD`: Keycloak 관리자 비밀번호
 - `MC_IAM_MANAGER_PLATFORMADMIN_ID/PASSWORD`: MCMP 플랫폼 관리자 계정
+- `MC_IAM_MANAGER_DEBUG`: Echo 디버그 모드 (기본값: false). true면 에러 응답에 내부 에러 문자열이 포함되므로 운영 환경에서는 설정하지 말 것
 
 ### 3단계: Nginx 설정 생성
 
