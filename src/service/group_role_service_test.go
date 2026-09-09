@@ -124,6 +124,140 @@ func TestGroupRoleAssignPlatformRole_WrongRoleType(t *testing.T) {
 	assert.Equal(t, repository.ErrRoleMasterNotFound, err)
 }
 
+// realmRoleLifecycleSpy — CheckRealmRoleExists/CreateRealmRoleAndWait/AddRealmRoleToGroup
+// 호출 여부·순서를 기록하는 스파이. IAM-BUG-026(그룹 배정 시 realm role 부재로 500) 회귀 검증용 —
+// AssignPlatformRole(사용자 배정)이 이미 쓰는 "없으면 생성 후 배정" 방어를 그룹 배정에도 적용했는지 확인한다.
+type realmRoleLifecycleSpy struct {
+	mockKeycloakService
+	calls                []string
+	realmRoleExists      bool
+	createRealmRoleErr   error
+	addRealmRoleGroupErr error
+	lastGroupName        string
+}
+
+func (s *realmRoleLifecycleSpy) CheckRealmRoleExists(ctx context.Context, roleName string) (bool, error) {
+	s.calls = append(s.calls, "CheckRealmRoleExists")
+	return s.realmRoleExists, nil
+}
+
+func (s *realmRoleLifecycleSpy) CreateRealmRoleAndWait(ctx context.Context, roleName string) error {
+	s.calls = append(s.calls, "CreateRealmRoleAndWait")
+	return s.createRealmRoleErr
+}
+
+func (s *realmRoleLifecycleSpy) AddRealmRoleToGroup(ctx context.Context, groupName, roleName string) error {
+	s.calls = append(s.calls, "AddRealmRoleToGroup")
+	s.lastGroupName = groupName
+	return s.addRealmRoleGroupErr
+}
+
+// TC-GR-APR-04: realm role이 Keycloak에 없는 상태(신규 역할 직후) → 생성 후 배정, 500 대신 성공
+// (IAM-BUG-026 재현 조건과 동일 — role 1~5 순서상 우연히 동작하지 않는, 새로 만든 역할의 첫 그룹 배정)
+func TestGroupRoleAssignPlatformRole_CreatesRealmRoleWhenMissing(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	org := createGRTestOrg(t, db, "test-group-apr04", "GR04")
+	role := createGRTestRole(t, db, "role-apr04-fresh")
+	spy := &realmRoleLifecycleSpy{realmRoleExists: false}
+	svc.kcService = spy
+
+	err := svc.AssignGroupPlatformRole(context.Background(), org.ID, role.ID)
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"CheckRealmRoleExists", "CreateRealmRoleAndWait", "AddRealmRoleToGroup"}, spy.calls)
+}
+
+// TC-GR-APR-05: realm role이 이미 존재 → 재생성 시도 없이 곧장 배정
+func TestGroupRoleAssignPlatformRole_SkipsCreateWhenRealmRoleExists(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	org := createGRTestOrg(t, db, "test-group-apr05", "GR05")
+	role := createGRTestRole(t, db, "role-apr05-existing")
+	spy := &realmRoleLifecycleSpy{realmRoleExists: true}
+	svc.kcService = spy
+
+	err := svc.AssignGroupPlatformRole(context.Background(), org.ID, role.ID)
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"CheckRealmRoleExists", "AddRealmRoleToGroup"}, spy.calls)
+}
+
+// TC-GR-APR-06: realm role 생성 실패 → DB에 남지 않고(rollback) 그룹의 platform role 목록도 비어야 함
+func TestGroupRoleAssignPlatformRole_RollsBackDBWhenRealmRoleCreateFails(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	org := createGRTestOrg(t, db, "test-group-apr06", "GR06")
+	role := createGRTestRole(t, db, "role-apr06-createfail")
+	spy := &realmRoleLifecycleSpy{realmRoleExists: false, createRealmRoleErr: assert.AnError}
+	svc.kcService = spy
+
+	err := svc.AssignGroupPlatformRole(context.Background(), org.ID, role.ID)
+
+	require.Error(t, err)
+	roles, listErr := svc.GetGroupPlatformRoles(org.ID)
+	require.NoError(t, listErr)
+	assert.Empty(t, roles, "realm role 생성 실패 시 DB에 배정이 남아있으면 안 된다")
+}
+
+// TC-GR-APR-07: IAM-BUG-029 회귀 — Keycloak 그룹 식별자로 organization_code를 써야 한다
+// (organization.Name은 unique 제약이 없어 부모가 다른 동명 조직이 같은 KC 그룹으로 충돌할 수 있다)
+func TestGroupRoleAssignPlatformRole_UsesOrganizationCodeAsKeycloakGroupIdentifier(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	org := createGRTestOrg(t, db, "operator-group", "GR07-UNIQUE-CODE")
+	role := createGRTestRole(t, db, "role-apr07")
+	spy := &realmRoleLifecycleSpy{realmRoleExists: true}
+	svc.kcService = spy
+
+	err := svc.AssignGroupPlatformRole(context.Background(), org.ID, role.ID)
+
+	require.NoError(t, err)
+	assert.Equal(t, "GR07-UNIQUE-CODE", spy.lastGroupName, "Keycloak 그룹 식별자는 organization_code여야 한다(Name 사용 시 회귀)")
+}
+
+// ── RemoveGroupPlatformRole — IAM-BUG-030 회귀 ───────────────────────────────
+
+// TC-GR-RPR-01: workspace 전용 역할 ID로 해제 시도 → ErrRoleMasterNotFound(404)
+// (배정 쪽(AssignGroupPlatformRole)은 이미 이 검증을 하는데 해제 쪽만 원시 조회로 남아있던 결함)
+func TestGroupRoleRemovePlatformRole_WrongRoleType(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	org := createGRTestOrg(t, db, "test-group-rpr01", "RPR01")
+
+	workspaceOnlyRole := &model.RoleMaster{Name: "workspace-only-rpr01"}
+	require.NoError(t, db.Create(workspaceOnlyRole).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: workspaceOnlyRole.ID, RoleType: constants.RoleTypeWorkspace}).Error)
+
+	err := svc.RemoveGroupPlatformRole(context.Background(), org.ID, workspaceOnlyRole.ID)
+
+	require.Error(t, err)
+	assert.Equal(t, repository.ErrRoleMasterNotFound, err)
+}
+
+// TC-GR-RPR-02: 존재하지 않는 역할 ID로 해제 시도 → ErrRoleMasterNotFound(404)
+func TestGroupRoleRemovePlatformRole_RoleNotFound(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	org := createGRTestOrg(t, db, "test-group-rpr02", "RPR02")
+
+	err := svc.RemoveGroupPlatformRole(context.Background(), org.ID, 99999)
+
+	require.Error(t, err)
+	assert.Equal(t, repository.ErrRoleMasterNotFound, err)
+}
+
+// TC-GR-RPR-03: 정상 platform 역할 해제 — DB·Keycloak 모두 반영
+func TestGroupRoleRemovePlatformRole_Success(t *testing.T) {
+	svc, db := newTestGroupRoleService(t)
+	org := createGRTestOrg(t, db, "test-group-rpr03", "RPR03")
+	role := createGRTestRole(t, db, "role-rpr03")
+	spy := &realmRoleLifecycleSpy{realmRoleExists: true}
+	svc.kcService = spy
+	require.NoError(t, svc.AssignGroupPlatformRole(context.Background(), org.ID, role.ID))
+
+	err := svc.RemoveGroupPlatformRole(context.Background(), org.ID, role.ID)
+
+	require.NoError(t, err)
+	roles, listErr := svc.GetGroupPlatformRoles(org.ID)
+	require.NoError(t, listErr)
+	assert.Empty(t, roles)
+}
+
 // ── AssignGroupWorkspace — 순수 DB 메서드 ────────────────────────────────────
 
 // TC-GR-AGW-01: 워크스페이스가 존재하지 않는 경우 → ErrWorkspaceNotFound

@@ -106,13 +106,13 @@ func InitKeycloak() error {
 	if clientSecret == "" {
 		return fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_CLIENT_SECRET is not set")
 	}
-	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_CLIENT_SECRET: %s\n", clientSecret)
+	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_CLIENT_SECRET: (set)\n")
 
 	oidcClientSecret := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET")
 	if oidcClientSecret == "" {
 		return fmt.Errorf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET is not set")
 	}
-	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET: %s\n", oidcClientSecret)
+	fmt.Printf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET: (set)\n")
 
 	platformAdminID := os.Getenv("MC_IAM_MANAGER_PLATFORMADMIN_ID")
 	fmt.Printf("MC_IAM_MANAGER_PLATFORMADMIN_ID: %s\n", platformAdminID)
@@ -165,7 +165,6 @@ func (kc *KeycloakConfig) ValidateToken(ctx context.Context, accessToken string)
 
 // GetUserInfo gets user info from the token
 func (kc *KeycloakConfig) GetUserInfo(ctx context.Context, accessToken string) (*gocloak.UserInfo, error) {
-	fmt.Printf("Getting user info with token: %s\n", accessToken)
 	userInfo, err := kc.Client.GetUserInfo(ctx, accessToken, kc.Realm)
 	if err != nil {
 		fmt.Printf("Error getting user info: %v\n", err)

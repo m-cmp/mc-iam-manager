@@ -13,8 +13,8 @@ import (
 
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
-func stdUserRole() *model.UserWorkspaceRole {
-	return &model.UserWorkspaceRole{RoleID: 1}
+func stdUserRole() *model.EffectiveWorkspaceRole {
+	return &model.EffectiveWorkspaceRole{RoleID: 1}
 }
 
 func oidcKC() *mockKeycloakForCred {

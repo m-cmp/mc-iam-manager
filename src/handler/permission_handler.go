@@ -207,7 +207,7 @@ func (h *MciamPermissionHandler) DeleteMciamPermission(c echo.Context) error { /
 // @Param roleId path int true "역할 ID"
 // @Param permissionId path string true "MC-IAM 권한 ID"
 // @Success 204 "No Content"
-// @Router /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId} [post] // Updated route
+// @Router /api/roles/{roleType}/{roleId}/mciam-permissions/{permissionId} [post]
 // @Id assignMciamPermissionToRole
 func (h *MciamPermissionHandler) AssignMciamPermissionToRole(c echo.Context) error { // Renamed method
 	roleTypeStr := c.Param("roleType")

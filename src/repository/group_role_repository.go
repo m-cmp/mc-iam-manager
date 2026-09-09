@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"gorm.io/gorm"
 )
@@ -84,24 +85,6 @@ func (r *GroupRoleRepository) FindGroupPlatformRoleByRoleID(groupID, roleID uint
 		return nil, err
 	}
 	return &record, nil
-}
-
-// FindAvailableGroupPlatformRoles 그룹에 미할당된 플랫폼 역할 목록 조회
-func (r *GroupRoleRepository) FindAvailableGroupPlatformRoles(groupID uint) ([]model.AvailablePlatformRoleResponse, error) {
-	results := make([]model.AvailablePlatformRoleResponse, 0)
-	err := r.db.Table("mcmp_role_masters rm").
-		Select("rm.id as role_id, rm.name as role_name, rm.description").
-		Where("rm.role_type = 'platform'").
-		Where("rm.id NOT IN (?)",
-			r.db.Table("mcmp_group_platform_roles").
-				Select("role_id").
-				Where("group_id = ?", groupID),
-		).
-		Scan(&results).Error
-	if err != nil {
-		return nil, fmt.Errorf("error finding available platform roles: %w", err)
-	}
-	return results, nil
 }
 
 // DeleteGroupPlatformRole 그룹-플랫폼 역할 매핑 삭제
@@ -195,13 +178,15 @@ func (r *GroupRoleRepository) DeleteGroupWorkspaceRole(groupID, workspaceID uint
 // FindAvailablePlatformRoles 그룹에 할당되지 않은 플랫폼 역할 목록 조회
 func (r *GroupRoleRepository) FindAvailablePlatformRoles(groupID uint) ([]model.RoleMaster, error) {
 	var roles []model.RoleMaster
-	err := r.db.Where("role_type = 'platform'").
-		Where("id NOT IN (?)",
+	// role_type은 mcmp_role_masters가 아니라 mcmp_role_subs 컬럼이라 조인이 필요하다
+	err := r.db.Joins("JOIN mcmp_role_subs ON mcmp_role_subs.role_id = mcmp_role_masters.id").
+		Where("mcmp_role_subs.role_type = ?", constants.RoleTypePlatform).
+		Where("mcmp_role_masters.id NOT IN (?)",
 			r.db.Table("mcmp_group_platform_roles").
 				Select("role_id").
 				Where("group_id = ?", groupID),
 		).
-		Order("name ASC").
+		Order("mcmp_role_masters.name ASC").
 		Find(&roles).Error
 	if err != nil {
 		return nil, fmt.Errorf("error finding available platform roles for group %d: %w", groupID, err)

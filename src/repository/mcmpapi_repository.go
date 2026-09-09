@@ -31,20 +31,6 @@ type mcmpApiRepository struct {
 	db *gorm.DB
 }
 
-// InitializeMcmpApiTables 테이블이 없을 경우에만 생성
-func InitializeMcmpApiTables(db *gorm.DB) error {
-	// 테이블이 존재하는지 확인
-	var count int64
-	if err := db.Table("mcmp_api_services").Count(&count).Error; err != nil {
-		// 테이블이 없으면 생성
-		if err := db.AutoMigrate(&mcmpapi.McmpApiService{}, &mcmpapi.McmpApiAction{}); err != nil {
-			return fmt.Errorf("failed to create mcmp API tables: %w", err)
-		}
-		log.Printf("Created mcmp API tables")
-	}
-	return nil
-}
-
 // NewMcmpApiRepository creates a new McmpApiRepository.
 func NewMcmpApiRepository(db *gorm.DB) McmpApiRepository {
 	log.Printf("Creating new McmpApiRepository with db: %v", db)

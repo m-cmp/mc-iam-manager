@@ -89,7 +89,7 @@ func (h *ResourceTypeHandler) ListCloudResourceTypes(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Resource Type not found"
 // @Security BearerAuth
-// @Router /api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId [get]
+// @Router /api/resource-types/cloud-resources/framework/{frameworkId}/id/{resourceTypeId} [get]
 // @Id getCloudResourceTypeByID
 func (h *ResourceTypeHandler) GetCloudResourceTypeByID(c echo.Context) error {
 	frameworkID := c.Param("frameworkId")
@@ -122,7 +122,7 @@ func (h *ResourceTypeHandler) GetCloudResourceTypeByID(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Resource Type not found"
 // @Security BearerAuth
-// @Router /api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId [put]
+// @Router /api/resource-types/cloud-resources/framework/{frameworkId}/id/{resourceTypeId} [put]
 // @Id updateResourceType
 func (h *ResourceTypeHandler) UpdateResourceType(c echo.Context) error {
 	frameworkID := c.Param("frameworkId")
@@ -176,7 +176,7 @@ func (h *ResourceTypeHandler) UpdateResourceType(c echo.Context) error {
 // @Failure 403 {object} map[string]string "error: Forbidden"
 // @Failure 404 {object} map[string]string "error: Resource Type not found"
 // @Security BearerAuth
-// @Router /api/resource-types/cloud-resources/framework/:frameworkId/id/:resourceTypeId [delete]
+// @Router /api/resource-types/cloud-resources/framework/{frameworkId}/id/{resourceTypeId} [delete]
 // @Id deleteResourceType
 func (h *ResourceTypeHandler) DeleteResourceType(c echo.Context) error {
 	frameworkID := c.Param("frameworkId")

@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"encoding/csv"
-
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository"
@@ -30,16 +28,18 @@ const (
 )
 
 var (
-	ErrInvalidViewType            = errors.New("invalid viewType")
-	ErrFrameworkServiceRequired   = errors.New("frameworkService required")
-	ErrPathTooLong                = errors.New("path too long")
+	ErrInvalidViewType          = errors.New("invalid viewType")
+	ErrFrameworkServiceRequired = errors.New("frameworkService required")
+	ErrPathTooLong              = errors.New("path too long")
 )
 
 func normalizeMenuResource(viewType, frameworkService, path string) (string, string, string) {
 	if viewType == "" {
 		viewType = defaultMenuViewType
 	}
-	if frameworkService == "" {
+	// iframe/popup 은 frameworkService 명시가 필수이므로 기본값을 채우면 안 된다 —
+	// 채우면 validateMenuResource의 "" 체크가 무력화돼 누락을 못 잡는다.
+	if frameworkService == "" && viewType == defaultMenuViewType {
 		frameworkService = defaultMenuFrameworkService
 	}
 	return viewType, frameworkService, path
@@ -130,7 +130,10 @@ func (s *MenuService) GetAllMenusTree(req *model.MenuFilterRequest) ([]*model.Me
 
 // BuildUserMenuTree 사용자의 플랫폼 역할에 따른 메뉴 트리 구성
 func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoleIDs []uint) ([]*model.MenuTreeNode, error) {
-	req := &model.MenuMappingFilterRequest{}
+	req := &model.MenuMappingFilterRequest{RoleIDs: make([]string, 0, len(platformRoleIDs))}
+	for _, roleID := range platformRoleIDs {
+		req.RoleIDs = append(req.RoleIDs, strconv.FormatUint(uint64(roleID), 10))
+	}
 	var allMenus []*model.Menu
 
 	// 1. 각 플랫폼 역할에 매핑된 메뉴 ID들을 조회
@@ -400,16 +403,17 @@ func (s *MenuService) CreateWithRoleMappings(req *model.CreateMenuRequest) (*mod
 		isAction = *req.IsAction
 	}
 	menu := &model.Menu{
-		ID:          req.ID,
-		ParentID:    req.ParentID,
-		DisplayName: req.DisplayName,
-		ResType:     req.ResType,
-		IsAction:    isAction,
-		Priority:    priorityInt,
-		MenuNumber:  menuNumberInt,
+		ID:               req.ID,
+		ParentID:         req.ParentID,
+		DisplayName:      req.DisplayName,
+		ResType:          req.ResType,
+		IsAction:         isAction,
+		Priority:         priorityInt,
+		MenuNumber:       menuNumberInt,
 		ViewType:         req.ViewType,
 		FrameworkService: req.FrameworkService,
 		Path:             req.Path,
+		Icon:             req.Icon,
 	}
 	if err := applyMenuResourceDefaults(menu); err != nil {
 		return nil, err
@@ -471,9 +475,88 @@ func (s *MenuService) Delete(id string) error {
 	return s.menuRepo.DeleteMenuWithChildren(id)
 }
 
-// LoadAndRegisterMenusFromYAML YAML 파일에서 메뉴를 로드하여 DB에 등록(Upsert)
+// MenuSeedResult 메뉴 시딩(initial-menus / initial-menus2) 결과.
+type MenuSeedResult struct {
+	// Skipped 는 DB에 이미 메뉴가 있어 시딩을 건너뛴 경우 true (force=false).
+	Skipped           bool
+	ExistingMenuCount int
+	// RegisteredCount 는 이번에 yaml에서 읽어 반영한 메뉴 수(home 포함).
+	RegisteredCount int
+	// PermissionsWarning 은 체이닝된 권한 시딩이 실패했을 때의 경고 (메뉴 등록은 성공).
+	PermissionsWarning string
+	// OrphanMenuIDs 는 DB에는 있지만 이번 yaml에는 없는 메뉴 id (감지만, 삭제 없음).
+	OrphanMenuIDs []string
+	// MissingPermissionMenuIDs 는 permission.yaml이 참조하지만 DB에 없는 메뉴 id (매핑 생성 skip).
+	MissingPermissionMenuIDs []string
+	// BackupPath 는 force 재시딩 전에 저장한 역할 권한 백업 파일 경로.
+	BackupPath string
+	// BackupWarning 은 force 재시딩 전 백업이 실패했을 때의 경고 (시딩은 계속 진행).
+	BackupWarning string
+}
+
+// countSeededMenus DB에 시딩된 메뉴 수를 반환한다. home은 yaml에 있어도 upsert 대상이
+// 아니라 UpdateMenu만 되므로(선존재 가능) "시딩 여부" 판정에서는 제외한다.
+func (s *MenuService) countSeededMenus() (int, error) {
+	ids, err := s.menuRepo.GetAllMenuIDs()
+	if err != nil {
+		return 0, fmt.Errorf("failed to count existing menus: %w", err)
+	}
+	count := 0
+	for _, id := range ids {
+		if id != "home" {
+			count++
+		}
+	}
+	return count, nil
+}
+
+// guardMenuSeed 최초 1회 시딩 가드. 메뉴가 이미 있으면 force=false일 때 Skipped 결과를,
+// force=true일 때는 upsert로 덮어쓰기 전에 현재 역할-메뉴 매핑을 백업한 결과를 돌려준다.
+// 백업 실패는 시딩을 막지 않고 BackupWarning으로만 남긴다.
+func (s *MenuService) guardMenuSeed(force bool) (*MenuSeedResult, error) {
+	existing, err := s.countSeededMenus()
+	if err != nil {
+		return nil, err
+	}
+	result := &MenuSeedResult{ExistingMenuCount: existing}
+	if existing == 0 {
+		return result, nil
+	}
+	if !force {
+		fmt.Printf("Menus already seeded (%d found); skipping. Use force=true to re-seed.\n", existing)
+		result.Skipped = true
+		return result, nil
+	}
+
+	backup, err := s.BackupRolePermissions(nil, nil)
+	if err == nil {
+		result.BackupPath, err = s.SaveRolePermissionBackupFile(backup, "")
+	}
+	if err != nil {
+		result.BackupWarning = fmt.Sprintf("role permission backup before force re-seed failed: %v", err)
+		fmt.Printf("Warning: %s\n", result.BackupWarning)
+	} else {
+		fmt.Printf("Role permissions backed up to %s before force re-seed\n", result.BackupPath)
+	}
+	return result, nil
+}
+
+// LoadAndRegisterMenusFromYAML YAML 파일에서 메뉴를 로드하여 DB에 등록(Upsert)한 뒤
+// InitializeMenuPermissionsFromYAML("")로 역할-메뉴 권한 시딩까지 체이닝합니다.
 // filePath 쿼리 파라미터가 없으면 .env의 MC_WEB_CONSOLE_MENUYAML URL에서 다운로드 시도
-func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
+// DB에 이미 메뉴가 있으면 force=false일 때 아무것도 바꾸지 않고 Skipped를 반환합니다
+// (최초 설치 1회 시딩 원칙 — 이후 메뉴/매핑 변경은 DB 편집이 진실). force=true면
+// 역할 권한을 백업한 뒤 덮어씁니다.
+// 권한 시딩 실패는 메뉴 등록 자체를 실패시키지 않으며(메뉴는 이미 upsert된 뒤이므로),
+// 대신 PermissionsWarning으로 넘겨 호출자가 노출할 수 있게 합니다.
+// OrphanMenuIDs 는 DB에는 있지만 이번 yaml에는 없는 메뉴 id 목록(orphan 후보)이며,
+// 감지만 하고 삭제는 하지 않습니다 — 삭제는 여전히 DeleteMenu(수동)로만 수행합니다.
+func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string, force bool) (*MenuSeedResult, error) {
+	result, err := s.guardMenuSeed(force)
+	if err != nil || result.Skipped {
+		return result, err
+	}
+
 	effectiveFilePath := filePath
 	downloaded := false
 
@@ -542,13 +625,14 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 	menus, err := s.menuRepo.LoadMenusFromYAML(effectiveFilePath)
 	if err != nil {
 		// If download failed and local file also fails, return error
-		return fmt.Errorf("failed to load menus from YAML file %s (downloaded: %v): %w", effectiveFilePath, downloaded, err)
+		return nil, fmt.Errorf("failed to load menus from YAML file %s (downloaded: %v): %w", effectiveFilePath, downloaded, err)
 	}
 
 	if len(menus) == 0 {
 		fmt.Printf("No menus found in YAML file %s, skipping registration.\n", effectiveFilePath)
-		return nil // 처리할 메뉴 없음
+		return result, nil // 처리할 메뉴 없음
 	}
+	result.RegisteredCount = len(menus)
 
 	// 2. home 메뉴가 있는지 확인하고 업데이트
 	for _, menu := range menus {
@@ -556,7 +640,7 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 			// home 메뉴가 있으면 업데이트
 			homeMenu := menu
 			if err := applyMenuResourceDefaults(&homeMenu); err != nil {
-				return fmt.Errorf("invalid home menu resource: %w", err)
+				return nil, fmt.Errorf("invalid home menu resource: %w", err)
 			}
 			if err := s.menuRepo.UpdateMenu("home", map[string]interface{}{
 				"display_name":      homeMenu.DisplayName,
@@ -567,6 +651,7 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 				"view_type":         homeMenu.ViewType,
 				"framework_service": homeMenu.FrameworkService,
 				"path":              homeMenu.Path,
+				"icon":              homeMenu.Icon,
 			}); err != nil {
 				fmt.Printf("Warning: Failed to update home menu: %v\n", err)
 			}
@@ -595,51 +680,99 @@ func (s *MenuService) LoadAndRegisterMenusFromYAML(filePath string) error {
 		}
 		menuCopy := menu
 		if err := applyMenuResourceDefaults(&menuCopy); err != nil {
-			return fmt.Errorf("invalid menu resource for %s: %w", menu.ID, err)
+			return nil, fmt.Errorf("invalid menu resource for %s: %w", menu.ID, err)
 		}
 		menusToUpsert = append(menusToUpsert, menuCopy)
 	}
 
 	if len(menusToUpsert) > 0 {
 		if err := s.menuRepo.UpsertMenus(menusToUpsert); err != nil {
-			return fmt.Errorf("failed to upsert menus to database: %w", err)
+			return nil, fmt.Errorf("failed to upsert menus to database: %w", err)
 		}
 	}
 
-	return nil
+	// 5. DB에는 있지만 이번 yaml에는 없는 메뉴 id를 감지만 한다(삭제 없음).
+	// 자동/소프트 삭제는 채택하지 않기로 확정됐고(IAM-TECH-037), 대신 재시딩
+	// 응답에 노출해 관리자가 필요 시 DeleteMenu로 수동 정리하도록 한다.
+	orphanMenuIDs, orphanErr := s.detectOrphanMenuIDs(menus)
+	if orphanErr != nil {
+		fmt.Printf("Warning: failed to detect orphan menus: %v\n", orphanErr)
+	}
+	result.OrphanMenuIDs = orphanMenuIDs
+
+	// 6. 메뉴 등록에 이어 역할-메뉴 권한까지 시딩(체이닝). 메뉴는 이미 upsert된 뒤이므로
+	// 여기서 실패해도 메뉴 등록 자체를 실패시키지 않고 경고만 반환한다.
+	missing, permErr := s.InitializeMenuPermissionsFromYAML("")
+	if permErr != nil {
+		result.PermissionsWarning = fmt.Sprintf("menu registration succeeded but permission seed failed: %v", permErr)
+		fmt.Printf("Warning: %s\n", result.PermissionsWarning)
+		return result, nil
+	}
+	result.MissingPermissionMenuIDs = missing
+
+	return result, nil
 }
 
-// RegisterMenusFromContent YAML 콘텐츠([]byte)를 파싱하여 DB에 등록(Upsert)
-func (s *MenuService) RegisterMenusFromContent(yamlContent []byte) error {
-	// 1. YAML 파싱
+// detectOrphanMenuIDs DB에 존재하지만 이번에 로드한 yaml 메뉴 목록에는 없는
+// 메뉴 id를 계산한다. 삭제는 하지 않고 목록만 반환한다.
+func (s *MenuService) detectOrphanMenuIDs(yamlMenus []model.Menu) ([]string, error) {
+	yamlIDs := make(map[string]struct{}, len(yamlMenus))
+	for _, menu := range yamlMenus {
+		yamlIDs[menu.ID] = struct{}{}
+	}
+
+	dbIDs, err := s.menuRepo.GetAllMenuIDs()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list existing menu ids: %w", err)
+	}
+
+	var orphanIDs []string
+	for _, id := range dbIDs {
+		if _, ok := yamlIDs[id]; !ok {
+			orphanIDs = append(orphanIDs, id)
+		}
+	}
+	return orphanIDs, nil
+}
+
+// RegisterMenusFromContent YAML 콘텐츠([]byte)를 파싱하여 DB에 등록(Upsert).
+// LoadAndRegisterMenusFromYAML과 같은 최초 1회 가드/force 백업이 적용된다.
+func (s *MenuService) RegisterMenusFromContent(yamlContent []byte, force bool) (*MenuSeedResult, error) {
+	// 1. YAML 파싱 (가드보다 먼저 — 잘못된 본문은 DB 상태와 무관하게 400이어야 한다)
 	var menuData struct { // 임시 구조체 사용
 		Menus []model.Menu `yaml:"menus"`
 	}
 	// Use yaml.Unmarshal from the imported package
 	err := yaml.Unmarshal(yamlContent, &menuData)
 	if err != nil {
-		return fmt.Errorf("error unmarshalling menu yaml content: %w", err)
+		return nil, fmt.Errorf("error unmarshalling menu yaml content: %w", err)
+	}
+
+	result, err := s.guardMenuSeed(force)
+	if err != nil || result.Skipped {
+		return result, err
 	}
 
 	menus := menuData.Menus
 	if len(menus) == 0 {
 		// log.Printf("No menus found in YAML content, skipping registration.")
-		return nil // 처리할 메뉴 없음
+		return result, nil // 처리할 메뉴 없음
 	}
+	result.RegisteredCount = len(menus)
 
 	for i := range menus {
 		if err := applyMenuResourceDefaults(&menus[i]); err != nil {
-			return fmt.Errorf("invalid menu resource for %s: %w", menus[i].ID, err)
+			return nil, fmt.Errorf("invalid menu resource for %s: %w", menus[i].ID, err)
 		}
 	}
 
 	// 2. DB에 Upsert
 	if err := s.menuRepo.UpsertMenus(menus); err != nil {
-		return fmt.Errorf("failed to upsert menus to database: %w", err)
+		return nil, fmt.Errorf("failed to upsert menus to database: %w", err)
 	}
 
 	// log.Printf("Successfully registered %d menus from YAML content", len(menus))
-	return nil
+	return result, nil
 }
 
 // ListMappedMenusByRole 플랫폼 역할에 매핑된 메뉴 목록 조회
@@ -673,33 +806,17 @@ type rolePermissionFile struct {
 	Permissions []rolePermissionEntry `yaml:"permissions"`
 }
 
-// InitializeMenuPermissionsFromCSV CSV 매트릭스로 역할-메뉴 권한을 시드합니다.
-//
-// Deprecated: permission.csv 시드는 제거 예정입니다.
-// 신규/운영 시드는 InitializeMenuPermissionsFromYAML(asset/menu/permission.yaml)을 사용하세요.
-func (s *MenuService) InitializeMenuPermissionsFromCSV(filePath string) error {
-	effectiveFilePath, cleanup, err := s.resolvePermissionSeedPath(
-		filePath, "permission.csv", ".csv",
-	)
-	if err != nil {
-		return err
-	}
-	if cleanup != "" {
-		defer os.Remove(cleanup)
-	}
-	return s.initializeMenuPermissionsFromCSVFile(effectiveFilePath)
-}
-
 // InitializeMenuPermissionsFromYAML 역할 중심 permission.yaml으로 권한을 시드합니다.
 // filePath가 비어 있으면 확장자가 맞는 MC_WEB_CONSOLE_MENU_PERMISSIONS,
 // 또는 asset/menu/permission.yaml을 사용합니다.
 // 스키마: permissions → role → menus | operations | csps
-func (s *MenuService) InitializeMenuPermissionsFromYAML(filePath string) error {
+// 반환값은 yaml이 참조하지만 DB에 없는 메뉴 id 목록(매핑 생성을 건너뛴 것)입니다.
+func (s *MenuService) InitializeMenuPermissionsFromYAML(filePath string) ([]string, error) {
 	effectiveFilePath, cleanup, err := s.resolvePermissionSeedPath(
 		filePath, "permission.yaml", ".yaml",
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if cleanup != "" {
 		defer os.Remove(cleanup)
@@ -807,25 +924,25 @@ func (s *MenuService) resolvePermissionSeedPath(
 }
 
 // loadAndApplyMenuPermissionsFromYAML 역할 중심 permission.yaml을 적용합니다.
-func (s *MenuService) loadAndApplyMenuPermissionsFromYAML(filePath string) error {
+func (s *MenuService) loadAndApplyMenuPermissionsFromYAML(filePath string) ([]string, error) {
 	body, err := os.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to read permission YAML: %w", err)
+		return nil, fmt.Errorf("failed to read permission YAML: %w", err)
 	}
 
 	var data rolePermissionFile
 	if err := yaml.Unmarshal(body, &data); err != nil {
-		return fmt.Errorf("failed to parse permission YAML: %w", err)
+		return nil, fmt.Errorf("failed to parse permission YAML: %w", err)
 	}
 	if len(data.Permissions) == 0 {
-		return fmt.Errorf("no permissions entries found in %s", filePath)
+		return nil, fmt.Errorf("no permissions entries found in %s", filePath)
 	}
 
 	roleMenus := make(map[string][]string)
 	for _, entry := range data.Permissions {
 		roleName := strings.TrimSpace(entry.Role)
 		if roleName == "" {
-			return fmt.Errorf("permission entry missing role in %s", filePath)
+			return nil, fmt.Errorf("permission entry missing role in %s", filePath)
 		}
 		if len(entry.Operations) > 0 {
 			fmt.Printf(
@@ -852,70 +969,29 @@ func (s *MenuService) loadAndApplyMenuPermissionsFromYAML(filePath string) error
 	return s.applyRoleMenuPermissionSeed(roleMenus)
 }
 
-// initializeMenuPermissionsFromCSVFile 기존 CSV 매트릭스를 적용합니다.
-// Deprecated path helper — CSV API 제거 시 함께 삭제 예정.
-func (s *MenuService) initializeMenuPermissionsFromCSVFile(filePath string) error {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to open CSV file: %w", err)
-	}
-	defer file.Close()
-
-	reader := csv.NewReader(file)
-	headers, err := reader.Read()
-	if err != nil {
-		return fmt.Errorf("failed to read CSV headers: %w", err)
-	}
-	if len(headers) < 3 {
-		return fmt.Errorf("invalid CSV headers in %s", filePath)
-	}
-
-	roleNames := headers[2:]
-	roleMenus := make(map[string][]string, len(roleNames))
-	for _, roleName := range roleNames {
-		roleMenus[roleName] = []string{}
-	}
-
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("failed to read CSV record: %w", err)
-		}
-		if len(record) < 3 {
-			continue
-		}
-		menuID := strings.TrimSpace(record[1])
-		if menuID == "" {
-			continue
-		}
-		for i, roleName := range roleNames {
-			if i+2 >= len(record) {
-				continue
-			}
-			if strings.EqualFold(strings.TrimSpace(record[i+2]), "TRUE") {
-				roleMenus[roleName] = append(roleMenus[roleName], menuID)
-			}
-		}
-	}
-
-	return s.applyRoleMenuPermissionSeed(roleMenus)
-}
-
 // applyRoleMenuPermissionSeed 역할→메뉴 목록을 DB 매핑으로 upsert(존재 시 skip)합니다.
-func (s *MenuService) applyRoleMenuPermissionSeed(roleMenus map[string][]string) error {
+// DB에 없는 메뉴 id는 매핑을 만들지 않고(mcmp_role_menu_mappings.menu_id에 FK가 없어
+// 조용히 dangling row가 생기던 것을 막음) 정렬된 목록으로 반환합니다.
+func (s *MenuService) applyRoleMenuPermissionSeed(roleMenus map[string][]string) ([]string, error) {
 	roleIDs := make(map[string]uint, len(roleMenus))
 	for roleName := range roleMenus {
 		role, err := s.roleRepo.FindRoleByRoleName(roleName, constants.RoleTypePlatform)
 		if err != nil {
-			return fmt.Errorf("failed to find role %s: %w", roleName, err)
+			return nil, fmt.Errorf("failed to find role %s: %w", roleName, err)
 		}
 		if role == nil {
-			return fmt.Errorf("role not found: %s", roleName)
+			return nil, fmt.Errorf("role not found: %s", roleName)
 		}
 		roleIDs[roleName] = role.ID
+	}
+
+	dbMenuIDs, err := s.menuRepo.GetAllMenuIDs()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list existing menu ids: %w", err)
+	}
+	knownMenus := make(map[string]struct{}, len(dbMenuIDs))
+	for _, id := range dbMenuIDs {
+		knownMenus[id] = struct{}{}
 	}
 
 	existingMappings := make(map[string]map[uint]bool)
@@ -925,7 +1001,7 @@ func (s *MenuService) applyRoleMenuPermissionSeed(roleMenus map[string][]string)
 		}
 		menuIDs, err := s.menuMappingRepo.FindMappedMenuIDs(req)
 		if err != nil {
-			return fmt.Errorf("failed to get existing mappings for role %d: %w", roleID, err)
+			return nil, fmt.Errorf("failed to get existing mappings for role %d: %w", roleID, err)
 		}
 		for _, menuID := range menuIDs {
 			if _, exists := existingMappings[*menuID]; !exists {
@@ -935,9 +1011,14 @@ func (s *MenuService) applyRoleMenuPermissionSeed(roleMenus map[string][]string)
 		}
 	}
 
+	missingSet := make(map[string]struct{})
 	for roleName, menus := range roleMenus {
 		roleID := roleIDs[roleName]
 		for _, menuID := range menus {
+			if _, known := knownMenus[menuID]; !known {
+				missingSet[menuID] = struct{}{}
+				continue
+			}
 			if roleMappings, exists := existingMappings[menuID]; exists && roleMappings[roleID] {
 				continue
 			}
@@ -945,7 +1026,7 @@ func (s *MenuService) applyRoleMenuPermissionSeed(roleMenus map[string][]string)
 				{RoleID: roleID, MenuID: menuID},
 			}
 			if err := s.menuRepo.CreateRoleMenuMappings(mappings); err != nil {
-				return fmt.Errorf(
+				return nil, fmt.Errorf(
 					"failed to create menu mapping for %s with role %s: %w",
 					menuID, roleName, err,
 				)
@@ -957,7 +1038,16 @@ func (s *MenuService) applyRoleMenuPermissionSeed(roleMenus map[string][]string)
 		}
 	}
 
-	return nil
+	missing := make([]string, 0, len(missingSet))
+	for id := range missingSet {
+		missing = append(missing, id)
+	}
+	sort.Strings(missing)
+	if len(missing) > 0 {
+		fmt.Printf("Warning: permission seed references %d menu id(s) not in DB (mapping skipped): %s\n",
+			len(missing), strings.Join(missing, ", "))
+	}
+	return missing, nil
 }
 
 // CreateRoleMenuMappings 역할-메뉴 매핑을 생성합니다

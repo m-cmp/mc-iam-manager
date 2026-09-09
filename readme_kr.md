@@ -268,16 +268,19 @@ curl https://<your domain or localhost>:<port>/readyz
 
 ### 시드 파일 (`asset/menu/`)
 
-- `menu.yaml` — 메뉴 트리 (id, parent, path, menu resource)
-- `permission.yaml` — 역할 중심 시드: `permissions → role → menus | operations | csps` (`operations` / `csps`는 예약)
+- `menu.yaml` — 메뉴 트리 (id, parent, path, menu resource). 이 파일은 **폴백 / 다운로드 캐시**이지 진실 소스가 아니다 — 플랫폼 전체의 canonical 메뉴 카탈로그는 mc-web-console의 `conf/webconsole_menu_resources.yaml`이다. mc-admin-cli 배포에서는 그 파일의 사본이 이 컨테이너에 마운트되고 `MC_WEB_CONSOLE_MENUYAML`이 그 마운트 경로를 가리킨다. env가 URL이면 `initial-menus`가 다운로드해 이 로컬 사본을 덮어쓴다.
+- `permission.yaml` — 역할 중심 시드: `permissions → role → menus | operations | csps` (`operations` / `csps`는 예약). 참조하는 메뉴 id는 DB에 존재해야 하며, 없는 id는 건너뛰고 `missingPermissionMenuIDs`로 보고한다.
 - `MC_WEB_CONSOLE_MENU_PERMISSIONS` — permission 시드의 경로 또는 YAML URL (샘플 기본값: `asset/menu/permission.yaml`). 확장자는 `.yaml` / `.yml`이어야 함. 구 CSV URL은 더 이상 시드 소스가 아님.
-- `MC_WEB_CONSOLE_MENUYAML` (선택) — 원격 메뉴 트리 YAML URL
+- `MC_WEB_CONSOLE_MENUYAML` (선택) — 메뉴 트리 YAML: 로컬 경로(작업 디렉토리 기준, 그대로 읽음) 또는 원격 URL
 
-### 초기 / 재시드 API (Platform Admin Bearer)
+### 최초 1회 시딩, 이후에는 DB 편집
 
-- `POST /api/setup/initial-menus` — `menu.yaml` 로드
-- `GET /api/setup/initial-role-menu-permission-yaml` — `permission.yaml`에서 시드 (`POST /api/initial-admin` 내부에서도 실행)
-- `GET /api/setup/initial-role-menu-permission` — **Deprecated** CSV; 신규 설치에 사용하지 말 것
+메뉴와 역할-메뉴 매핑은 **최초 설치 시 1회만** yaml에서 시딩한다. 그 뒤로는 DB가 진실이며, 메뉴는 `/api/menus`(또는 콘솔 Menus 화면), 매핑은 `/api/menus/platform-roles`로 변경한다. 시드를 다시 실행해도 이 편집은 덮어써지지 않는다:
+
+- `POST /api/setup/initial-menus` — `MC_WEB_CONSOLE_MENUYAML`(또는 로컬 `filePath`)에서 시딩. DB에 이미 (`home` 외) 메뉴가 있으면 **skip**하고 `200 {skipped: true, existingMenuCount}`를 돌려주므로 설치 스크립트 재실행이 멱등이다. `?force=true`를 주면 yaml로 덮어쓰되, 그 전에 현재 역할-메뉴 매핑을 `asset/menu/backups/`에 저장한다(응답 `backupPath`). 권한 시드로 체이닝되며 응답에 `permissionsWarning`, `orphanMenusDetected`(yaml에 없는 DB id — 삭제하지 않음), `missingPermissionMenuIDs`도 실린다.
+- `POST /api/setup/initial-menus2` — 같은 가드/force 동작이지만 메뉴 YAML을 요청 바디로 직접 받음(다운로드 없음, 권한 체이닝 없음) — 아직 병합되지 않은 로컬 변경을 먼저 시험해볼 때 유용
+- `GET /api/setup/initial-role-menu-permission-yaml` — `permission.yaml`에서 매핑 시드 (`POST /api/initial-admin` 내부에서도 실행). **additive**: 기존 매핑은 유지되지만, 런타임에 삭제한 매핑이 yaml에 남아 있으면 되살아난다. `missingPermissionMenuIDs` 보고.
+- `GET /api/setup/initial-role-menu-permission` — **삭제됨**; 이 CSV 라우트는 더 이상 존재하지 않음. `initial-role-menu-permission-yaml` 사용
 - 설정 스크립트 (`conf/mc-iam-manager/1_setup_auto.sh`): 메뉴 등록 후 Step 4-1에서 `filePath` 없이 YAML 시드 호출 (서버가 env / 로컬 asset 해석)
 
 ### 런타임 변경 시 안전장치
@@ -288,6 +291,10 @@ curl https://<your domain or localhost>:<port>/readyz
 - 일상 변경: 개별 매핑은 `POST` / `DELETE` `/api/menus/platform-roles`
 
 구분: `permission.yaml`은 시드용 목표 템플릿이고, `role-permission-backup`은 실제 DB 스냅샷입니다.
+
+### 데모 RBAC (선택, 온보딩에 포함되지 않음)
+
+`scripts/demo/setup-demo-rbac.sh`는 역할 슬롯 15개(5모듈×3단계: viewer/operator/admin)를 준비한다 — 그중 13개는 순수 신규이고, 2개(`billviewer`/`billadmin`)는 아래([역할 관리](#역할-관리)) 기본 역할과 겹쳐 중복 생성하지 않고 재사용한다. `asset/menu/backups/role-permission-backup-demo-rbac.yaml`의 메뉴 매핑을 `POST /api/setup/restore-role-permissions?mode=additive`로 적용한다. 완전히 별도의 수동·멱등 스크립트이며 어떤 설치 스크립트도 자동으로 호출하지 않는다. 사용법은 스크립트 상단 주석 참고.
 
 ## 운영 관리
 

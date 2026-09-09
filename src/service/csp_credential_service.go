@@ -16,7 +16,7 @@ import (
 
 // credUserRepo 테스트 주입을 위한 UserRepository 인터페이스
 type credUserRepo interface {
-	FindUserRoleInWorkspace(userID, workspaceID uint) (*model.UserWorkspaceRole, error)
+	FindEffectiveUserRoleInWorkspace(userID, workspaceID uint) (*model.EffectiveWorkspaceRole, error)
 }
 
 // credMappingRepo 테스트 주입을 위한 CspMappingRepository 인터페이스
@@ -25,11 +25,12 @@ type credMappingRepo interface {
 }
 
 var (
-	ErrUserNotFound           = errors.New("user not found")
-	ErrWorkspaceNotFound      = errors.New("workspace not found")
-	ErrNoCspRoleMappingFound  = errors.New("no suitable CSP role mapping found for the user's roles in this workspace")
-	ErrUnsupportedCspType     = errors.New("unsupported CSP type requested")
-	ErrUnsupportedAuthMethod  = errors.New("unsupported auth method for this CSP type")
+	ErrUserNotFound            = errors.New("user not found")
+	ErrWorkspaceNotFound       = errors.New("workspace not found")
+	ErrNoWorkspaceRoleAssigned = errors.New("user has no role assigned in the specified workspace")
+	ErrNoCspRoleMappingFound   = errors.New("no suitable CSP role mapping found for the user's roles in this workspace")
+	ErrUnsupportedCspType      = errors.New("unsupported CSP type requested")
+	ErrUnsupportedAuthMethod   = errors.New("unsupported auth method for this CSP type")
 )
 
 // CspCredentialService CSP 임시 자격 증명 발급 조율 서비스
@@ -111,18 +112,19 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 	}
 	log.Printf("[CSP_CREDENTIAL] Parameters - WorkspaceID: %d, CspType: %s, Region: %s", workspaceIDInt, cspType, region)
 
-	// 1. Get User's Roles for the specified Workspace
-	log.Printf("[CSP_CREDENTIAL] Getting user roles for workspace...")
-	userWorkspaceRole, err := s.resolveUserRepo().FindUserRoleInWorkspace(userID, workspaceIDInt)
+	// 1. Get User's effective Role for the specified Workspace (직접 배정 우선, 없으면 그룹 상속 —
+	// P1-3/OPEN-016 결정: 그룹 워크스페이스 역할도 실제 발급 근거로 인정한다)
+	log.Printf("[CSP_CREDENTIAL] Getting user's effective role for workspace...")
+	userWorkspaceRole, err := s.resolveUserRepo().FindEffectiveUserRoleInWorkspace(userID, workspaceIDInt)
 	if err != nil {
 		log.Printf("[CSP_CREDENTIAL] Error finding user role in workspace: %v", err)
 		return nil, fmt.Errorf("failed to get user roles: %w", err)
 	}
 
-	// Check if userWorkspaceRole is nil (user has no role in this workspace)
+	// Check if userWorkspaceRole is nil (user has no role in this workspace, direct or group)
 	if userWorkspaceRole == nil {
 		log.Printf("[CSP_CREDENTIAL] Error: user has no role assigned in workspace %d", workspaceIDInt)
-		return nil, fmt.Errorf("user has no role assigned in the specified workspace")
+		return nil, ErrNoWorkspaceRoleAssigned
 	}
 	log.Printf("[CSP_CREDENTIAL] Found user workspace role - RoleID: %d", userWorkspaceRole.RoleID)
 

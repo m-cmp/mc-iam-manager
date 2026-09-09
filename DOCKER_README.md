@@ -82,10 +82,11 @@ nano .env
 주요 설정 항목:
 - `MC_IAM_MANAGER_PUBLIC_DOMAIN`: 공개 도메인 또는 IP
 - `MC_IAM_MANAGER_CERT_EMAIL`: SSL 인증서 발급용 이메일 (prod 모드)
-- `MC_IAM_MANAGER_PORT`: 애플리케이션 포트 (기본값: 5005)
+- `MC_IAM_MANAGER_PORT`: 애플리케이션 포트 (기본값: 5000)
 - `MC_IAM_MANAGER_KEYCLOAK_ADMIN`: Keycloak 관리자 계정
 - `MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD`: Keycloak 관리자 비밀번호
 - `MC_IAM_MANAGER_PLATFORMADMIN_ID/PASSWORD`: MCMP 플랫폼 관리자 계정
+- `MC_IAM_MANAGER_DEBUG`: Echo 디버그 모드 (기본값: false). true면 에러 응답에 내부 에러 문자열이 포함되므로 운영 환경에서는 설정하지 말 것
 
 ### 3단계: Nginx 설정 생성
 
@@ -147,14 +148,14 @@ mc-iam-manager-kc  | Keycloak 24.0.1 on JVM (powered by Quarkus 3.8.1) started i
 
 #### IAM Manager 정상 배포
 ```
-mc-iam-manager  | http server started on [::]:5005
+mc-iam-manager  | http server started on [::]:5000
 ```
 
 ### 접속 테스트
 
 ```bash
 # readyz 엔드포인트 확인
-curl http://localhost:5005/readyz
+curl http://localhost:5000/readyz
 
 # HTTPS (self-signed 또는 prod)
 curl -k https://<domain>/readyz
@@ -173,7 +174,7 @@ Internet
     v
 [Nginx Reverse Proxy] (Port 80/443)
     |
-    +---> [mc-iam-manager] (Port 5005)
+    +---> [mc-iam-manager] (Port 5000)
     |
     +---> [mc-iam-manager-kc / Keycloak] (Port 8080)
     |
@@ -189,7 +190,7 @@ Internet
 | mc-infra-manager-etcd | etcd | 2379/2380 |
 | mc-infra-manager-postgres | Tumblebug DB | 6432 |
 | mc-infra-manager-openbao | Vault 호환 시크릿 관리 | 8200 |
-| mc-iam-manager | IAM 앱 (Echo Framework) | 5005 |
+| mc-iam-manager | IAM 앱 (Echo Framework) | 5000 |
 | mc-iam-manager-db | IAM/Keycloak 공유 PostgreSQL | 15432 |
 | mc-iam-manager-kc | Keycloak | 8080 |
 | mc-iam-manager-nginx | 리버스 프록시 | 80/443 |

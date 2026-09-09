@@ -25,6 +25,17 @@ auto_setup() {
     fi
     echo "✓ Login successful"
     
+    # 2-1. 조직 구조 시드 (organizations.yaml)
+    #      조직은 role/menu 와 독립이라 로그인 직후에 만들어 둔다. 이후 조직 편성(팀 등)이
+    #      이 트리를 기준점으로 삼는다. 멱등 — 이미 있으면 upsert 된다.
+    echo "Step 2-1: Initializing organizations..."
+    init_organizations
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Organization initialization failed"
+        return 1
+    fi
+    echo "✓ Organizations initialized successfully"
+
     # 3. 역할 데이터 초기화
     echo "Step 3: Initializing predefined roles..."
     init_predefined_roles
@@ -258,6 +269,57 @@ login() {
     
     echo "✓ Access token extracted successfully: ${MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN:0:20}..."
     echo "✓ Login successful"
+    return 0
+}
+
+# 조직 구조 시드. asset/organization/organizations.yaml(또는 MC_IAM_MANAGER_ORG 가 가리키는 파일)을
+# 읽어 조직 트리를 등록한다. 멱등이라 재실행해도 안전하다.
+# init_menu_permissions 와 같은 방식 — 로컬 경로면 filePath 쿼리로 넘기고, URL 이면 서버측 env 해석에 맡긴다.
+init_organizations() {
+    echo "Initializing organizations from YAML..."
+
+    file_path=""
+    yaml_src="${MC_IAM_MANAGER_ORG:-}"
+    if [ -n "$yaml_src" ]; then
+        case "$yaml_src" in
+            http://*|https://*)
+                # Rely on server-side MC_IAM_MANAGER_ORG (no filePath query)
+                ;;
+            *)
+                if [ -f "$yaml_src" ]; then
+                    file_path="$yaml_src"
+                else
+                    echo "WARNING: MC_IAM_MANAGER_ORG is set but local file not found: $yaml_src"
+                    echo "Falling back to server-side path resolution"
+                fi
+                ;;
+        esac
+    fi
+
+    url="$MC_IAM_MANAGER_HOST/api/setup/initial-organizations"
+    if [ -n "$file_path" ]; then
+        echo "Using local organization YAML filePath=$file_path"
+        http_and_body=$(curl -s -w "\n%{http_code}" -X POST -G \
+            --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+            --header 'Content-Type: application/json' \
+            --data-urlencode "filePath=$file_path" \
+            "$url")
+    else
+        echo "Calling organization seed without filePath (server resolves MC_IAM_MANAGER_ORG or bundled asset)"
+        http_and_body=$(curl -s -w "\n%{http_code}" -X POST \
+            --header "Authorization: Bearer $MC_IAM_MANAGER_PLATFORMADMIN_ACCESSTOKEN" \
+            --header 'Content-Type: application/json' \
+            "$url")
+    fi
+
+    http_code=$(echo "$http_and_body" | tail -n1)
+    body=$(echo "$http_and_body" | sed '$d')
+    echo "Organization seed response ($http_code): $body"
+
+    if [ "$http_code" != "200" ]; then
+        echo "ERROR: Organization seed failed with HTTP status $http_code"
+        return 1
+    fi
     return 0
 }
 

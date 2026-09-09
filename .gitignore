@@ -34,6 +34,9 @@ generated/
 !.yarn/versions
 asset/mcmpapi/mcmpapi-*.yaml
 
+# Local-only override compose (do not commit)
+docker-compose-dev.yaml
+
 dockercontainer-volume
 container-volume
 old

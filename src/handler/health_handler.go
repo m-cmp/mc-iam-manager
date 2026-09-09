@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	// "github.com/Nerzal/gocloak/v13" // Removed unused import
@@ -11,14 +12,20 @@ import (
 	"gorm.io/gorm"
 
 	// "github.com/m-cmp/mc-iam-manager/config" // Removed unused import
+	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/service"
 	// Import gorm
 )
+
+// mcInfraManagerServiceName is the registered mcmp-api framework name for mc-infra-manager,
+// used to look up its BaseURL (same registry McmpApiCall uses, e.g. project_service.go).
+const mcInfraManagerServiceName = "mc-infra-manager"
 
 // HealthHandler health check handler
 type HealthHandler struct {
 	keycloakService service.KeycloakService
 	db              *gorm.DB
+	mcmpApiRepo     repository.McmpApiRepository
 }
 
 // NewHealthHandler create new HealthHandler instance
@@ -26,6 +33,7 @@ func NewHealthHandler(db *gorm.DB) *HealthHandler {
 	return &HealthHandler{
 		keycloakService: service.NewKeycloakService(),
 		db:              db,
+		mcmpApiRepo:     repository.NewMcmpApiRepository(db),
 	}
 }
 
@@ -238,7 +246,12 @@ func (h *HealthHandler) isNginxHealthy() bool {
 // isMcInfraManagerHealthy checks if mc-infra-manager is healthy
 func (h *HealthHandler) isMcInfraManagerHealthy() bool {
 	log.Println("Checking mc-infra-manager health...")
-	response, err := http.Get("http://mc-infra-manager:1323/tumblebug/readyz")
+	healthURL, err := h.frameworkReadyzURL(mcInfraManagerServiceName)
+	if err != nil {
+		log.Printf("mc-infra-manager health check failed: could not resolve health URL: %v", err)
+		return false
+	}
+	response, err := http.Get(healthURL)
 	if err != nil {
 		log.Printf("mc-infra-manager health check failed: %v", err)
 		return false
@@ -251,6 +264,32 @@ func (h *HealthHandler) isMcInfraManagerHealthy() bool {
 	}
 	log.Printf("mc-infra-manager returned status code: %d", response.StatusCode)
 	return false
+}
+
+// frameworkHealthURLEnvVar returns the per-framework health URL override env var name,
+// e.g. "mc-infra-manager" -> "MC_INFRA_MANAGER_HEALTH_URL",
+// "mc-observability" -> "MC_OBSERVABILITY_HEALTH_URL". No MC_IAM_MANAGER_ prefix —
+// this names the target framework, not an mc-iam-manager setting. Every mcmp-api
+// framework gets its own override this way, without a new hardcoded var per framework.
+func frameworkHealthURLEnvVar(serviceName string) string {
+	name := strings.ToUpper(strings.ReplaceAll(serviceName, "-", "_"))
+	return name + "_HEALTH_URL"
+}
+
+// frameworkReadyzURL resolves the readyz health check URL for a registered mcmp-api
+// framework. The per-framework env var (see frameworkHealthURLEnvVar) overrides it
+// entirely; otherwise it's derived from the framework's registered BaseURL
+// (mcmp_api_services) — the same source McmpApiCall uses for actual API calls — so
+// the health check URL never drifts from the framework's real base URL.
+func (h *HealthHandler) frameworkReadyzURL(serviceName string) (string, error) {
+	if override := os.Getenv(frameworkHealthURLEnvVar(serviceName)); override != "" {
+		return override, nil
+	}
+	svc, err := h.mcmpApiRepo.GetService(serviceName)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimRight(svc.BaseURL, "/") + "/readyz", nil
 }
 
 // parseDetailComponents parses detail parameter into component list

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	// "strings" // Removed unused import
+	"strings"
 
 	// "github.com/Nerzal/gocloak/v13" // Keep gocloak removed
 	// "github.com/golang-jwt/jwt/v5" // jwt import moved to util package
@@ -319,7 +319,7 @@ func (h *MenuHandler) hasPermission(userRoles []string, requiredRole string) boo
 // @Param menuId path string true "Menu ID"
 // @Success 200 {object} model.Menu
 // @Security BearerAuth
-// @Router /api/menus/id/{menuId} [post]
+// @Router /api/menus/id/{menuId} [get]
 // @Id getMenuByID
 func (h *MenuHandler) GetMenuByID(c echo.Context) error {
 	id := c.Param("menuId")
@@ -467,6 +467,9 @@ func (h *MenuHandler) UpdateMenu(c echo.Context) error {
 	if menu.Path != "" {
 		updates["path"] = menu.Path
 	}
+	if menu.Icon != "" {
+		updates["icon"] = menu.Icon
+	}
 
 	if len(updates) == 0 {
 		return c.JSON(http.StatusBadRequest, map[string]string{
@@ -531,44 +534,80 @@ func (h *MenuHandler) DeleteMenu(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+// menuSeedResponse 시딩 결과를 응답 맵으로 변환한다. skip도 200으로 응답한다
+// (설치 스크립트가 .error 유무만 검사하므로 멱등 재실행이 성공으로 처리된다).
+func menuSeedResponse(result *service.MenuSeedResult, successMessage string) map[string]interface{} {
+	response := map[string]interface{}{
+		"skipped":           result.Skipped,
+		"existingMenuCount": result.ExistingMenuCount,
+	}
+	if result.Skipped {
+		response["message"] = fmt.Sprintf(
+			"Menus already seeded (%d found); skipped. Re-run with ?force=true to overwrite from yaml (role permissions are backed up first).",
+			result.ExistingMenuCount,
+		)
+		return response
+	}
+	response["message"] = successMessage
+	response["registeredCount"] = result.RegisteredCount
+	if result.BackupPath != "" {
+		response["backupPath"] = result.BackupPath
+	}
+	if result.BackupWarning != "" {
+		response["backupWarning"] = result.BackupWarning
+	}
+	if result.PermissionsWarning != "" {
+		response["permissionsWarning"] = result.PermissionsWarning
+	}
+	if len(result.OrphanMenuIDs) > 0 {
+		response["orphanMenusDetected"] = result.OrphanMenuIDs
+	}
+	if len(result.MissingPermissionMenuIDs) > 0 {
+		response["missingPermissionMenuIDs"] = result.MissingPermissionMenuIDs
+	}
+	return response
+}
+
 // RegisterMenusFromYAML godoc
-// @Summary Register/Update menus from YAML file or URL
-// @Description Register or update menus from a local YAML file specified by the filePath query parameter, or from the MC_WEB_CONSOLE_MENUYAML URL in .env if not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.
+// @Summary Seed menus from YAML file or URL (first install; force to re-seed)
+// @Description Seed menus from a local YAML file specified by the filePath query parameter, or from MC_WEB_CONSOLE_MENUYAML in .env if not provided (a local path is read as-is; a URL is downloaded and cached to asset/menu/menu.yaml). If the DB already has menus the call is skipped (200, skipped=true) unless force=true, in which case current role-menu mappings are backed up to asset/menu/backups/ first (backupPath) and menus are upserted. Also chains into role-menu permission seeding (asset/menu/permission.yaml); if that step fails, the response still returns 200 but includes permissionsWarning. Menu ids that exist in the DB but are absent from this yaml are reported (not deleted) via orphanMenusDetected; permission.yaml menu ids missing from the DB are reported via missingPermissionMenuIDs (mapping skipped).
 // @Tags menus
 // @Accept json
 // @Produce json
 // @Param filePath query string false "YAML file path (optional, uses .env URL or default local path if not provided)"
-// @Success 200 {object} map[string]string "message: Successfully registered menus from YAML"
+// @Param force query bool false "Re-seed even if menus already exist (backs up role permissions first)"
+// @Success 200 {object} map[string]interface{} "skipped, existingMenuCount, message; when not skipped: registeredCount, backupPath/backupWarning (force only), permissionsWarning, orphanMenusDetected, missingPermissionMenuIDs"
 // @Failure 500 {object} map[string]string "error: 실패 메시지"
 // @Security BearerAuth
-// @Router /api/menus/setup/initial-menus [post]
+// @Router /api/setup/initial-menus [post]
 // @Id registerMenusFromYAML
 func (h *MenuHandler) RegisterMenusFromYAML(c echo.Context) error {
 	filePath := c.QueryParam("filePath") // 쿼리 파라미터로 파일 경로 받기 (선택 사항)
+	force := c.QueryParam("force") == "true"
 
-	if err := h.menuService.LoadAndRegisterMenusFromYAML(filePath); err != nil {
+	result, err := h.menuService.LoadAndRegisterMenusFromYAML(filePath, force)
+	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": fmt.Sprintf("메뉴 YAML 등록 실패: %v", err),
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "Successfully registered menus from YAML",
-	})
+	return c.JSON(http.StatusOK, menuSeedResponse(result, "Successfully registered menus from YAML"))
 }
 
 // RegisterMenusFromBody godoc
-// @Summary Register/Update menus from YAML in request body
-// @Description Parse YAML text in the request body and register or update menus in the database. Recommended Content-Type: text/plain, text/yaml, application/yaml.
+// @Summary Seed menus from YAML in request body (first install; force to re-seed)
+// @Description Parse YAML text in the request body and seed menus into the database. Same first-install guard as initial-menus: skipped (200, skipped=true) when menus already exist unless force=true (role permissions backed up first). Does not chain permission seeding. Recommended Content-Type: text/plain, text/yaml, application/yaml.
 // @Tags menus
 // @Accept plain
 // @Produce json
+// @Param force query bool false "Re-seed even if menus already exist (backs up role permissions first)"
 // @Param yaml body string true "Menu definitions in YAML format (must contain 'menus:' root key)" example("menus:\n  - id: new-item\n    parentid: dashboard\n    displayname: New Menu Item\n    restype: menu\n    isaction: false\n    priority: 10\n    menunumber: 9999")
-// @Success 200 {object} map[string]string "message: Successfully registered menus from request body"
+// @Success 200 {object} map[string]interface{} "skipped, existingMenuCount, message; when not skipped: registeredCount, backupPath/backupWarning (force only)"
 // @Failure 400 {object} map[string]string "error: 잘못된 요청 본문 또는 YAML 형식 오류"
 // @Failure 500 {object} map[string]string "error: 서버 내부 오류"
 // @Security BearerAuth
-// @Router /api/menus/setup/initial-menus2 [post]
+// @Router /api/setup/initial-menus2 [post]
 // @Id registerMenusFromBody
 func (h *MenuHandler) RegisterMenusFromBody(c echo.Context) error {
 	bodyBytes, err := io.ReadAll(c.Request().Body)
@@ -584,12 +623,12 @@ func (h *MenuHandler) RegisterMenusFromBody(c echo.Context) error {
 			"error": "요청 본문이 비어있습니다",
 		})
 	}
+	force := c.QueryParam("force") == "true"
 
-	if err := h.menuService.RegisterMenusFromContent(bodyBytes); err != nil {
+	result, err := h.menuService.RegisterMenusFromContent(bodyBytes, force)
+	if err != nil {
 		// Differentiate between bad request (parsing error) and server error (db error)
-		// Note: The service currently returns a generic error for unmarshalling.
-		// Consider refining error types in service/repo for better error handling here.
-		if err.Error()[:len("error unmarshalling")] == "error unmarshalling" { // Basic check
+		if strings.HasPrefix(err.Error(), "error unmarshalling") {
 			return c.JSON(http.StatusBadRequest, map[string]string{
 				"error": fmt.Sprintf("YAML 파싱 오류: %v", err),
 			})
@@ -599,9 +638,7 @@ func (h *MenuHandler) RegisterMenusFromBody(c echo.Context) error {
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "Successfully registered menus from request body",
-	})
+	return c.JSON(http.StatusOK, menuSeedResponse(result, "Successfully registered menus from request body"))
 }
 
 // ListMappedMenusByRole godoc
@@ -713,8 +750,6 @@ func (h *MenuHandler) DeleteMenusRolesMapping(c echo.Context) error {
 // @Success 200 {array} model.MenuTreeNode
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/menus/user-menu-tree [get]
-// @Id getUserMenuTree
 func (h *MenuHandler) GetUserMenuTree(c echo.Context) error {
 	// Get platform roles from context (set by auth middleware)
 	platformRoles := c.Get("platform_roles").([]string)

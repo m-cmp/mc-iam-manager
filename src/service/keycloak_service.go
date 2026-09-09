@@ -92,8 +92,15 @@ type KeycloakService interface {
 	AddRealmRoleToGroup(ctx context.Context, groupName, roleName string) error
 	// RemoveRealmRoleFromGroup removes a realm role from a Keycloak group
 	RemoveRealmRoleFromGroup(ctx context.Context, groupName, roleName string) error
+	// DeleteRealmRole deletes a realm role by name (no-op if it doesn't exist)
+	DeleteRealmRole(ctx context.Context, roleName string) error
 	// DeleteGroup deletes a Keycloak group by name (no-op if the group doesn't exist)
 	DeleteGroup(ctx context.Context, groupName string) error
+	// MigrateGroupIdentifier renames a Keycloak group from a legacy name-based
+	// identifier to a new one (e.g. organization_code). No-op if no group exists
+	// under oldName. Returns an error if a group already exists under both names
+	// (requires manual merge).
+	MigrateGroupIdentifier(ctx context.Context, oldName, newName string) error
 	// CheckSAMLClientConfig Keycloak SAML 클라이언트 존재 및 protocol mapper 구성 확인
 	CheckSAMLClientConfig(ctx context.Context, clientID string) (string, error)
 }
@@ -701,7 +708,6 @@ func (s *keycloakService) Login(ctx context.Context, username, password string) 
 	log.Printf("[DEBUG] - Host: %s", config.KC.Host)
 	log.Printf("[DEBUG] - Realm: %s", config.KC.Realm)
 	log.Printf("[DEBUG] - ClientID: %s", config.KC.ClientName)
-	log.Printf("[DEBUG] - ClientSecret: %s", config.KC.ClientSecret)
 	log.Printf("[DEBUG] - Username: %s", username)
 
 	token, err := config.KC.Client.Login(ctx, config.KC.ClientName, config.KC.ClientSecret, config.KC.Realm, username, password)
@@ -741,6 +747,22 @@ func (s *keycloakService) RefreshToken(ctx context.Context, refreshToken string)
 }
 
 // --- Group Synchronization Methods ---
+
+// pickExactRealmRole selects the role whose name matches roleName exactly.
+//
+// Keycloak's realm-role `search` parameter is a SUBSTRING match, so searching
+// "viewer" also returns "billviewer". The list comes back sorted by name, so
+// taking roles[0] silently picks the wrong role whenever a longer name sorts
+// first — e.g. assigning "viewer" actually granted "billviewer".
+// Callers must therefore filter for an exact name match.
+func pickExactRealmRole(roles []*gocloak.Role, roleName string) *gocloak.Role {
+	for _, r := range roles {
+		if r != nil && r.Name != nil && *r.Name == roleName {
+			return r
+		}
+	}
+	return nil
+}
 
 // findGroupByName finds a group by name and returns its ID. Returns empty string if not found.
 func (s *keycloakService) findGroupByName(ctx context.Context, token, groupName string) (string, error) {
@@ -861,8 +883,6 @@ func (s *keycloakService) SetupInitialKeycloakAdmin(ctx context.Context, adminTo
 	if config.KC == nil || config.KC.Client == nil {
 		return "", fmt.Errorf("keycloak configuration not initialized")
 	}
-
-	log.Printf("[DEBUG] adminToken: %s", adminToken.AccessToken)
 
 	existRealm, err := s.ExistRealm(ctx, adminToken.AccessToken)
 	if err != nil {
@@ -1227,7 +1247,6 @@ func (s *keycloakService) GetImpersonationToken(ctx context.Context) (*gocloak.J
 		RequestedSubject:   &kcUserId,
 		Username:           &username,
 	}
-	log.Printf("[DEBUG] adminToken: %s", accessToken)
 	// Get impersonation token using TokenExchange
 	token, err := config.KC.Client.GetToken(ctx, config.KC.Realm, tokenOptions)
 	if err != nil {
@@ -1258,7 +1277,6 @@ func (s *keycloakService) GetImpersonationTokenByAdminToken(ctx context.Context,
 	// 	return nil, err
 	// }
 
-	log.Printf("[DEBUG] adminToken: %s", adminToken.AccessToken)
 	// 2. Keycloak REST API로 impersonation 요청
 	url := fmt.Sprintf("%s/admin/realms/%s/users/%s/impersonation", config.KC.Host, config.KC.Realm, userID)
 	body := map[string]interface{}{}
@@ -1335,7 +1353,6 @@ func (s *keycloakService) GetImpersonationTokenByServiceAccount(ctx context.Cont
 
 	log.Printf("[DEBUG] Impersonation clientID: %s", clientID)
 	log.Printf("[DEBUG] Impersonation clientName: %s", clientName)
-	log.Printf("[DEBUG] Impersonation clientSecret: %s", clientSecret)
 	log.Printf("[DEBUG] Impersonation realm: %s", config.KC.Realm)
 
 	// 서비스 계정으로 로그인 (openid scope 포함 → id_token 발급)
@@ -1513,15 +1530,14 @@ func (s *keycloakService) AssignRealmRoleToUser(ctx context.Context, kcUserId, r
 	if err != nil {
 		return fmt.Errorf("failed to get realm role %s: %w", roleName, err)
 	}
-	if len(roles) == 0 {
+	// search 는 부분일치이므로 exact 이름으로 골라야 한다 (예: "viewer" 검색 → "billviewer" 도 매칭)
+	target := pickExactRealmRole(roles, roleName)
+	if target == nil {
 		return fmt.Errorf("realm role %s not found", roleName)
-	}
-	if len(roles) > 1 {
-		log.Printf("Warning: Found multiple roles matching '%s'. Using the first one.", roleName)
 	}
 
 	// Assign the role to the user
-	err = config.KC.Client.AddRealmRoleToUser(ctx, token.AccessToken, config.KC.Realm, kcUserId, []gocloak.Role{*roles[0]})
+	err = config.KC.Client.AddRealmRoleToUser(ctx, token.AccessToken, config.KC.Realm, kcUserId, []gocloak.Role{*target})
 	if err != nil {
 		return fmt.Errorf("failed to assign realm role %s to user %s: %w", roleName, kcUserId, err)
 	}
@@ -1640,7 +1656,6 @@ func (s *keycloakService) GetClientCredentialsToken(ctx context.Context) (*goclo
 	log.Printf("[DEBUG] Impersonation realm: %s", realm)
 	log.Printf("[DEBUG] Impersonation clientID: %s", oidcClientID)
 	log.Printf("[DEBUG] Impersonation clientName: %s", oidcClientName)
-	log.Printf("[DEBUG] Impersonation clientSecret: %s", oidcClientSecret)
 
 	// Login with client credentials
 	token, err := config.KC.Client.LoginClient(ctx, oidcClientName, oidcClientSecret, realm)
@@ -1669,6 +1684,36 @@ func (s *keycloakService) CheckRealmRoleExists(ctx context.Context, roleName str
 		return false, nil
 	}
 	return true, nil
+}
+
+// DeleteRealmRole deletes a realm role by name. No-op if the role doesn't exist,
+// since realm roles are only created lazily on first platform role assignment
+// (see CreateRealmRoleAndWait) and a role may never have been assigned.
+func (s *keycloakService) DeleteRealmRole(ctx context.Context, roleName string) error {
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	exists, err := s.CheckRealmRoleExists(ctx, roleName)
+	if err != nil {
+		return fmt.Errorf("failed to check realm role %s existence: %w", roleName, err)
+	}
+	if !exists {
+		log.Printf("Realm role %s not found, skipping deletion", roleName)
+		return nil
+	}
+
+	if err := config.KC.Client.DeleteRealmRole(ctx, token.AccessToken, config.KC.Realm, roleName); err != nil {
+		return fmt.Errorf("failed to delete realm role %s: %w", roleName, err)
+	}
+
+	log.Printf("Successfully deleted realm role %s", roleName)
+	return nil
 }
 
 // CreateRealmRole creates a realm role
@@ -1714,16 +1759,14 @@ func (s *keycloakService) RemoveRealmRoleFromUser(ctx context.Context, kcUserId,
 	if err != nil {
 		return fmt.Errorf("failed to get realm role %s: %w", roleName, err)
 	}
-	if len(roles) == 0 {
+	target := pickExactRealmRole(roles, roleName)
+	if target == nil {
 		log.Printf("Realm role %s not found, skipping removal", roleName)
 		return nil
 	}
-	if len(roles) > 1 {
-		log.Printf("Warning: Found multiple roles matching '%s'. Using the first one.", roleName)
-	}
 
 	// Remove the role from the user
-	err = config.KC.Client.DeleteRealmRoleFromUser(ctx, token.AccessToken, config.KC.Realm, kcUserId, []gocloak.Role{*roles[0]})
+	err = config.KC.Client.DeleteRealmRoleFromUser(ctx, token.AccessToken, config.KC.Realm, kcUserId, []gocloak.Role{*target})
 	if err != nil {
 		return fmt.Errorf("failed to remove realm role %s from user %s: %w", roleName, kcUserId, err)
 	}
@@ -1841,12 +1884,13 @@ func (s *keycloakService) AddRealmRoleToGroup(ctx context.Context, groupName, ro
 	if err != nil {
 		return fmt.Errorf("failed to get realm role '%s': %w", roleName, err)
 	}
-	if len(roles) == 0 {
+	target := pickExactRealmRole(roles, roleName)
+	if target == nil {
 		return fmt.Errorf("realm role '%s' not found in Keycloak", roleName)
 	}
 
 	// Add role to group
-	if err := config.KC.Client.AddRealmRoleToGroup(ctx, token.AccessToken, config.KC.Realm, groupID, []gocloak.Role{*roles[0]}); err != nil {
+	if err := config.KC.Client.AddRealmRoleToGroup(ctx, token.AccessToken, config.KC.Realm, groupID, []gocloak.Role{*target}); err != nil {
 		return fmt.Errorf("failed to add realm role '%s' to group '%s': %w", roleName, groupName, err)
 	}
 
@@ -1882,13 +1926,14 @@ func (s *keycloakService) RemoveRealmRoleFromGroup(ctx context.Context, groupNam
 	if err != nil {
 		return fmt.Errorf("failed to get realm role '%s': %w", roleName, err)
 	}
-	if len(roles) == 0 {
+	target := pickExactRealmRole(roles, roleName)
+	if target == nil {
 		log.Printf("Realm role '%s' not found in Keycloak, skipping removal", roleName)
 		return nil
 	}
 
 	// Remove role from group
-	if err := config.KC.Client.DeleteRealmRoleFromGroup(ctx, token.AccessToken, config.KC.Realm, groupID, []gocloak.Role{*roles[0]}); err != nil {
+	if err := config.KC.Client.DeleteRealmRoleFromGroup(ctx, token.AccessToken, config.KC.Realm, groupID, []gocloak.Role{*target}); err != nil {
 		return fmt.Errorf("failed to remove realm role '%s' from group '%s': %w", roleName, groupName, err)
 	}
 
@@ -1921,6 +1966,51 @@ func (s *keycloakService) DeleteGroup(ctx context.Context, groupName string) err
 	}
 
 	log.Printf("Successfully deleted Keycloak group '%s'", groupName)
+	return nil
+}
+
+// MigrateGroupIdentifier renames a Keycloak group from a legacy identifier(oldName)
+// to the new one(newName) — e.g. moving from the (non-unique) organization name to
+// the (unique) organization_code. No-op if no group exists under oldName; if a group
+// already exists under BOTH names, that requires a manual merge and is reported as
+// an error rather than guessed at automatically.
+func (s *keycloakService) MigrateGroupIdentifier(ctx context.Context, oldName, newName string) error {
+	if oldName == "" || newName == "" || oldName == newName {
+		return nil
+	}
+	if config.KC == nil || config.KC.Client == nil {
+		return fmt.Errorf("keycloak configuration not initialized")
+	}
+
+	token, err := config.KC.GetAdminToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get admin token: %w", err)
+	}
+
+	oldID, err := s.findGroupByName(ctx, token.AccessToken, oldName)
+	if err != nil {
+		return err
+	}
+	if oldID == "" {
+		return nil // 이전 이름의 그룹이 없음 — 마이그레이션할 대상 없음
+	}
+
+	newID, err := s.findGroupByName(ctx, token.AccessToken, newName)
+	if err != nil {
+		return err
+	}
+	if newID != "" {
+		return fmt.Errorf("legacy group '%s' and new group '%s' both exist — manual merge required", oldName, newName)
+	}
+
+	if err := config.KC.Client.UpdateGroup(ctx, token.AccessToken, config.KC.Realm, gocloak.Group{
+		ID:   &oldID,
+		Name: &newName,
+	}); err != nil {
+		return fmt.Errorf("failed to rename keycloak group '%s' to '%s': %w", oldName, newName, err)
+	}
+
+	log.Printf("Successfully migrated Keycloak group identifier '%s' -> '%s'", oldName, newName)
 	return nil
 }
 

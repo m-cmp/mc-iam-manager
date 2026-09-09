@@ -595,7 +595,7 @@ func (h *WorkspaceHandler) ListWorkspaceRoles(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/workspaces/{id}/users [post]
+// @Router /api/workspaces/id/{id}/users [post]
 // @Id addUserToWorkspace
 func (h *WorkspaceHandler) AddUserToWorkspace(c echo.Context) error {
 	var req model.AssignRoleRequest
@@ -645,7 +645,7 @@ func (h *WorkspaceHandler) AddUserToWorkspace(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/workspaces/{id}/users/{userId} [delete]
+// @Router /api/workspaces/id/{id}/users/{userId} [delete]
 // @Id removeUserFromWorkspace
 func (h *WorkspaceHandler) RemoveUserFromWorkspace(c echo.Context) error {
 	workspaceID, err := strconv.ParseUint(c.Param("id"), 10, 32)

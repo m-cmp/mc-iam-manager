@@ -86,11 +86,6 @@ func (s *mcmpApiService) CreateAction(tx *gorm.DB, action *mcmpapi.McmpApiAction
 // SyncMcmpAPIsFromYAML loads API definitions from local service-actions.yaml file
 // and saves them to the database via the repository with upsert logic.
 func (s *mcmpApiService) SyncMcmpAPIsFromYAML() error {
-	// Ensure tables exist
-	if err := s.ensureTables(); err != nil {
-		return fmt.Errorf("failed to ensure tables: %w", err)
-	}
-
 	// Read from local file only (no URL download)
 	log.Printf("Reading MCMP API definitions from local file: %s", localServiceActionsPath)
 	yamlData, err := os.ReadFile(localServiceActionsPath)
@@ -110,19 +105,6 @@ func (s *mcmpApiService) SyncMcmpAPIsFromYAML() error {
 	}
 
 	return s.syncServicesAndActions(serviceActionsRaw)
-}
-
-// ensureTables creates MCMP API tables if they don't exist
-func (s *mcmpApiService) ensureTables() error {
-	var count int64
-	if err := s.db.Table("mcmp_api_services").Count(&count).Error; err != nil {
-		// Table doesn't exist, create it
-		if err := s.db.AutoMigrate(&mcmpapi.McmpApiService{}, &mcmpapi.McmpApiAction{}, &mcmpapi.McmpApiServiceMeta{}); err != nil {
-			return fmt.Errorf("failed to create mcmp API tables: %w", err)
-		}
-		log.Printf("Created mcmp API tables")
-	}
-	return nil
 }
 
 // syncServicesAndActions processes service actions from parsed YAML and syncs to database
@@ -311,9 +293,6 @@ func (s *mcmpApiService) UpdateService(serviceName string, updates map[string]in
 
 // CreateFrameworkService creates a single McmpApiService record within its own transaction.
 func (s *mcmpApiService) CreateFrameworkService(svc *mcmpapi.McmpApiService) error {
-	if err := s.ensureTables(); err != nil {
-		return err
-	}
 	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -489,11 +468,6 @@ func (s *mcmpApiService) McmpApiCall(ctx context.Context, req *model.McmpApiCall
 
 // ImportAPIs fetches API specifications from remote URLs and imports them to the database
 func (s *mcmpApiService) ImportAPIs(req *model.ImportApiRequest) (*model.ImportApiResponse, error) {
-	// Ensure tables exist
-	if err := s.ensureTables(); err != nil {
-		return nil, fmt.Errorf("failed to ensure tables: %w", err)
-	}
-
 	processor := apiparser.NewProcessor(30) // 30 second timeout
 
 	response := &model.ImportApiResponse{

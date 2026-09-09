@@ -36,7 +36,7 @@ go test ./service/ -run 'TestBackupAndRestore|TestRestoreRolePermissions_Replace
 
 ## 회귀 체크리스트
 
-- [ ] 기존 `GET /api/setup/initial-role-menu-permission` (CSV) 동작 유지
+- [ ] `GET /api/setup/initial-role-menu-permission-yaml` 동작 유지 (구 CSV 라우트 `initial-role-menu-permission`은 삭제되어 해당 없음)
 - [ ] Backup이 다른 역할 매핑을 변경하지 않음
 - [ ] Additive 재호출 시 중복 행 증가 없음 (이미 있으면 skip)
 - [ ] Replace 후 백업에 없는 메뉴 매핑 제거 확인

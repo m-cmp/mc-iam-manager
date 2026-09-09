@@ -72,6 +72,8 @@ services:
       - ./container-volume/mc-infra-manager/log/:/app/log/
     environment:
       - TB_SPIDER_REST_URL=${MC_INFRA_CONNECTOR_REST_URL:-http://mc-infra-connector:1024/spider}
+      - TB_SPIDER_USERNAME=${MC_INFRA_CONNECTOR_API_USERNAME:-spider}
+      - TB_SPIDER_PASSWORD=${MC_INFRA_CONNECTOR_API_PASSWORD:-spider}
       - TB_ETCD_ENDPOINTS=http://mc-infra-manager-etcd:2379
       - TB_TERRARIUM_REST_URL=http://mc-terrarium:8055/terrarium
       - TB_TERRARIUM_API_USERNAME=${MC_INFRA_MANAGER_TERRARIUM_API_USERNAME:-}
@@ -231,7 +233,7 @@ services:
     env_file:
       - ./.env
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:${MC_IAM_MANAGER_PORT:-5005}/readyz || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:${MC_IAM_MANAGER_PORT:-5000}/readyz || exit 1"]
       <<: *default-health-check
 
   mc-iam-manager-db:

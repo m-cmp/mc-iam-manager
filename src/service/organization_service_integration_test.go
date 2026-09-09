@@ -23,6 +23,7 @@ package service
 // 사용하면서도 테스트 간 독립성과 재실행 가능성을 보장합니다.
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -72,6 +73,9 @@ func newOrgServicePGTest(t *testing.T) (*OrganizationService, *gorm.DB) {
 	t.Helper()
 	db := setupOrgServicePGTestDB(t)
 	svc := NewOrganizationService(db)
+	// 멤버십 변경 경로가 Keycloak 그룹을 동기화하므로(IAM-BUG-028) mock을 주입한다.
+	// 본 테스트의 검증 대상은 DB 상태이며 Keycloak 호출 자체는 검증하지 않는다.
+	svc.kcService = &mockKeycloakService{}
 	return svc, db
 }
 
@@ -112,7 +116,7 @@ func TestOrgServicePG_ReplaceUserGroups_RemoveAll(t *testing.T) {
 	user := createOrgUser(t, db, "grace", "kc-grace-01")
 	require.NoError(t, db.Create(&model.UserOrganization{UserID: user.ID, OrganizationID: org.ID}).Error)
 
-	err := svc.ReplaceUserGroups(user.ID, []uint{})
+	err := svc.ReplaceUserGroups(context.Background(), user.ID, []uint{})
 
 	require.NoError(t, err)
 
@@ -129,7 +133,7 @@ func TestOrgServicePG_ReplaceUserGroups_Replace(t *testing.T) {
 	user := createOrgUser(t, db, "henry", "kc-henry-01")
 	require.NoError(t, db.Create(&model.UserOrganization{UserID: user.ID, OrganizationID: org1.ID}).Error)
 
-	err := svc.ReplaceUserGroups(user.ID, []uint{org2.ID})
+	err := svc.ReplaceUserGroups(context.Background(), user.ID, []uint{org2.ID})
 
 	require.NoError(t, err)
 

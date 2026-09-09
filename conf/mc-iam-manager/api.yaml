@@ -882,7 +882,7 @@ serviceActions:
     setupInitialOrganizations:
       method: post
       resourcePath: /api/setup/initial-organizations
-      description: YAML 시드 파일에서 기본 조직 구조(MZC + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.
+      description: YAML 시드 파일에서 기본 조직 구조를 로드하여 등록합니다. 경로는 filePath 쿼리 > MC_IAM_MANAGER_ORG 환경변수 > 번들 asset 순으로 결정됩니다. 멱등성 보장.
     syncCspPolicies:
       method: post
       resourcePath: /api/csp-policies/sync

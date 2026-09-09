@@ -55,8 +55,21 @@ func (s *GroupRoleService) AssignGroupPlatformRole(ctx context.Context, groupID,
 		return err
 	}
 
-	// 4. Keycloak: 그룹에 realm role 추가
-	if err := s.kcService.AddRealmRoleToGroup(ctx, org.Name, role.Name); err != nil {
+	// 4. Keycloak: realm role이 아직 없으면 생성(지연 생성 경로) — 사용자 배정(AssignPlatformRole)과 동일 방어
+	roleExists, err := s.kcService.CheckRealmRoleExists(ctx, role.Name)
+	if err != nil {
+		_ = s.groupRoleRepo.DeleteGroupPlatformRole(groupID, roleID)
+		return fmt.Errorf("failed to check keycloak realm role: %w", err)
+	}
+	if !roleExists {
+		if err := s.kcService.CreateRealmRoleAndWait(ctx, role.Name); err != nil {
+			_ = s.groupRoleRepo.DeleteGroupPlatformRole(groupID, roleID)
+			return fmt.Errorf("failed to create keycloak realm role: %w", err)
+		}
+	}
+
+	// 5. Keycloak: 그룹에 realm role 추가
+	if err := s.kcService.AddRealmRoleToGroup(ctx, org.OrganizationCode, role.Name); err != nil {
 		// DB rollback
 		_ = s.groupRoleRepo.DeleteGroupPlatformRole(groupID, roleID)
 		return fmt.Errorf("failed to assign role to keycloak group: %w", err)
@@ -98,13 +111,13 @@ func (s *GroupRoleService) RemoveGroupPlatformRole(ctx context.Context, groupID,
 		return err
 	}
 
-	// 2. Role 이름 조회
-	var roleMaster model.RoleMaster
-	if err := s.db.First(&roleMaster, roleID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return repository.ErrRoleMasterNotFound
-		}
+	// 2. Role 조회 (platform 타입 역할만 그룹에서 해제 가능 — assign 쪽(:44-51)과 동일 검증)
+	role, err := s.roleRepo.FindRoleByRoleID(roleID, constants.RoleTypePlatform)
+	if err != nil {
 		return fmt.Errorf("role not found: %w", err)
+	}
+	if role == nil {
+		return repository.ErrRoleMasterNotFound
 	}
 
 	// 3. DB에서 삭제
@@ -113,7 +126,7 @@ func (s *GroupRoleService) RemoveGroupPlatformRole(ctx context.Context, groupID,
 	}
 
 	// 4. Keycloak에서 제거
-	if err := s.kcService.RemoveRealmRoleFromGroup(ctx, org.Name, roleMaster.Name); err != nil {
+	if err := s.kcService.RemoveRealmRoleFromGroup(ctx, org.OrganizationCode, role.Name); err != nil {
 		return fmt.Errorf("keycloak role removal failed (DB already updated): %w", err)
 	}
 
@@ -185,8 +198,8 @@ func (s *GroupRoleService) AssignUserToGroups(ctx context.Context, userID uint, 
 
 		// Keycloak 그룹 동기화
 		if kcUserID != "" {
-			if err := s.kcService.EnsureGroupExistsAndAssignUser(ctx, kcUserID, org.Name); err != nil {
-				return fmt.Errorf("failed to assign user to keycloak group '%s': %w", org.Name, err)
+			if err := s.kcService.EnsureGroupExistsAndAssignUser(ctx, kcUserID, org.OrganizationCode); err != nil {
+				return fmt.Errorf("failed to assign user to keycloak group '%s': %w", org.OrganizationCode, err)
 			}
 		}
 	}
@@ -215,8 +228,8 @@ func (s *GroupRoleService) AssignUsersToGroup(ctx context.Context, groupID uint,
 
 		// Keycloak 동기화
 		if user.KcId != "" {
-			if err := s.kcService.EnsureGroupExistsAndAssignUser(ctx, user.KcId, org.Name); err != nil {
-				return fmt.Errorf("failed to assign user %d to keycloak group '%s': %w", userID, org.Name, err)
+			if err := s.kcService.EnsureGroupExistsAndAssignUser(ctx, user.KcId, org.OrganizationCode); err != nil {
+				return fmt.Errorf("failed to assign user %d to keycloak group '%s': %w", userID, org.OrganizationCode, err)
 			}
 		}
 	}
@@ -245,7 +258,7 @@ func (s *GroupRoleService) RemoveUsersFromGroup(ctx context.Context, groupID uin
 
 		// Keycloak 동기화
 		if user.KcId != "" {
-			if err := s.kcService.RemoveUserFromGroup(ctx, user.KcId, org.Name); err != nil {
+			if err := s.kcService.RemoveUserFromGroup(ctx, user.KcId, org.OrganizationCode); err != nil {
 				return fmt.Errorf("keycloak group removal failed for user %d (DB already updated): %w", userID, err)
 			}
 		}
@@ -292,7 +305,7 @@ func (s *GroupRoleService) RemoveUserFromGroup(ctx context.Context, userID, grou
 
 	// Keycloak 그룹에서 제거
 	if kcUserID != "" {
-		if err := s.kcService.RemoveUserFromGroup(ctx, kcUserID, org.Name); err != nil {
+		if err := s.kcService.RemoveUserFromGroup(ctx, kcUserID, org.OrganizationCode); err != nil {
 			return fmt.Errorf("keycloak group removal failed (DB already updated): %w", err)
 		}
 	}

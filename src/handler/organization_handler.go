@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -27,20 +28,49 @@ func NewOrganizationHandler(db *gorm.DB) *OrganizationHandler {
 
 // SetupInitialOrganizations godoc
 // @Summary 기본 조직 초기화
-// @Description YAML 시드 파일에서 기본 조직 구조(MZC + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.
+// @Description YAML 시드 파일에서 기본 조직 구조를 로드하여 등록합니다. 멱등성 보장.
+// @Description 경로는 filePath 쿼리 파라미터 > MC_IAM_MANAGER_ORG 환경변수 > 번들된 asset/organization/organizations.yaml 순으로 결정됩니다.
 // @Tags organizations
 // @Produce json
+// @Param filePath query string false "조직 시드 YAML 경로. 미지정 시 MC_IAM_MANAGER_ORG 또는 번들 asset 사용"
 // @Success 200 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
 // @Router /api/setup/initial-organizations [post]
 // @Id setupInitialOrganizations
 func (h *OrganizationHandler) SetupInitialOrganizations(c echo.Context) error {
-	if err := h.orgService.LoadAndRegisterOrganizationsFromYAML(""); err != nil {
+	filePath := strings.TrimSpace(c.QueryParam("filePath"))
+	if err := h.orgService.LoadAndRegisterOrganizationsFromYAML(filePath); err != nil {
 		log.Printf("[ERROR] SetupInitialOrganizations failed: %v", err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 	return c.JSON(http.StatusOK, map[string]string{"message": "기본 조직이 등록되었습니다."})
+}
+
+// MigrateKeycloakGroupIdentifiers godoc
+// @Summary Keycloak 그룹 식별자 마이그레이션
+// @Description 각 조직의 Keycloak 그룹 식별자를 레거시 조직명 기준에서 유일성이 보장되는 organization_code 기준으로 이관합니다(IAM-BUG-029). 멱등성 보장 — 여러 번 호출해도 안전합니다.
+// @Tags organizations
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Success 207 {object} map[string]interface{} "일부 조직 마이그레이션 실패 — errors 필드 참고"
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /api/setup/migrate-kc-group-identifiers [post]
+// @Id migrateKeycloakGroupIdentifiers
+func (h *OrganizationHandler) MigrateKeycloakGroupIdentifiers(c echo.Context) error {
+	failures, err := h.orgService.MigrateKeycloakGroupIdentifiers(c.Request().Context())
+	if err != nil {
+		log.Printf("[ERROR] MigrateKeycloakGroupIdentifiers failed: %v", err)
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	if len(failures) > 0 {
+		return c.JSON(http.StatusMultiStatus, map[string]interface{}{
+			"message": "일부 조직의 Keycloak 그룹 식별자 마이그레이션에 실패했습니다.",
+			"errors":  failures,
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "Keycloak 그룹 식별자 마이그레이션이 완료되었습니다."})
 }
 
 // CreateOrganization godoc
@@ -407,7 +437,7 @@ func (h *OrganizationHandler) AssignUserOrganizations(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	if err := h.orgService.AssignUserToOrganizations(uint(userID), req.OrganizationIDs); err != nil {
+	if err := h.orgService.AssignUserToOrganizations(c.Request().Context(), uint(userID), req.OrganizationIDs); err != nil {
 		if errors.Is(err, repository.ErrOrganizationNotFound) {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 		}
@@ -477,7 +507,7 @@ func (h *OrganizationHandler) ReplaceUserGroups(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	if err := h.orgService.ReplaceUserGroups(uint(userID), req.GroupIDs); err != nil {
+	if err := h.orgService.ReplaceUserGroups(c.Request().Context(), uint(userID), req.GroupIDs); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 	return c.JSON(http.StatusOK, map[string]string{"message": "사용자 그룹 멤버십이 교체되었습니다."})
@@ -505,7 +535,7 @@ func (h *OrganizationHandler) RemoveUserOrganization(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid organization ID"})
 	}
 
-	if err := h.orgService.RemoveUserFromOrganization(uint(userID), uint(orgID)); err != nil {
+	if err := h.orgService.RemoveUserFromOrganization(c.Request().Context(), uint(userID), uint(orgID)); err != nil {
 		if errors.Is(err, repository.ErrUserOrganizationNotFound) {
 			return c.JSON(http.StatusNotFound, map[string]string{"error": "사용자가 해당 조직에 소속되어 있지 않습니다"})
 		}

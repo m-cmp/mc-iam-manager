@@ -128,11 +128,11 @@ func (m *mockIbmCredService) GetTokenByTrustedProfile(_ context.Context, profile
 // ── UserRepository (필요한 메서드만) ─────────────────────────────────────────
 
 type mockUserRepoForCred struct {
-	role    *model.UserWorkspaceRole
+	role    *model.EffectiveWorkspaceRole
 	roleErr error
 }
 
-func (m *mockUserRepoForCred) FindUserRoleInWorkspace(userID, workspaceID uint) (*model.UserWorkspaceRole, error) {
+func (m *mockUserRepoForCred) FindEffectiveUserRoleInWorkspace(userID, workspaceID uint) (*model.EffectiveWorkspaceRole, error) {
 	return m.role, m.roleErr
 }
 

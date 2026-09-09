@@ -1,33 +1,17 @@
 # asset/menu/permission.yaml
 # Role-centric permissions: permissions → role → menus | operations | csps
-# - menus: mcmp_menus.id 목록 (역할별 접근 가능 메뉴)
+# - menus: mcmp_menus.id 목록 (역할별 접근 가능 메뉴). 컨테이너(비-action) 메뉴도
+#   포함해야 사이드바 트리가 끊기지 않는다.
 # - operations: (reserved) framework/API operation 권한 ID — 향후 시드
 # - csps: (reserved) CSP 관련 권한/역할 키 — 향후 시드
-# Source: permission.csv invert + remote menu ID remaps (2026-07-15)
+# Menu ids must exist in mc-web-console conf/webconsole_menu_resources.yaml
+# (the canonical catalog); unknown ids are skipped at seed time and reported
+# as missingPermissionMenuIDs.
+# Aligned to catalog revision: mc-web-console develop 3a015768 (61 menus)
 permissions:
   - role: admin
     menus:
-      - operations
-      - manage
-      - workspaces
-      - projects
-      - projectboard
-      - members
-      - roles
-      - csproles
-      - workloads
-      - infraworkloads
-      - k8sworkloads
-      - infratemplates
-      - workflows
-      - swcatalogs
-      - mcdatamanager
-      - datamigrations
-      - generateobjectstorage
-      - generaterdb
-      - analytics
-      - costanalysis
-      - observability
+      # Settings
       - settings
       - accountnaccess
       - organizations
@@ -40,10 +24,9 @@ permissions:
       - environment
       - cloudsps
       - cloudoverview
-      - regions
+      - credentials
       - connections
       - clouddrivers
-      - credentials
       - cspaccounts
       - cloudresources
       - serverspecs
@@ -51,17 +34,47 @@ permissions:
       - networks
       - securitygroups
       - myimages
-      - datadisk
       - sshkeys
-      - csp
-      - cspschedule
+      - disks
+      - nlbs
       - resourcesync
-      - networktemplates
-      - cloudrescatalogs
-      - workspacessettings
-      - allocatedprojects
-      - sharemembers
-      - allocaterolesws
+      # Operations > Manage
+      - operations
+      - manage
+      - workspaces
+      - projects
+      - roles
+      - csproles
+      - workloads
+      - infraworkloads
+      - k8sworkloads
+      - workflows
+      - mcworkflows
+      - mceventlistener
+      - applications
+      - swcatalogs
+      - appstatus
+      - apprepository
+      - mcdatamanager
+      - mcdatagenerate
+      - mcdatamigration
+      - mcdatabackup
+      - mcdatarestore
+      - mcdatalogmanager
+      # Operations > Analytics
+      - analytics
+      - costanalysis
+      - costdashboard
+      - billingreport
+      - costalarm
+      - budget
+      - mcobservability
+      - mco11ymonitorings
+      - mc011ylogs
+      - mc011yconfig
+      - mc011yinsight
+      - mc011yalerts
+      - mc011ytracing
     operations: []
     csps: []
 
@@ -73,6 +86,10 @@ permissions:
       - infraworkloads
       - analytics
       - costanalysis
+      - costdashboard
+      - billingreport
+      - costalarm
+      - budget
     operations: []
     csps: []
 
@@ -81,6 +98,8 @@ permissions:
       - operations
       - analytics
       - costanalysis
+      - costdashboard
+      - billingreport
     operations: []
     csps: []
 
@@ -92,24 +111,35 @@ permissions:
       - infraworkloads
       - k8sworkloads
       - workflows
+      - mcworkflows
+      - mceventlistener
+      - applications
       - swcatalogs
+      - appstatus
+      - apprepository
       - mcdatamanager
-      - datamigrations
-      - generateobjectstorage
-      - generaterdb
+      - mcdatagenerate
+      - mcdatamigration
+      - mcdatabackup
+      - mcdatarestore
+      - mcdatalogmanager
       - analytics
-      - observability
+      - mcobservability
+      - mco11ymonitorings
+      - mc011ylogs
+      - mc011yconfig
+      - mc011yinsight
+      - mc011yalerts
+      - mc011ytracing
       - settings
       - environment
       - cloudsps
       - cloudoverview
-      - regions
       - cloudresources
       - networks
       - myimages
-      - datadisk
       - sshkeys
-      - cloudrescatalogs
+      - disks
     operations: []
     csps: []
 
@@ -117,9 +147,10 @@ permissions:
     menus:
       - operations
       - analytics
-      - observability
-      - settings
-      - environment
-      - cloudrescatalogs
+      - mcobservability
+      - mco11ymonitorings
+      - mc011ylogs
+      - mc011yinsight
+      - mc011ytracing
     operations: []
     csps: []

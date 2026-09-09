@@ -23,13 +23,13 @@ import (
 
 // AdminHandler 관리자 API 핸들러
 type AdminHandler struct {
-	keycloakService      service.KeycloakService
-	userService          service.UserService
-	roleService          service.RoleService
-	workspaceService     service.WorkspaceService
-	menuService          service.MenuService
-	organizationService  *service.OrganizationService
-	companyService       *service.CompanyService
+	keycloakService     service.KeycloakService
+	userService         service.UserService
+	roleService         service.RoleService
+	workspaceService    service.WorkspaceService
+	menuService         service.MenuService
+	organizationService *service.OrganizationService
+	companyService      *service.CompanyService
 }
 
 // NewAdminHandler 새 AdminHandler 인스턴스 생성
@@ -157,7 +157,7 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 		defaultWsName = "ws01" // fallback
 		log.Printf("[INFO] MC_IAM_MANAGER_DEFAULT_WORKSPACE_NAME not set, using default: %s", defaultWsName)
 	}
-	
+
 	err = h.workspaceService.CreateWorkspace(&model.Workspace{
 		Name:        defaultWsName,
 		Description: "Default Workspace",
@@ -170,23 +170,13 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 		// })
 	}
 
-	// 메뉴 등록
-	err = h.menuService.LoadAndRegisterMenusFromYAML("")
+	// 메뉴 등록 (역할-메뉴 권한 시딩까지 체이닝됨). 이미 시딩돼 있으면 skip (최초 1회 원칙)
+	_, err = h.menuService.LoadAndRegisterMenusFromYAML("", false)
 	if err != nil {
 		log.Printf("[ERROR] Register Menu failed: %v", err)
 		// return c.JSON(http.StatusInternalServerError, model.Response{
 		// 	Error:   true,
 		// 	Message: "Failed to register menus",
-		// })
-	}
-
-	// 메뉴와 기본 역할 매핑 (permission.yaml)
-	err = h.menuService.InitializeMenuPermissionsFromYAML("")
-	if err != nil {
-		log.Printf("[ERROR] Initialize Menu Permissions (YAML) failed: %v", err)
-		// return c.JSON(http.StatusInternalServerError, model.Response{
-		// 	Error:   true,
-		// 	Message: "Failed to initialize menu permissions",
 		// })
 	}
 
@@ -248,53 +238,14 @@ func (h *AdminHandler) CheckUserRoles(c echo.Context) error {
 	})
 }
 
-// InitializeMenuPermissions godoc
-// @Summary Initialize menu permissions from CSV (deprecated)
-// @Description Deprecated. permission.csv로 메뉴 권한을 초기화합니다. 제거 예정이니 InitializeMenuPermissionsFromYAML을 사용하세요.
-// @Tags admin
-// @Accept json
-// @Produce json
-// @Param filePath query string false "CSV file path (optional, default asset/menu/permission.csv)"
-// @Success 200 {object} model.Response
-// @Failure 400 {object} model.Response
-// @Failure 500 {object} model.Response
-// @Security BearerAuth
-// @Deprecated
-// @Router /api/setup/initial-role-menu-permission [get]
-// @Id initializeMenuPermissions
-func (h *AdminHandler) InitializeMenuPermissions(c echo.Context) error {
-	filePath := c.QueryParam("filePath")
-
-	log.Printf(
-		"[WARN] Deprecated API /api/setup/initial-role-menu-permission (CSV). "+
-			"Use /api/setup/initial-role-menu-permission-yaml instead. filePath=%s",
-		filePath,
-	)
-
-	err := h.menuService.InitializeMenuPermissionsFromCSV(filePath)
-	if err != nil {
-		log.Printf("[ERROR] Initialize Menu Permissions (CSV) failed: %v", err)
-		return c.JSON(http.StatusInternalServerError, model.Response{
-			Error:   true,
-			Message: fmt.Sprintf("Failed to initialize menu permissions from CSV: %v", err),
-		})
-	}
-
-	log.Printf("[INFO] Menu permissions initialized successfully from CSV (deprecated)")
-	return c.JSON(http.StatusOK, model.Response{
-		Error:   false,
-		Message: "Menu permissions initialized successfully from CSV (deprecated; prefer YAML API)",
-	})
-}
-
 // InitializeMenuPermissionsFromYAML godoc
-// @Summary Initialize role-menu permissions from YAML
-// @Description asset/menu/permission.yaml(permissions→role→menus|operations|csps)을 읽어 역할-메뉴 매핑을 DB에 시드합니다
+// @Summary Initialize role-menu permissions from YAML (additive)
+// @Description asset/menu/permission.yaml(permissions→role→menus|operations|csps)을 읽어 역할-메뉴 매핑을 DB에 시드합니다. additive이며 기존 매핑은 유지되고 런타임에 삭제된 매핑은 되살아납니다. yaml이 참조하지만 DB에 없는 메뉴 id는 매핑을 만들지 않고 missingPermissionMenuIDs로 보고합니다.
 // @Tags admin
 // @Accept json
 // @Produce json
 // @Param filePath query string false "YAML file path (optional, default asset/menu/permission.yaml)"
-// @Success 200 {object} model.Response
+// @Success 200 {object} map[string]interface{} "error, message, missingPermissionMenuIDs (present only when non-empty)"
 // @Failure 400 {object} model.Response
 // @Failure 500 {object} model.Response
 // @Security BearerAuth
@@ -305,7 +256,7 @@ func (h *AdminHandler) InitializeMenuPermissionsFromYAML(c echo.Context) error {
 
 	log.Printf("[INFO] Initializing menu permissions from YAML: %s", filePath)
 
-	err := h.menuService.InitializeMenuPermissionsFromYAML(filePath)
+	missing, err := h.menuService.InitializeMenuPermissionsFromYAML(filePath)
 	if err != nil {
 		log.Printf("[ERROR] Initialize Menu Permissions (YAML) failed: %v", err)
 		return c.JSON(http.StatusInternalServerError, model.Response{
@@ -315,10 +266,14 @@ func (h *AdminHandler) InitializeMenuPermissionsFromYAML(c echo.Context) error {
 	}
 
 	log.Printf("[INFO] Menu permissions initialized successfully from YAML")
-	return c.JSON(http.StatusOK, model.Response{
-		Error:   false,
-		Message: "Menu permissions initialized successfully from YAML",
-	})
+	response := map[string]interface{}{
+		"error":   false,
+		"message": "Menu permissions initialized successfully from YAML",
+	}
+	if len(missing) > 0 {
+		response["missingPermissionMenuIDs"] = missing
+	}
+	return c.JSON(http.StatusOK, response)
 }
 
 // BackupRolePermissions godoc

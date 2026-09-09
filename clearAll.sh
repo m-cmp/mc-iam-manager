@@ -54,6 +54,10 @@ cd "$PROJECT_ROOT_ABS" || {
     exit 1
 }
 
+# Match installAll.sh: standalone installer runs against docker-compose-standalone.yaml,
+# not the full docker-compose.yaml (which also defines mc-web-console).
+export COMPOSE_FILE="$PROJECT_ROOT_ABS/docker-compose-standalone.yaml"
+
 # =============================================================================
 # Mode Selection (interactive if not specified)
 # =============================================================================

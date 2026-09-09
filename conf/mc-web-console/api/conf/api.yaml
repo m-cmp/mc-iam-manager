@@ -3,7 +3,7 @@
 
 services:
   mc-infra-connector:
-    version: 0.9.8
+    version: 0.13.2
     baseurl: http://mc-infra-connector:1024/spider
     auth:
       type: basic
@@ -12,12 +12,12 @@ services:
 
   mc-iam-manager:
     version: 0.3.0
-    baseurl: http://mc-iam-manager:5005
+    baseurl: http://mc-iam-manager:5000
     auth:
       type: bearer
 
   mc-infra-manager:
-    version: 0.9.22
+    version: 0.13.2
     baseurl: http://mc-infra-manager:1323/tumblebug
     auth:
       type: basic
@@ -1701,6 +1701,25 @@ serviceActions:
       method: get
       resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}
       description: "Get Security Group"
+    PutSecurityGroup:
+      method: put
+      resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}
+      description: 'Update Security Group: Synchronize the firewall rules of the specified Security Group to match the requested list exactly.
+
+        This API will add missing rules and delete extra rules so that the Security Group''s rules become identical to the requested set.
+
+        Only firewall rules are updated; other metadata (name, description, etc.) is not changed.
+
+
+        Usage:
+
+        Use this API to update (synchronize) the firewall rules of a Security Group. The rules in the request body will become the only rules in the Security Group after the operation.
+
+        - All existing rules not present in the request will be deleted.
+
+        - All rules in the request that do not exist will be added.
+
+        - If a rule exists but differs in CIDR or port range, it will be replaced.'
     Delsecuritygroup:
       method: delete
       resourcePath: /ns/{nsId}/resources/securityGroup/{securityGroupId}

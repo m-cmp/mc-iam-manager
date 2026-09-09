@@ -25,17 +25,6 @@ type MenuRepository struct {
 
 // NewMenuRepository 새 MenuRepository 인스턴스 생성
 func NewMenuRepository(db *gorm.DB) *MenuRepository {
-	// AutoMigrate the required tables
-	err := db.AutoMigrate(
-		&model.Menu{},
-		&model.RoleMenuMapping{},
-		&model.MciamPermission{},
-		&model.MciamRoleMciamPermission{},
-		&model.ResourceType{},
-	)
-	if err != nil {
-		log.Printf("Failed to auto migrate tables: %v", err)
-	}
 	return &MenuRepository{db: db}
 }
 
@@ -110,6 +99,7 @@ func (r *MenuRepository) CreateMenu(req *model.CreateMenuRequest) error {
 		ViewType:         req.ViewType,
 		FrameworkService: req.FrameworkService,
 		Path:             req.Path,
+		Icon:             req.Icon,
 	}
 	return r.db.Create(menu).Error
 }
@@ -156,25 +146,77 @@ func (r *MenuRepository) DeleteMenu(id string) error {
 	return nil
 }
 
-// DeleteMenuWithChildren CTE로 하위 메뉴 전체를 포함하여 삭제
+// DeleteMenuWithChildren 하위 메뉴 전체와 그에 딸린 role-menu 매핑·view 권한을
+// 같은 트랜잭션에서 함께 삭제한다 (이전에는 mcmp_menus만 지우고 매핑/권한이
+// orphan으로 남았음).
 func (r *MenuRepository) DeleteMenuWithChildren(id string) error {
-	// PostgreSQL WITH RECURSIVE로 모든 하위 메뉴 ID 수집 후 삭제
-	query := `
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("failed to begin transaction: %w", tx.Error)
+	}
+	defer func() {
+		if rec := recover(); rec != nil {
+			tx.Rollback()
+			panic(rec)
+		}
+	}()
+
+	// PostgreSQL WITH RECURSIVE로 삭제 대상 메뉴 id(자신+하위 전체) 수집
+	var menuIDs []string
+	collectQuery := `
 WITH RECURSIVE menu_tree AS (
   SELECT id FROM mcmp_menus WHERE id = ?
   UNION ALL
   SELECT m.id FROM mcmp_menus m INNER JOIN menu_tree mt ON m.parent_id = mt.id
 )
-DELETE FROM mcmp_menus WHERE id IN (SELECT id FROM menu_tree)
+SELECT id FROM menu_tree
 `
-	result := r.db.Exec(query, id)
+	if err := tx.Raw(collectQuery, id).Scan(&menuIDs).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if len(menuIDs) == 0 {
+		tx.Rollback()
+		return ErrMenuNotFound
+	}
+
+	if err := tx.Where("menu_id IN ?", menuIDs).Delete(&model.RoleMenuMapping{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	permissionIDs := make([]string, len(menuIDs))
+	for i, menuID := range menuIDs {
+		permissionIDs[i] = fmt.Sprintf("menu:menu:view:%s", menuID)
+	}
+	if err := tx.Where("id IN ?", permissionIDs).Delete(&model.MciamPermission{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	result := tx.Where("id IN ?", menuIDs).Delete(&model.Menu{})
 	if result.Error != nil {
+		tx.Rollback()
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
+		tx.Rollback()
 		return ErrMenuNotFound
 	}
+
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
 	return nil
+}
+
+// GetAllMenuIDs DB에 존재하는 모든 메뉴 id 목록을 반환 (yaml 재시딩 시 diff 용)
+func (r *MenuRepository) GetAllMenuIDs() ([]string, error) {
+	var ids []string
+	if err := r.db.Model(&model.Menu{}).Pluck("id", &ids).Error; err != nil {
+		return nil, err
+	}
+	return ids, nil
 }
 
 // LoadMenusFromYAML YAML 파일에서 메뉴 데이터를 로드 (내부 헬퍼)
@@ -231,7 +273,7 @@ func (r *MenuRepository) UpsertMenus(menus []model.Menu) error {
 		Columns:   []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"parent_id", "display_name", "res_type", "is_action", "priority", "menu_number",
-			"view_type", "framework_service", "path",
+			"view_type", "framework_service", "path", "icon",
 		}),
 	}).Create(&menus).Error; err != nil {
 		tx.Rollback() // 롤백
@@ -374,4 +416,9 @@ func (r *MenuRepository) DeleteRoleMenuMappingByRoleAndMenu(roleID uint, menuID 
 func (r *MenuRepository) DeleteRoleMenuMappingsByRoleID(roleID uint) error {
 	query := r.db.Where("role_id = ?", roleID).Delete(&model.RoleMenuMapping{})
 	return query.Error
+}
+
+// DeleteRoleMenuMappingsByRoleIDWithTx 트랜잭션 내에서 해당 role 과 매핑된 모든 메뉴 매핑 삭제
+func (r *MenuRepository) DeleteRoleMenuMappingsByRoleIDWithTx(tx *gorm.DB, roleID uint) error {
+	return tx.Where("role_id = ?", roleID).Delete(&model.RoleMenuMapping{}).Error
 }

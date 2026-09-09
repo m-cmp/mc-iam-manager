@@ -1,270 +1,76 @@
-# Synchronized from remote mcmp_menus (15.164.139.37) + iframe path fixes — 2026-07-15
-# Removed obsolete monitorings/eventsntraces local trees; use observability iframe.
 menus:
-
-  - id: operations
-    parentid: home
-    displayname: Operations
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1700
-
-  - id: manage
-    parentid: operations
-    displayname: Manage
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1701
-
-  - id: workspaces
-    parentid: manage
-    displayname: Workspaces
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1710
-
-  - id: projects
-    parentid: workspaces
-    displayname: Projects
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1720
-
-  - id: projectboard
-    parentid: workspaces
-    displayname: Project board
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1728
-
-  - id: members
-    parentid: workspaces
-    displayname: Members
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1730
-
-  - id: roles
-    parentid: workspaces
-    displayname: Roles
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1740
-
-  - id: csproles
-    parentid: workspaces
-    displayname: CSP Roles
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1741
-
-  - id: workloads
-    parentid: manage
-    displayname: Workloads
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1750
-
-  - id: infraworkloads
-    parentid: workloads
-    displayname: Infra Workloads
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1760
-
-  - id: k8sworkloads
-    parentid: workloads
-    displayname: K8s Workloads
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1790
-
-  - id: infratemplates
-    parentid: workloads
-    displayname: Infra Templates
-    restype: menu
-    isaction: true
-    priority: 2
-    menunumber: 1780
-
-  - id: workflows
-    parentid: manage
-    displayname: Workflows
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-workflow-manager-fe
-    path: /web/workflows/workflow/list
-    isaction: true
-    priority: 2
-    menunumber: 1998
-
-  - id: swcatalogs
-    parentid: manage
-    displayname: SW Catalogs
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-application-manager-fe
-    path: /web/softwareCatalog
-    isaction: true
-    priority: 2
-    menunumber: 1998
-
-  - id: mcdatamanager
-    parentid: manage
-    displayname: Data Migrations
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-data-manager-fe
-    path: /migrate/objectstorage
-    isaction: false
-    priority: 3
-    menunumber: 1997
-
-  - id: datamigrations
-    parentid: mcdatamanager
-    displayname: Data Migrations
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-data-manager-fe
-    path: /
-    isaction: true
-    priority: 1
-    menunumber: 1998
-
-  - id: generateobjectstorage
-    parentid: mcdatamanager
-    displayname: Generate OSS
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-data-manager-fe
-    path: /generate/objectstorage
-    isaction: true
-    priority: 2
-    menunumber: 19971
-
-  - id: generaterdb
-    parentid: mcdatamanager
-    displayname: GenerateRDB
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-data-manager-fe
-    path: /generate/mysql
-    isaction: true
-    priority: 2
-    menunumber: 19972
-
-  - id: analytics
-    parentid: operations
-    displayname: Analytics
-    restype: menu
-    isaction: false
-    priority: 3
-    menunumber: 1901
-
-  - id: costanalysis
-    parentid: analytics
-    displayname: Cost Analysis
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-cost-optimizer-fe
-    path: /
-    isaction: true
-    priority: 2
-    menunumber: 1998
-
-  - id: observability
-    parentid: analytics
-    displayname: Monitorings
-    restype: menu
-    viewtype: iframe
-    frameworkservice: mc-observability-fe
-    path: /
-    isaction: true
-    priority: 3
-    menunumber: 1999
-
   - id: settings
     parentid: home
     displayname: Settings
     restype: menu
     isaction: false
-    priority: 4
-    menunumber: 1200
+    priority: 2
+    menunumber: 1000
 
   - id: accountnaccess
     parentid: settings
     displayname: Account & Access
     restype: menu
     isaction: false
-    priority: 2
-    menunumber: 1201
+    priority: 1
+    menunumber: 1100
 
   - id: organizations
     parentid: accountnaccess
     displayname: Organizations
     restype: menu
     isaction: false
-    priority: 2
-    menunumber: 1205
+    priority: 1
+    menunumber: 1101
 
   - id: companyinfo
     parentid: organizations
     displayname: Company Info
     restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1212
+    isaction: true
+    priority: 1
+    menunumber: 1102
 
   - id: users
     parentid: organizations
     displayname: Users
     restype: menu
-    isaction: false
+    isaction: true
     priority: 2
-    menunumber: 1220
+    menunumber: 1103
 
   - id: groups
     parentid: organizations
     displayname: Groups
     restype: menu
     isaction: true
-    priority: 2
-    menunumber: 1225
+    priority: 3
+    menunumber: 1104
 
   - id: approvals
     parentid: organizations
     displayname: Approvals
     restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1230
+    isaction: true
+    priority: 4
+    menunumber: 1105
+    icon: approvals
 
   - id: accesscontrols
     parentid: organizations
     displayname: Access Controls
     restype: menu
     isaction: false
-    priority: 2
-    menunumber: 1240
+    priority: 5
+    menunumber: 1106
 
   - id: menus
     parentid: organizations
     displayname: Menus
     restype: menu
     isaction: true
-    priority: 2
-    menunumber: 1250
+    priority: 6
+    menunumber: 1107
 
   - id: environment
     parentid: settings
@@ -272,63 +78,55 @@ menus:
     restype: menu
     isaction: false
     priority: 2
-    menunumber: 1301
+    menunumber: 1200
 
   - id: cloudsps
     parentid: environment
     displayname: Cloud SPs
     restype: menu
     isaction: false
-    priority: 2
-    menunumber: 1305
+    priority: 1
+    menunumber: 1201
 
   - id: cloudoverview
     parentid: cloudsps
     displayname: Cloud Overview
     restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1310
-
-  - id: regions
-    parentid: cloudsps
-    displayname: Regions
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1320
-
-  - id: connections
-    parentid: cloudsps
-    displayname: Connections
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1330
-
-  - id: clouddrivers
-    parentid: cloudsps
-    displayname: Cloud Drivers
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1340
+    isaction: true
+    priority: 1
+    menunumber: 1202
 
   - id: credentials
     parentid: cloudsps
     displayname: Credentials
     restype: menu
-    isaction: false
+    isaction: true
     priority: 2
-    menunumber: 1350
+    menunumber: 1203
+
+  - id: connections
+    parentid: cloudsps
+    displayname: Connections
+    restype: menu
+    isaction: true
+    priority: 3
+    menunumber: 1204
+
+  - id: clouddrivers
+    parentid: cloudsps
+    displayname: Cloud Drivers
+    restype: menu
+    isaction: true
+    priority: 4
+    menunumber: 1205
 
   - id: cspaccounts
     parentid: cloudsps
     displayname: CSP Accounts
     restype: menu
     isaction: false
-    priority: 2
-    menunumber: 1360
+    priority: 5
+    menunumber: 1206
 
   - id: cloudresources
     parentid: environment
@@ -336,132 +134,417 @@ menus:
     restype: menu
     isaction: false
     priority: 2
-    menunumber: 1405
+    menunumber: 1207
 
   - id: serverspecs
     parentid: cloudresources
     displayname: Specs
     restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1410
+    isaction: true
+    priority: 1
+    menunumber: 1208
 
   - id: serverimages
     parentid: cloudresources
     displayname: Images
     restype: menu
-    isaction: false
+    isaction: true
     priority: 2
-    menunumber: 1420
+    menunumber: 1209
 
   - id: networks
     parentid: cloudresources
     displayname: Networks
     restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1510
+    isaction: true
+    priority: 3
+    menunumber: 1210
 
   - id: securitygroups
     parentid: cloudresources
     displayname: Security Groups
     restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1520
+    isaction: true
+    priority: 4
+    menunumber: 1211
 
   - id: myimages
     parentid: cloudresources
     displayname: MyImages
     restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1530
-
-  - id: datadisk
-    parentid: cloudresources
-    displayname: Disks
-    restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1540
+    isaction: true
+    priority: 5
+    menunumber: 1212
 
   - id: sshkeys
     parentid: cloudresources
     displayname: SSH Keys
     restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1550
+    isaction: true
+    priority: 6
+    menunumber: 1213
 
-  - id: csp
+  - id: disks
     parentid: cloudresources
-    displayname: CSP Overview
+    displayname: Disks
     restype: menu
     isaction: true
-    priority: 2
-    menunumber: 1580
+    priority: 7
+    menunumber: 1214
 
-  - id: cspschedule
+  - id: nlbs
     parentid: cloudresources
-    displayname: CSP Schedule
+    displayname: NLB
     restype: menu
     isaction: true
-    priority: 2
-    menunumber: 1590
+    priority: 8
+    menunumber: 1215
 
   - id: resourcesync
     parentid: cloudresources
     displayname: Resource Sync
     restype: menu
     isaction: true
-    priority: 3
-    menunumber: 1595
+    priority: 9
+    menunumber: 1216
 
-  - id: networktemplates
-    parentid: cloudresources
-    displayname: Network Templates
+  - id: operations
+    parentid: home
+    displayname: Operations
+    restype: menu
+    isaction: false
+    priority: 1
+    menunumber: 2000
+
+  - id: manage
+    parentid: operations
+    displayname: Manage
+    restype: menu
+    isaction: false
+    priority: 1
+    menunumber: 2100
+
+  - id: workspaces
+    parentid: manage
+    displayname: Workspaces
+    restype: menu
+    isaction: true
+    priority: 1
+    menunumber: 2101
+
+  - id: projects
+    parentid: workspaces
+    displayname: Projects
+    restype: menu
+    isaction: true
+    priority: 1
+    menunumber: 2102
+
+  - id: roles
+    parentid: workspaces
+    displayname: Roles
     restype: menu
     isaction: true
     priority: 2
-    menunumber: 1598
+    menunumber: 2103
 
-  - id: cloudrescatalogs
-    parentid: environment
-    displayname: Cloud Res Catalogs
+  - id: csproles
+    parentid: workspaces
+    displayname: CSP Roles
+    restype: menu
+    isaction: true
+    priority: 3
+    menunumber: 2104
+
+  - id: workloads
+    parentid: manage
+    displayname: Workloads
     restype: menu
     isaction: false
     priority: 2
-    menunumber: 1560
+    menunumber: 2105
 
-  - id: workspacessettings
-    parentid: environment
-    displayname: Workspaces Settings
+  - id: infraworkloads
+    parentid: workloads
+    displayname: Infra Workloads
+    restype: menu
+    isaction: true
+    priority: 1
+    menunumber: 2106
+
+  - id: k8sworkloads
+    parentid: workloads
+    displayname: K8s Workloads
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 2107
+
+  - id: workflows
+    parentid: manage
+    displayname: Workflows
+    restype: menu
+    isaction: false
+    priority: 3
+    menunumber: 2108
+
+  - id: mcworkflows
+    parentid: workflows
+    displayname: Workflows
+    restype: menu
+    isaction: true
+    priority: 1
+    menunumber: 2109
+    viewtype: iframe
+    frameworkservice: mc-workflow-manager-fe
+    path: /web/workflow/list
+
+  - id: mceventlistener
+    parentid: workflows
+    displayname: Event Listeners
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 2110
+    viewtype: iframe
+    frameworkservice: mc-workflow-manager-fe
+    path: /web/workflows/eventListener/list
+
+  - id: applications
+    parentid: manage
+    displayname: Applications
+    restype: menu
+    isaction: false
+    priority: 4
+    menunumber: 2111
+
+  - id: swcatalogs
+    parentid: applications
+    displayname: SW Catalogs
+    restype: menu
+    isaction: true
+    priority: 1
+    menunumber: 2112
+    viewtype: iframe
+    frameworkservice: mc-application-manager-fe
+    path: /web/applications/swcatalog
+
+  - id: appstatus
+    parentid: applications
+    displayname: App Status
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 2113
+    viewtype: iframe
+    frameworkservice: mc-application-manager-fe
+    path: /web/applications/status
+
+  - id: apprepository
+    parentid: applications
+    displayname: Repository
+    restype: menu
+    isaction: true
+    priority: 3
+    menunumber: 2114
+    viewtype: iframe
+    frameworkservice: mc-application-manager-fe
+    path: /web/applications/repository
+
+  - id: mcdatamanager
+    parentid: manage
+    displayname: Data Migrations
+    restype: menu
+    isaction: false
+    priority: 5
+    menunumber: 2115
+
+  - id: mcdatagenerate
+    parentid: mcdatamanager
+    displayname: Generate
+    restype: menu
+    isaction: true
+    priority: 1
+    menunumber: 2116
+    viewtype: iframe
+    frameworkservice: mc-data-manager-fe
+    path: /generate/objectstorage
+
+  - id: mcdatamigration
+    parentid: mcdatamanager
+    displayname: Migration
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 2117
+    viewtype: iframe
+    frameworkservice: mc-data-manager-fe
+    path: /migrate/objectstorage
+
+  - id: mcdatabackup
+    parentid: mcdatamanager
+    displayname: Back Up
+    restype: menu
+    isaction: true
+    priority: 3
+    menunumber: 2118
+    viewtype: iframe
+    frameworkservice: mc-data-manager-fe
+    path: /backup/register
+
+  - id: mcdatarestore
+    parentid: mcdatamanager
+    displayname: Restore
+    restype: menu
+    isaction: true
+    priority: 4
+    menunumber: 2119
+    viewtype: iframe
+    frameworkservice: mc-data-manager-fe
+    path: /restore/register
+
+  - id: mcdatalogmanager
+    parentid: mcdatamanager
+    displayname: Log Management
+    restype: menu
+    isaction: true
+    priority: 5
+    menunumber: 2120
+    viewtype: iframe
+    frameworkservice: mc-data-manager-fe
+    path: /log-management
+
+  - id: analytics
+    parentid: operations
+    displayname: Analytics
     restype: menu
     isaction: false
     priority: 2
-    menunumber: 1660
+    menunumber: 2200
 
-  - id: allocatedprojects
-    parentid: workspacessettings
-    displayname: Allocated Projects
+  - id: costanalysis
+    parentid: analytics
+    displayname: Cost Analysis
+    restype: menu
+    isaction: false
+    priority: 1
+    menunumber: 2201
+
+  - id: costdashboard
+    parentid: costanalysis
+    displayname: Dash Board
+    restype: menu
+    isaction: true
+    priority: 1
+    menunumber: 2202
+    viewtype: iframe
+    frameworkservice: mc-cost-optimizer-fe
+    path: /
+
+  - id: billingreport
+    parentid: costanalysis
+    displayname: Billing Report
+    restype: menu
+    isaction: true
+    priority: 2
+    menunumber: 2203
+    viewtype: iframe
+    frameworkservice: mc-cost-optimizer-fe
+    path: /billing-report
+
+  - id: costalarm
+    parentid: costanalysis
+    displayname: Cost Alarm
+    restype: menu
+    isaction: true
+    priority: 3
+    menunumber: 2204
+    viewtype: iframe
+    frameworkservice: mc-cost-optimizer-fe
+    path: /alarm
+
+  - id: budget
+    parentid: costanalysis
+    displayname: Budget
+    restype: menu
+    isaction: true
+    priority: 4
+    menunumber: 2205
+    viewtype: iframe
+    frameworkservice: mc-cost-optimizer-fe
+    path: /budget
+
+  - id: mcobservability
+    parentid: analytics
+    displayname: Monitorings
     restype: menu
     isaction: false
     priority: 2
-    menunumber: 1665
+    menunumber: 2206
 
-  - id: sharemembers
-    parentid: workspacessettings
-    displayname: Share Members
+  - id: mco11ymonitorings
+    parentid: mcobservability
+    displayname: Monitoring
     restype: menu
-    isaction: false
-    priority: 2
-    menunumber: 1666
+    isaction: true
+    priority: 1
+    menunumber: 2207
+    viewtype: iframe
+    frameworkservice: mc-observability-fe
+    path: /embed/monitoring
 
-  - id: allocaterolesws
-    parentid: workspacessettings
-    displayname: Access Controls
+  - id: mc011ylogs
+    parentid: mcobservability
+    displayname: Logs
     restype: menu
-    isaction: false
+    isaction: true
     priority: 2
-    menunumber: 1667
+    menunumber: 2208
+    viewtype: iframe
+    frameworkservice: mc-observability-fe
+    path: /embed/logs
+
+  - id: mc011yconfig
+    parentid: mcobservability
+    displayname: Config
+    restype: menu
+    isaction: true
+    priority: 3
+    menunumber: 2209
+    viewtype: iframe
+    frameworkservice: mc-observability-fe
+    path: /embed/config
+
+  - id: mc011yinsight
+    parentid: mcobservability
+    displayname: Insight
+    restype: menu
+    isaction: true
+    priority: 4
+    menunumber: 2210
+    viewtype: iframe
+    frameworkservice: mc-observability-fe
+    path: /embed/insight
+
+  - id: mc011yalerts
+    parentid: mcobservability
+    displayname: Alert
+    restype: menu
+    isaction: true
+    priority: 5
+    menunumber: 2211
+    viewtype: iframe
+    frameworkservice: mc-observability-fe
+    path: /embed/alerts
+
+  - id: mc011ytracing
+    parentid: mcobservability
+    displayname: Tracing
+    restype: menu
+    isaction: true
+    priority: 6
+    menunumber: 2212
+    viewtype: iframe
+    frameworkservice: mc-observability-fe
+    path: /embed/trace
+

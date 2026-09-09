@@ -32,6 +32,11 @@ package service
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -456,10 +461,96 @@ func TestDeleteOrganizationCascade_Success(t *testing.T) {
 func TestAssignUserToOrganizations_OrgNotFound(t *testing.T) {
 	svc, _ := newTestOrgService(t)
 
-	err := svc.AssignUserToOrganizations(1, []uint{99999})
+	err := svc.AssignUserToOrganizations(context.Background(), 1, []uint{99999})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "organization not found")
+}
+
+// kcGroupIdentifierSpy captures which Keycloak group identifier and migration
+// calls a test made — IAM-BUG-029 회귀 검증용(organization.Name은 unique 제약이
+// 없어 부모가 다른 동명 조직이 같은 KC 그룹으로 충돌할 수 있다).
+type kcGroupIdentifierSpy struct {
+	mockKeycloakService
+	lastGroupName    string
+	migrateCalls     []struct{ OldName, NewName string }
+	migrateErrForOrg map[string]error // keyed by oldName
+}
+
+func (s *kcGroupIdentifierSpy) EnsureGroupExistsAndAssignUser(ctx context.Context, kcUserId, groupName string) error {
+	s.lastGroupName = groupName
+	return nil
+}
+
+func (s *kcGroupIdentifierSpy) MigrateGroupIdentifier(ctx context.Context, oldName, newName string) error {
+	s.migrateCalls = append(s.migrateCalls, struct{ OldName, NewName string }{oldName, newName})
+	if s.migrateErrForOrg != nil {
+		if err, ok := s.migrateErrForOrg[oldName]; ok {
+			return err
+		}
+	}
+	return nil
+}
+
+// TC-AU-01B: IAM-BUG-029 회귀 — Keycloak 그룹 식별자로 organization_code를 써야 한다
+func TestAssignUserToOrganizations_UsesOrganizationCodeAsKeycloakGroupIdentifier(t *testing.T) {
+	svc, db := newTestOrgService(t)
+	org := createOrg(t, db, "AU01B-UNIQUE-CODE", "operator-group", nil)
+	user := createOrgUser(t, db, "au01b-user", "kc-au01b")
+	spy := &kcGroupIdentifierSpy{}
+	svc.kcService = spy
+
+	err := svc.AssignUserToOrganizations(context.Background(), user.ID, []uint{org.ID})
+
+	require.NoError(t, err)
+	assert.Equal(t, "AU01B-UNIQUE-CODE", spy.lastGroupName, "Keycloak 그룹 식별자는 organization_code여야 한다(Name 사용 시 회귀)")
+}
+
+// ── MigrateKeycloakGroupIdentifiers ──────────────────────────────────────────
+
+// TC-MKGI-01: 조직마다 (Name -> OrganizationCode) 마이그레이션을 1회씩 호출한다
+func TestMigrateKeycloakGroupIdentifiers_CallsPerOrganization(t *testing.T) {
+	svc, db := newTestOrgService(t)
+	orgA := createOrg(t, db, "MKGI01-A", "operator-group", nil)
+	orgB := createOrg(t, db, "MKGI01-B", "billing-group", nil)
+	spy := &kcGroupIdentifierSpy{}
+	svc.kcService = spy
+
+	failures, err := svc.MigrateKeycloakGroupIdentifiers(context.Background())
+
+	require.NoError(t, err)
+	assert.Empty(t, failures)
+	require.Len(t, spy.migrateCalls, 2)
+	got := map[string]string{}
+	for _, c := range spy.migrateCalls {
+		got[c.OldName] = c.NewName
+	}
+	assert.Equal(t, orgA.OrganizationCode, got[orgA.Name])
+	assert.Equal(t, orgB.OrganizationCode, got[orgB.Name])
+}
+
+// TC-MKGI-02: 한 조직에서 실패해도 나머지는 계속 진행하고, 실패는 목록으로 보고한다
+func TestMigrateKeycloakGroupIdentifiers_ContinuesPastFailures(t *testing.T) {
+	svc, db := newTestOrgService(t)
+	orgA := createOrg(t, db, "MKGI02-A", "conflict-group", nil)
+	orgB := createOrg(t, db, "MKGI02-B", "clean-group", nil)
+	spy := &kcGroupIdentifierSpy{
+		migrateErrForOrg: map[string]error{orgA.Name: assert.AnError},
+	}
+	svc.kcService = spy
+
+	failures, err := svc.MigrateKeycloakGroupIdentifiers(context.Background())
+
+	require.NoError(t, err, "개별 조직 실패가 전체 호출을 에러로 만들면 안 된다")
+	require.Len(t, spy.migrateCalls, 2, "실패한 조직 이후에도 나머지 조직을 계속 처리해야 한다")
+	require.Len(t, failures, 1)
+	assert.Contains(t, failures[0], orgA.Name)
+
+	names := map[string]bool{}
+	for _, c := range spy.migrateCalls {
+		names[c.OldName] = true
+	}
+	assert.True(t, names[orgB.Name], "실패한 orgA 이후에도 orgB는 시도됐어야 한다")
 }
 
 // TC-AU-02: 정상 할당 후 매핑 확인
@@ -468,7 +559,7 @@ func TestAssignUserToOrganizations_Success(t *testing.T) {
 	org := createOrg(t, db, "01", "Dev", nil)
 	user := createOrgUser(t, db, "charlie", "kc-charlie-01")
 
-	err := svc.AssignUserToOrganizations(user.ID, []uint{org.ID})
+	err := svc.AssignUserToOrganizations(context.Background(), user.ID, []uint{org.ID})
 
 	require.NoError(t, err)
 
@@ -485,8 +576,8 @@ func TestAssignUserToOrganizations_Idempotent(t *testing.T) {
 	org := createOrg(t, db, "01", "Dev", nil)
 	user := createOrgUser(t, db, "diana", "kc-diana-01")
 
-	require.NoError(t, svc.AssignUserToOrganizations(user.ID, []uint{org.ID}))
-	require.NoError(t, svc.AssignUserToOrganizations(user.ID, []uint{org.ID}))
+	require.NoError(t, svc.AssignUserToOrganizations(context.Background(), user.ID, []uint{org.ID}))
+	require.NoError(t, svc.AssignUserToOrganizations(context.Background(), user.ID, []uint{org.ID}))
 
 	var count int64
 	db.Model(&model.UserOrganization{}).
@@ -501,7 +592,7 @@ func TestAssignUserToOrganizations_Idempotent(t *testing.T) {
 func TestRemoveUserFromOrganization_NotFound(t *testing.T) {
 	svc, _ := newTestOrgService(t)
 
-	err := svc.RemoveUserFromOrganization(1, 1)
+	err := svc.RemoveUserFromOrganization(context.Background(), 1, 1)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, repository.ErrUserOrganizationNotFound)
@@ -516,7 +607,7 @@ func TestRemoveUserFromOrganization_Success(t *testing.T) {
 		UserID: user.ID, OrganizationID: org.ID,
 	}).Error)
 
-	err := svc.RemoveUserFromOrganization(user.ID, org.ID)
+	err := svc.RemoveUserFromOrganization(context.Background(), user.ID, org.ID)
 
 	require.NoError(t, err)
 
@@ -539,7 +630,7 @@ func TestRemoveUserFromOrganization_Success(t *testing.T) {
 func TestReplaceUserGroups_GroupNotFound(t *testing.T) {
 	svc, _ := newTestOrgService(t)
 
-	err := svc.ReplaceUserGroups(1, []uint{99999})
+	err := svc.ReplaceUserGroups(context.Background(), 1, []uint{99999})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "group not found")
@@ -686,4 +777,67 @@ func TestGetOrganizationUsers_WithUsers(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Len(t, users, 2)
+}
+
+// --- 조직 시드 경로 해석 (MC_IAM_MANAGER_ORG) ---
+
+// TC-ROSP-01: filePath 인자가 있으면 환경변수보다 우선한다
+func TestResolveOrganizationSeedPath_ArgWins(t *testing.T) {
+	t.Setenv("MC_IAM_MANAGER_ORG", "/from/env/organizations.yaml")
+
+	got := resolveOrganizationSeedPath("/explicit/path.yaml")
+
+	assert.Equal(t, "/explicit/path.yaml", got)
+}
+
+// TC-ROSP-02: filePath가 비면 MC_IAM_MANAGER_ORG의 로컬 경로를 쓴다
+func TestResolveOrganizationSeedPath_EnvLocalPath(t *testing.T) {
+	seed := filepath.Join(t.TempDir(), "organizations.yaml")
+	require.NoError(t, os.WriteFile(seed, []byte("organizations: []\n"), 0o600))
+	t.Setenv("MC_IAM_MANAGER_ORG", seed)
+
+	got := resolveOrganizationSeedPath("")
+
+	assert.Equal(t, seed, got)
+}
+
+// TC-ROSP-03: 둘 다 없으면 번들된 asset 기본 경로로 폴백한다
+func TestResolveOrganizationSeedPath_FallbackToAsset(t *testing.T) {
+	t.Setenv("MC_IAM_MANAGER_ORG", "")
+
+	got := resolveOrganizationSeedPath("")
+
+	assert.True(t, strings.HasSuffix(filepath.ToSlash(got), "organization/organizations.yaml"),
+		"기본 경로여야 한다: %s", got)
+}
+
+// TC-ROSP-04: URL이 응답하지 않으면 기본 경로로 폴백한다 (다운로드 실패가 시드를 막지 않는다)
+func TestResolveOrganizationSeedPath_URLFailureFallsBack(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+	t.Setenv("MC_IAM_MANAGER_ORG", srv.URL+"/organizations.yaml")
+
+	got := resolveOrganizationSeedPath("")
+
+	assert.True(t, strings.HasSuffix(filepath.ToSlash(got), "organization/organizations.yaml"),
+		"다운로드 실패 시 기본 경로여야 한다: %s", got)
+}
+
+// TC-ROSP-05: URL이 정상이면 내려받은 임시 파일 경로를 쓴다
+func TestResolveOrganizationSeedPath_URLDownloaded(t *testing.T) {
+	body := "organizations:\n  - organization_code: \"01\"\n    name: \"Root\"\n"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	t.Setenv("MC_IAM_MANAGER_ORG", srv.URL+"/organizations.yaml")
+
+	got := resolveOrganizationSeedPath("")
+	defer os.Remove(got)
+
+	data, err := os.ReadFile(got)
+	require.NoError(t, err)
+	assert.Equal(t, body, string(data))
 }

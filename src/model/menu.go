@@ -16,6 +16,7 @@ type Menu struct {
 	ViewType         string `json:"viewType" yaml:"viewtype" gorm:"column:view_type;not null;default:local"`
 	FrameworkService string `json:"frameworkService" yaml:"frameworkservice" gorm:"column:framework_service;not null;default:mc-web-console-front"`
 	Path             string `json:"path" yaml:"path" gorm:"column:path;not null;default:''"`
+	Icon             string `json:"icon" yaml:"icon" gorm:"column:icon;not null;default:''"`
 	CreatedAt   time.Time `json:"-" yaml:"-" gorm:"column:created_at;autoCreateTime"` // GORM이 자동 처리
 	UpdatedAt   time.Time `json:"-" yaml:"-" gorm:"column:updated_at;autoUpdateTime"` // GORM이 자동 처리
 }

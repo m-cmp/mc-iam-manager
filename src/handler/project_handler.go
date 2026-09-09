@@ -125,7 +125,7 @@ func (h *ProjectHandler) ListProjects(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/projects/{id} [get]
+// @Router /api/projects/id/{projectId} [get]
 // @Id getProjectByID
 func (h *ProjectHandler) GetProjectByID(c echo.Context) error {
 	// Parse DB ID (uint) from path parameter
@@ -183,7 +183,7 @@ func (h *ProjectHandler) GetProjectByName(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/projects/{id} [put]
+// @Router /api/projects/id/{projectId} [put]
 // @Id updateProject
 func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 
@@ -229,7 +229,7 @@ func (h *ProjectHandler) UpdateProject(c echo.Context) error {
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security BearerAuth
-// @Router /api/projects/{id} [delete]
+// @Router /api/projects/id/{projectId} [delete]
 // @Id deleteProject
 func (h *ProjectHandler) DeleteProject(c echo.Context) error {
 
@@ -408,11 +408,6 @@ func (h *ProjectHandler) AddWorkspaceToProject(c echo.Context) error {
 		if err := h.workspaceService.AddProjectToWorkspace(workspaceIDInt, projectIDInt); err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 연결 실패: %v", err)})
 		}
-		// if err := h.projectService.AddWorkspaceAssociation(projectIDInt, workspaceIDInt); err != nil { // 프로젝트 ID는 배열이므로 반복문으로 처리
-		// if err.Error() == "project not found" || err.Error() == "workspace not found" {
-		// 	return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
-		// }
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("워크스페이스 연결 실패: %v", err)})
 	}
 	return c.NoContent(http.StatusNoContent)
 }

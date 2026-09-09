@@ -34,7 +34,7 @@ import (
 )
 
 // @title MC IAM Manager API
-// @version 1.0
+// @version 0.6.2
 // @description MC IAM Manager API Documentation
 // @host localhost
 // @BasePath /api/v1
@@ -79,6 +79,7 @@ func main() {
 		&model.Workspace{},
 		&model.Project{},
 		&model.Menu{},
+		&model.RoleMenuMapping{},
 		&model.ResourceType{},
 		&model.UserPlatformRole{},
 		&model.UserWorkspaceRole{},
@@ -92,6 +93,7 @@ func main() {
 		&mcmpapi.McmpApiService{},
 		&mcmpapi.McmpApiAction{},
 		&mcmpapi.McmpApiServiceMeta{},
+		&mcmpapi.McmpApiPermissionActionMapping{},
 		&model.MciamPermission{},
 		&model.MciamRoleMciamPermission{},
 		&model.Organization{},
@@ -147,8 +149,9 @@ func main() {
 	// Validator 설정
 	e.Validator = &CustomValidator{validator: validator.New()}
 
-	// 로그 레벨 설정
-	e.Debug = true
+	// 디버그 모드: MC_IAM_MANAGER_DEBUG=true 일 때만 에러 응답에 내부 에러 문자열 포함
+	e.Debug = config.DebugEnabled()
+	log.Printf("Echo debug mode: %v", e.Debug)
 
 	// 미들웨어 설정
 	e.Use(echomiddleware.LoggerWithConfig(echomiddleware.LoggerConfig{
@@ -232,12 +235,11 @@ func main() {
 		setup.POST("/sync-mcmp-apis", mcmpApiHandler.SyncMcmpAPIs)
 		setup.POST("/initial-menus", menuHandler.RegisterMenusFromYAML, middleware.PlatformAdminMiddleware)
 		setup.POST("/initial-menus2", menuHandler.RegisterMenusFromBody, middleware.PlatformAdminMiddleware)
-		// Deprecated: CSV 기반 시드 — 제거 예정. YAML API를 사용하세요.
-		setup.GET("/initial-role-menu-permission", adminHandler.InitializeMenuPermissions, middleware.PlatformAdminMiddleware)
 		setup.GET("/initial-role-menu-permission-yaml", adminHandler.InitializeMenuPermissionsFromYAML, middleware.PlatformAdminMiddleware)
 		setup.GET("/backup-role-permissions", adminHandler.BackupRolePermissions, middleware.PlatformAdminMiddleware)
 		setup.POST("/restore-role-permissions", adminHandler.RestoreRolePermissions, middleware.PlatformAdminMiddleware)
 		setup.POST("/initial-organizations", organizationHandler.SetupInitialOrganizations, middleware.PlatformAdminMiddleware)
+		setup.POST("/migrate-kc-group-identifiers", organizationHandler.MigrateKeycloakGroupIdentifiers, middleware.PlatformAdminMiddleware)
 	}
 
 	// 워크스페이스 라우트
@@ -438,7 +440,7 @@ func main() {
 	{
 		mciamPermissions.POST("/list", permissionHandler.ListMciamPermissions)
 		mciamPermissions.POST("", permissionHandler.CreateMciamPermission, middleware.PlatformRoleMiddleware(middleware.Write))
-		mciamPermissions.GET("/id/:permissionId", permissionHandler.GetMciamPermissionByID)
+		mciamPermissions.GET("/id/:id", permissionHandler.GetMciamPermissionByID)
 		mciamPermissions.PUT("/:id", permissionHandler.UpdateMciamPermission, middleware.PlatformRoleMiddleware(middleware.Write))
 		mciamPermissions.DELETE("/:id", permissionHandler.DeleteMciamPermission, middleware.PlatformRoleMiddleware(middleware.Write))
 	}
@@ -453,7 +455,7 @@ func main() {
 	{
 		mcmpApis.POST("/list", mcmpApiHandler.ListServicesAndActions, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApis.PUT("/name/:serviceName/versions/:version/activate", mcmpApiHandler.SetActiveVersion, middleware.PlatformRoleMiddleware(middleware.Manage))
-		mcmpApis.POST("/call", mcmpApiHandler.McmpApiCall, middleware.PlatformRoleMiddleware(middleware.Read))
+		mcmpApis.POST("/call", mcmpApiHandler.McmpApiCall) // IAM-TECH-003: 세밀 권한 제어를 핸들러 내부(authorizeMcmpApiAction)로 이동
 		mcmpApis.GET("/test/mc-infra-manager/getallns", mcmpApiHandler.TestCallGetAllNs, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApis.POST("", mcmpApiHandler.CreateFrameworkService, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApis.PUT("/name/:serviceName", mcmpApiHandler.UpdateFrameworkService, middleware.PlatformRoleMiddleware(middleware.Manage))
@@ -464,10 +466,10 @@ func main() {
 	mcmpApiPermissionActionMappings := mcmpApis.Group("/permission-action-mappings")
 	{
 		mcmpApiPermissionActionMappings.POST("/list", mcmpApiPermissionActionMappingHandler.ListPlatformActions, middleware.PlatformRoleMiddleware(middleware.Read))
-		mcmpApiPermissionActionMappings.GET("/id/:id", mcmpApiPermissionActionMappingHandler.GetPlatformActionsByPermissionID, middleware.PlatformRoleMiddleware(middleware.Read))
+		mcmpApiPermissionActionMappings.GET("/platforms/id/:permissionId/actions", mcmpApiPermissionActionMappingHandler.GetPlatformActionsByPermissionID, middleware.PlatformRoleMiddleware(middleware.Read))
 		mcmpApiPermissionActionMappings.POST("", mcmpApiPermissionActionMappingHandler.CreateMcmpApiPermissionActionMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
 
-		mcmpApiPermissionActionMappings.GET("/actions/list", mcmpApiPermissionActionMappingHandler.ListWorkspaceActionsByPermissionID, middleware.PlatformRoleMiddleware(middleware.Read))
+		mcmpApiPermissionActionMappings.GET("/workspaces/id/:permissionId/actions", mcmpApiPermissionActionMappingHandler.ListWorkspaceActionsByPermissionID, middleware.PlatformRoleMiddleware(middleware.Read))
 		mcmpApiPermissionActionMappings.GET("/actions/:actionId/permissions", mcmpApiPermissionActionMappingHandler.ListPermissionsByActionID, middleware.PlatformRoleMiddleware(middleware.Read))
 		mcmpApiPermissionActionMappings.PUT("/permissions/:permissionId/actions/:actionId", mcmpApiPermissionActionMappingHandler.UpdateMapping, middleware.PlatformRoleMiddleware(middleware.Manage))
 		mcmpApiPermissionActionMappings.DELETE("/permissions/:permissionId/actions/:actionId", mcmpApiPermissionActionMappingHandler.DeleteMapping, middleware.PlatformRoleMiddleware(middleware.Manage))

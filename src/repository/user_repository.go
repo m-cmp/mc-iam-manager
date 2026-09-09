@@ -30,10 +30,6 @@ func (r *UserRepository) DB() *gorm.DB {
 
 // NewUserRepository creates a new UserRepository.
 func NewUserRepository(db *gorm.DB) *UserRepository {
-	// Auto Migrate the schema
-	if err := db.AutoMigrate(&model.User{}); err != nil {
-		log.Printf("Failed to migrate user table: %v", err)
-	}
 	return &UserRepository{db: db}
 }
 
@@ -227,6 +223,45 @@ func (r *UserRepository) FindUserRoleInWorkspace(userID, workspaceID uint) (*mod
 		return nil, fmt.Errorf("error finding user role in workspace: %w", err)
 	}
 	return &userWorkspaceRole, nil
+}
+
+// FindEffectiveUserRoleInWorkspace 사용자의 워크스페이스 유효 역할 단건 조회 (직접 우선, 없으면 그룹 상속).
+// 직접 배정이 있으면 그것을 쓰고, 없으면 소속 그룹의 워크스페이스 역할을 본다(P1-3/OPEN-016: 자동 부여 +
+// Union+dedup 직접 우선 결정). 여러 그룹이 같은 워크스페이스에 서로 다른 역할을 부여하는 경우(다중 매핑
+// 선택 규칙은 P4-3 미결)는 role_id 오름차순 첫 값으로 결정적으로 선택한다. 아무 역할도 없으면 (nil, nil).
+func (r *UserRepository) FindEffectiveUserRoleInWorkspace(userID, workspaceID uint) (*model.EffectiveWorkspaceRole, error) {
+	var direct model.EffectiveWorkspaceRole
+	err := r.db.Raw(`
+		SELECT uwr.workspace_id, w.name AS workspace_name, uwr.role_id, rm.name AS role_name
+		FROM mcmp_user_workspace_roles uwr
+		JOIN mcmp_workspaces w ON w.id = uwr.workspace_id
+		JOIN mcmp_role_masters rm ON rm.id = uwr.role_id
+		WHERE uwr.user_id = ? AND uwr.workspace_id = ?
+	`, userID, workspaceID).Scan(&direct).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding direct workspace role for user %d in workspace %d: %w", userID, workspaceID, err)
+	}
+	if direct.RoleID != 0 {
+		return &direct, nil
+	}
+
+	var groupRoles []model.EffectiveWorkspaceRole
+	err = r.db.Raw(`
+		SELECT DISTINCT gwr.workspace_id, w.name AS workspace_name, gwr.role_id, rm.name AS role_name
+		FROM mcmp_group_workspace_roles gwr
+		JOIN mcmp_user_organizations uo ON uo.organization_id = gwr.group_id
+		JOIN mcmp_workspaces w ON w.id = gwr.workspace_id
+		JOIN mcmp_role_masters rm ON rm.id = gwr.role_id
+		WHERE uo.user_id = ? AND gwr.workspace_id = ?
+		ORDER BY gwr.role_id ASC
+	`, userID, workspaceID).Scan(&groupRoles).Error
+	if err != nil {
+		return nil, fmt.Errorf("error finding group-inherited workspace role for user %d in workspace %d: %w", userID, workspaceID, err)
+	}
+	if len(groupRoles) == 0 {
+		return nil, nil
+	}
+	return &groupRoles[0], nil
 }
 
 // CreateUserWorkspaceRole 사용자를 워크스페이스에 추가

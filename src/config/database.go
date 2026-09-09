@@ -45,14 +45,12 @@ func NewDatabaseConfig() *DatabaseConfig {
 // GetDSN 데이터베이스 연결 문자열 반환
 func (c *DatabaseConfig) GetDSN() string {
 	if dsn := os.Getenv("MC_IAM_MANAGER_DATABASE_URL"); dsn != "" {
-		log.Printf("Using MC_IAM_MANAGER_DATABASE_URL: %s", dsn)
+		log.Printf("Using MC_IAM_MANAGER_DATABASE_URL (set)")
 		return dsn
 	}
-	
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+
+	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		c.Host, c.Port, c.User, c.Password, c.DBName, c.SSLMode)
-	log.Printf("Generated DSN: %s", dsn)
-	return dsn
 }
 
 func InitDB() (*sql.DB, error) {

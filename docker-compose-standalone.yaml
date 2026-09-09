@@ -1,0 +1,358 @@
+# mc-iam-manager standalone installer용 compose 파일.
+# docker-compose.yaml에서 mc-web-console 관련 서비스/네트워크를 제외한 최소 구성.
+# mc-web-console을 포함한 전체 스택이 필요하면 docker-compose.yaml을 사용할 것.
+
+x-default-health-check: &default-health-check
+  interval: ${HEALTH_CHECK_INTERVAL:-1m}
+  timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
+  retries: ${HEALTH_CHECK_RETRIES:-3}
+  start_period: ${HEALTH_CHECK_START_PERIOD:-60s}
+
+networks:
+  mc-infra-connector-network:
+  mc-infra-manager-network:
+  mc-iam-manager-network:
+
+services:
+  ##### MC-INFRA-CONNECTOR #########################################################################################################################
+
+  mc-infra-connector:
+    image: cloudbaristaorg/cb-spider:0.12.18
+    pull_policy: if_not_present
+    container_name: mc-infra-connector
+    restart: unless-stopped
+    networks:
+      - mc-infra-connector-network
+    ports:
+      - target: 1024
+        published: ${MC_INFRA_CONNECTOR_PORT}
+        protocol: tcp
+    volumes:
+      - ./conf/mc-infra-connector/:/root/go/src/github.com/cloud-barista/cb-spider/conf/:ro
+      - ./container-volume/mc-infra-connector/meta_db/:/root/go/src/github.com/cloud-barista/cb-spider/meta_db/
+      - ./container-volume/mc-infra-connector/log/:/root/go/src/github.com/cloud-barista/cb-spider/log/
+    environment:
+      - PLUGIN_SW=OFF
+      - SERVER_ADDRESS=0.0.0.0:1024
+      - SPIDER_USERNAME=${MC_INFRA_CONNECTOR_API_USERNAME:-spider}
+      - SPIDER_PASSWORD=${MC_INFRA_CONNECTOR_API_PASSWORD:-spider}
+      - SPIDER_LOG_LEVEL=${MC_INFRA_CONNECTOR_LOG_LEVEL:-error}
+      - SPIDER_HISCALL_LOG_LEVEL=${MC_INFRA_CONNECTOR_HISCALL_LOG_LEVEL:-error}
+      - ID_TRANSFORM_MODE=OFF
+      - ADMINWEB=ON
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f -s http://localhost:1024/spider/readyz || exit 1"]
+      <<: *default-health-check
+
+  ##### MC-INFRA-MANAGER #########################################################################################################################
+
+  mc-infra-manager:
+    image: cloudbaristaorg/cb-tumblebug:0.12.9
+    container_name: mc-infra-manager
+    pull_policy: if_not_present
+    restart: unless-stopped
+    networks:
+      - mc-infra-connector-network
+      - mc-infra-manager-network
+    ports:
+      - target: 1323
+        published: ${MC_INFRA_MANAGER_PORT}
+        protocol: tcp
+    depends_on:
+      mc-infra-manager-etcd:
+        condition: service_started
+      mc-infra-connector:
+        condition: service_started
+      mc-infra-manager-postgres:
+        condition: service_healthy
+      mc-infra-manager-openbao:
+        condition: service_healthy
+    volumes:
+      - ./conf/mc-infra-manager/:/app/conf/:ro
+      - ./container-volume/mc-infra-manager/meta_db/:/app/meta_db/
+      - ./container-volume/mc-infra-manager/log/:/app/log/
+    environment:
+      - TB_SPIDER_REST_URL=${MC_INFRA_CONNECTOR_REST_URL:-http://mc-infra-connector:1024/spider}
+      - TB_SPIDER_USERNAME=${MC_INFRA_CONNECTOR_API_USERNAME:-spider}
+      - TB_SPIDER_PASSWORD=${MC_INFRA_CONNECTOR_API_PASSWORD:-spider}
+      - TB_ETCD_ENDPOINTS=http://mc-infra-manager-etcd:2379
+      - TB_TERRARIUM_REST_URL=http://mc-terrarium:8055/terrarium
+      - TB_TERRARIUM_API_USERNAME=${MC_INFRA_MANAGER_TERRARIUM_API_USERNAME:-}
+      - TB_TERRARIUM_API_PASSWORD=${MC_INFRA_MANAGER_TERRARIUM_API_PASSWORD:-}
+      - TB_IAM_MANAGER_REST_URL=http://mc-iam-manager:${MC_IAM_MANAGER_PORT}
+      - TB_POSTGRES_ENDPOINT=mc-infra-manager-postgres:5432
+      - TB_POSTGRES_DATABASE=${MC_INFRA_MANAGER_POSTGRES_DB:-tumblebug}
+      - TB_POSTGRES_USER=${MC_INFRA_MANAGER_POSTGRES_USER:-tumblebug}
+      - TB_POSTGRES_PASSWORD=${MC_INFRA_MANAGER_POSTGRES_PASSWORD:-tumblebug}
+      - TB_AUTH_ENABLED=true
+      - TB_AUTH_MODE=basic
+      - TB_API_USERNAME=${MC_INFRA_MANAGER_API_USERNAME:-spider}
+      - TB_API_PASSWORD=${MC_INFRA_MANAGER_API_PASSWORD:-spider}
+      - VAULT_ADDR=http://mc-infra-manager-openbao:${MC_INFRA_MANAGER_OPENBAO_PORT}
+      - VAULT_TOKEN=${MC_INFRA_MANAGER_OPENBAO_VAULT_TOKEN:-dev-only-token}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:1323/tumblebug/readyz || exit 1"]
+      <<: *default-health-check
+
+  mc-infra-manager-etcd:
+    image: gcr.io/etcd-development/etcd:v3.5.21
+    container_name: mc-infra-manager-etcd
+    restart: unless-stopped
+    networks:
+      - mc-infra-manager-network
+    ports:
+      - target: 2379
+        published: ${MC_INFRA_MANAGER_ETCD_PORT}
+        protocol: tcp
+      - target: 2380
+        published: ${MC_INFRA_MANAGER_ETCD_PEER_PORT}
+        protocol: tcp
+    volumes:
+      - ./container-volume/mc-infra-manager/etcd/data:/etcd-data
+    entrypoint: /usr/local/bin/etcd
+    command:
+      - --name
+      - s1
+      - --data-dir
+      - /etcd-data
+      - --listen-client-urls
+      - http://0.0.0.0:2379
+      - --advertise-client-urls
+      - http://0.0.0.0:2379
+      - --listen-peer-urls
+      - http://0.0.0.0:2380
+      - --initial-advertise-peer-urls
+      - http://0.0.0.0:2380
+      - --initial-cluster
+      - s1=http://0.0.0.0:2380
+      - --initial-cluster-token
+      - tkn
+      - --initial-cluster-state
+      - new
+      - --log-level
+      - info
+      - --logger
+      - zap
+      - --log-outputs
+      - stderr
+      - --auth-token
+      - simple
+    healthcheck:
+      test: [ "CMD", "etcdctl", "endpoint", "health", "--endpoints=http://localhost:2379" ]
+      <<: *default-health-check
+
+  # mc-infra-manager PostgreSQL
+  # This is used for storing CB-Tumblebug Spec and Image.
+  mc-infra-manager-postgres:
+    image: postgres:16-alpine
+    container_name: mc-infra-manager-postgres
+    restart: always
+    networks:
+      - mc-infra-manager-network
+      # # Enable external network for outbound access (not ideal for security)
+      # - external_network
+    ports:
+      - ${MC_INFRA_MANAGER_POSTGRES_HOST_PORT:-6432}:5432
+    volumes:
+      - ./container-volume/mc-infra-manager/meta_db/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${MC_INFRA_MANAGER_POSTGRES_USER:-tumblebug}
+      - POSTGRES_PASSWORD=${MC_INFRA_MANAGER_POSTGRES_PASSWORD:-tumblebug}
+      - POSTGRES_DB=${MC_INFRA_MANAGER_POSTGRES_DB:-tumblebug}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${MC_INFRA_MANAGER_POSTGRES_USER:-tumblebug}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mc-infra-manager-openbao:
+    image: openbao/openbao:2.5.1
+    container_name: mc-infra-manager-openbao
+    restart: unless-stopped
+    networks:
+      - mc-infra-manager-network
+    ports:
+      - target: ${MC_INFRA_MANAGER_OPENBAO_PORT}
+        published: ${MC_INFRA_MANAGER_OPENBAO_PORT}
+        protocol: tcp
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - BAO_ADDR=http://127.0.0.1:${MC_INFRA_MANAGER_OPENBAO_PORT}
+      - BAO_PORT=${MC_INFRA_MANAGER_OPENBAO_PORT}
+      - SKIP_SETCAP=true
+      - MC_INFRA_MANAGER_OPENBAO_VAULT_TOKEN=${MC_INFRA_MANAGER_OPENBAO_VAULT_TOKEN:-dev-only-token}
+    volumes:
+      - ./conf/mc-infra-manager/openbao-config.hcl:/openbao/config/config.hcl:ro
+      - ./conf/mc-infra-manager/openbao-entrypoint.sh:/openbao/entrypoint.sh:ro
+      - ./container-volume/openbao-data:/openbao/data
+    entrypoint: ["/bin/sh", "/openbao/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "bao", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  ##### MC-IAM-MANAGER #########################################################################################################################
+
+  mc-iam-manager:
+    #container_name: mc-iam-manager
+    # Image configuration:
+    # - For production: uses pre-built docker image (cloudbaristaorg/mc-iam-manager:edge)
+    # - For development: uses local Dockerfile.mciammanager
+    build:
+      context: .
+      dockerfile: Dockerfile.mciammanager
+    image: cloudbaristaorg/mc-iam-manager:edge
+    pull_policy: if_not_present
+    platform: linux/amd64
+    restart: unless-stopped
+    networks:
+      - mc-iam-manager-network
+      - mc-infra-manager-network
+    ports:
+      - target: ${MC_IAM_MANAGER_PORT}
+        published: ${MC_IAM_MANAGER_PORT}
+        protocol: tcp
+    depends_on:
+      mc-iam-manager-db:
+        condition: service_healthy
+      mc-iam-manager-kc:
+        condition: service_healthy
+      mc-infra-manager:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${MC_IAM_MANAGER_DATABASE_USER}:${MC_IAM_MANAGER_DATABASE_PASSWORD}@${MC_IAM_MANAGER_DATABASE_HOST}:5432/${MC_IAM_MANAGER_DATABASE_NAME}
+      PORT: ${MC_IAM_MANAGER_PORT}
+    # Environment file configuration:
+    # - For mc-iam-manager: uses project root .env file
+    # - For mc-admin-cli: uses ./conf/mc-iam-manager/.env file
+    # - For other services: uses ./conf/mc-iam-manager/.env file
+    env_file:
+      - ./.env
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:${MC_IAM_MANAGER_PORT:-5000}/readyz || exit 1"]
+      <<: *default-health-check
+
+  mc-iam-manager-db:
+    container_name: mc-iam-manager-db
+    image: postgres:14-alpine
+    pull_policy: if_not_present
+    platform: linux/amd64
+    restart: unless-stopped
+    networks:
+      - mc-iam-manager-network
+    ports:
+      - target: 5432
+        published: ${MC_IAM_MANAGER_DB_HOST_PORT:-15432}
+        protocol: tcp
+    volumes:
+      - ./container-volume/mc-iam-manager/postgres/postgres_data:/var/lib/postgresql/data
+      - ./conf/mc-iam-manager/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    environment:
+      POSTGRES_DB: ${MC_IAM_MANAGER_DATABASE_NAME}
+      POSTGRES_USER: ${MC_IAM_MANAGER_DATABASE_USER}
+      POSTGRES_PASSWORD: ${MC_IAM_MANAGER_DATABASE_PASSWORD}
+    # Environment file configuration:
+    # - For mc-iam-manager: uses project root .env file
+    # - For mc-admin-cli: uses ./conf/mc-iam-manager/.env file
+    # - For other services: uses ./conf/mc-iam-manager/.env file
+    env_file:
+      - ./.env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${MC_IAM_MANAGER_DATABASE_USER} -d ${MC_IAM_MANAGER_DATABASE_NAME}" ]
+      <<: *default-health-check
+    command: >
+      sh -c "chown -R 70:70 /var/lib/postgresql/data &&
+            exec docker-entrypoint.sh postgres"
+
+  mc-iam-manager-kc:
+    container_name: mc-iam-manager-kc
+    image: quay.io/keycloak/keycloak:24.0.1
+    restart: unless-stopped
+    networks:
+      - mc-iam-manager-network
+    ports:
+      - target: 8080
+        published: ${MC_IAM_MANAGER_KEYCLOAK_PORT}
+        protocol: tcp
+    command:
+      - start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://mc-iam-manager-db:5432/${MC_IAM_MANAGER_KEYCLOAK_DATABASE_NAME}
+      KC_DB_USERNAME: ${MC_IAM_MANAGER_DATABASE_USER}
+      KC_DB_PASSWORD: ${MC_IAM_MANAGER_DATABASE_PASSWORD}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HOSTNAME_URL: ${MC_IAM_MANAGER_PUBLIC_HOST}/auth
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_PROXY_HEADERS: xforwarded
+      KC_FEATURES: token-exchange,admin-fine-grained-authz
+      KEYCLOAK_ADMIN: ${MC_IAM_MANAGER_KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD:-admin_password}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: edge
+    volumes:
+      - ./container-volume/mc-iam-manager/keycloak/data/:/opt/keycloak/data/
+    # Environment file configuration:
+    # - For mc-iam-manager: uses project root .env file
+    # - For mc-admin-cli: uses ./conf/mc-iam-manager/.env file
+    # - For other services: uses ./conf/mc-iam-manager/.env file
+    env_file:
+      - ./.env
+    depends_on:
+      - mc-iam-manager-db
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080 && echo -e \"GET /auth/ HTTP/1.0\\r\\n\\r\\n\" >&3 && head -1 <&3 | grep -qE \"200|302\"'"]
+      <<: *default-health-check
+
+  mc-iam-manager-nginx:
+    image: nginx:1.25-alpine
+    container_name: mc-iam-manager-nginx
+    ports:
+      - "${MC_IAM_MANAGER_NGINX_HTTP_PORT}:80"
+      - "${MC_IAM_MANAGER_NGINX_HTTPS_PORT}:443"
+    environment:
+      - DOMAIN_NAME=${MC_IAM_MANAGER_PUBLIC_DOMAIN}
+    volumes:
+      - ./container-volume/mc-iam-manager/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./container-volume/mc-iam-manager/certs:/etc/nginx/certs:ro
+      - ./container-volume/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - mc-iam-manager-kc
+    networks:
+      - mc-iam-manager-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/nginx-health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  mc-iam-manager-post-initial:
+    image: ubuntu:22.04
+    container_name: mc-iam-manager-post-initial
+    # restart: unless-stopped
+    networks:
+      - mc-iam-manager-network
+    depends_on:
+      mc-iam-manager:
+        condition: service_started
+      mc-iam-manager-db:
+        condition: service_healthy
+      mc-iam-manager-kc:
+        condition: service_healthy
+    # Environment file configuration:
+    # - For mc-iam-manager: uses project root .env file
+    # - For mc-admin-cli: uses ./conf/mc-iam-manager/.env file
+    # - For other services: uses ./conf/mc-iam-manager/.env file
+    env_file:
+      - ./.env
+    volumes:
+      - ./conf/mc-iam-manager/:/app/mc-iam-manager/
+    working_dir: /app/mc-iam-manager
+    command: bash /app/mc-iam-manager/docker-post-init.sh

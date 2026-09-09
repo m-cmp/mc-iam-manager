@@ -14,6 +14,7 @@ import (
 type RoleService struct {
 	db             *gorm.DB
 	roleRepository *repository.RoleRepository
+	menuRepository *repository.MenuRepository
 }
 
 // NewRoleService 새 RoleService 인스턴스 생성
@@ -21,6 +22,7 @@ func NewRoleService(db *gorm.DB) *RoleService {
 	return &RoleService{
 		db:             db,
 		roleRepository: repository.NewRoleRepository(db),
+		menuRepository: repository.NewMenuRepository(db),
 	}
 }
 
@@ -159,30 +161,82 @@ func (s *RoleService) DeleteRoleMaster(roleID uint) error {
 	return s.roleRepository.DeleteRoleMaster(roleID)
 }
 
-// DeleteRoleWithSubsAndMappings 역할과 관련된 모든 데이터를 트랜잭션으로 삭제
-func (s *RoleService) DeleteRoleWithSubsAndMappings(roleID uint) error {
+// containsRoleType roleTypes에 target이 포함되어 있는지 확인
+func containsRoleType(roleTypes []constants.IAMRoleType, target constants.IAMRoleType) bool {
+	for _, rt := range roleTypes {
+		if rt == target {
+			return true
+		}
+	}
+	return false
+}
+
+// DeleteRoleWithSubsAndMappings roleTypes에 해당하는 역할 서브(들)과 그 매핑(메뉴, CSP)을
+// 하나의 트랜잭션으로 삭제한다. role_master는 하나의 역할이 여러 role_sub(platform/workspace/csp)를
+// 동시에 가질 수 있으므로, 이 삭제로 인해 더 이상 남은 role_sub이 없을 때만 함께 삭제한다.
+// 중간에 실패하면(예: 여전히 배정 중인 역할이라 FK 위반) 전체 롤백되어 부분삭제를 방지한다.
+func (s *RoleService) DeleteRoleWithSubsAndMappings(roleID uint, roleTypes []constants.IAMRoleType) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		// 1. 역할 서브 타입들 삭제
-		if err := s.roleRepository.DeleteRoleSubsWithTx(tx, roleID, []constants.IAMRoleType{
-			constants.RoleTypePlatform,
-			constants.RoleTypeWorkspace,
-			constants.RoleTypeCSP,
-		}); err != nil {
+		// 1. 역할-메뉴 매핑 삭제 (platform 서브를 지우는 경우만, 없으면 매칭 0건 no-op)
+		if containsRoleType(roleTypes, constants.RoleTypePlatform) {
+			if err := s.menuRepository.DeleteRoleMenuMappingsByRoleIDWithTx(tx, roleID); err != nil {
+				return fmt.Errorf("역할 메뉴 매핑 삭제 실패: %w", err)
+			}
+		}
+
+		// 2. CSP 역할 매핑 삭제 (csp 서브를 지우는 경우만, 없으면 매칭 0건 no-op)
+		if containsRoleType(roleTypes, constants.RoleTypeCSP) {
+			if err := s.roleRepository.DeleteRoleCspRoleMappingsWithTx(tx, roleID); err != nil {
+				return fmt.Errorf("CSP 역할 매핑 삭제 실패: %w", err)
+			}
+		}
+
+		// 3. 요청된 역할 서브 타입(들)만 삭제
+		if err := s.roleRepository.DeleteRoleSubsWithTx(tx, roleID, roleTypes); err != nil {
 			return fmt.Errorf("역할 서브 타입 삭제 실패: %w", err)
 		}
 
-		// 2. CSP 역할 매핑 삭제
-		if err := s.roleRepository.DeleteRoleCspRoleMappings(roleID); err != nil {
-			return fmt.Errorf("CSP 역할 매핑 삭제 실패: %w", err)
+		// 4. 이 role_id에 남은 role_sub이 하나도 없을 때만 role_master도 삭제
+		var remaining int64
+		if err := tx.Model(&model.RoleSub{}).Where("role_id = ?", roleID).Count(&remaining).Error; err != nil {
+			return fmt.Errorf("남은 역할 서브 확인 실패: %w", err)
 		}
-
-		// 3. 역할 마스터 삭제
-		if err := tx.Delete(&model.RoleMaster{}, roleID).Error; err != nil {
-			return fmt.Errorf("역할 마스터 삭제 실패: %w", err)
+		if remaining == 0 {
+			if err := tx.Delete(&model.RoleMaster{}, roleID).Error; err != nil {
+				return fmt.Errorf("역할 마스터 삭제 실패: %w", err)
+			}
 		}
 
 		return nil
 	})
+}
+
+// IsRoleAssignedToUsers 해당 역할이 roleTypes 중 platform 또는 workspace 타입으로
+// 사용자에게 배정되어 있는지 확인한다. roleTypes에 없는 타입은 확인하지 않는다 —
+// 예를 들어 platform 서브만 지우는 요청이라면, 같은 role_id의 workspace 배정 여부는
+// 이 삭제와 무관하므로 확인 대상이 아니다.
+func (s *RoleService) IsRoleAssignedToUsers(roleID uint, roleTypes []constants.IAMRoleType) (bool, error) {
+	if containsRoleType(roleTypes, constants.RoleTypePlatform) {
+		platformAssigned, err := s.roleRepository.ExistsUserPlatformRoleByRoleID(roleID)
+		if err != nil {
+			return false, err
+		}
+		if platformAssigned {
+			return true, nil
+		}
+	}
+
+	if containsRoleType(roleTypes, constants.RoleTypeWorkspace) {
+		workspaceAssigned, err := s.roleRepository.ExistsUserWorkspaceRoleByRoleID(roleID)
+		if err != nil {
+			return false, err
+		}
+		if workspaceAssigned {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // AssignPlatformRole 플랫폼 역할 할당

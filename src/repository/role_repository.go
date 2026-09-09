@@ -242,6 +242,24 @@ func (r *RoleRepository) DeleteRoleMaster(roleID uint) error {
 	return r.db.Delete(&model.RoleMaster{}, roleID).Error
 }
 
+// ExistsUserPlatformRoleByRoleID 해당 역할이 플랫폼 역할로 사용자에게 배정되어 있는지 확인
+func (r *RoleRepository) ExistsUserPlatformRoleByRoleID(roleID uint) (bool, error) {
+	var count int64
+	if err := r.db.Model(&model.UserPlatformRole{}).Where("role_id = ?", roleID).Count(&count).Error; err != nil {
+		return false, fmt.Errorf("사용자 플랫폼 역할 배정 확인 실패: %w", err)
+	}
+	return count > 0, nil
+}
+
+// ExistsUserWorkspaceRoleByRoleID 해당 역할이 워크스페이스 역할로 사용자에게 배정되어 있는지 확인
+func (r *RoleRepository) ExistsUserWorkspaceRoleByRoleID(roleID uint) (bool, error) {
+	var count int64
+	if err := r.db.Model(&model.UserWorkspaceRole{}).Where("role_id = ?", roleID).Count(&count).Error; err != nil {
+		return false, fmt.Errorf("사용자 워크스페이스 역할 배정 확인 실패: %w", err)
+	}
+	return count > 0, nil
+}
+
 // UpdateRoleWithSubs 역할과 역할 서브 타입들을 함께 수정
 func (r *RoleRepository) UpdateRoleWithSubs(role model.RoleMaster, roleTypes []constants.IAMRoleType) (*model.RoleMaster, error) {
 	var updatedRole *model.RoleMaster
@@ -413,6 +431,12 @@ func (r *RoleRepository) DeleteRoleCspRoleMapping(roleID uint, cspRoleID uint, a
 // DeleteRoleCspRoleMappings 해당 Role 과 매핑된 모든 csp 역할 매핑 삭제 ( csp 역할을 삭제하는 것은 아님)
 func (r *RoleRepository) DeleteRoleCspRoleMappings(roleID uint) error {
 	return r.db.Where("role_id = ?", roleID).
+		Delete(&model.RoleMasterCspRoleMapping{}).Error
+}
+
+// DeleteRoleCspRoleMappingsWithTx 트랜잭션 내에서 해당 Role 과 매핑된 모든 csp 역할 매핑 삭제
+func (r *RoleRepository) DeleteRoleCspRoleMappingsWithTx(tx *gorm.DB, roleID uint) error {
+	return tx.Where("role_id = ?", roleID).
 		Delete(&model.RoleMasterCspRoleMapping{}).Error
 }
 
@@ -793,9 +817,12 @@ func (r *RoleRepository) FindCspRoleByName(cspRoleName string) (*model.CspRole, 
 	var cspRole *model.CspRole
 	err := r.db.Where("name = ?", cspRoleName).First(&cspRole).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
 		return nil, err
 	}
-	return cspRole, err
+	return cspRole, nil
 }
 
 // FindRoleSubByRoleIDAndType 역할 ID와 타입으로 RoleSub 조회

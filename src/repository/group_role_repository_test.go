@@ -3,6 +3,7 @@ package repository
 import (
 	"testing"
 
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,6 +20,7 @@ func setupGroupRoleTestDB(t *testing.T) *gorm.DB {
 		&model.Organization{},
 		&model.Workspace{},
 		&model.RoleMaster{},
+		&model.RoleSub{},
 		&model.GroupPlatformRole{},
 		&model.GroupWorkspaceRole{},
 	)
@@ -44,6 +46,13 @@ func seedRoleMaster(t *testing.T, db *gorm.DB, name string) *model.RoleMaster {
 	t.Helper()
 	role := &model.RoleMaster{Name: name}
 	require.NoError(t, db.Create(role).Error)
+	return role
+}
+
+func seedRoleMasterWithType(t *testing.T, db *gorm.DB, name string, roleType constants.IAMRoleType) *model.RoleMaster {
+	t.Helper()
+	role := seedRoleMaster(t, db, name)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: role.ID, RoleType: roleType}).Error)
 	return role
 }
 
@@ -234,4 +243,56 @@ func TestGroupRoleRepository_FindGroupsByWorkspaceRoleID_Empty(t *testing.T) {
 	results, err := repo.FindGroupsByWorkspaceRoleID(9999)
 	assert.NoError(t, err)
 	assert.Len(t, results, 0)
+}
+
+// --- FindAvailablePlatformRoles — IAM-BUG-027 회귀 테스트 ---
+//
+// role_type은 mcmp_role_masters 컬럼이 아니라 mcmp_role_subs 컬럼이다. 직접
+// 참조("role_type = 'platform'")는 실 DB(Postgres)에서 42703(column not
+// exist)로 항상 실패했다 — mcmp_role_subs 조인으로 고친 뒤에도 여전히
+// "platform 타입만, 미배정만" 필터링이 맞는지 확인한다.
+
+// TC-GR-FAPR-01: workspace 전용 역할은 제외하고 platform 역할만 반환
+func TestGroupRoleRepository_FindAvailablePlatformRoles_FiltersByRoleType(t *testing.T) {
+	db := setupGroupRoleTestDB(t)
+	repo := NewGroupRoleRepository(db)
+	org := seedOrganization(t, db, "test-org-fapr01", "FAPR01")
+
+	platformRole := seedRoleMasterWithType(t, db, "platform-role-fapr01", constants.RoleTypePlatform)
+	seedRoleMasterWithType(t, db, "workspace-only-role-fapr01", constants.RoleTypeWorkspace)
+
+	roles, err := repo.FindAvailablePlatformRoles(org.ID)
+
+	require.NoError(t, err)
+	require.Len(t, roles, 1)
+	assert.Equal(t, platformRole.ID, roles[0].ID)
+}
+
+// TC-GR-FAPR-02: 이미 그룹에 배정된 platform 역할은 제외
+func TestGroupRoleRepository_FindAvailablePlatformRoles_ExcludesAlreadyAssigned(t *testing.T) {
+	db := setupGroupRoleTestDB(t)
+	repo := NewGroupRoleRepository(db)
+	org := seedOrganization(t, db, "test-org-fapr02", "FAPR02")
+
+	assignedRole := seedRoleMasterWithType(t, db, "assigned-role-fapr02", constants.RoleTypePlatform)
+	unassignedRole := seedRoleMasterWithType(t, db, "unassigned-role-fapr02", constants.RoleTypePlatform)
+	require.NoError(t, repo.CreateGroupPlatformRole(org.ID, assignedRole.ID))
+
+	roles, err := repo.FindAvailablePlatformRoles(org.ID)
+
+	require.NoError(t, err)
+	require.Len(t, roles, 1)
+	assert.Equal(t, unassignedRole.ID, roles[0].ID)
+}
+
+// TC-GR-FAPR-03: platform 역할이 하나도 없으면 빈 슬라이스
+func TestGroupRoleRepository_FindAvailablePlatformRoles_Empty(t *testing.T) {
+	db := setupGroupRoleTestDB(t)
+	repo := NewGroupRoleRepository(db)
+	org := seedOrganization(t, db, "test-org-fapr03", "FAPR03")
+
+	roles, err := repo.FindAvailablePlatformRoles(org.ID)
+
+	require.NoError(t, err)
+	assert.Len(t, roles, 0)
 }

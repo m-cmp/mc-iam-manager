@@ -145,6 +145,94 @@ func TestDeleteCspRoleMaster_NotFound_Returns404(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
 
+// TC-IAM-BUG-035-07: csp sub가 이 역할의 유일한 sub일 때 DeleteCspRoleMaster로 지우면
+// role_master도 함께(고아로 남지 않고) 삭제되어야 한다.
+func TestDeleteCspRoleMaster_LastSub_AlsoDeletesRoleMaster(t *testing.T) {
+	db := setupCspRoleMasterTestDB(t)
+	h := NewRoleHandler(db)
+
+	role := &model.RoleMaster{Name: "tc-iam-bug-035-csp-only"}
+	require.NoError(t, db.Create(role).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: role.ID, RoleType: constants.RoleTypeCSP}).Error)
+
+	e := newTestValidatorEcho()
+	req := httptest.NewRequest(http.MethodDelete, "/api/roles/csp-roles/master/id/"+uintToStr(role.ID), nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("roleId")
+	c.SetParamValues(uintToStr(role.ID))
+
+	require.NoError(t, h.DeleteCspRoleMaster(c))
+	require.Equal(t, http.StatusNoContent, rec.Code)
+
+	var masterCount int64
+	require.NoError(t, db.Model(&model.RoleMaster{}).Where("id = ?", role.ID).Count(&masterCount).Error)
+	assert.Zero(t, masterCount, "마지막 남은 sub을 지웠으므로 role_master도 함께 삭제되어야 한다")
+}
+
+// TC-IAM-BUG-035-08: csp sub 외에 platform sub이 남아 있으면 DeleteCspRoleMaster는 csp
+// sub만 지우고 role_master와 다른 sub은 그대로 유지해야 한다.
+func TestDeleteCspRoleMaster_OtherSubsRemain_KeepsRoleMaster(t *testing.T) {
+	db := setupCspRoleMasterTestDB(t)
+	h := NewRoleHandler(db)
+
+	role := &model.RoleMaster{Name: "tc-iam-bug-035-csp-and-platform"}
+	require.NoError(t, db.Create(role).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: role.ID, RoleType: constants.RoleTypeCSP}).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: role.ID, RoleType: constants.RoleTypePlatform}).Error)
+
+	e := newTestValidatorEcho()
+	req := httptest.NewRequest(http.MethodDelete, "/api/roles/csp-roles/master/id/"+uintToStr(role.ID), nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("roleId")
+	c.SetParamValues(uintToStr(role.ID))
+
+	require.NoError(t, h.DeleteCspRoleMaster(c))
+	require.Equal(t, http.StatusNoContent, rec.Code)
+
+	var masterCount, cspSubCount, platformSubCount int64
+	require.NoError(t, db.Model(&model.RoleMaster{}).Where("id = ?", role.ID).Count(&masterCount).Error)
+	require.NoError(t, db.Model(&model.RoleSub{}).Where("role_id = ? AND role_type = ?", role.ID, constants.RoleTypeCSP).Count(&cspSubCount).Error)
+	require.NoError(t, db.Model(&model.RoleSub{}).Where("role_id = ? AND role_type = ?", role.ID, constants.RoleTypePlatform).Count(&platformSubCount).Error)
+	assert.EqualValues(t, 1, masterCount, "다른 sub이 남아있으므로 role_master는 삭제되면 안 된다")
+	assert.Zero(t, cspSubCount, "요청한 csp sub은 삭제되어야 한다")
+	assert.EqualValues(t, 1, platformSubCount, "요청하지 않은 platform sub은 그대로 유지되어야 한다")
+}
+
+// TC-IAM-BUG-035-09: 실제로 RoleMasterCspRoleMapping이 존재하면 DeleteCspRoleMaster는
+// 여전히 403으로 거부해야 한다(가드 로직을 고치면서 이 경우까지 뚫려버리면 안 된다).
+func TestDeleteCspRoleMaster_HasActualCspMapping_Forbidden(t *testing.T) {
+	db := setupCspRoleMasterTestDB(t)
+	h := NewRoleHandler(db)
+
+	role := &model.RoleMaster{Name: "tc-iam-bug-035-csp-with-mapping"}
+	require.NoError(t, db.Create(role).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: role.ID, RoleType: constants.RoleTypeCSP}).Error)
+
+	cspRole := &model.CspRole{Name: "mciam-test-role-2", CspType: "gcp"}
+	require.NoError(t, db.Create(cspRole).Error)
+	require.NoError(t, db.Create(&model.RoleMasterCspRoleMapping{
+		RoleID: role.ID, AuthMethod: constants.AuthMethodOIDC, CspRoleID: cspRole.ID,
+	}).Error)
+
+	e := newTestValidatorEcho()
+	req := httptest.NewRequest(http.MethodDelete, "/api/roles/csp-roles/master/id/"+uintToStr(role.ID), nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("roleId")
+	c.SetParamValues(uintToStr(role.ID))
+
+	require.NoError(t, h.DeleteCspRoleMaster(c))
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+
+	var masterCount, subCount int64
+	require.NoError(t, db.Model(&model.RoleMaster{}).Where("id = ?", role.ID).Count(&masterCount).Error)
+	require.NoError(t, db.Model(&model.RoleSub{}).Where("role_id = ?", role.ID).Count(&subCount).Error)
+	assert.EqualValues(t, 1, masterCount, "매핑이 남아있으므로 role_master는 삭제되면 안 된다")
+	assert.EqualValues(t, 1, subCount, "매핑이 남아있으므로 role_sub도 삭제되면 안 된다")
+}
+
 // TC-IAM-TECH-022-06: CreateCspRoleMaster는 CreatePlatformRole/CreateWorkspaceRole과
 // 대칭적으로 RoleSub(csp)를 요청 개수만큼 정확히 생성해야 한다(IAM-BUG-019 회귀 패턴 재확인).
 func TestCreateCspRoleMaster_CreatesRoleSubsWithCspType(t *testing.T) {

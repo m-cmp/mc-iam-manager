@@ -89,9 +89,6 @@ EXPECTED_CONTAINERS=(
     "mc-iam-manager-kc"
     "mc-iam-manager-nginx"
     # "mc-iam-manager-post-initial"  # Container that exits after execution
-    "mc-web-console-db"
-    "mc-web-console-api"
-    "mc-web-console-front"
 )
 
 # Containers without Health Check (treated as successful when in Up state)
@@ -156,6 +153,11 @@ fi
 # =============================================================================
 
 PROJECT_ROOT_ABS="$(cd "$ORIGINAL_DIR" && pwd)"
+
+# Standalone installer only needs mc-infra-connector/mc-infra-manager/mc-iam-manager —
+# mc-web-console is excluded (see docker-compose-standalone.yaml). Applies to every
+# bare `docker compose` call below; explicit `-f` (e.g. docker-compose.cert.yaml) overrides it.
+export COMPOSE_FILE="$PROJECT_ROOT_ABS/docker-compose-standalone.yaml"
 
 ensure_env_file() {
     local setup_file="$1"
