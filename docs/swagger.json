@@ -4,7 +4,7 @@
         "description": "MC IAM Manager API Documentation",
         "title": "MC IAM Manager API",
         "contact": {},
-        "version": "0.6.2"
+        "version": "0.6.3"
     },
     "host": "localhost",
     "basePath": "/api/v1",
