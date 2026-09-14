@@ -34,7 +34,7 @@ import (
 )
 
 // @title MC IAM Manager API
-// @version 0.6.2
+// @version 0.6.3
 // @description MC IAM Manager API Documentation
 // @host localhost
 // @BasePath /api/v1
