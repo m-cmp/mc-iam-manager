@@ -9343,7 +9343,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "YAML 시드 파일에서 기본 조직 구조(MZC + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.",
+                "description": "YAML 시드 파일에서 기본 조직 구조(mcmp + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.",
                 "produces": [
                     "application/json"
                 ],
