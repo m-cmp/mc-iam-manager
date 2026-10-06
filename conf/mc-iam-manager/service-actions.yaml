@@ -331,9 +331,9 @@ serviceActions:
             description: ""
     mc-iam-manager:
         _meta:
-            version: 0.6.3
+            version: 0.6.4
             repository: https://github.com/m-cmp/mc-iam-manager
-            generatedAt: "2026-09-10T01:50:43Z"
+            generatedAt: "2026-10-06T01:44:34Z"
         CreateFrameworkService:
             method: post
             resourcePath: /api/mcmp-apis
