@@ -9349,7 +9349,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "YAML 시드 파일에서 기본 조직 구조(MZC + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.",
+                "description": "YAML 시드 파일에서 기본 조직 구조(mcmp + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.",
                 "produces": [
                     "application/json"
                 ],
@@ -15951,7 +15951,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.6.2",
+	Version:          "0.6.3",
 	Host:             "localhost",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},

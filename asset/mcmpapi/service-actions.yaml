@@ -331,9 +331,9 @@ serviceActions:
             description: ""
     mc-iam-manager:
         _meta:
-            version: 0.6.2
+            version: 0.6.3
             repository: https://github.com/m-cmp/mc-iam-manager
-            generatedAt: "2026-09-03T04:08:54Z"
+            generatedAt: "2026-09-10T01:50:43Z"
         CreateFrameworkService:
             method: post
             resourcePath: /api/mcmp-apis
@@ -1165,7 +1165,7 @@ serviceActions:
         setupInitialOrganizations:
             method: post
             resourcePath: /api/setup/initial-organizations
-            description: YAML 시드 파일에서 기본 조직 구조(MZC + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.
+            description: YAML 시드 파일에서 기본 조직 구조(mcmp + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.
         syncCspPolicies:
             method: post
             resourcePath: /api/csp-policies/sync

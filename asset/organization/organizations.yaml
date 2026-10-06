@@ -1,6 +1,6 @@
 organizations:
   - organization_code: "01"
-    name: "MZC"
+    name: "mcmp"
     description: "M-CMP 최상위 조직"
     children:
       - organization_code: "0101"
