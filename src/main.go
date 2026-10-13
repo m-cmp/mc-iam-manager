@@ -170,8 +170,9 @@ func main() {
 		basePath + "/auth/login",
 		basePath + "/auth/logout",
 		basePath + "/auth/refresh",
-		basePath + "/auth/certs",  // 인증서 조회 경로 추가
-		basePath + "/auth/signup", // 사용자 가입 신청 경로 추가
+		basePath + "/auth/validate", // 핸들러가 토큰을 직접 검증(서명·만료)하고 실패 시 refresh_token 으로 재발급 — 미들웨어가 먼저 막으면 재발급 경로에 도달하지 못함
+		basePath + "/auth/certs",    // 인증서 조회 경로 추가
+		basePath + "/auth/signup",   // 사용자 가입 신청 경로 추가
 
 	}
 
