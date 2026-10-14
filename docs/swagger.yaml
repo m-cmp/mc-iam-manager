@@ -1979,7 +1979,7 @@ info:
   contact: {}
   description: MC IAM Manager API Documentation
   title: MC IAM Manager API
-  version: 0.6.4
+  version: 0.7.0
 paths:
   /api/auth/certs:
     get:

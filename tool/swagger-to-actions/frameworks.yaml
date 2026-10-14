@@ -20,7 +20,7 @@ verbose: false
 frameworks:
   # MC-IAM-Manager - Identity and Access Management
   - name: mc-iam-manager
-    version: "0.6.4"                    # Active version (local development)
+    version: "0.7.0"                    # Active version (local development)
     repository: https://github.com/m-cmp/mc-iam-manager
     swagger: ../../src/docs/swagger.yaml   # Local path relative to this file
 
