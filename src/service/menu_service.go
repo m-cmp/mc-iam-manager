@@ -135,11 +135,19 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoleIDs []u
 		req.RoleIDs = append(req.RoleIDs, strconv.FormatUint(uint64(roleID), 10))
 	}
 	var allMenus []*model.Menu
+	// 역할 조건 없이 조회하면 전체 매핑이 나오므로 역할이 없으면 빈 트리
+	if len(req.RoleIDs) == 0 {
+		return []*model.MenuTreeNode{}, nil
+	}
 
 	// 1. 각 플랫폼 역할에 매핑된 메뉴 ID들을 조회
 	menuIDs, err := s.menuMappingRepo.FindMappedMenuIDs(req)
 	if err != nil {
 		return nil, err
+	}
+	// 빈 MenuIDs 로 GetMenus 를 호출하면 전체 메뉴가 나오므로 매핑이 없으면 빈 트리
+	if len(menuIDs) == 0 {
+		return []*model.MenuTreeNode{}, nil
 	}
 
 	// 2. 매핑된 메뉴 ID들의 상위 메뉴 ID들을 수집
@@ -173,14 +181,16 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoleIDs []u
 	// 3. 모든 필요한 메뉴 ID를 하나의 맵으로 합침
 
 	// 4. 수집된 메뉴 ID들로 메뉴 정보 조회
-	parentMenuFilterRequest := &model.MenuFilterRequest{
-		MenuIDs: parentIDs,
+	if len(parentIDs) > 0 {
+		parentMenuFilterRequest := &model.MenuFilterRequest{
+			MenuIDs: parentIDs,
+		}
+		parentMenus, err := s.menuRepo.GetMenus(parentMenuFilterRequest)
+		if err != nil {
+			return nil, err
+		}
+		allMenus = append(allMenus, parentMenus...)
 	}
-	parentMenus, err := s.menuRepo.GetMenus(parentMenuFilterRequest)
-	if err != nil {
-		return nil, err
-	}
-	allMenus = append(allMenus, parentMenus...)
 
 	// for _, platformMenuID := range parentIDs {
 	// 	menu, err := s.menuRepo.FindMenuByID(platformMenuID)
@@ -201,11 +211,20 @@ func (s *MenuService) BuildUserMenuTree(ctx context.Context, platformRoleIDs []u
 
 // Role에 따른 메뉴 목록록
 func (s *MenuService) MenuList(req *model.MenuMappingFilterRequest) ([]*model.Menu, error) {
+	// 역할 조건 없이 조회하면 전체 매핑이 나오므로 역할이 없으면 빈 목록
+	if len(req.RoleIDs) == 0 {
+		return []*model.Menu{}, nil
+	}
+
 	// 1. 각 플랫폼 역할에 매핑된 메뉴 ID들을 조회
 	menuIDMap := make(map[string]bool)
 	menuIDs, err := s.menuMappingRepo.FindMappedMenuIDs(req)
 	if err != nil {
 		return nil, err
+	}
+	// 빈 MenuIDs 로 GetMenus 를 호출하면 전체 메뉴가 나오므로 매핑이 없으면 빈 목록
+	if len(menuIDs) == 0 {
+		return []*model.Menu{}, nil
 	}
 	for _, id := range menuIDs {
 		menuIDMap[*id] = true

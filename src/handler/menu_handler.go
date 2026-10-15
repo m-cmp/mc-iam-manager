@@ -38,6 +38,34 @@ func NewMenuHandler(db *gorm.DB) *MenuHandler {
 
 // Helper function moved to util package
 
+// resolveUserPlatformRoleIDs JWT 플랫폼 역할 이름을 DB 역할 ID로 변환한다.
+// DB 에 없는 이름은 건너뛰고, platformAdmin 만 admin 역할로 대체한다(platformAdmin 은 DB 역할이 아님).
+// 결과가 비면 메뉴 권한이 없는 사용자다.
+func (h *MenuHandler) resolveUserPlatformRoleIDs(userPlatformRoles []string) ([]uint, error) {
+	roleIDs := make([]uint, 0, len(userPlatformRoles))
+	hasPlatformAdmin := false
+	for _, roleName := range userPlatformRoles {
+		if roleName == "platformAdmin" {
+			hasPlatformAdmin = true
+		}
+		role, err := h.roleService.GetRoleByName(roleName, constants.RoleTypePlatform)
+		if err != nil {
+			return nil, err
+		}
+		if role == nil {
+			continue
+		}
+		roleIDs = append(roleIDs, role.ID)
+	}
+	if len(roleIDs) == 0 && hasPlatformAdmin {
+		adminRole, err := h.roleService.GetRoleByName("admin", constants.RoleTypePlatform)
+		if err == nil && adminRole != nil {
+			roleIDs = append(roleIDs, adminRole.ID)
+		}
+	}
+	return roleIDs, nil
+}
+
 // ListUserMenuTree godoc
 // @Summary Get current user's menu tree
 // @Description Get the menu tree accessible to the current user's platform role.
@@ -62,21 +90,17 @@ func (h *MenuHandler) ListUserMenuTree(c echo.Context) error {
 	}
 	c.Logger().Debug("GetUserMenuTree: platformRoles %s", platformRoles)
 
-	// Convert platform role strings to uint IDs
-	platformRoleNames := make([]uint, 0, len(platformRoles))
-	for _, roleName := range platformRoles {
-		role, err := h.roleService.GetRoleByName(roleName, constants.RoleTypePlatform)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
-		}
-		if role == nil {
-			continue // Skip if role not found
-		}
-		platformRoleNames = append(platformRoleNames, role.ID)
+	platformRoleIDs, err := h.resolveUserPlatformRoleIDs(platformRoles)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
+	}
+	// 플랫폼 역할이 없으면(가입 승인 직후 등) 빈 메뉴
+	if len(platformRoleIDs) == 0 {
+		return c.JSON(http.StatusOK, []*model.MenuTreeNode{})
 	}
 
 	// Call the service method with platform role IDs
-	menuTree, err := h.menuService.BuildUserMenuTree(c.Request().Context(), platformRoleNames)
+	menuTree, err := h.menuService.BuildUserMenuTree(c.Request().Context(), platformRoleIDs)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": fmt.Sprintf("Failed to retrieve menu tree: %v", err),
@@ -131,27 +155,17 @@ func (h *MenuHandler) ListUserMenu(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "Unable to retrieve platform roles")
 	}
 	c.Logger().Debug("getMenus: userPlatformRoles %s", userPlatformRoles)
-	// platformRole is string, so query id from db
-	platformRoleIDs := make([]string, 0, len(userPlatformRoles))
-	for _, roleName := range userPlatformRoles {
-		role, err := h.roleService.GetRoleByName(roleName, constants.RoleTypePlatform)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
-		}
-		// Check if role is nil before accessing its ID
-		if role == nil {
-			c.Logger().Debug("Role not found for roleName: %s", roleName)
-			continue // Skip this role and continue with others
-		}
-		platformRoleIDs = append(platformRoleIDs, strconv.FormatUint(uint64(role.ID), 10))
+	roleIDs, err := h.resolveUserPlatformRoleIDs(userPlatformRoles)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("failed to find role: %v", err)})
 	}
-	// JWT 역할이 DB에 없으면(예: platformAdmin) admin 역할로 자동 fallback
-	if len(platformRoleIDs) == 0 && len(userPlatformRoles) > 0 {
-		adminRole, err := h.roleService.GetRoleByName("admin", constants.RoleTypePlatform)
-		if err == nil && adminRole != nil {
-			c.Logger().Debug("Falling back to admin role for unrecognized platform roles: %v", userPlatformRoles)
-			platformRoleIDs = append(platformRoleIDs, strconv.FormatUint(uint64(adminRole.ID), 10))
-		}
+	// 플랫폼 역할이 없으면(가입 승인 직후 등) 빈 메뉴. null 이 아닌 [] 로 응답
+	if len(roleIDs) == 0 {
+		return c.JSON(http.StatusOK, []*model.Menu{})
+	}
+	platformRoleIDs := make([]string, 0, len(roleIDs))
+	for _, id := range roleIDs {
+		platformRoleIDs = append(platformRoleIDs, strconv.FormatUint(uint64(id), 10))
 	}
 	req.RoleIDs = platformRoleIDs
 
