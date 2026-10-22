@@ -338,7 +338,7 @@ swag init --output ./docs
 ### API 문서 접근
 
 - **온라인 문서**: https://m-cmp.github.io/mc-iam-manager/
-- **로컬 문서**: `http://localhost:<port>/swagger/index.html`
+- **로컬 문서**: `http://localhost:<port>/swagger/index.html` (로그인 없이 열람, `MC_IAM_MANAGER_SWAGGER_ENABLED=false`로 끌 수 있음)
 
 ## 사용자 관리
 

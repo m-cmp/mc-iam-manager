@@ -337,7 +337,7 @@ swag init --output ./docs
 ### Access API Documentation
 
 - **Online Documentation**: https://m-cmp.github.io/mc-iam-manager/
-- **Local Documentation**: `http://localhost:<port>/swagger/index.html`
+- **Local Documentation**: `http://localhost:<port>/swagger/index.html` (no login required; set `MC_IAM_MANAGER_SWAGGER_ENABLED=false` to disable)
 
 ## User Management
 
