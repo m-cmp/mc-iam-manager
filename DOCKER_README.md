@@ -258,9 +258,23 @@ docker compose up -d
 ```
 
 ### 인증서 갱신 (prod 모드)
+
+Let's Encrypt 인증서의 유효기간은 90일입니다. `./installAll.sh -m prod`는 발급 직후 `/etc/cron.d/mc-iam-manager-cert-renew`(하루 2회, 만료 30일 이내일 때만 실제 갱신)를 등록합니다. 로그: `/var/log/mc-iam-manager-cert-renew.log`
+
+`scripts/renew-cert.sh`는 certbot 컨테이너로 `container-volume/mc-iam-manager/certs`를 갱신하고 nginx에 반영합니다.
+- `mc-iam-manager-nginx` 실행 중 → webroot 방식으로 갱신 후 `nginx -s reload` (중단 없음)
+- `mc-iam-manager-nginx` 미실행 → standalone 방식 (certbot이 80 포트 사용)
+
 ```bash
-docker compose -f docker-compose.cert.yaml run --rm mcmp-certbot renew
+# 이 기능 추가 이전에 설치한 환경: 자동갱신 1회 등록
+sudo ./scripts/renew-cert.sh --install-cron
+
+# 갱신 검증 / 즉시 갱신
+sudo ./scripts/renew-cert.sh --dry-run        # 기대값: "all simulated renewals succeeded"
+sudo ./scripts/renew-cert.sh --force-renewal  # 예: 이미 만료된 경우
 ```
+
+HTTP-01 검증을 위해 80 포트가 인터넷에서 접근 가능해야 합니다. `docker compose -f docker-compose.cert.yaml run --rm mcmp-certbot renew`만 실행하면 nginx가 새 인증서를 읽지 않으므로 위 스크립트를 사용하세요.
 
 ### 업데이트
 ```bash

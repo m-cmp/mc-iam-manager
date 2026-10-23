@@ -62,7 +62,7 @@ Internet
 - **IAM Manager**: Main application (Echo Framework)
 - **Keycloak**: Authentication and authorization management
 - **PostgreSQL**: Database
-- **Certbot**: Automatic SSL certificate issuance/renewal
+- **Certbot**: SSL certificate issuance (prod mode); renewal runs twice daily via cron (`scripts/renew-cert.sh`)
 
 ## Quick Start
   [mc-admin-cli](https://github.com/m-cmp/mc-admin-cli/blob/main/README.md) contains mc-iam-manager.
