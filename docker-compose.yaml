@@ -387,7 +387,7 @@ services:
 
   mc-web-console-api:
     # image: sehyeong0108/mc-web-console-api:20241101
-    image: csescsta/mc-web-console-api:edge
+    image: cloudbaristaorg/mc-web-console-api:edge
     pull_policy: always
     container_name: mc-web-console-api
     restart: unless-stopped
@@ -431,7 +431,7 @@ services:
 
   mc-web-console-front:
     # image: sehyeong0108/mc-web-console-front:20241101
-    image: csescsta/mc-web-console-front:edge
+    image: cloudbaristaorg/mc-web-console-front:edge
     pull_policy: always
     container_name: mc-web-console-front
     restart: unless-stopped
