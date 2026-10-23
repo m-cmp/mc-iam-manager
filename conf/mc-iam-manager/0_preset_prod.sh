@@ -40,18 +40,18 @@ echo "출력: $OUTPUT_FILE"
 echo "환경변수를 로드합니다..."
 
 # .env 파일에서 필요한 변수들을 직접 읽어오기
-MC_IAM_MANAGER_PORT=$(grep -m1 "^MC_IAM_MANAGER_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_IAM_MANAGER_DOMAIN=$(grep -m1 "^MC_IAM_MANAGER_DOMAIN=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_IAM_MANAGER_PUBLIC_DOMAIN=$(grep -m1 "^MC_IAM_MANAGER_PUBLIC_DOMAIN=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_IAM_MANAGER_KEYCLOAK_DOMAIN=$(grep -m1 "^MC_IAM_MANAGER_KEYCLOAK_DOMAIN=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_IAM_MANAGER_KEYCLOAK_PORT=$(grep -m1 "^MC_IAM_MANAGER_KEYCLOAK_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_OBSERVABILITY_GRAFANA_PROXY_PORT=$(grep -m1 "^MC_OBSERVABILITY_GRAFANA_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_COST_OPTIMIZER_FE_PROXY_PORT=$(grep -m1 "^MC_COST_OPTIMIZER_FE_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_COST_OPTIMIZER_BE_PORT=$(grep -m1 "^MC_COST_OPTIMIZER_BE_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_COST_OPTIMIZER_ALARM_PORT=$(grep -m1 "^MC_COST_OPTIMIZER_ALARM_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_WORKFLOW_MANAGER_PROXY_PORT=$(grep -m1 "^MC_WORKFLOW_MANAGER_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_DATA_MANAGER_PROXY_PORT=$(grep -m1 "^MC_DATA_MANAGER_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
-MC_APPLICATION_MANAGER_PROXY_PORT=$(grep -m1 "^MC_APPLICATION_MANAGER_PROXY_PORT=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+# A missing key yields an empty value (warned below) instead of aborting under "set -euo pipefail"
+read_env() {
+    grep -m1 "^$1=" "$ENV_FILE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs || true
+}
+MC_IAM_MANAGER_PORT=$(read_env MC_IAM_MANAGER_PORT)
+MC_IAM_MANAGER_DOMAIN=$(read_env MC_IAM_MANAGER_DOMAIN)
+MC_IAM_MANAGER_PUBLIC_DOMAIN=$(read_env MC_IAM_MANAGER_PUBLIC_DOMAIN)
+MC_IAM_MANAGER_KEYCLOAK_DOMAIN=$(read_env MC_IAM_MANAGER_KEYCLOAK_DOMAIN)
+MC_IAM_MANAGER_KEYCLOAK_PORT=$(read_env MC_IAM_MANAGER_KEYCLOAK_PORT)
+MC_OBSERVABILITY_GRAFANA_PROXY_PORT=$(read_env MC_OBSERVABILITY_GRAFANA_PROXY_PORT)
+MC_COST_OPTIMIZER_FE_PROXY_PORT=$(read_env MC_COST_OPTIMIZER_FE_PROXY_PORT)
+MC_COST_OPTIMIZER_FE_PORT=$(read_env MC_COST_OPTIMIZER_FE_PORT)
 
 echo "Loaded environment variables:"
 echo "  MC_IAM_MANAGER_DOMAIN: $MC_IAM_MANAGER_DOMAIN"
@@ -61,11 +61,7 @@ echo "  MC_IAM_MANAGER_KEYCLOAK_DOMAIN: $MC_IAM_MANAGER_KEYCLOAK_DOMAIN"
 echo "  MC_IAM_MANAGER_KEYCLOAK_PORT: $MC_IAM_MANAGER_KEYCLOAK_PORT"
 echo "  MC_OBSERVABILITY_GRAFANA_PROXY_PORT: $MC_OBSERVABILITY_GRAFANA_PROXY_PORT"
 echo "  MC_COST_OPTIMIZER_FE_PROXY_PORT: $MC_COST_OPTIMIZER_FE_PROXY_PORT"
-echo "  MC_COST_OPTIMIZER_BE_PORT: $MC_COST_OPTIMIZER_BE_PORT"
-echo "  MC_COST_OPTIMIZER_ALARM_PORT: $MC_COST_OPTIMIZER_ALARM_PORT"
-echo "  MC_WORKFLOW_MANAGER_PROXY_PORT: $MC_WORKFLOW_MANAGER_PROXY_PORT"
-echo "  MC_DATA_MANAGER_PROXY_PORT: $MC_DATA_MANAGER_PROXY_PORT"
-echo "  MC_APPLICATION_MANAGER_PROXY_PORT: $MC_APPLICATION_MANAGER_PROXY_PORT"
+echo "  MC_COST_OPTIMIZER_FE_PORT: $MC_COST_OPTIMIZER_FE_PORT"
 
 # Copy template file and substitute environment variables
 cp "$TEMPLATE_FILE" "$OUTPUT_FILE" || { echo "Error: Failed to copy template file: $TEMPLATE_FILE → $OUTPUT_FILE"; exit 1; }
@@ -112,45 +108,24 @@ else
     echo "경고: MC_COST_OPTIMIZER_FE_PROXY_PORT 환경변수가 설정되지 않았습니다."
 fi
 
-if [ -n "$MC_COST_OPTIMIZER_BE_PORT" ]; then
-    sed -i "s/\${MC_COST_OPTIMIZER_BE_PORT}/$MC_COST_OPTIMIZER_BE_PORT/g" "$OUTPUT_FILE"
-    echo "✓ MC_COST_OPTIMIZER_BE_PORT substitution done: $MC_COST_OPTIMIZER_BE_PORT"
+if [ -n "$MC_COST_OPTIMIZER_FE_PORT" ]; then
+    sed -i "s/\${MC_COST_OPTIMIZER_FE_PORT}/$MC_COST_OPTIMIZER_FE_PORT/g" "$OUTPUT_FILE"
+    echo "✓ MC_COST_OPTIMIZER_FE_PORT 대치 완료: $MC_COST_OPTIMIZER_FE_PORT"
 else
-    echo "Warning: MC_COST_OPTIMIZER_BE_PORT environment variable is not set."
-fi
-
-if [ -n "$MC_COST_OPTIMIZER_ALARM_PORT" ]; then
-    sed -i "s/\${MC_COST_OPTIMIZER_ALARM_PORT}/$MC_COST_OPTIMIZER_ALARM_PORT/g" "$OUTPUT_FILE"
-    echo "✓ MC_COST_OPTIMIZER_ALARM_PORT substitution done: $MC_COST_OPTIMIZER_ALARM_PORT"
-else
-    echo "Warning: MC_COST_OPTIMIZER_ALARM_PORT environment variable is not set."
-fi
-
-if [ -n "$MC_WORKFLOW_MANAGER_PROXY_PORT" ]; then
-    sed -i "s/\${MC_WORKFLOW_MANAGER_PROXY_PORT}/$MC_WORKFLOW_MANAGER_PROXY_PORT/g" "$OUTPUT_FILE"
-    echo "✓ MC_WORKFLOW_MANAGER_PROXY_PORT substitution done: $MC_WORKFLOW_MANAGER_PROXY_PORT"
-else
-    echo "Warning: MC_WORKFLOW_MANAGER_PROXY_PORT environment variable is not set."
-fi
-
-if [ -n "$MC_DATA_MANAGER_PROXY_PORT" ]; then
-    sed -i "s/\${MC_DATA_MANAGER_PROXY_PORT}/$MC_DATA_MANAGER_PROXY_PORT/g" "$OUTPUT_FILE"
-    echo "✓ MC_DATA_MANAGER_PROXY_PORT substitution done: $MC_DATA_MANAGER_PROXY_PORT"
-else
-    echo "Warning: MC_DATA_MANAGER_PROXY_PORT environment variable is not set."
-fi
-
-if [ -n "$MC_APPLICATION_MANAGER_PROXY_PORT" ]; then
-    sed -i "s/\${MC_APPLICATION_MANAGER_PROXY_PORT}/$MC_APPLICATION_MANAGER_PROXY_PORT/g" "$OUTPUT_FILE"
-    echo "✓ MC_APPLICATION_MANAGER_PROXY_PORT substitution done: $MC_APPLICATION_MANAGER_PROXY_PORT"
-else
-    echo "Warning: MC_APPLICATION_MANAGER_PROXY_PORT environment variable is not set."
+    echo "경고: MC_COST_OPTIMIZER_FE_PORT 환경변수가 설정되지 않았습니다."
 fi
 
 # Substitute container names (correct legacy names in template)
 sed -i "s/mciam-manager/mc-iam-manager/g" "$OUTPUT_FILE"
 sed -i "s/mciam-keycloak/mc-iam-manager-kc/g" "$OUTPUT_FILE"
 echo "✓ 컨테이너 이름 수정 완료"
+
+# nginx refuses to start on an unknown variable, so fail here instead of crash-looping the container
+if grep -qE '\$\{[A-Z0-9_]+\}' "$OUTPUT_FILE"; then
+    echo "Error: unsubstituted variables remain in $OUTPUT_FILE (check $ENV_FILE):"
+    grep -noE '\$\{[A-Z0-9_]+\}' "$OUTPUT_FILE"
+    exit 1
+fi
 
 echo "nginx 설정 파일 생성이 완료되었습니다: $OUTPUT_FILE"
 
