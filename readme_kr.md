@@ -62,7 +62,7 @@ Internet
 - **IAM Manager**: 메인 애플리케이션 (Echo Framework)
 - **Keycloak**: 인증 및 권한 관리
 - **PostgreSQL**: 데이터베이스
-- **Certbot**: SSL 인증서 자동 발급/갱신
+- **Certbot**: SSL 인증서 발급(prod 모드), cron으로 하루 2회 자동 갱신(`scripts/renew-cert.sh`)
 
 ## 빠른 시작
 
