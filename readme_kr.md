@@ -62,7 +62,7 @@ Internet
 - **IAM Manager**: 메인 애플리케이션 (Echo Framework)
 - **Keycloak**: 인증 및 권한 관리
 - **PostgreSQL**: 데이터베이스
-- **Certbot**: SSL 인증서 자동 발급/갱신
+- **Certbot**: SSL 인증서 발급(prod 모드), cron으로 하루 2회 자동 갱신(`scripts/renew-cert.sh`)
 
 ## 빠른 시작
 
@@ -338,7 +338,7 @@ swag init --output ./docs
 ### API 문서 접근
 
 - **온라인 문서**: https://m-cmp.github.io/mc-iam-manager/
-- **로컬 문서**: `http://localhost:<port>/swagger/index.html`
+- **로컬 문서**: `http://localhost:<port>/swagger/index.html` (로그인 없이 열람, `MC_IAM_MANAGER_SWAGGER_ENABLED=false`로 끌 수 있음)
 
 ## 사용자 관리
 

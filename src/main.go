@@ -153,6 +153,10 @@ func main() {
 	e.Debug = config.DebugEnabled()
 	log.Printf("Echo debug mode: %v", e.Debug)
 
+	// Swagger UI: MC_IAM_MANAGER_SWAGGER_ENABLED=false 이면 라우트를 등록하지 않음 (미설정 시 true)
+	swaggerEnabled := config.SwaggerEnabled()
+	log.Printf("Swagger UI enabled: %v", swaggerEnabled)
+
 	// 미들웨어 설정
 	e.Use(echomiddleware.LoggerWithConfig(echomiddleware.LoggerConfig{
 		Format: "[${time_rfc3339}] ${level} ${method} ${uri} ${status} ${latency_human}\n",
@@ -177,24 +181,7 @@ func main() {
 	}
 
 	// 인증 미들웨어 설정
-	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			path := c.Request().URL.Path
-			//c.Logger().Debugf("Checking auth skip for path: %s", path)
-
-			for _, skipPath := range skipAuthPaths {
-				// 정확한 경로 일치 또는 path가 skipPath로 끝나는 경우
-				if path == skipPath || strings.HasSuffix(path, skipPath) {
-					//c.Logger().Debugf("Skipping auth for path: %s (matches skipPath: %s)", path, skipPath)
-					return next(c)
-				}
-			}
-
-			//c.Logger().Debugf("Applying auth middleware for path: %s", path)
-			// 인증 미들웨어 적용
-			return middleware.AuthMiddleware(next)(c)
-		}
-	})
+	e.Use(authSkipMiddleware(skipAuthPaths, swaggerEnabled))
 
 	// 라우트 설정
 	e.GET("/readyz", healthHandler.CheckHealth)
@@ -594,7 +581,9 @@ func main() {
 	}
 
 	// Swagger 문서 라우트
-	e.GET("/swagger/*", echoSwagger.WrapHandler)
+	if swaggerEnabled {
+		e.GET("/swagger/*", echoSwagger.WrapHandler)
+	}
 
 	// 서버 시작
 	port := os.Getenv("MC_IAM_MANAGER_PORT")
@@ -627,4 +616,32 @@ type CustomValidator struct {
 // Validate 구조체 검증 메서드
 func (cv *CustomValidator) Validate(i interface{}) error {
 	return cv.validator.Struct(i)
+}
+
+// authSkipMiddleware 는 skipPaths 와 (swaggerEnabled 일 때) /swagger/ 하위 경로는 인증 없이 통과시키고,
+// 나머지 요청에는 AuthMiddleware 를 적용한다.
+func authSkipMiddleware(skipPaths []string, swaggerEnabled bool) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			path := c.Request().URL.Path
+			//c.Logger().Debugf("Checking auth skip for path: %s", path)
+
+			// Swagger UI 는 브라우저가 주소로 바로 여는 문서라 Authorization 헤더가 붙지 않음 — /swagger/ 하위 전체를 인증 없이 허용
+			if swaggerEnabled && strings.HasPrefix(path, "/swagger/") {
+				return next(c)
+			}
+
+			for _, skipPath := range skipPaths {
+				// 정확한 경로 일치 또는 path가 skipPath로 끝나는 경우
+				if path == skipPath || strings.HasSuffix(path, skipPath) {
+					//c.Logger().Debugf("Skipping auth for path: %s (matches skipPath: %s)", path, skipPath)
+					return next(c)
+				}
+			}
+
+			//c.Logger().Debugf("Applying auth middleware for path: %s", path)
+			// 인증 미들웨어 적용
+			return middleware.AuthMiddleware(next)(c)
+		}
+	}
 }

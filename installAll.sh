@@ -374,6 +374,14 @@ HTTPONLY_EOF
             if command -v sudo >/dev/null 2>&1; then
                 sudo chown -R "$USER:$USER" "$PROJECT_ROOT_ABS/container-volume"
             fi
+            # Register automatic renewal (the certificate is valid for 90 days)
+            _SUDO=""
+            if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then _SUDO="sudo"; fi
+            if $_SUDO "$PROJECT_ROOT_ABS/scripts/renew-cert.sh" --install-cron; then
+                echo "✓ Certificate auto-renewal registered (/etc/cron.d/mc-iam-manager-cert-renew)."
+            else
+                echo "⚠ Failed to register certificate auto-renewal. Run manually: sudo ./scripts/renew-cert.sh --install-cron"
+            fi
         else
             echo "❌ Error occurred during certificate generation."
             docker compose stop mc-iam-manager-nginx

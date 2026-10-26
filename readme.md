@@ -62,7 +62,7 @@ Internet
 - **IAM Manager**: Main application (Echo Framework)
 - **Keycloak**: Authentication and authorization management
 - **PostgreSQL**: Database
-- **Certbot**: Automatic SSL certificate issuance/renewal
+- **Certbot**: SSL certificate issuance (prod mode); renewal runs twice daily via cron (`scripts/renew-cert.sh`)
 
 ## Quick Start
   [mc-admin-cli](https://github.com/m-cmp/mc-admin-cli/blob/main/README.md) contains mc-iam-manager.
@@ -337,7 +337,7 @@ swag init --output ./docs
 ### Access API Documentation
 
 - **Online Documentation**: https://m-cmp.github.io/mc-iam-manager/
-- **Local Documentation**: `http://localhost:<port>/swagger/index.html`
+- **Local Documentation**: `http://localhost:<port>/swagger/index.html` (no login required; set `MC_IAM_MANAGER_SWAGGER_ENABLED=false` to disable)
 
 ## User Management
 

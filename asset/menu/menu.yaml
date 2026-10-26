@@ -128,6 +128,14 @@ menus:
     priority: 5
     menunumber: 1206
 
+  - id: cspdefinitions
+    parentid: cloudsps
+    displayname: CSP Definitions
+    restype: menu
+    isaction: true
+    priority: 6
+    menunumber: 1207
+
   - id: cloudresources
     parentid: environment
     displayname: Cloud Resources

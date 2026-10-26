@@ -28,6 +28,7 @@ permissions:
       - connections
       - clouddrivers
       - cspaccounts
+      - cspdefinitions
       - cloudresources
       - serverspecs
       - serverimages
