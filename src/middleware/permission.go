@@ -62,9 +62,10 @@ func PlatformRoleMiddleware(level PermissionLevel) echo.MiddlewareFunc {
 
 			hasPermission := false
 
-			// read 레벨은 모든 사용자에게 허용
+			// read 레벨은 플랫폼 역할이 하나 이상 있는 사용자에게 허용
+			// (역할 없는 사용자 = 가입 승인 직후 등은 거부, IAM-BUG-038)
 			if level == Read {
-				hasPermission = true
+				hasPermission = len(platformRoles) > 0
 			} else if level == Write {
 				// write 레벨은 admin 또는 platformAdmin 역할이 필요
 				for _, role := range platformRoles {
