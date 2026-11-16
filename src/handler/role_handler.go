@@ -918,6 +918,9 @@ func (h *RoleHandler) CreateCspRole(c echo.Context) error {
 
 	createdRole, err := h.cspRoleService.CreateCspRole(&req)
 	if err != nil {
+		if service.IsCspRoleRequestError(err) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
@@ -2321,6 +2324,9 @@ func (h *RoleHandler) CreateCspRoles(c echo.Context) error {
 
 	createdRoles, err := h.cspRoleService.CreateCspRoles(&req)
 	if err != nil {
+		if service.IsCspRoleRequestError(err) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
