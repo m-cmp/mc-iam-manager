@@ -2152,6 +2152,14 @@ func (h *RoleHandler) AddCspRoleMappings(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "해당 역할이 CSP 역할에 정의 되어 있지 않습니다"})
 	}
 
+	// 대상 CspRole 이 발급에 쓸 수 있는 상태인지 확인 (소속 IdP Config, 인증 방식·CSP 타입 일치, idp/iam identifier)
+	if err := h.cspRoleService.ValidateCspRoleForMapping(cspRole.ID, req.AuthMethod, string(req.CspType)); err != nil {
+		if service.IsCspRoleRequestError(err) {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("CSP 역할 검증 실패: %v", err)})
+	}
+
 	// 해당 역할이 할당 되어 있는지 확인
 	isAssigned, err := h.roleService.IsAssignedRole(0, roleIDInt, constants.RoleTypeCSP)
 	if err != nil {
