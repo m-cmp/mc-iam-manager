@@ -7,6 +7,7 @@ import (
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
+	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -658,6 +659,24 @@ func TestGetTemporaryCredentials_NoCspRoleMapping(t *testing.T) {
 	_, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("aws", "OIDC"))
 	require.Error(t, err)
 	assert.Equal(t, ErrNoCspRoleMappingFound, err)
+}
+
+// 매핑 대상 CspRole 이 2개 이상 → 임의로 고르지 않고 ErrAmbiguousCspRoleMapping 그대로 반환
+func TestGetTemporaryCredentials_AmbiguousCspRoleMapping(t *testing.T) {
+	svc := newCredServiceWithMocks(credServiceDeps{
+		aws:      &mockAwsCredService{},
+		gcp:      &mockGcpCredService{},
+		alibaba:  &mockAlibabaCredService{},
+		azure:    &mockAzureCredService{},
+		tencent:  &mockTencentCredService{},
+		ibm:      &mockIbmCredService{},
+		kc:       &mockKeycloakForCred{},
+		userRepo: &mockUserRepoForCred{role: stdUserRole()},
+		mapRepo:  &mockCspMappingRepo{mappingErr: repository.ErrAmbiguousCspRoleMapping},
+	})
+
+	_, err := svc.GetTemporaryCredentials(context.Background(), 1, "kc_user_id", req("aws", "OIDC"))
+	assert.ErrorIs(t, err, repository.ErrAmbiguousCspRoleMapping)
 }
 
 // TC-CRED-21: 미지원 CSP 타입 → ErrUnsupportedCspType
