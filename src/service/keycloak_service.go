@@ -673,6 +673,97 @@ func (s *keycloakService) CreateClient(ctx context.Context, accessToken string) 
 	return true, nil
 }
 
+// oidcAudienceMapperName OIDC 클라이언트 access token 의 aud 에 클라이언트 자신을 넣는 mapper 이름
+const oidcAudienceMapperName = "aud-mciam-oidc-Client"
+
+// oidcAudienceMapper access token aud 에 OIDC 클라이언트 ID 를 포함시키는 audience mapper.
+// 없으면 client_credentials 토큰의 aud 가 account 뿐이라 AWS OIDC Provider 의 audience(client ID)와 맞지 않는다.
+func oidcAudienceMapper(clientID string) gocloak.ProtocolMapperRepresentation {
+	return gocloak.ProtocolMapperRepresentation{
+		Name:           gocloak.StringP(oidcAudienceMapperName),
+		Protocol:       gocloak.StringP("openid-connect"),
+		ProtocolMapper: gocloak.StringP("oidc-audience-mapper"),
+		Config: &map[string]string{
+			"included.client.audience": clientID,
+			"id.token.claim":           "false",
+			"access.token.claim":       "true",
+		},
+	}
+}
+
+// hasOIDCAudienceMapper 클라이언트에 자기 자신을 audience 로 넣는 oidc-audience-mapper 가 있는지 확인한다.
+func hasOIDCAudienceMapper(client *gocloak.Client, clientID string) bool {
+	if client == nil || client.ProtocolMappers == nil {
+		return false
+	}
+	for _, m := range *client.ProtocolMappers {
+		if m.ProtocolMapper == nil || *m.ProtocolMapper != "oidc-audience-mapper" || m.Config == nil {
+			continue
+		}
+		if (*m.Config)["included.client.audience"] == clientID && (*m.Config)["access.token.claim"] == "true" {
+			return true
+		}
+	}
+	return false
+}
+
+// ensureOIDCClient CSP 임시자격증명 발급에 쓰는 OIDC 클라이언트(MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME)를 보장한다.
+//   - 없으면 생성: confidential, Service accounts ON, Direct access grants ON(SAML token-exchange 용 password grant),
+//     Standard flow OFF, secret=MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET, audience mapper 포함
+//   - 있으면 다른 설정은 건드리지 않고 audience mapper 만 없을 때 추가한다. secret 불일치는 경고만 남긴다.
+func (s *keycloakService) ensureOIDCClient(ctx context.Context, accessToken string) error {
+	clientID := config.KC.OIDCClientName
+	clientSecret := config.KC.OIDCClientSecret
+	if clientID == "" || clientSecret == "" {
+		return fmt.Errorf("OIDC client name or secret not configured (MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME/SECRET)")
+	}
+
+	clients, err := config.KC.Client.GetClients(ctx, accessToken, config.KC.Realm, gocloak.GetClientsParams{ClientID: &clientID})
+	if err != nil {
+		return fmt.Errorf("failed to get OIDC client '%s': %w", clientID, err)
+	}
+
+	if len(clients) == 0 {
+		newClient := gocloak.Client{
+			ClientID:                  gocloak.StringP(clientID),
+			Name:                      gocloak.StringP(clientID),
+			Protocol:                  gocloak.StringP("openid-connect"),
+			Secret:                    gocloak.StringP(clientSecret),
+			ClientAuthenticatorType:   gocloak.StringP("client-secret"),
+			Enabled:                   gocloak.BoolP(true),
+			PublicClient:              gocloak.BoolP(false),
+			ServiceAccountsEnabled:    gocloak.BoolP(true),
+			DirectAccessGrantsEnabled: gocloak.BoolP(true),
+			StandardFlowEnabled:       gocloak.BoolP(false),
+			ImplicitFlowEnabled:       gocloak.BoolP(false),
+			ProtocolMappers:           &[]gocloak.ProtocolMapperRepresentation{oidcAudienceMapper(clientID)},
+		}
+		if _, err := config.KC.Client.CreateClient(ctx, accessToken, config.KC.Realm, newClient); err != nil {
+			return fmt.Errorf("failed to create OIDC client '%s': %w", clientID, err)
+		}
+		log.Printf("[INFO] OIDC client '%s' created (confidential, service accounts, direct access grants, audience mapper)", clientID)
+		return nil
+	}
+
+	client := clients[0]
+	if !hasOIDCAudienceMapper(client, clientID) {
+		if _, err := config.KC.Client.CreateClientProtocolMapper(ctx, accessToken, config.KC.Realm, *client.ID, oidcAudienceMapper(clientID)); err != nil {
+			return fmt.Errorf("failed to add audience mapper to OIDC client '%s': %w", clientID, err)
+		}
+		log.Printf("[INFO] audience mapper added to existing OIDC client '%s'", clientID)
+	}
+
+	if cred, err := config.KC.Client.GetClientSecret(ctx, accessToken, config.KC.Realm, *client.ID); err == nil {
+		if cred.Value == nil || *cred.Value != clientSecret {
+			log.Printf("[WARN] OIDC client '%s' secret differs from MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET — CSP credential issuance will fail with invalid_client", clientID)
+		}
+	}
+	if client.ServiceAccountsEnabled == nil || !*client.ServiceAccountsEnabled {
+		log.Printf("[WARN] OIDC client '%s' has service accounts disabled — CSP credential issuance requires it", clientID)
+	}
+	return nil
+}
+
 // GetUserIDFromToken extracts the user ID (subject) from a JWT token.
 func (s *keycloakService) GetUserIDFromToken(ctx context.Context, token *gocloak.JWT) (string, error) {
 	// Directly use config.KC
@@ -907,6 +998,12 @@ func (s *keycloakService) SetupInitialKeycloakAdmin(ctx context.Context, adminTo
 			}
 			log.Print("[DEBUG] createClient ", createClient)
 		}
+	}
+
+	// CSP 임시자격증명 발급용 OIDC 클라이언트 보장 (없으면 생성, 있으면 audience mapper 만 보정).
+	// 실패해도 로그인 등 기본 기능은 동작하므로 설치를 막지 않고 경고만 남긴다.
+	if err := s.ensureOIDCClient(ctx, adminToken.AccessToken); err != nil {
+		log.Printf("[WARN] failed to ensure OIDC client: %v", err)
 	}
 
 	// 2. platformAdmin 사용자 생성

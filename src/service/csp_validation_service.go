@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -365,6 +366,9 @@ func (s *CspValidationService) validateAWSWithOIDC(ctx context.Context, userID u
 			return "", fmt.Errorf("워크스페이스 역할 없음 — DB에 auth_method=OIDC 매핑 추가 필요")
 		}
 		m, err := s.resolveMappingRepo().FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
+		if errors.Is(err, repository.ErrAmbiguousCspRoleMapping) {
+			return "", fmt.Errorf("매핑 대상 CspRole 이 2개 이상 — 하나만 남기거나 authMethod 를 지정 필요")
+		}
 		if err != nil || m == nil {
 			return "", fmt.Errorf("OIDC 매핑 없음 — mcmp_role_csp_role_mappings에 auth_method=OIDC 레코드 추가 필요")
 		}
@@ -460,6 +464,9 @@ func (s *CspValidationService) validateAWSWithSAML(ctx context.Context, userID u
 			return "", fmt.Errorf("워크스페이스 역할 없음 — DB에 auth_method=SAML 매핑 추가 필요")
 		}
 		m, err := s.resolveMappingRepo().FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
+		if errors.Is(err, repository.ErrAmbiguousCspRoleMapping) {
+			return "", fmt.Errorf("매핑 대상 CspRole 이 2개 이상 — 하나만 남기거나 authMethod 를 지정 필요")
+		}
 		if err != nil || m == nil {
 			return "", fmt.Errorf("SAML 매핑 없음 — mcmp_role_csp_role_mappings에 auth_method=SAML 레코드 추가 필요")
 		}
@@ -570,6 +577,9 @@ func (s *CspValidationService) validateAWSWithSecretKey(ctx context.Context, use
 			return "", fmt.Errorf("워크스페이스 역할 없음")
 		}
 		m, err := s.resolveMappingRepo().FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
+		if errors.Is(err, repository.ErrAmbiguousCspRoleMapping) {
+			return "", fmt.Errorf("매핑 대상 CspRole 이 2개 이상 — 하나만 남기거나 authMethod 를 지정 필요")
+		}
 		if err != nil || m == nil {
 			return "", fmt.Errorf("SECRET_KEY 매핑 없음 — mcmp_role_csp_role_mappings에 auth_method=SECRET_KEY 레코드 추가 필요")
 		}
@@ -623,6 +633,9 @@ func (s *CspValidationService) validateGCPWithOIDC(ctx context.Context, userID u
 			return "", fmt.Errorf("워크스페이스 역할 없음")
 		}
 		m, err := s.resolveMappingRepo().FindCspRoleMappingsByRoleIDAndCspType(userRole.RoleID, cspType, authMethod)
+		if errors.Is(err, repository.ErrAmbiguousCspRoleMapping) {
+			return "", fmt.Errorf("매핑 대상 CspRole 이 2개 이상 — 하나만 남기거나 authMethod 를 지정 필요")
+		}
 		if err != nil || m == nil {
 			return "", fmt.Errorf("GCP OIDC 매핑 없음 — auth_method=OIDC, csp_type=gcp 레코드 추가 필요")
 		}

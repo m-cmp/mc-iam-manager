@@ -9,6 +9,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/model"
+	"github.com/m-cmp/mc-iam-manager/repository"
 	"github.com/m-cmp/mc-iam-manager/service"
 	"gorm.io/gorm"
 )
@@ -90,6 +91,9 @@ func (h *CspCredentialHandler) GetTemporaryCredentials(c echo.Context) error {
 		}
 		if errors.Is(err, service.ErrNoCspRoleMappingFound) || errors.Is(err, service.ErrNoWorkspaceRoleAssigned) {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "No suitable CSP role mapping found for user in this workspace: " + err.Error()})
+		}
+		if errors.Is(err, repository.ErrAmbiguousCspRoleMapping) {
+			return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
 		}
 		if errors.Is(err, service.ErrUnsupportedCspType) {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
