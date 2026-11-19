@@ -356,6 +356,10 @@ func (h *WorkspaceHandler) ListUsersAndRolesByWorkspaces(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
+	// 대상 워크스페이스는 path 값으로 정한다. 비어 있으면 모든 워크스페이스의 멤버가 반환된다.
+	if workspaceID := c.Param("workspaceId"); workspaceID != "" {
+		req.WorkspaceID = workspaceID
+	}
 
 	usersWithRoles, err := h.roleService.ListUsersAndRolesWithWorkspaces(req)
 	if err != nil {
@@ -601,6 +605,10 @@ func (h *WorkspaceHandler) AddUserToWorkspace(c echo.Context) error {
 	var req model.AssignRoleRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	}
+	// 대상 워크스페이스는 path 값으로 정한다(body 값보다 우선)
+	if workspaceID := c.Param("id"); workspaceID != "" {
+		req.WorkspaceID = workspaceID
 	}
 	if req.WorkspaceID == "" || req.UserID == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Workspace ID and User ID are required"})

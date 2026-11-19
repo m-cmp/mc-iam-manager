@@ -133,6 +133,9 @@ func (s *CspCredentialService) GetTemporaryCredentials(ctx context.Context, user
 	targetMapping, err := s.resolveMappingRepo().FindCspRoleMappingsByRoleIDAndCspType(userWorkspaceRole.RoleID, cspType, req.AuthMethod)
 	if err != nil {
 		log.Printf("[CSP_CREDENTIAL] Error finding CSP role mapping for role %d: %v", userWorkspaceRole.RoleID, err)
+		if errors.Is(err, repository.ErrAmbiguousCspRoleMapping) {
+			return nil, err
+		}
 	}
 
 	if targetMapping == nil {

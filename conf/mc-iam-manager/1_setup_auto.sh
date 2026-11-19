@@ -99,6 +99,15 @@ auto_setup() {
     fi
     echo "✓ Projects synced successfully"
     
+    # 6-1. CSP 임시자격증명용 OIDC 클라이언트 보장 (없으면 생성 + audience mapper)
+    echo "Step 6-1: Ensuring Keycloak OIDC client..."
+    ensure_oidc_client
+    if [ $? -ne 0 ]; then
+        echo "WARNING: Keycloak OIDC client ensure failed (non-fatal) — CSP temporary credentials will fail with invalid_client"
+    else
+        echo "✓ Keycloak OIDC client ensured"
+    fi
+
     # 7. Keycloak client redirect URI 설정
     echo "Step 7: Configuring Keycloak client redirect URIs..."
     configure_keycloak_client_uris
@@ -846,6 +855,92 @@ sync_projects() {
     echo "✓ Project sync completed successfully"
     echo "Response details:"
     echo "$response_body" | jq .
+    return 0
+}
+
+# CSP 임시자격증명 발급에 쓰는 OIDC 클라이언트(MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME)를 보장한다.
+# mc-iam-manager 가 /api/initial-admin 에서 만들지만, 이전 버전 이미지·기존 설치를 위해 여기서도 확인한다.
+# - 없으면 생성: confidential, Service accounts ON, Direct access grants ON, Standard flow OFF,
+#   secret=MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET
+# - access token aud 에 클라이언트 자신을 넣는 audience mapper 가 없으면 추가 (AWS OIDC Provider audience 일치용)
+# - 이미 있으면 다른 설정은 바꾸지 않는다. 멱등.
+ensure_oidc_client() {
+    echo "=== Ensuring Keycloak OIDC Client ==="
+
+    OIDC_CLIENT="$MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME"
+    if [ -z "$OIDC_CLIENT" ] || [ -z "$MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET" ]; then
+        echo "ERROR: MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_NAME / MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET is not set"
+        return 1
+    fi
+
+    KC_ADMIN_TOKEN=$(curl -s -X POST \
+        "${MC_IAM_MANAGER_KEYCLOAK_HOST}/realms/master/protocol/openid-connect/token" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "grant_type=password" \
+        -d "client_id=admin-cli" \
+        --data-urlencode "username=${MC_IAM_MANAGER_KEYCLOAK_ADMIN}" \
+        --data-urlencode "password=${MC_IAM_MANAGER_KEYCLOAK_ADMIN_PASSWORD}" \
+        | jq -r '.access_token' 2>/dev/null)
+
+    if [ -z "$KC_ADMIN_TOKEN" ] || [ "$KC_ADMIN_TOKEN" = "null" ]; then
+        echo "ERROR: Failed to obtain Keycloak admin token"
+        return 1
+    fi
+
+    KC_ADMIN_URL="${MC_IAM_MANAGER_KEYCLOAK_HOST}/admin/realms/${MC_IAM_MANAGER_KEYCLOAK_REALM}"
+
+    AUD_MAPPER=$(jq -n --arg c "$OIDC_CLIENT" '{
+        name: "aud-mciam-oidc-Client",
+        protocol: "openid-connect",
+        protocolMapper: "oidc-audience-mapper",
+        config: {"included.client.audience": $c, "id.token.claim": "false", "access.token.claim": "true"}
+    }')
+
+    CLIENT_JSON=$(curl -s "${KC_ADMIN_URL}/clients?clientId=${OIDC_CLIENT}" \
+        -H "Authorization: Bearer ${KC_ADMIN_TOKEN}")
+    CLIENT_ID=$(echo "$CLIENT_JSON" | jq -r '.[0].id // empty' 2>/dev/null)
+
+    if [ -z "$CLIENT_ID" ]; then
+        BODY=$(jq -n --arg c "$OIDC_CLIENT" --arg s "$MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET" --argjson m "$AUD_MAPPER" '{
+            clientId: $c, name: $c, protocol: "openid-connect", enabled: true,
+            publicClient: false, clientAuthenticatorType: "client-secret", secret: $s,
+            serviceAccountsEnabled: true, directAccessGrantsEnabled: true,
+            standardFlowEnabled: false, implicitFlowEnabled: false,
+            protocolMappers: [$m]
+        }')
+        HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${KC_ADMIN_URL}/clients" \
+            -H "Authorization: Bearer ${KC_ADMIN_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$BODY")
+        if [ "$HTTP" = "201" ]; then
+            echo "  ✓ Created: $OIDC_CLIENT (confidential, service accounts, direct access grants, audience mapper)"
+            return 0
+        fi
+        echo "  ✗ Failed to create $OIDC_CLIENT (HTTP $HTTP)"
+        return 1
+    fi
+
+    echo "  ✓ Exists: $OIDC_CLIENT"
+    HAS_MAPPER=$(echo "$CLIENT_JSON" | jq --arg c "$OIDC_CLIENT" '[.[0].protocolMappers[]? | select(.protocolMapper == "oidc-audience-mapper" and .config["included.client.audience"] == $c and .config["access.token.claim"] == "true")] | length')
+    if [ "$HAS_MAPPER" = "0" ]; then
+        HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "${KC_ADMIN_URL}/clients/${CLIENT_ID}/protocol-mappers/models" \
+            -H "Authorization: Bearer ${KC_ADMIN_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$AUD_MAPPER")
+        if [ "$HTTP" = "201" ]; then
+            echo "  ✓ Added audience mapper to $OIDC_CLIENT"
+        else
+            echo "  ✗ Failed to add audience mapper to $OIDC_CLIENT (HTTP $HTTP)"
+            return 1
+        fi
+    fi
+
+    CURRENT_SECRET=$(curl -s "${KC_ADMIN_URL}/clients/${CLIENT_ID}/client-secret" \
+        -H "Authorization: Bearer ${KC_ADMIN_TOKEN}" | jq -r '.value // empty')
+    if [ "$CURRENT_SECRET" != "$MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET" ]; then
+        echo "  ⚠️  $OIDC_CLIENT secret differs from MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_SECRET (not changed)"
+    fi
     return 0
 }
 

@@ -11,6 +11,8 @@ import (
 var (
 	ErrCspMappingNotFound      = errors.New("CSP 역할 매핑을 찾을 수 없습니다")
 	ErrCspMappingAlreadyExists = errors.New("이미 존재하는 CSP 역할 매핑입니다")
+	// ErrAmbiguousCspRoleMapping 조건에 맞는 매핑 대상 CspRole 이 2개 이상이라 하나를 고를 수 없음
+	ErrAmbiguousCspRoleMapping = errors.New("multiple CSP roles are mapped for this role, CSP type and auth method — cannot choose one")
 )
 
 // CspMappingRepository CSP 매핑 레포지토리
@@ -24,7 +26,8 @@ func NewCspMappingRepository(db *gorm.DB) *CspMappingRepository {
 }
 
 // FindCspRoleMappingsByRoleIDAndCspType 플랫폼 역할 ID, CSP 타입, 인증방식으로 CSP 역할 매핑 조회.
-// authMethod가 비어 있으면 인증방식 무관 첫 번째 매핑을 반환한다.
+// authMethod가 비어 있으면 인증방식 무관으로 찾는다. 대상 CspRole 이 2개 이상이면 임의로 고르지 않고
+// ErrAmbiguousCspRoleMapping 을 반환한다.
 func (r *CspMappingRepository) FindCspRoleMappingsByRoleIDAndCspType(roleID uint, cspType string, authMethod string) (*model.RoleMasterCspRoleMapping, error) {
 	var mappings []*model.RoleMasterCspRoleMapping
 	q := r.db.
@@ -42,8 +45,13 @@ func (r *CspMappingRepository) FindCspRoleMappingsByRoleIDAndCspType(roleID uint
 	if len(mappings) == 0 {
 		return nil, nil
 	}
+	for _, m := range mappings[1:] {
+		if m.CspRoleID != mappings[0].CspRoleID {
+			return nil, ErrAmbiguousCspRoleMapping
+		}
+	}
 
-	// 첫 번째 매핑을 반환하고 CspRoles 배열을 채움
+	// 매핑을 반환하고 CspRoles 배열을 채움
 	targetMapping := mappings[0]
 
 	// CspRoles 배열을 채우기 위해 CspRole 정보를 조회 (CspIdpConfig 포함)
