@@ -308,35 +308,36 @@ func main() {
 
 		//roles.GET("/id/:workspaceRoleId/csp-roles", roleHandler.ListCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Write))
 
-		roles.POST("/platform-roles/list", roleHandler.ListPlatformRoles)
-		roles.POST("/platform-roles", roleHandler.CreatePlatformRole)
+		roles.POST("/platform-roles/list", roleHandler.ListPlatformRoles, middleware.PlatformRoleMiddleware(middleware.Read))
+		roles.POST("/platform-roles", roleHandler.CreatePlatformRole, middleware.PlatformRoleMiddleware(middleware.Write))
 		//roles.DELETE("/platform-roles", roleHandler.DeletePlatformRole)
-		roles.DELETE("/platform-roles/id/:roleId", roleHandler.DeletePlatformRole) //단건삭제
-		roles.GET("/platform-roles/id/:roleId", roleHandler.GetPlatformRoleByID)
-		roles.GET("/platform-roles/name/:roleName", roleHandler.GetPlatformRoleByName)
-		roles.PUT("/platform-roles/id/:roleId", roleHandler.UpdatePlatformRole)
+		roles.DELETE("/platform-roles/id/:roleId", roleHandler.DeletePlatformRole, middleware.PlatformRoleMiddleware(middleware.Write)) //단건삭제
+		roles.GET("/platform-roles/id/:roleId", roleHandler.GetPlatformRoleByID, middleware.PlatformRoleMiddleware(middleware.Read))
+		roles.GET("/platform-roles/name/:roleName", roleHandler.GetPlatformRoleByName, middleware.PlatformRoleMiddleware(middleware.Read))
+		roles.PUT("/platform-roles/id/:roleId", roleHandler.UpdatePlatformRole, middleware.PlatformRoleMiddleware(middleware.Write))
 
-		roles.POST("/workspace-roles/list", roleHandler.ListWorkspaceRoles)
-		roles.POST("/workspace-roles", roleHandler.CreateWorkspaceRole)
+		roles.POST("/workspace-roles/list", roleHandler.ListWorkspaceRoles, middleware.PlatformRoleMiddleware(middleware.Read))
+		roles.POST("/workspace-roles", roleHandler.CreateWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
 		//roles.DELETE("/workspace-roles", roleHandler.DeleteWorkspaceRole)
-		roles.DELETE("/workspace-roles/id/:roleId", roleHandler.DeleteWorkspaceRole) //단건삭제
-		roles.GET("/workspace-roles/id/:roleId", roleHandler.GetWorkspaceRoleByID)
-		roles.GET("/workspace-roles/name/:roleName", roleHandler.GetWorkspaceRoleByName)
-		roles.PUT("/workspace-roles/id/:roleId", roleHandler.UpdateWorkspaceRole)
+		roles.DELETE("/workspace-roles/id/:roleId", roleHandler.DeleteWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write)) //단건삭제
+		roles.GET("/workspace-roles/id/:roleId", roleHandler.GetWorkspaceRoleByID, middleware.PlatformRoleMiddleware(middleware.Read))
+		roles.GET("/workspace-roles/name/:roleName", roleHandler.GetWorkspaceRoleByName, middleware.PlatformRoleMiddleware(middleware.Read))
+		roles.PUT("/workspace-roles/id/:roleId", roleHandler.UpdateWorkspaceRole, middleware.PlatformRoleMiddleware(middleware.Write))
 
-		roles.POST("/csp-roles/list", roleHandler.ListCspRoleMappings)
+		roles.POST("/csp-roles/list", roleHandler.ListCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Read))
+		// 미들웨어 없음(의도): 웹 콘솔 임시자격증명 화면이 플랫폼 역할 없는 워크스페이스 사용자에 대해서도 발급 가능 CSP 판정에 호출한다
 		roles.GET("/csp-roles/id/:roleId", roleHandler.GetCspRoleMappings)
-		roles.POST("/csp-roles/master", roleHandler.CreateCspRoleMaster)
-		roles.PUT("/csp-roles/master/id/:roleId", roleHandler.UpdateCspRoleMaster)
-		roles.DELETE("/csp-roles/master/id/:roleId", roleHandler.DeleteCspRoleMaster)
-		roles.POST("/csp/list", roleHandler.ListCSPRoles)
-		roles.POST("/csp", roleHandler.CreateCspRole)
-		roles.POST("/csp/batch", roleHandler.CreateCspRoles)
+		roles.POST("/csp-roles/master", roleHandler.CreateCspRoleMaster, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.PUT("/csp-roles/master/id/:roleId", roleHandler.UpdateCspRoleMaster, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.DELETE("/csp-roles/master/id/:roleId", roleHandler.DeleteCspRoleMaster, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.POST("/csp/list", roleHandler.ListCSPRoles, middleware.PlatformRoleMiddleware(middleware.Read))
+		roles.POST("/csp", roleHandler.CreateCspRole, middleware.PlatformAdminMiddleware)
+		roles.POST("/csp/batch", roleHandler.CreateCspRoles, middleware.PlatformAdminMiddleware)
 		//roles.DELETE("/csp", roleHandler.DeleteCspRole)
-		roles.DELETE("/csp/id/:roleId", roleHandler.DeleteCspRole) //단건삭제
-		roles.PUT("/csp/id/:roleId", roleHandler.UpdateCspRole)
-		roles.GET("/csp/id/:roleId", roleHandler.GetCspRoleByID)
-		roles.GET("/csp/name/:roleName", roleHandler.GetCspRoleByName)
+		roles.DELETE("/csp/id/:roleId", roleHandler.DeleteCspRole, middleware.PlatformAdminMiddleware) //단건삭제
+		roles.PUT("/csp/id/:roleId", roleHandler.UpdateCspRole, middleware.PlatformAdminMiddleware)
+		roles.GET("/csp/id/:roleId", roleHandler.GetCspRoleByID, middleware.PlatformRoleMiddleware(middleware.Read))
+		roles.GET("/csp/name/:roleName", roleHandler.GetCspRoleByName, middleware.PlatformRoleMiddleware(middleware.Read))
 
 		roles.POST("/mappings/list", roleHandler.ListRoleMasterMappings)
 		roles.GET("/mappings/role/id/:roleId", roleHandler.GetRoleMasterMappings)
