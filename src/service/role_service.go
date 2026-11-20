@@ -523,3 +523,22 @@ func (s *RoleService) GetRoleMasterMappings(req *model.FilterRoleMasterMappingRe
 
 	return mappings[0], nil
 }
+
+// RoleCspMapping Master Role 에 걸린 CSP Role 매핑 한 건과 그 CspRole 이름·타입
+type RoleCspMapping struct {
+	CspRoleID   uint                 `gorm:"column:csp_role_id"`
+	AuthMethod  constants.AuthMethod `gorm:"column:auth_method"`
+	CspRoleName string               `gorm:"column:csp_role_name"`
+	CspType     string               `gorm:"column:csp_type"`
+}
+
+// ListRoleCspMappings Master Role 의 CSP Role 매핑 목록 (PUT 변경분 계산용)
+func (s *RoleService) ListRoleCspMappings(roleID uint) ([]RoleCspMapping, error) {
+	var rows []RoleCspMapping
+	err := s.db.Table((model.RoleMasterCspRoleMapping{}).TableName()+" AS m").
+		Select("m.csp_role_id, m.auth_method, c.name AS csp_role_name, c.csp_type").
+		Joins("JOIN "+(model.CspRole{}).TableName()+" AS c ON c.id = m.csp_role_id").
+		Where("m.role_id = ?", roleID).
+		Scan(&rows).Error
+	return rows, err
+}

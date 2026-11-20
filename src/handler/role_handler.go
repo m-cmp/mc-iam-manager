@@ -93,6 +93,11 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
+	// 예약된 realm 역할 이름(platformAdmin 등)으로 Master Role 을 만들 수 없다 (IAM-BUG-055)
+	if err := checkReservedRoleName(req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
 	// Create RoleMaster
 	role := &model.RoleMaster{
 		Name:        req.Name,
@@ -107,57 +112,24 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 		})
 	}
 
-	// 1. Create CSP roles first (external API calls required, so handle outside transaction)
-	createdCspRoles := make([]model.CreateCspRoleRequest, 0)
-	if len(req.CspRoles) > 0 {
-		log.Printf("cspRoles requested: %v", req.CspRoles)
-		for _, cspRole := range req.CspRoles {
-			// TODO: Extract CSPRoleName logic to a function
-			if cspRole.CspRoleName == "" {
-				cspRoleName := constants.CspRoleNamePrefix + req.Name // Create cspRoleName by adding prefix to roleName
-				cspRole.CspRoleName = cspRoleName
-			}
-
-			if !strings.HasPrefix(cspRole.CspRoleName, constants.CspRoleNamePrefix) {
-				cspRole.CspRoleName = constants.CspRoleNamePrefix + cspRole.CspRoleName
-			}
-
-			log.Printf("cspRole requested: %v", cspRole)
-			// Create or update CSP role
-			createdCspRole, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
-			if err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to create/update CSP role: %v", err)})
-			}
-
-			// Store created CSP role information
-			// AuthMethod는 요청 원본(cspRole)에서 그대로 전달 — 누락 시 CreateRoleWithAllDependencies가
-			// OIDC로 기본 반영하지만, SAML 등으로 생성된 CSP 역할은 그 값이 매핑에도 반영되어야 한다.
-			createdCspRoles = append(createdCspRoles, model.CreateCspRoleRequest{
-				ID:          util.UintToString(createdCspRole.ID),
-				CspRoleName: createdCspRole.Name,
-				CspType:     createdCspRole.CspType,
-				AuthMethod:  cspRole.AuthMethod,
-			})
-		}
+	// 대상 CSP Role 요청 값은 Master Role 저장 전에 검사한다 (cspRoleName 이 비면 400, IAM-BUG-043)
+	if err := precheckCspRoleRequests(req.RoleTypes, req.CspRoles); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	// // Convert MenuIDs from string to uint
-	// menuIDs := make([]uint, 0)
-	// for _, menuIDStr := range req.MenuIDs {
-	// 	menuID, err := util.StringToUint(menuIDStr)
-	// 	if err != nil {
-	// 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Invalid menu ID format: %s", menuIDStr)})
-	// 	}
-	// 	menuIDs = append(menuIDs, menuID)
-	// }
-
-	// 2. Create role and all dependencies together in transaction
-	createdRole, err := h.roleService.CreateRoleWithAllDependencies(role, roleSubs, req.MenuIDs, createdCspRoles, req.Description)
+	// 1. Master Role 을 먼저 저장한다 (대상 CSP Role 처리 결과와 관계없이)
+	createdRole, err := h.roleService.CreateRoleWithAllDependencies(role, roleSubs, req.MenuIDs, nil, req.Description)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	return c.JSON(http.StatusCreated, createdRole)
+	// 2. 대상 CSP Role 을 항목별로 확정·매핑한다. 실패한 항목은 매핑만 빠지고 cspRoleResults·warnings 로 알린다
+	resp := newRoleSaveResponse(createdRole)
+	if len(req.CspRoles) > 0 {
+		h.applyCspRoleTargets(createdRole.ID, req.CspRoles, nil, false, req.Description, resp)
+	}
+
+	return c.JSON(http.StatusCreated, resp)
 }
 
 // @Summary Get role by ID
@@ -270,6 +242,18 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
 	}
 
+	// 예약어로 이름을 바꾸거나 admin Master Role 이름을 바꿀 수 없다 (IAM-BUG-055)
+	current, err := h.roleService.GetRoleByID(roleIdInt, "")
+	if err != nil || current == nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "역할을 찾을 수 없습니다"})
+	}
+	if err := checkRoleRename(current.Name, req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	if err := precheckCspRoleRequests(req.RoleTypes, req.CspRoles); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
 	role := model.RoleMaster{
 		ID:          roleIdInt,
 		Name:        req.Name,
@@ -304,70 +288,24 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 		}
 	}
 
-	// TODO : Same logic exists in createRole. Remove duplicate code.
-	if len(req.CspRoles) > 0 {
-		// Delete existing mappings
-		if err := h.roleService.DeleteRoleCspRoleMappingsByRoleId(roleIdInt); err != nil {
-			log.Printf("Failed to delete role csp mappings - ID: %d, error: %v", roleIdInt, err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to delete role csp mappings: %v", err)})
+	// 대상 CSP Role 은 바뀐 부분만 반영한다: 그대로인 매핑은 유지, 새 항목은 확정 후 매핑, 요청에서 빠진 매핑은 해제.
+	// cspRoles 를 보내지 않으면(빈 배열 포함) 기존 매핑을 건드리지 않는다.
+	// roleTypes 에서 csp 가 빠지면(csp Sub 가 없어지면) CSP 매핑을 모두 해제한다.
+	resp := newRoleSaveResponse(updatedRole)
+	if !hasRoleType(req.RoleTypes, constants.RoleTypeCSP) {
+		if err := h.unmapAllCspRoles(roleIdInt, resp); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to remove role csp mappings: %v", err)})
 		}
-
-		for _, cspRole := range req.CspRoles {
-			// Use existing csp role if available, otherwise create new one
-			if cspRole.CspRoleName == "" {
-				cspRoleName := constants.CspRoleNamePrefix + req.Name // Create cspRoleName by adding prefix to roleName
-				cspRole.CspRoleName = cspRoleName
-			}
-
-			if !strings.HasPrefix(cspRole.CspRoleName, constants.CspRoleNamePrefix) {
-				cspRole.CspRoleName = constants.CspRoleNamePrefix + cspRole.CspRoleName
-			}
-
-			// Check if CSP role exists
-			exists, err := h.cspRoleService.ExistCspRoleByNameAndType(cspRole.CspRoleName, cspRole.CspType)
-			if err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to check CSP role existence: %v", err)})
-			}
-
-			if exists {
-				// Get ID if existing CSP role exists
-				existingCspRole, err := h.cspRoleService.GetCspRoleByName(cspRole.CspRoleName, cspRole.CspType)
-				if err != nil {
-					return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to retrieve CSP role: %v", err)})
-				}
-				cspRole.ID = util.UintToString(existingCspRole.ID)
-			} else {
-				log.Printf("cspRole requested: %v", cspRole)
-				// Create or update CSP role (mapping is handled together)
-				newCspRole, err := h.cspRoleService.CreateOrUpdateCspRole(&cspRole)
-				if err != nil {
-					return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to update CSP role: %v", err)})
-				}
-				cspRole.ID = util.UintToString(newCspRole.ID)
-			}
-
-			// Create new mapping
-			// AuthMethod가 비어있으면 CreateRoleCspRoleMapping(repository)이 OIDC로 기본 반영한다.
-			roleCspRoleMappingRequest := &model.CreateRoleMasterCspRoleMappingRequest{
-				RoleID:      roleId,
-				CspRoleID:   cspRole.ID,
-				AuthMethod:  cspRole.AuthMethod,
-				Description: req.Description,
-			}
-
-			err = h.roleService.AddCspRolesMapping(roleCspRoleMappingRequest)
-			if err != nil {
-				return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to assign role: %v", err)})
-			}
+	} else if len(req.CspRoles) > 0 {
+		existing, err := h.roleService.ListRoleCspMappings(roleIdInt)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to list role csp mappings: %v", err)})
 		}
-		// if err := h.roleService.UpdateRoleCspRoleMappings(updatedRole.ID, req.CspRoles); err != nil {
-		// 	log.Printf("Failed to update role csp mappings - ID: %d, error: %v", id, err)
-		// 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to update role csp mappings: %v", err)})
-		// }
+		h.applyCspRoleTargets(roleIdInt, req.CspRoles, existing, true, req.Description, resp)
 	}
 
 	log.Printf("Successfully updated role - ID: %d", roleIdInt)
-	return c.JSON(http.StatusOK, updatedRole)
+	return c.JSON(http.StatusOK, resp)
 }
 
 // @Summary Delete role
@@ -810,6 +748,11 @@ func (h *RoleHandler) CreatePlatformRole(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
 	}
 
+	// 예약된 realm 역할 이름(platformAdmin 등)으로 Master Role 을 만들 수 없다 (IAM-BUG-055)
+	if err := checkReservedRoleName(req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
 	// Create RoleMaster
 	role := &model.RoleMaster{
 		Name:        req.Name,
@@ -862,6 +805,11 @@ func (h *RoleHandler) CreateWorkspaceRole(c echo.Context) error {
 	if err := c.Validate(&req); err != nil {
 		log.Printf("Role creation input validation failed: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
+	}
+
+	// 예약된 realm 역할 이름(platformAdmin 등)으로 Master Role 을 만들 수 없다 (IAM-BUG-055)
+	if err := checkReservedRoleName(req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	// Create RoleMaster
@@ -1224,6 +1172,11 @@ func (h *RoleHandler) UpdatePlatformRole(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("입력값 검증 실패: %v", err)})
 	}
 
+	// 예약어로 이름을 바꾸거나 admin Master Role 이름을 바꿀 수 없다 (IAM-BUG-055)
+	if err := checkRoleRename(existing.Name, req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
 	role := model.RoleMaster{
 		ID:          roleIDInt,
 		Name:        req.Name,
@@ -1279,6 +1232,11 @@ func (h *RoleHandler) UpdateWorkspaceRole(c echo.Context) error {
 	if err := c.Validate(&req); err != nil {
 		log.Printf("workspace 역할 수정 입력값 검증 실패 - 에러: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("입력값 검증 실패: %v", err)})
+	}
+
+	// 예약어로 이름을 바꾸거나 admin Master Role 이름을 바꿀 수 없다 (IAM-BUG-055)
+	if err := checkRoleRename(existing.Name, req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	role := model.RoleMaster{
@@ -1337,6 +1295,11 @@ func (h *RoleHandler) UpdateCspRoleMaster(c echo.Context) error {
 	if err := c.Validate(&req); err != nil {
 		log.Printf("csp 역할 수정 입력값 검증 실패 - 에러: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("입력값 검증 실패: %v", err)})
+	}
+
+	// 예약어로 이름을 바꾸거나 admin Master Role 이름을 바꿀 수 없다 (IAM-BUG-055)
+	if err := checkRoleRename(existing.Name, req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	role := model.RoleMaster{
@@ -1552,6 +1515,11 @@ func (h *RoleHandler) CreateCspRoleMaster(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
 	}
 
+	// 예약된 realm 역할 이름(platformAdmin 등)으로 Master Role 을 만들 수 없다 (IAM-BUG-055)
+	if err := checkReservedRoleName(req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
 	role := &model.RoleMaster{
 		Name:        req.Name,
 		Description: req.Description,
@@ -1726,14 +1694,19 @@ func (h *RoleHandler) AssignPlatformRole(c echo.Context) error {
 		userID = uint(uid)
 	}
 
-	// RoleName이 없으면 DB에서 roleID로 조회
-	if req.RoleName == "" {
-		role, err := h.roleService.GetRoleByID(roleID, constants.RoleTypePlatform)
-		if err != nil || role == nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("역할 조회 실패 (roleId=%d): %v", roleID, err)})
-		}
-		req.RoleName = role.Name
+	// Keycloak 에 부여할 realm 역할 이름은 항상 DB roleId 의 이름을 쓴다 (IAM-BUG-055).
+	// 요청 roleName 을 그대로 쓰면 roleId 와 무관한 realm 역할(platformAdmin 등)을 부여할 수 있었다.
+	role, err := h.roleService.GetRoleByID(roleID, constants.RoleTypePlatform)
+	if err != nil || role == nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("역할 조회 실패 (roleId=%d): %v", roleID, err)})
 	}
+	if req.RoleName != "" && req.RoleName != role.Name {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("roleName %q does not match role %d (%q)", req.RoleName, roleID, role.Name)})
+	}
+	if err := checkReservedRoleName(role.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	req.RoleName = role.Name
 
 	// User 찾기
 	//user, err := h.userService.GetUserByUsername(c.Request().Context(), req.Username)

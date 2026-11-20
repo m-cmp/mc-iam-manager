@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	mciamConfig "github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/stretchr/testify/assert"
@@ -218,27 +217,4 @@ func TestUpdateCspRoleRecord_PreservesIdpConfigAcrossSave(t *testing.T) {
 	assert.Equal(t, cfg.ID, *saved.CspIdpConfigID)
 	assert.Equal(t, testOidcProviderArn, saved.IdpIdentifier)
 	assert.Equal(t, "created", saved.Status)
-}
-
-func TestValidateAwsOidcTrustInputs(t *testing.T) {
-	prevKC := mciamConfig.KC
-	t.Cleanup(func() { mciamConfig.KC = prevKC })
-
-	t.Setenv("MC_IAM_MANAGER_AWS_ACCOUNT_ID", "notyet")
-	t.Setenv("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID", "mciam-oidc-Client")
-	mciamConfig.KC = &mciamConfig.KeycloakConfig{ExternalURL: "https://mcmp.example.com/auth"}
-	assert.True(t, IsCspRoleRequestError(validateAwsOidcTrustInputs()), "샘플 계정 ID")
-
-	t.Setenv("MC_IAM_MANAGER_AWS_ACCOUNT_ID", "111111111111")
-	t.Setenv("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID", "notyet")
-	assert.True(t, IsCspRoleRequestError(validateAwsOidcTrustInputs()), "샘플 audience")
-
-	t.Setenv("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID", "mciam-oidc-Client")
-	for _, host := range []string{"", "http://mc-iam-manager-kc:8080/auth", "http://localhost:8080/auth", "http://127.0.0.1/auth"} {
-		mciamConfig.KC = &mciamConfig.KeycloakConfig{ExternalURL: host}
-		assert.True(t, IsCspRoleRequestError(validateAwsOidcTrustInputs()), "내부 호스트 %q", host)
-	}
-
-	mciamConfig.KC = &mciamConfig.KeycloakConfig{ExternalURL: "https://mcmp.example.com/auth"}
-	assert.NoError(t, validateAwsOidcTrustInputs())
 }

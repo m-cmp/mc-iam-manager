@@ -33,8 +33,26 @@ func setupAuthMethodTestDB(t *testing.T) *gorm.DB {
 		&model.RoleSub{},
 		&model.CspRole{},
 		&model.RoleMasterCspRoleMapping{},
+		&model.CspAccount{},
+		&model.CspIdpConfig{},
 	))
 	return db
+}
+
+// seedSamlIdpConfig 매핑 검증(소속 Config 필수)을 통과하도록 CSP 계정과 SAML IdP Config 를 만든다.
+func seedSamlIdpConfig(t *testing.T, db *gorm.DB, name, cspType string) *model.CspIdpConfig {
+	t.Helper()
+	account := &model.CspAccount{Name: name + "-account", CspType: cspType}
+	require.NoError(t, db.Create(account).Error)
+	cfg := &model.CspIdpConfig{Name: name, CspAccountID: account.ID, AuthMethod: model.AuthMethodSAML, IsActive: true, Config: map[string]string{}}
+	require.NoError(t, db.Create(cfg).Error)
+	return cfg
+}
+
+// samlCspRoleJSON 매핑 검증을 통과하는 SAML cspRoles 항목
+func samlCspRoleJSON(name string, cfgID uint) string {
+	return `{"cspRoleName":"` + name + `","cspType":"gcp","authMethod":"SAML","cspIdpConfigId":` + strconv.FormatUint(uint64(cfgID), 10) +
+		`,"idpIdentifier":"//iam.googleapis.com/test","iamIdentifier":"` + name + `@test.iam.gserviceaccount.com"}`
 }
 
 func authMethodTestEcho() *echo.Echo {
@@ -50,8 +68,9 @@ func TestCreateRole_CspRoleWithSAMLAuthMethod_MappingPreservesAuthMethod(t *test
 	db := setupAuthMethodTestDB(t)
 	h := NewRoleHandler(db)
 
+	cfg := seedSamlIdpConfig(t, db, "tc-020-create-saml", "gcp")
 	e := authMethodTestEcho()
-	body := `{"name":"tc-iam-bug-020-create","roleTypes":["csp"],"cspRoles":[{"cspRoleName":"tc-role-saml","cspType":"gcp","authMethod":"SAML"}]}`
+	body := `{"name":"tc-iam-bug-020-create","roleTypes":["csp"],"cspRoles":[` + samlCspRoleJSON("tc-role-saml", cfg.ID) + `]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/roles", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
@@ -78,8 +97,9 @@ func TestUpdateRole_CspRoleWithSAMLAuthMethod_MappingPreservesAuthMethod(t *test
 	role := &model.RoleMaster{Name: "tc-iam-bug-020-update"}
 	require.NoError(t, db.Create(role).Error)
 
+	cfg := seedSamlIdpConfig(t, db, "tc-020-update-saml", "gcp")
 	e := authMethodTestEcho()
-	body := `{"name":"tc-iam-bug-020-update","roleTypes":["csp"],"cspRoles":[{"cspRoleName":"tc-role-saml-update","cspType":"gcp","authMethod":"SAML"}]}`
+	body := `{"name":"tc-iam-bug-020-update","roleTypes":["csp"],"cspRoles":[` + samlCspRoleJSON("tc-role-saml-update", cfg.ID) + `]}`
 	req := httptest.NewRequest(http.MethodPut, "/api/roles/id/"+strconv.FormatUint(uint64(role.ID), 10), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()

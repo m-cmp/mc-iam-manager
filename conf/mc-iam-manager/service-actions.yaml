@@ -331,9 +331,9 @@ serviceActions:
             description: ""
     mc-iam-manager:
         _meta:
-            version: 0.7.0
+            version: 0.7.3
             repository: https://github.com/m-cmp/mc-iam-manager
-            generatedAt: "2026-10-06T07:46:22Z"
+            generatedAt: "2026-11-20T05:07:29Z"
         CreateFrameworkService:
             method: post
             resourcePath: /api/mcmp-apis
@@ -446,6 +446,10 @@ serviceActions:
             method: put
             resourcePath: /api/users/me/password
             description: Change the authenticated user's own password. Requires current password for verification.
+        checkCspRoles:
+            method: post
+            resourcePath: /api/roles/csp/check
+            description: 대상 CSP Role 이 IAM(DB)·CSP 에 있는지만 확인한다. DB·CSP 에 쓰지 않는다.
         checkUserRoles:
             method: get
             resourcePath: /api/setup/check-user-roles
