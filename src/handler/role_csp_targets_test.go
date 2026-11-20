@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/m-cmp/mc-iam-manager/model"
+	"github.com/m-cmp/mc-iam-manager/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -98,6 +100,7 @@ func TestCreateRole_PartialFailure_MasterSavedAndResultsReported(t *testing.T) {
 	assert.Equal(t, "registered_and_mapped", rs["mciam-t043-ok"].Result)
 	assert.Equal(t, "failed", rs["mciam-t043-create-mgmt"].Result)
 	assert.Equal(t, "protected", rs["mciam-t043-create-mgmt"].ErrorCode)
+	assert.Zero(t, rs["mciam-t043-create-mgmt"].CspRoleID, "protected 는 레코드가 없어 cspRoleId 를 비운다")
 	require.Len(t, out.Warnings, 1)
 	assert.Contains(t, out.Warnings[0], "mciam-t043-create-mgmt")
 	assert.Equal(t, int64(1), countMappings(t, db, out.ID), "실패한 항목만 매핑에서 빠진다")
@@ -159,4 +162,20 @@ func TestCheckCspRoles_RequiresBody(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), `"status":"protected"`)
 	assert.Contains(t, rec.Body.String(), `"status":"invalid"`)
+}
+
+func TestFailedCspRoleResult_CspRoleIDOnlyForCspError(t *testing.T) {
+	base := cspRoleResult{CspRoleName: "mciam-t045-x", CspType: "aws", CspRoleID: 42}
+
+	r := failedCspRoleResult(base, errors.New("failed to create AWS role mciam-t045-x: ValidationError"))
+	assert.Equal(t, "csp_error", r.ErrorCode)
+	assert.Equal(t, uint(42), r.CspRoleID, "csp_error 는 남은 failed 레코드 id 를 그대로 둔다")
+
+	r = failedCspRoleResult(base, &service.CspRoleRequestError{Msg: "cspRoleName is required"})
+	assert.Equal(t, "invalid_request", r.ErrorCode)
+	assert.Zero(t, r.CspRoleID)
+
+	r = failedCspRoleResult(base, &service.CspRoleProtectedError{Msg: "management role"})
+	assert.Equal(t, "protected", r.ErrorCode)
+	assert.Zero(t, r.CspRoleID)
 }

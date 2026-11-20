@@ -77,6 +77,11 @@ func failedCspRoleResult(r cspRoleResult, err error) cspRoleResult {
 	default:
 		r.ErrorCode = "csp_error"
 	}
+	// cspRoleId 는 레코드가 남는 csp_error 에만 둔다 (failed 레코드 id. 다시 저장하면 이 레코드를 이어받는다).
+	// invalid_request·protected 는 레코드를 만들지 않으므로 비운다
+	if r.ErrorCode != "csp_error" {
+		r.CspRoleID = 0
+	}
 	return r
 }
 

@@ -255,7 +255,8 @@ func (s *CspRoleService) ensureAwsRole(api awsRoleAPI, req *model.CreateCspRoleR
 		if uerr := s.cspRoleRepo.UpdateCspRoleRecord(role); uerr != nil {
 			log.Printf("[WARN] CSP role %s: failed to mark record as failed: %v", role.Name, uerr)
 		}
-		return nil, "", cause
+		// failed 레코드를 함께 돌려준다 (응답 cspRoleResults[].cspRoleId 로 알린다)
+		return role, "", cause
 	}
 
 	if _, err := api.CreateRole(ctx, &iam.CreateRoleInput{
@@ -281,6 +282,7 @@ func (s *CspRoleService) ensureAwsRole(api awsRoleAPI, req *model.CreateCspRoleR
 
 // ResolveTargetCspRole 대상 CSP Role 을 확정하고(없으면 생성) 매핑 가능한 상태인지 검증한다.
 // 돌려주는 result 는 TargetResult* 중 하나. 오류는 CspRoleRequestError(400 성격)·CspRoleProtectedError(409 성격)·그 외로 구분된다.
+// 오류여도 레코드가 남았으면(CreateRole 실패로 남긴 failed 레코드, 매핑 검증에 걸린 기존 레코드) 그 레코드를 함께 돌려준다.
 func (s *CspRoleService) ResolveTargetCspRole(req *model.CreateCspRoleRequest) (*model.CspRole, string, error) {
 	name, err := NormalizeTargetCspRoleName(req.CspRoleName)
 	if err != nil {
@@ -321,7 +323,7 @@ func (s *CspRoleService) ResolveTargetCspRole(req *model.CreateCspRoleRequest) (
 			return nil, "", err
 		}
 		if role, result, err = s.ensureAwsRole(api, req, idpConfig); err != nil {
-			return nil, "", err
+			return role, "", err // CreateRole 실패면 failed 레코드, 그 외는 nil
 		}
 	default:
 		// AWS 이외: 클라우드 쪽 생성 없이 DB 등록만 (기존 동작)

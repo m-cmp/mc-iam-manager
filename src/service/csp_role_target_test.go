@@ -173,8 +173,9 @@ func TestResolveTargetCspRole_RegistersExistingAwsRole(t *testing.T) {
 
 func TestResolveTargetCspRole_ManagementRoleProtected(t *testing.T) {
 	svc, api, _ := newTargetTestService(t, nil)
-	_, _, err := svc.ResolveTargetCspRole(&model.CreateCspRoleRequest{CspRoleName: "mciam-platformadmin", CspType: "aws"})
+	protectedRole, _, err := svc.ResolveTargetCspRole(&model.CreateCspRoleRequest{CspRoleName: "mciam-platformadmin", CspType: "aws"})
 	assert.True(t, IsCspRoleProtectedError(err), "%v", err)
+	assert.Nil(t, protectedRole, "보호 대상은 레코드를 만들지 않는다")
 	assert.Zero(t, api.getCalls, "보호 대상은 AWS 를 조회하지 않는다")
 	assert.Zero(t, countCspRoles(t, svc))
 
@@ -196,8 +197,9 @@ func TestResolveTargetCspRole_GetRoleErrorDoesNotCreate(t *testing.T) {
 
 func TestResolveTargetCspRole_InvalidInputsWriteNothing(t *testing.T) {
 	svc, api, _ := newTargetTestService(t, map[string]string{"role_arn": testManagementRoleArn, "oidc_provider_arn": testOidcProviderArn})
-	_, _, err := svc.ResolveTargetCspRole(&model.CreateCspRoleRequest{CspRoleName: "t045-noaud", CspType: "aws"})
+	invalidRole, _, err := svc.ResolveTargetCspRole(&model.CreateCspRoleRequest{CspRoleName: "t045-noaud", CspType: "aws"})
 	assert.True(t, IsCspRoleRequestError(err), "Config audience 없음: %v", err)
+	assert.Nil(t, invalidRole, "요청 오류는 레코드를 만들지 않는다")
 
 	_, _, err = svc.ResolveTargetCspRole(&model.CreateCspRoleRequest{CspRoleName: "t045-" + string(make([]byte, 60)), CspType: "aws"})
 	assert.True(t, IsCspRoleRequestError(err), "이름 규칙 위반: %v", err)
@@ -213,12 +215,21 @@ func TestResolveTargetCspRole_FailedRecordKeptAndReused(t *testing.T) {
 	svc, api, _ := newTargetTestService(t, nil)
 	api.createErr = errors.New("MalformedPolicyDocument")
 
-	_, _, err := svc.ResolveTargetCspRole(&model.CreateCspRoleRequest{CspRoleName: "t045-fail", CspType: "aws"})
+	returned, _, err := svc.ResolveTargetCspRole(&model.CreateCspRoleRequest{CspRoleName: "t045-fail", CspType: "aws"})
 	require.Error(t, err)
+	assert.False(t, IsCspRoleRequestError(err) || IsCspRoleProtectedError(err), "CreateRole 실패는 csp_error 성격")
 	failed, err := svc.cspRoleRepo.GetCspRoleByName("mciam-t045-fail", "aws")
 	require.NoError(t, err)
 	require.NotNil(t, failed, "실패해도 레코드는 남긴다")
 	assert.Equal(t, "failed", failed.Status)
+	require.NotNil(t, returned, "CreateRole 실패 시 failed 레코드를 돌려준다")
+	assert.Equal(t, failed.ID, returned.ID)
+
+	// 같은 이름으로 다시 실패해도 같은 failed 레코드를 이어받는다
+	again, _, err := svc.ResolveTargetCspRole(&model.CreateCspRoleRequest{CspRoleName: "t045-fail", CspType: "aws"})
+	require.Error(t, err)
+	require.NotNil(t, again)
+	assert.Equal(t, failed.ID, again.ID)
 
 	// 사용자가 콘솔에서 Role 을 만든 뒤 다시 저장하면 같은 레코드로 이어진다
 	api.createErr = nil
