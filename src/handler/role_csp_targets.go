@@ -44,9 +44,15 @@ func cspRoleKey(name, cspType string, authMethod constants.AuthMethod) string {
 	return fmt.Sprintf("%s|%s|%s", cspType, name, authMethod)
 }
 
-// precheckCspRoleRequests Master Role 을 저장하기 전에 요청 값만 검사한다. cspRoleName 이 비면 400 (자동 명명 없음).
+// precheckCspRoleRequests Master Role 을 저장하기 전에 요청 값만 검사한다.
+//   - cspRoles 가 있으면 roleTypes 에 csp 가 있어야 한다 (csp Sub 가 있어야 CSP 역할로 동작한다)
+//   - cspRoleName 이 비면 400 (자동 명명 없음)
+//
 // 통과하면 이름을 mciam- 기준으로 정규화해 둔다.
-func precheckCspRoleRequests(reqs []model.CreateCspRoleRequest) error {
+func precheckCspRoleRequests(roleTypes []constants.IAMRoleType, reqs []model.CreateCspRoleRequest) error {
+	if len(reqs) > 0 && !hasRoleType(roleTypes, constants.RoleTypeCSP) {
+		return fmt.Errorf("cspRoles requires roleType %q: a role acts as a CSP role only with a csp sub", constants.RoleTypeCSP)
+	}
 	seen := map[string]bool{}
 	for i := range reqs {
 		name, err := service.NormalizeTargetCspRoleName(reqs[i].CspRoleName)
@@ -63,6 +69,26 @@ func precheckCspRoleRequests(reqs []model.CreateCspRoleRequest) error {
 		}
 		seen[key] = true
 	}
+	return nil
+}
+
+func hasRoleType(roleTypes []constants.IAMRoleType, target constants.IAMRoleType) bool {
+	for _, rt := range roleTypes {
+		if rt == target {
+			return true
+		}
+	}
+	return false
+}
+
+// unmapAllCspRoles csp Sub 가 없어진 역할의 CSP 매핑을 모두 해제하고 unmapped 로 알린다.
+// (csp Sub 가 없으면 CSP 역할로 동작하지 않으므로 매핑을 남기지 않는다)
+func (h *RoleHandler) unmapAllCspRoles(roleID uint, resp *roleSaveResponse) error {
+	existing, err := h.roleService.ListRoleCspMappings(roleID)
+	if err != nil {
+		return err
+	}
+	h.applyCspRoleTargets(roleID, nil, existing, true, "", resp)
 	return nil
 }
 

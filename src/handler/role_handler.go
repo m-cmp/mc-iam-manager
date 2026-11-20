@@ -113,7 +113,7 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 	}
 
 	// 대상 CSP Role 요청 값은 Master Role 저장 전에 검사한다 (cspRoleName 이 비면 400, IAM-BUG-043)
-	if err := precheckCspRoleRequests(req.CspRoles); err != nil {
+	if err := precheckCspRoleRequests(req.RoleTypes, req.CspRoles); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
@@ -250,7 +250,7 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 	if err := checkRoleRename(current.Name, req.Name); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
-	if err := precheckCspRoleRequests(req.CspRoles); err != nil {
+	if err := precheckCspRoleRequests(req.RoleTypes, req.CspRoles); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
@@ -290,8 +290,13 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 
 	// 대상 CSP Role 은 바뀐 부분만 반영한다: 그대로인 매핑은 유지, 새 항목은 확정 후 매핑, 요청에서 빠진 매핑은 해제.
 	// cspRoles 를 보내지 않으면(빈 배열 포함) 기존 매핑을 건드리지 않는다.
+	// roleTypes 에서 csp 가 빠지면(csp Sub 가 없어지면) CSP 매핑을 모두 해제한다.
 	resp := newRoleSaveResponse(updatedRole)
-	if len(req.CspRoles) > 0 {
+	if !hasRoleType(req.RoleTypes, constants.RoleTypeCSP) {
+		if err := h.unmapAllCspRoles(roleIdInt, resp); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to remove role csp mappings: %v", err)})
+		}
+	} else if len(req.CspRoles) > 0 {
 		existing, err := h.roleService.ListRoleCspMappings(roleIdInt)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("Failed to list role csp mappings: %v", err)})

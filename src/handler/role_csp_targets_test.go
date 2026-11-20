@@ -179,3 +179,61 @@ func TestFailedCspRoleResult_CspRoleIDOnlyForCspError(t *testing.T) {
 	assert.Equal(t, "protected", r.ErrorCode)
 	assert.Zero(t, r.CspRoleID)
 }
+
+// csp Sub 가 있어야 CSP 역할로 동작한다: roleTypes 에 csp 없이 cspRoles 를 보내면 400, 아무것도 저장하지 않는다
+func TestSaveRole_CspRolesWithoutCspSub_400(t *testing.T) {
+	db := setupAuthMethodTestDB(t)
+	h := NewRoleHandler(db)
+	gcp := seedSamlIdpConfig(t, db, "t043-nosub-gcp", "gcp")
+
+	rec, _ := callRoleSave(t, h, http.MethodPost, 0, `{"name":"t043-nosub","roleTypes":["platform"],"cspRoles":[`+samlCspRoleJSON("t043-nosub-1", gcp.ID)+`]}`)
+	assert.Equal(t, http.StatusBadRequest, rec.Code, rec.Body.String())
+	assert.Contains(t, rec.Body.String(), "requires roleType")
+	var n int64
+	require.NoError(t, db.Model(&model.RoleMaster{}).Where("name = ?", "t043-nosub").Count(&n).Error)
+	assert.Zero(t, n, "Master Role 을 만들지 않는다")
+	require.NoError(t, db.Model(&model.CspRole{}).Where("name = ?", "mciam-t043-nosub-1").Count(&n).Error)
+	assert.Zero(t, n, "CspRole 을 만들지 않는다")
+
+	// PUT 도 같다: csp 를 빼면서 cspRoles 를 보내면 400, 기존 Sub·매핑 유지
+	_, created := callRoleSave(t, h, http.MethodPost, 0, `{"name":"t043-nosub-put","roleTypes":["csp"],"cspRoles":[`+samlCspRoleJSON("t043-nosub-2", gcp.ID)+`]}`)
+	require.NotZero(t, created.ID)
+	rec, _ = callRoleSave(t, h, http.MethodPut, created.ID, `{"name":"t043-nosub-put","roleTypes":["workspace"],"cspRoles":[`+samlCspRoleJSON("t043-nosub-2", gcp.ID)+`]}`)
+	assert.Equal(t, http.StatusBadRequest, rec.Code, rec.Body.String())
+	var subs []model.RoleSub
+	require.NoError(t, db.Where("role_id = ?", created.ID).Find(&subs).Error)
+	require.Len(t, subs, 1)
+	assert.Equal(t, "csp", string(subs[0].RoleType), "400 이면 Sub 를 바꾸지 않는다")
+	assert.Equal(t, int64(1), countMappings(t, db, created.ID))
+}
+
+// roleTypes 에서 csp 를 빼면(csp Sub 제거) CSP 매핑을 모두 해제하고 unmapped 로 알린다
+func TestUpdateRole_RemovingCspSubUnmapsAll(t *testing.T) {
+	db := setupAuthMethodTestDB(t)
+	h := NewRoleHandler(db)
+	gcp := seedSamlIdpConfig(t, db, "t043-unsub-gcp", "gcp")
+
+	_, created := callRoleSave(t, h, http.MethodPost, 0,
+		`{"name":"t043-unsub","roleTypes":["csp","workspace"],"cspRoles":[`+samlCspRoleJSON("t043-unsub-1", gcp.ID)+`]}`)
+	require.NotZero(t, created.ID)
+	require.Equal(t, int64(1), countMappings(t, db, created.ID))
+
+	// 웹에서 매핑을 모두 Deallocate 하고 저장하면 roleTypes 에서 csp 가 빠지고 cspRoles 는 빈 배열이 된다
+	rec, out := callRoleSave(t, h, http.MethodPut, created.ID, `{"name":"t043-unsub","roleTypes":["workspace"],"cspRoles":[]}`)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	rs := resultsByName(out.CspRoleResults)
+	require.Len(t, rs, 1)
+	assert.Equal(t, "unmapped", rs["mciam-t043-unsub-1"].Result)
+	assert.Zero(t, countMappings(t, db, created.ID), "csp Sub 가 없으면 매핑을 남기지 않는다")
+	var cspRole model.CspRole
+	require.NoError(t, db.Where("name = ?", "mciam-t043-unsub-1").First(&cspRole).Error)
+	assert.Equal(t, "created", cspRole.Status, "대상 CSP Role 레코드는 지우지 않는다(매핑만 해제)")
+
+	// csp 를 유지한 채 cspRoles 를 보내지 않으면 매핑을 건드리지 않는다 (기존 동작)
+	_, keep := callRoleSave(t, h, http.MethodPost, 0,
+		`{"name":"t043-keep2","roleTypes":["csp"],"cspRoles":[`+samlCspRoleJSON("t043-keep2-1", gcp.ID)+`]}`)
+	rec, out = callRoleSave(t, h, http.MethodPut, keep.ID, `{"name":"t043-keep2","roleTypes":["csp"]}`)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Empty(t, out.CspRoleResults)
+	assert.Equal(t, int64(1), countMappings(t, db, keep.ID))
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"gorm.io/gorm"
 )
@@ -28,10 +29,12 @@ func NewCspMappingRepository(db *gorm.DB) *CspMappingRepository {
 // FindCspRoleMappingsByRoleIDAndCspType 플랫폼 역할 ID, CSP 타입, 인증방식으로 CSP 역할 매핑 조회.
 // authMethod가 비어 있으면 인증방식 무관으로 찾는다. 대상 CspRole 이 2개 이상이면 임의로 고르지 않고
 // ErrAmbiguousCspRoleMapping 을 반환한다.
+// 역할에 csp Sub(role_type=csp)가 없으면 CSP 역할로 동작하지 않으므로, 매핑이 남아 있어도 찾지 않는다.
 func (r *CspMappingRepository) FindCspRoleMappingsByRoleIDAndCspType(roleID uint, cspType string, authMethod string) (*model.RoleMasterCspRoleMapping, error) {
 	var mappings []*model.RoleMasterCspRoleMapping
 	q := r.db.
 		Joins("JOIN mcmp_role_csp_roles ON mcmp_role_csp_roles.id = mcmp_role_csp_role_mappings.csp_role_id").
+		Joins("JOIN mcmp_role_subs ON mcmp_role_subs.role_id = mcmp_role_csp_role_mappings.role_id AND mcmp_role_subs.role_type = ?", constants.RoleTypeCSP).
 		Where("mcmp_role_csp_role_mappings.role_id = ? AND mcmp_role_csp_roles.csp_type = ?", roleID, cspType)
 
 	if authMethod != "" {
