@@ -93,6 +93,11 @@ func (h *RoleHandler) CreateRole(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
+	// 예약된 realm 역할 이름(platformAdmin 등)으로 Master Role 을 만들 수 없다 (IAM-BUG-055)
+	if err := checkReservedRoleName(req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
 	// Create RoleMaster
 	role := &model.RoleMaster{
 		Name:        req.Name,
@@ -268,6 +273,15 @@ func (h *RoleHandler) UpdateRole(c echo.Context) error {
 	if err := c.Validate(&req); err != nil {
 		log.Printf("Role update input validation failed - ID: %d, error: %v", roleIdInt, err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
+	}
+
+	// 예약어로 이름을 바꾸거나 admin Master Role 이름을 바꿀 수 없다 (IAM-BUG-055)
+	current, err := h.roleService.GetRoleByID(roleIdInt, "")
+	if err != nil || current == nil {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "역할을 찾을 수 없습니다"})
+	}
+	if err := checkRoleRename(current.Name, req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	role := model.RoleMaster{
@@ -810,6 +824,11 @@ func (h *RoleHandler) CreatePlatformRole(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
 	}
 
+	// 예약된 realm 역할 이름(platformAdmin 등)으로 Master Role 을 만들 수 없다 (IAM-BUG-055)
+	if err := checkReservedRoleName(req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
 	// Create RoleMaster
 	role := &model.RoleMaster{
 		Name:        req.Name,
@@ -862,6 +881,11 @@ func (h *RoleHandler) CreateWorkspaceRole(c echo.Context) error {
 	if err := c.Validate(&req); err != nil {
 		log.Printf("Role creation input validation failed: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
+	}
+
+	// 예약된 realm 역할 이름(platformAdmin 등)으로 Master Role 을 만들 수 없다 (IAM-BUG-055)
+	if err := checkReservedRoleName(req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	// Create RoleMaster
@@ -1224,6 +1248,11 @@ func (h *RoleHandler) UpdatePlatformRole(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("입력값 검증 실패: %v", err)})
 	}
 
+	// 예약어로 이름을 바꾸거나 admin Master Role 이름을 바꿀 수 없다 (IAM-BUG-055)
+	if err := checkRoleRename(existing.Name, req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
 	role := model.RoleMaster{
 		ID:          roleIDInt,
 		Name:        req.Name,
@@ -1279,6 +1308,11 @@ func (h *RoleHandler) UpdateWorkspaceRole(c echo.Context) error {
 	if err := c.Validate(&req); err != nil {
 		log.Printf("workspace 역할 수정 입력값 검증 실패 - 에러: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("입력값 검증 실패: %v", err)})
+	}
+
+	// 예약어로 이름을 바꾸거나 admin Master Role 이름을 바꿀 수 없다 (IAM-BUG-055)
+	if err := checkRoleRename(existing.Name, req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	role := model.RoleMaster{
@@ -1337,6 +1371,11 @@ func (h *RoleHandler) UpdateCspRoleMaster(c echo.Context) error {
 	if err := c.Validate(&req); err != nil {
 		log.Printf("csp 역할 수정 입력값 검증 실패 - 에러: %v", err)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("입력값 검증 실패: %v", err)})
+	}
+
+	// 예약어로 이름을 바꾸거나 admin Master Role 이름을 바꿀 수 없다 (IAM-BUG-055)
+	if err := checkRoleRename(existing.Name, req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	role := model.RoleMaster{
@@ -1552,6 +1591,11 @@ func (h *RoleHandler) CreateCspRoleMaster(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("Input validation failed: %v", err)})
 	}
 
+	// 예약된 realm 역할 이름(platformAdmin 등)으로 Master Role 을 만들 수 없다 (IAM-BUG-055)
+	if err := checkReservedRoleName(req.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
 	role := &model.RoleMaster{
 		Name:        req.Name,
 		Description: req.Description,
@@ -1726,14 +1770,19 @@ func (h *RoleHandler) AssignPlatformRole(c echo.Context) error {
 		userID = uint(uid)
 	}
 
-	// RoleName이 없으면 DB에서 roleID로 조회
-	if req.RoleName == "" {
-		role, err := h.roleService.GetRoleByID(roleID, constants.RoleTypePlatform)
-		if err != nil || role == nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("역할 조회 실패 (roleId=%d): %v", roleID, err)})
-		}
-		req.RoleName = role.Name
+	// Keycloak 에 부여할 realm 역할 이름은 항상 DB roleId 의 이름을 쓴다 (IAM-BUG-055).
+	// 요청 roleName 을 그대로 쓰면 roleId 와 무관한 realm 역할(platformAdmin 등)을 부여할 수 있었다.
+	role, err := h.roleService.GetRoleByID(roleID, constants.RoleTypePlatform)
+	if err != nil || role == nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("역할 조회 실패 (roleId=%d): %v", roleID, err)})
 	}
+	if req.RoleName != "" && req.RoleName != role.Name {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("roleName %q does not match role %d (%q)", req.RoleName, roleID, role.Name)})
+	}
+	if err := checkReservedRoleName(role.Name); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+	req.RoleName = role.Name
 
 	// User 찾기
 	//user, err := h.userService.GetUserByUsername(c.Request().Context(), req.Username)
