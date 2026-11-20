@@ -7141,6 +7141,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/roles/csp/check": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "대상 CSP Role 이 IAM(DB)·CSP 에 있는지만 확인한다. DB·CSP 에 쓰지 않는다.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Check target CSP roles",
+                "operationId": "checkCspRoles",
+                "parameters": [
+                    {
+                        "description": "cspRoles (cspRoleName, cspType, authMethod, cspIdpConfigId)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.checkCspRolesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/roles/csp/id/{roleId}": {
             "get": {
                 "security": [
@@ -9238,7 +9288,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Register or update menus from a local YAML file specified by the filePath query parameter, or from the MC_WEB_CONSOLE_MENUYAML URL in .env if not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.",
+                "description": "Seed menus from a local YAML file specified by the filePath query parameter, or from MC_WEB_CONSOLE_MENUYAML in .env if not provided (a local path is read as-is; a URL is downloaded and cached to asset/menu/menu.yaml). If the DB already has menus the call is skipped (200, skipped=true) unless force=true, in which case current role-menu mappings are backed up to asset/menu/backups/ first (backupPath) and menus are upserted. Also chains into role-menu permission seeding (asset/menu/permission.yaml); if that step fails, the response still returns 200 but includes permissionsWarning. Menu ids that exist in the DB but are absent from this yaml are reported (not deleted) via orphanMenusDetected; permission.yaml menu ids missing from the DB are reported via missingPermissionMenuIDs (mapping skipped).",
                 "consumes": [
                     "application/json"
                 ],
@@ -9248,7 +9298,7 @@ const docTemplate = `{
                 "tags": [
                     "menus"
                 ],
-                "summary": "Register/Update menus from YAML file or URL",
+                "summary": "Seed menus from YAML file or URL (first install; force to re-seed)",
                 "operationId": "registerMenusFromYAML",
                 "parameters": [
                     {
@@ -9256,16 +9306,20 @@ const docTemplate = `{
                         "description": "YAML file path (optional, uses .env URL or default local path if not provided)",
                         "name": "filePath",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Re-seed even if menus already exist (backs up role permissions first)",
+                        "name": "force",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "message: Successfully registered menus from YAML",
+                        "description": "skipped, existingMenuCount, message; when not skipped: registeredCount, backupPath/backupWarning (force only), permissionsWarning, orphanMenusDetected, missingPermissionMenuIDs",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     },
                     "500": {
@@ -9287,7 +9341,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Parse YAML text in the request body and register or update menus in the database. Recommended Content-Type: text/plain, text/yaml, application/yaml.",
+                "description": "Parse YAML text in the request body and seed menus into the database. Same first-install guard as initial-menus: skipped (200, skipped=true) when menus already exist unless force=true (role permissions backed up first). Does not chain permission seeding. Recommended Content-Type: text/plain, text/yaml, application/yaml.",
                 "consumes": [
                     "text/plain"
                 ],
@@ -9297,9 +9351,15 @@ const docTemplate = `{
                 "tags": [
                     "menus"
                 ],
-                "summary": "Register/Update menus from YAML in request body",
+                "summary": "Seed menus from YAML in request body (first install; force to re-seed)",
                 "operationId": "registerMenusFromBody",
                 "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Re-seed even if menus already exist (backs up role permissions first)",
+                        "name": "force",
+                        "in": "query"
+                    },
                     {
                         "example": "\"menus:\\n  - id: new-item\\n    parentid: dashboard\\n    displayname: New Menu Item\\n    restype: menu\\n    isaction: false\\n    priority: 10\\n    menunumber: 9999\"",
                         "description": "Menu definitions in YAML format (must contain 'menus:' root key)",
@@ -9313,12 +9373,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "message: Successfully registered menus from request body",
+                        "description": "skipped, existingMenuCount, message; when not skipped: registeredCount, backupPath/backupWarning (force only)",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -9349,7 +9407,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "YAML 시드 파일에서 기본 조직 구조(mcmp + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.",
+                "description": "YAML 시드 파일에서 기본 조직 구조를 로드하여 등록합니다. 멱등성 보장.\n경로는 filePath 쿼리 파라미터 \u003e MC_IAM_MANAGER_ORG 환경변수 \u003e 번들된 asset/organization/organizations.yaml 순으로 결정됩니다.",
                 "produces": [
                     "application/json"
                 ],
@@ -9358,6 +9416,14 @@ const docTemplate = `{
                 ],
                 "summary": "기본 조직 초기화",
                 "operationId": "setupInitialOrganizations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "조직 시드 YAML 경로. 미지정 시 MC_IAM_MANAGER_ORG 또는 번들 asset 사용",
+                        "name": "filePath",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -9387,7 +9453,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "asset/menu/permission.yaml(permissions→role→menus|operations|csps)을 읽어 역할-메뉴 매핑을 DB에 시드합니다",
+                "description": "asset/menu/permission.yaml(permissions→role→menus|operations|csps)을 읽어 역할-메뉴 매핑을 DB에 시드합니다. additive이며 기존 매핑은 유지되고 런타임에 삭제된 매핑은 되살아납니다. yaml이 참조하지만 DB에 없는 메뉴 id는 매핑을 만들지 않고 missingPermissionMenuIDs로 보고합니다.",
                 "consumes": [
                     "application/json"
                 ],
@@ -9397,7 +9463,7 @@ const docTemplate = `{
                 "tags": [
                     "admin"
                 ],
-                "summary": "Initialize role-menu permissions from YAML",
+                "summary": "Initialize role-menu permissions from YAML (additive)",
                 "operationId": "initializeMenuPermissionsFromYAML",
                 "parameters": [
                     {
@@ -9409,9 +9475,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "error, message, missingPermissionMenuIDs (present only when non-empty)",
                         "schema": {
-                            "$ref": "#/definitions/model.Response"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -13140,6 +13207,17 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.checkCspRolesRequest": {
+            "type": "object",
+            "properties": {
+                "cspRoles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CreateCspRoleRequest"
+                    }
+                }
+            }
+        },
         "idp.UserLogin": {
             "type": "object",
             "properties": {
@@ -13822,6 +13900,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "frameworkService": {
+                    "type": "string"
+                },
+                "icon": {
                     "type": "string"
                 },
                 "id": {
@@ -14715,6 +14796,9 @@ const docTemplate = `{
                 "frameworkService": {
                     "type": "string"
                 },
+                "icon": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -14755,6 +14839,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "frameworkService": {
+                    "type": "string"
+                },
+                "icon": {
                     "type": "string"
                 },
                 "id": {

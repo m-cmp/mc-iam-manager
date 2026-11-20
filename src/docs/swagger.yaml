@@ -101,6 +101,13 @@ definitions:
       enabled:
         type: boolean
     type: object
+  handler.checkCspRolesRequest:
+    properties:
+      cspRoles:
+        items:
+          $ref: '#/definitions/model.CreateCspRoleRequest'
+        type: array
+    type: object
   idp.UserLogin:
     properties:
       id:
@@ -559,6 +566,8 @@ definitions:
       displayName:
         type: string
       frameworkService:
+        type: string
+      icon:
         type: string
       id:
         type: string
@@ -1161,6 +1170,8 @@ definitions:
         type: string
       frameworkService:
         type: string
+      icon:
+        type: string
       id:
         type: string
       isAction:
@@ -1188,6 +1199,8 @@ definitions:
       displayName:
         type: string
       frameworkService:
+        type: string
+      icon:
         type: string
       id:
         type: string
@@ -6704,6 +6717,38 @@ paths:
       summary: Create multiple csp roles
       tags:
       - roles
+  /api/roles/csp/check:
+    post:
+      consumes:
+      - application/json
+      description: 대상 CSP Role 이 IAM(DB)·CSP 에 있는지만 확인한다. DB·CSP 에 쓰지 않는다.
+      operationId: checkCspRoles
+      parameters:
+      - description: cspRoles (cspRoleName, cspType, authMethod, cspIdpConfigId)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.checkCspRolesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Check target CSP roles
+      tags:
+      - roles
   /api/roles/csp/id/{roleId}:
     delete:
       consumes:
@@ -7975,9 +8020,17 @@ paths:
     post:
       consumes:
       - application/json
-      description: Register or update menus from a local YAML file specified by the
-        filePath query parameter, or from the MC_WEB_CONSOLE_MENUYAML URL in .env
-        if not provided. If loaded from URL, the file is saved to asset/menu/menu.yaml.
+      description: Seed menus from a local YAML file specified by the filePath query
+        parameter, or from MC_WEB_CONSOLE_MENUYAML in .env if not provided (a local
+        path is read as-is; a URL is downloaded and cached to asset/menu/menu.yaml).
+        If the DB already has menus the call is skipped (200, skipped=true) unless
+        force=true, in which case current role-menu mappings are backed up to asset/menu/backups/
+        first (backupPath) and menus are upserted. Also chains into role-menu permission
+        seeding (asset/menu/permission.yaml); if that step fails, the response still
+        returns 200 but includes permissionsWarning. Menu ids that exist in the DB
+        but are absent from this yaml are reported (not deleted) via orphanMenusDetected;
+        permission.yaml menu ids missing from the DB are reported via missingPermissionMenuIDs
+        (mapping skipped).
       operationId: registerMenusFromYAML
       parameters:
       - description: YAML file path (optional, uses .env URL or default local path
@@ -7985,14 +8038,20 @@ paths:
         in: query
         name: filePath
         type: string
+      - description: Re-seed even if menus already exist (backs up role permissions
+          first)
+        in: query
+        name: force
+        type: boolean
       produces:
       - application/json
       responses:
         "200":
-          description: 'message: Successfully registered menus from YAML'
+          description: 'skipped, existingMenuCount, message; when not skipped: registeredCount,
+            backupPath/backupWarning (force only), permissionsWarning, orphanMenusDetected,
+            missingPermissionMenuIDs'
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
         "500":
           description: 'error: 실패 메시지'
@@ -8002,17 +8061,25 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Register/Update menus from YAML file or URL
+      summary: Seed menus from YAML file or URL (first install; force to re-seed)
       tags:
       - menus
   /api/setup/initial-menus2:
     post:
       consumes:
       - text/plain
-      description: 'Parse YAML text in the request body and register or update menus
-        in the database. Recommended Content-Type: text/plain, text/yaml, application/yaml.'
+      description: 'Parse YAML text in the request body and seed menus into the database.
+        Same first-install guard as initial-menus: skipped (200, skipped=true) when
+        menus already exist unless force=true (role permissions backed up first).
+        Does not chain permission seeding. Recommended Content-Type: text/plain, text/yaml,
+        application/yaml.'
       operationId: registerMenusFromBody
       parameters:
+      - description: Re-seed even if menus already exist (backs up role permissions
+          first)
+        in: query
+        name: force
+        type: boolean
       - description: Menu definitions in YAML format (must contain 'menus:' root key)
         example: '"menus:\n  - id: new-item\n    parentid: dashboard\n    displayname:
           New Menu Item\n    restype: menu\n    isaction: false\n    priority: 10\n    menunumber:
@@ -8026,10 +8093,10 @@ paths:
       - application/json
       responses:
         "200":
-          description: 'message: Successfully registered menus from request body'
+          description: 'skipped, existingMenuCount, message; when not skipped: registeredCount,
+            backupPath/backupWarning (force only)'
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
         "400":
           description: 'error: 잘못된 요청 본문 또는 YAML 형식 오류'
@@ -8045,13 +8112,20 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Register/Update menus from YAML in request body
+      summary: Seed menus from YAML in request body (first install; force to re-seed)
       tags:
       - menus
   /api/setup/initial-organizations:
     post:
-      description: YAML 시드 파일에서 기본 조직 구조(mcmp + 8개 프레임워크)를 로드하여 등록합니다. 멱등성 보장.
+      description: |-
+        YAML 시드 파일에서 기본 조직 구조를 로드하여 등록합니다. 멱등성 보장.
+        경로는 filePath 쿼리 파라미터 > MC_IAM_MANAGER_ORG 환경변수 > 번들된 asset/organization/organizations.yaml 순으로 결정됩니다.
       operationId: setupInitialOrganizations
+      parameters:
+      - description: 조직 시드 YAML 경로. 미지정 시 MC_IAM_MANAGER_ORG 또는 번들 asset 사용
+        in: query
+        name: filePath
+        type: string
       produces:
       - application/json
       responses:
@@ -8077,7 +8151,8 @@ paths:
       consumes:
       - application/json
       description: asset/menu/permission.yaml(permissions→role→menus|operations|csps)을
-        읽어 역할-메뉴 매핑을 DB에 시드합니다
+        읽어 역할-메뉴 매핑을 DB에 시드합니다. additive이며 기존 매핑은 유지되고 런타임에 삭제된 매핑은 되살아납니다. yaml이
+        참조하지만 DB에 없는 메뉴 id는 매핑을 만들지 않고 missingPermissionMenuIDs로 보고합니다.
       operationId: initializeMenuPermissionsFromYAML
       parameters:
       - description: YAML file path (optional, default asset/menu/permission.yaml)
@@ -8088,9 +8163,11 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: error, message, missingPermissionMenuIDs (present only when
+            non-empty)
           schema:
-            $ref: '#/definitions/model.Response'
+            additionalProperties: true
+            type: object
         "400":
           description: Bad Request
           schema:
@@ -8101,7 +8178,7 @@ paths:
             $ref: '#/definitions/model.Response'
       security:
       - BearerAuth: []
-      summary: Initialize role-menu permissions from YAML
+      summary: Initialize role-menu permissions from YAML (additive)
       tags:
       - admin
   /api/setup/migrate-kc-group-identifiers:

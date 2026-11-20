@@ -333,6 +333,8 @@ func main() {
 		roles.POST("/csp/list", roleHandler.ListCSPRoles, middleware.PlatformRoleMiddleware(middleware.Read))
 		roles.POST("/csp", roleHandler.CreateCspRole, middleware.PlatformAdminMiddleware)
 		roles.POST("/csp/batch", roleHandler.CreateCspRoles, middleware.PlatformAdminMiddleware)
+		// 대상 CSP Role 존재 확인 (쓰기 없음). Master Role 저장 화면에서 쓰므로 Master Role 저장과 같은 Write
+		roles.POST("/csp/check", roleHandler.CheckCspRoles, middleware.PlatformRoleMiddleware(middleware.Write))
 		//roles.DELETE("/csp", roleHandler.DeleteCspRole)
 		roles.DELETE("/csp/id/:roleId", roleHandler.DeleteCspRole, middleware.PlatformAdminMiddleware) //단건삭제
 		roles.PUT("/csp/id/:roleId", roleHandler.UpdateCspRole, middleware.PlatformAdminMiddleware)

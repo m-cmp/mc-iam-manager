@@ -6,11 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"os"
-	"regexp"
 	"strings"
 
-	mciamConfig "github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 )
@@ -184,41 +181,4 @@ func containsString(list []string, v string) bool {
 		}
 	}
 	return false
-}
-
-var awsAccountIDPattern = regexp.MustCompile(`^[0-9]{12}$`)
-
-// validateAwsOidcTrustInputs IAM 이 신뢰 정책을 직접 만드는 경로(AWS 에 없는 Role 생성)의 입력값을 AWS 호출 전에 검사한다.
-// 지금 단계에서는 Role·신뢰 정책을 AWS 에서 직접 만들고 등록하는 것이 운영 전제라, 샘플값(notyet)·내부 호스트로
-// 잘못된 Role 이 조용히 만들어지는 것만 막는다.
-func validateAwsOidcTrustInputs() error {
-	accountID := os.Getenv("MC_IAM_MANAGER_AWS_ACCOUNT_ID")
-	if !awsAccountIDPattern.MatchString(accountID) {
-		return cspRoleRequestErrorf("MC_IAM_MANAGER_AWS_ACCOUNT_ID (%q) is not a 12-digit AWS account ID: create the role and its trust policy in AWS first, then register it", accountID)
-	}
-	audience := os.Getenv("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID")
-	if audience == "" || audience == "notyet" {
-		return cspRoleRequestErrorf("MC_IAM_MANAGER_KEYCLOAK_OIDC_CLIENT_ID (%q) is not set: create the role and its trust policy in AWS first, then register it", audience)
-	}
-	host := ""
-	if mciamConfig.KC != nil {
-		host = mciamConfig.KC.ExternalURL
-	}
-	if isInternalHost(host) {
-		return cspRoleRequestErrorf("Keycloak external URL (%q) is an internal host: set MC_IAM_MANAGER_KEYCLOAK_EXTERNAL_URL, or create the role and its trust policy in AWS first, then register it", host)
-	}
-	return nil
-}
-
-// isInternalHost AWS 가 접근할 수 없는 호스트(빈 값, localhost, 점이 없는 컨테이너 이름)인지 확인한다.
-func isInternalHost(rawURL string) bool {
-	if rawURL == "" {
-		return true
-	}
-	u, err := url.Parse(rawURL)
-	if err != nil || u.Hostname() == "" {
-		return true
-	}
-	host := u.Hostname()
-	return host == "localhost" || strings.HasPrefix(host, "127.") || !strings.Contains(host, ".")
 }
