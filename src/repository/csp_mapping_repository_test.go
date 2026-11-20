@@ -20,8 +20,19 @@ func setupCspMappingTestDB(t *testing.T) *gorm.DB {
 		&model.CspIdpConfig{},
 		&model.CspRole{},
 		&model.RoleMasterCspRoleMapping{},
+		&model.RoleSub{},
 	))
 	return db
+}
+
+// ensureCspSub 역할에 csp Sub 를 둔다 (CSP 역할로 동작하는 조건)
+func ensureCspSub(t *testing.T, db *gorm.DB, roleID uint) {
+	t.Helper()
+	var n int64
+	require.NoError(t, db.Model(&model.RoleSub{}).Where("role_id = ? AND role_type = ?", roleID, constants.RoleTypeCSP).Count(&n).Error)
+	if n == 0 {
+		require.NoError(t, db.Create(&model.RoleSub{RoleID: roleID, RoleType: constants.RoleTypeCSP}).Error)
+	}
 }
 
 func seedCspRoleMapping(t *testing.T, db *gorm.DB, roleID uint, authMethod constants.AuthMethod, cspRoleName string) *model.CspRole {
@@ -29,6 +40,7 @@ func seedCspRoleMapping(t *testing.T, db *gorm.DB, roleID uint, authMethod const
 	cspRole := &model.CspRole{Name: cspRoleName, CspType: "aws", IamIdentifier: "arn:aws:iam::111111111111:role/" + cspRoleName}
 	require.NoError(t, db.Create(cspRole).Error)
 	require.NoError(t, db.Create(&model.RoleMasterCspRoleMapping{RoleID: roleID, AuthMethod: authMethod, CspRoleID: cspRole.ID}).Error)
+	ensureCspSub(t, db, roleID)
 	return cspRole
 }
 
@@ -80,4 +92,20 @@ func TestFindCspRoleMappingsByRoleIDAndCspType_SameCspRoleTwoAuthMethods(t *test
 	require.NoError(t, err)
 	assert.Equal(t, cspRole.ID, m.CspRoles[0].ID)
 	assert.NotEqual(t, other.ID, m.CspRoles[0].ID)
+}
+
+// csp Sub 가 없는 역할은 매핑이 남아 있어도 발급 대상 매핑으로 찾지 않는다.
+func TestFindCspRoleMappingsByRoleIDAndCspType_RequiresCspSub(t *testing.T) {
+	db := setupCspMappingTestDB(t)
+	r := NewCspMappingRepository(db)
+	seedCspRoleMapping(t, db, 1, constants.AuthMethodOIDC, "mciam-t-sub")
+
+	m, err := r.FindCspRoleMappingsByRoleIDAndCspType(1, "aws", "OIDC")
+	require.NoError(t, err)
+	require.NotNil(t, m, "csp Sub 가 있으면 찾는다")
+
+	require.NoError(t, db.Where("role_id = ? AND role_type = ?", 1, constants.RoleTypeCSP).Delete(&model.RoleSub{}).Error)
+	m, err = r.FindCspRoleMappingsByRoleIDAndCspType(1, "aws", "OIDC")
+	require.NoError(t, err)
+	assert.Nil(t, m, "csp Sub 가 없으면 남은 매핑이 있어도 찾지 않는다")
 }
