@@ -21,6 +21,7 @@ import (
 	"github.com/m-cmp/mc-iam-manager/config"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/repository" // For ErrUserNotFound potentially
+	"github.com/m-cmp/mc-iam-manager/util"
 )
 
 // KeycloakService defines operations related to Keycloak interaction.
@@ -1611,6 +1612,9 @@ func buildSAMLResponse(assertionXML string, destination string) string {
 
 // AssignRealmRoleToUser assigns a realm role to a user
 func (s *keycloakService) AssignRealmRoleToUser(ctx context.Context, kcUserId, roleName string) error {
+	if err := guardReservedRealmRole(roleName); err != nil {
+		return err
+	}
 	if config.KC == nil || config.KC.Client == nil {
 		return fmt.Errorf("keycloak configuration not initialized")
 	}
@@ -1677,6 +1681,11 @@ func (s *keycloakService) SetupPredefinedRoles(ctx context.Context, accessToken 
 	predefinedRoles := strings.Split(os.Getenv("MC_IAM_MANAGER_PREDEFINED_PLATFORM_ROLE"), ",")
 	for _, roleName := range predefinedRoles {
 		roleName = strings.TrimSpace(roleName)
+		// 예약어(platformAdmin, Keycloak 기본 역할)는 predefined 역할로 만들지 않는다 (IAM-BUG-055)
+		if reserved, reason := util.IsReservedRoleName(roleName); reserved {
+			log.Printf("[WARN] MC_IAM_MANAGER_PREDEFINED_PLATFORM_ROLE contains reserved role name %q (%s) — skipped", roleName, reason)
+			continue
+		}
 		if roleName == "" {
 			continue
 		}
@@ -1787,6 +1796,9 @@ func (s *keycloakService) CheckRealmRoleExists(ctx context.Context, roleName str
 // since realm roles are only created lazily on first platform role assignment
 // (see CreateRealmRoleAndWait) and a role may never have been assigned.
 func (s *keycloakService) DeleteRealmRole(ctx context.Context, roleName string) error {
+	if err := guardReservedRealmRole(roleName); err != nil {
+		return err
+	}
 	if config.KC == nil || config.KC.Client == nil {
 		return fmt.Errorf("keycloak configuration not initialized")
 	}
@@ -1815,6 +1827,9 @@ func (s *keycloakService) DeleteRealmRole(ctx context.Context, roleName string) 
 
 // CreateRealmRole creates a realm role
 func (s *keycloakService) CreateRealmRole(ctx context.Context, roleName string) error {
+	if err := guardReservedRealmRole(roleName); err != nil {
+		return err
+	}
 	if config.KC == nil || config.KC.Client == nil {
 		return fmt.Errorf("keycloak configuration not initialized")
 	}
@@ -1840,6 +1855,9 @@ func (s *keycloakService) CreateRealmRole(ctx context.Context, roleName string) 
 
 // RemoveRealmRoleFromUser removes a realm role from a user
 func (s *keycloakService) RemoveRealmRoleFromUser(ctx context.Context, kcUserId, roleName string) error {
+	if err := guardReservedRealmRole(roleName); err != nil {
+		return err
+	}
 	if config.KC == nil || config.KC.Client == nil {
 		return fmt.Errorf("keycloak configuration not initialized")
 	}
@@ -1874,6 +1892,9 @@ func (s *keycloakService) RemoveRealmRoleFromUser(ctx context.Context, kcUserId,
 
 // CreateRealmRoleAndWait creates a realm role and waits for it to be available
 func (s *keycloakService) CreateRealmRoleAndWait(ctx context.Context, roleName string) error {
+	if err := guardReservedRealmRole(roleName); err != nil {
+		return err
+	}
 	if config.KC == nil || config.KC.Client == nil {
 		return fmt.Errorf("keycloak configuration not initialized")
 	}
@@ -1943,6 +1964,9 @@ func (s *keycloakService) IsRealmRoleAssignedToUser(ctx context.Context, kcUserI
 
 // AddRealmRoleToGroup adds a realm role to a Keycloak group (creates group if not exists)
 func (s *keycloakService) AddRealmRoleToGroup(ctx context.Context, groupName, roleName string) error {
+	if err := guardReservedRealmRole(roleName); err != nil {
+		return err
+	}
 	if config.KC == nil || config.KC.Client == nil {
 		return fmt.Errorf("keycloak configuration not initialized")
 	}
@@ -1997,6 +2021,9 @@ func (s *keycloakService) AddRealmRoleToGroup(ctx context.Context, groupName, ro
 
 // RemoveRealmRoleFromGroup removes a realm role from a Keycloak group
 func (s *keycloakService) RemoveRealmRoleFromGroup(ctx context.Context, groupName, roleName string) error {
+	if err := guardReservedRealmRole(roleName); err != nil {
+		return err
+	}
 	if config.KC == nil || config.KC.Client == nil {
 		return fmt.Errorf("keycloak configuration not initialized")
 	}
@@ -2193,4 +2220,14 @@ func kcAdminGetRequest(ctx context.Context, url, token string) ([]byte, error) {
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 	return io.ReadAll(resp.Body)
+}
+
+// guardReservedRealmRole 예약된 realm 역할(platformAdmin, Keycloak 기본 역할)을 IAM API 경로로 만들거나
+// 할당·회수·삭제하지 못하게 막는 최종 방어선 (IAM-BUG-055).
+// 최초 설치(SetupInitialKeycloakAdmin, SetupPredefinedRoles)는 gocloak 클라이언트를 직접 호출하므로 영향이 없다.
+func guardReservedRealmRole(roleName string) error {
+	if reserved, reason := util.IsReservedRoleName(roleName); reserved {
+		return fmt.Errorf("reserved realm role %q (%s) cannot be managed through this API", roleName, reason)
+	}
+	return nil
 }

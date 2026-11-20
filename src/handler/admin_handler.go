@@ -15,6 +15,7 @@ import (
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 	"github.com/m-cmp/mc-iam-manager/service"
+	"github.com/m-cmp/mc-iam-manager/util"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 )
@@ -137,6 +138,11 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 	predefinedRoles := strings.Split(os.Getenv("MC_IAM_MANAGER_PREDEFINED_PLATFORM_ROLE"), ",")
 	registeredRoles := []uint{}
 	for _, roleName := range predefinedRoles {
+		// 예약어(platformAdmin, Keycloak 기본 역할)는 Master Role 로 만들지 않는다 (IAM-BUG-055)
+		if reserved, reason := util.IsReservedRoleName(roleName); reserved {
+			log.Printf("[WARN] MC_IAM_MANAGER_PREDEFINED_PLATFORM_ROLE contains reserved role name %q (%s) — skipped", roleName, reason)
+			continue
+		}
 		role, err := h.roleService.CreateRoleWithSubs(&model.RoleMaster{
 			Name: roleName,
 		}, []model.RoleSub{{RoleType: constants.RoleTypePlatform}, {RoleType: constants.RoleTypeWorkspace}})
