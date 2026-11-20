@@ -53,10 +53,10 @@ func TestRolesRouteAuthz(t *testing.T) {
 		"GET /csp/id/:roleId":     authzRead,
 		"GET /csp/name/:roleName": authzRead,
 
-		// csp-roles master: 매핑(/csp-roles)과 같은 기준
-		"POST /csp-roles/master":              authzManage,
-		"PUT /csp-roles/master/id/:roleId":    authzManage,
-		"DELETE /csp-roles/master/id/:roleId": authzManage,
+		// csp-roles master: csp Sub 를 가진 Master Role CRUD 라 Master Role 생성·수정(POST/PUT /roles)과 같은 기준
+		"POST /csp-roles/master":              authzWrite,
+		"PUT /csp-roles/master/id/:roleId":    authzWrite,
+		"DELETE /csp-roles/master/id/:roleId": authzWrite,
 		"POST /csp-roles":                     authzManage,
 		"DELETE /csp-roles":                   authzManage,
 		"POST /csp-roles/list":                authzRead,

@@ -327,9 +327,9 @@ func main() {
 		roles.POST("/csp-roles/list", roleHandler.ListCspRoleMappings, middleware.PlatformRoleMiddleware(middleware.Read))
 		// 미들웨어 없음(의도): 웹 콘솔 임시자격증명 화면이 플랫폼 역할 없는 워크스페이스 사용자에 대해서도 발급 가능 CSP 판정에 호출한다
 		roles.GET("/csp-roles/id/:roleId", roleHandler.GetCspRoleMappings)
-		roles.POST("/csp-roles/master", roleHandler.CreateCspRoleMaster, middleware.PlatformRoleMiddleware(middleware.Manage))
-		roles.PUT("/csp-roles/master/id/:roleId", roleHandler.UpdateCspRoleMaster, middleware.PlatformRoleMiddleware(middleware.Manage))
-		roles.DELETE("/csp-roles/master/id/:roleId", roleHandler.DeleteCspRoleMaster, middleware.PlatformRoleMiddleware(middleware.Manage))
+		roles.POST("/csp-roles/master", roleHandler.CreateCspRoleMaster, middleware.PlatformRoleMiddleware(middleware.Write))
+		roles.PUT("/csp-roles/master/id/:roleId", roleHandler.UpdateCspRoleMaster, middleware.PlatformRoleMiddleware(middleware.Write))
+		roles.DELETE("/csp-roles/master/id/:roleId", roleHandler.DeleteCspRoleMaster, middleware.PlatformRoleMiddleware(middleware.Write))
 		roles.POST("/csp/list", roleHandler.ListCSPRoles, middleware.PlatformRoleMiddleware(middleware.Read))
 		roles.POST("/csp", roleHandler.CreateCspRole, middleware.PlatformAdminMiddleware)
 		roles.POST("/csp/batch", roleHandler.CreateCspRoles, middleware.PlatformAdminMiddleware)
