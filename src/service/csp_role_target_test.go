@@ -19,15 +19,18 @@ import (
 
 // fakeAwsRoleAPI 대상 CSP Role 확정 테스트용 AWS IAM
 type fakeAwsRoleAPI struct {
+	providers   map[string][]string // OIDC provider ARN → ClientIDList
+	providerErr error               // GetOpenIDConnectProvider 오류 (AccessDenied 등)
 	roles       map[string]*iamtypes.Role
 	getErr      error // NoSuchEntity 외의 GetRole 오류
 	createErr   error
 	getCalls    int
 	createCalls []*iam.CreateRoleInput
+	deleteCalls []string
 }
 
 func newFakeAwsRoleAPI() *fakeAwsRoleAPI {
-	return &fakeAwsRoleAPI{roles: map[string]*iamtypes.Role{}}
+	return &fakeAwsRoleAPI{roles: map[string]*iamtypes.Role{}, providers: map[string][]string{testOidcProviderArn: {"mciam-oidc-Client"}}}
 }
 
 func fakeAwsRole(name, trustDoc string) *iamtypes.Role {
@@ -51,6 +54,27 @@ func (f *fakeAwsRoleAPI) GetRole(_ context.Context, in *iam.GetRoleInput, _ ...f
 		return &iam.GetRoleOutput{Role: r}, nil
 	}
 	return nil, &iamtypes.NoSuchEntityException{Message: aws.String("not found")}
+}
+
+func (f *fakeAwsRoleAPI) GetOpenIDConnectProvider(_ context.Context, in *iam.GetOpenIDConnectProviderInput, _ ...func(*iam.Options)) (*iam.GetOpenIDConnectProviderOutput, error) {
+	if f.providerErr != nil {
+		return nil, f.providerErr
+	}
+	ids, ok := f.providers[aws.ToString(in.OpenIDConnectProviderArn)]
+	if !ok {
+		return nil, &iamtypes.NoSuchEntityException{Message: aws.String("provider not found")}
+	}
+	return &iam.GetOpenIDConnectProviderOutput{ClientIDList: ids}, nil
+}
+
+func (f *fakeAwsRoleAPI) DeleteRole(_ context.Context, in *iam.DeleteRoleInput, _ ...func(*iam.Options)) (*iam.DeleteRoleOutput, error) {
+	name := aws.ToString(in.RoleName)
+	f.deleteCalls = append(f.deleteCalls, name)
+	if _, ok := f.roles[name]; !ok {
+		return nil, &iamtypes.NoSuchEntityException{Message: aws.String("role not found")}
+	}
+	delete(f.roles, name)
+	return &iam.DeleteRoleOutput{}, nil
 }
 
 func (f *fakeAwsRoleAPI) CreateRole(_ context.Context, in *iam.CreateRoleInput, _ ...func(*iam.Options)) (*iam.CreateRoleOutput, error) {

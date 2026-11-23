@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"sync"
 	"time"
 
@@ -206,6 +205,16 @@ func (s *CspIdpConfigService) testOidcConnection(ctx context.Context, idpConfig 
 
 // testAwsOidcConnection AWS OIDC 연결 테스트
 func (s *CspIdpConfigService) testAwsOidcConnection(ctx context.Context, idpConfig *model.CspIdpConfig, account *model.CspAccount) error {
+	// Role ARN 은 IdP Config 의 role_arn 만 쓴다. .env 는 최초 설정(부트스트랩이 Config 에 저장)에만 쓰고,
+	// 실행 중에는 DB 값만 읽는다 — env(MC_IAM_MANAGER_AWS_IDENTITY_ROLE_ARN)로 대체하면 Config 값이 비어도 테스트가 성공해 설정 누락이 가려진다
+	roleArn := ""
+	if idpConfig.Config != nil {
+		roleArn = idpConfig.Config["role_arn"]
+	}
+	if roleArn == "" {
+		return fmt.Errorf("role_arn is not configured")
+	}
+
 	// Keycloak에서 OIDC 토큰 획득
 	token, err := s.keycloakService.GetClientCredentialsToken(ctx)
 	if err != nil {
@@ -224,15 +233,6 @@ func (s *CspIdpConfigService) testAwsOidcConnection(ctx context.Context, idpConf
 	}
 
 	stsClient := sts.NewFromConfig(cfg)
-
-	// Role ARN 구성 (환경 변수 또는 IDP Config에서)
-	roleArn := idpConfig.Config["role_arn"]
-	if roleArn == "" {
-		roleArn = os.Getenv("MC_IAM_MANAGER_AWS_IDENTITY_ROLE_ARN")
-	}
-	if roleArn == "" {
-		return fmt.Errorf("role_arn is not configured")
-	}
 
 	// AssumeRoleWithWebIdentity 테스트
 	input := &sts.AssumeRoleWithWebIdentityInput{

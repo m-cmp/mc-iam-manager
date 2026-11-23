@@ -39,6 +39,8 @@ type KeycloakService interface {
 	CheckRealm(ctx context.Context) (bool, error)
 	CreateRealm(ctx context.Context, accessToken string) (bool, error)
 	ExistRealm(ctx context.Context, accessToken string) (bool, error)
+	// HasPlatformAdminUser realm 이 있고 platformAdmin realm 역할을 가진 사용자가 1명 이상인지 (initial-admin 재호출 차단, IAM-BUG-014)
+	HasPlatformAdminUser(ctx context.Context, accessToken string) (bool, error)
 	ExistClient(ctx context.Context, accessToken string) (bool, error)
 	CheckClient(ctx context.Context) (bool, error)
 	CreateClient(ctx context.Context, accessToken string) (bool, error)
@@ -607,6 +609,32 @@ func (s *keycloakService) ensureAccessTokenLifespan(ctx context.Context, accessT
 	}
 	log.Printf("[INFO] Keycloak realm '%s' access token lifespan set to %ds", config.KC.Realm, lifespanSec)
 	return nil
+}
+
+// platformAdminRealmRole 최초 설치가 설치 계정에 부여하는 realm 역할 이름
+const platformAdminRealmRole = "platformAdmin"
+
+// HasPlatformAdminUser realm 이 있고 platformAdmin realm 역할을 가진 사용자가 1명 이상이면 true.
+// realm 이나 역할이 아직 없으면(클린 설치) false 다.
+func (s *keycloakService) HasPlatformAdminUser(ctx context.Context, accessToken string) (bool, error) {
+	exists, err := s.ExistRealm(ctx, accessToken)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, nil
+	}
+	if _, err := config.KC.Client.GetRealmRole(ctx, accessToken, config.KC.Realm, platformAdminRealmRole); err != nil {
+		if strings.Contains(err.Error(), "404") {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to get realm role %s: %w", platformAdminRealmRole, err)
+	}
+	users, err := config.KC.Client.GetUsersByRoleName(ctx, accessToken, config.KC.Realm, platformAdminRealmRole, gocloak.GetUsersByRoleParams{Max: gocloak.IntP(1)})
+	if err != nil {
+		return false, fmt.Errorf("failed to list users of realm role %s: %w", platformAdminRealmRole, err)
+	}
+	return len(users) > 0, nil
 }
 
 // CheckRealm checks if the configured realm exists. Requires admin token.

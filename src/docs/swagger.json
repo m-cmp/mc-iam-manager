@@ -6,8 +6,7 @@
         "contact": {},
         "version": "0.7.3"
     },
-    "host": "localhost",
-    "basePath": "/api/v1",
+    "basePath": "/",
     "paths": {
         "/api/auth/certs": {
             "get": {
@@ -3311,7 +3310,7 @@
         },
         "/api/initial-admin": {
             "post": {
-                "description": "Creates the initial platform admin user with necessary permissions. platform admin 생성인데",
+                "description": "Creates the initial platform admin user with necessary permissions. Unauthenticated, so it is refused with 403 once a platformAdmin user exists (after installation).",
                 "consumes": [
                     "application/json"
                 ],
@@ -3337,6 +3336,12 @@
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "platform admin is already initialized",
                         "schema": {
                             "$ref": "#/definitions/model.Response"
                         }
@@ -6643,6 +6648,15 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -6694,6 +6708,15 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -7123,6 +7146,15 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7292,6 +7324,15 @@
                             }
                         }
                     },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7345,6 +7386,15 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {

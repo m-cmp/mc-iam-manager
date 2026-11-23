@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/m-cmp/mc-iam-manager/model"
@@ -222,4 +223,17 @@ func TestBulkHealthCheck_NilRequest(t *testing.T) {
 	resp, err := svc.BulkHealthCheck(nil)
 	require.NoError(t, err)
 	assert.Equal(t, 1, resp.TotalCount)
+}
+
+// 연결 테스트의 role_arn 은 IdP Config 값만 쓴다. Config 가 비면 env 가 있어도 오류 (env 대체 제거)
+func TestTestAwsOidcConnection_RoleArnFromConfigOnly(t *testing.T) {
+	svc := newIdpService(setupIdpServiceTestDB(t))
+	t.Setenv("MC_IAM_MANAGER_AWS_IDENTITY_ROLE_ARN", "arn:aws:iam::111111111111:role/mciam-platformadmin")
+	account := &model.CspAccount{Name: "a", CspType: "aws"}
+
+	for name, cfg := range map[string]map[string]string{"role_arn 빈 값": {"role_arn": ""}, "role_arn 키 없음": {}, "config nil": nil} {
+		err := svc.testAwsOidcConnection(context.Background(), &model.CspIdpConfig{Config: cfg}, account)
+		require.Error(t, err, name)
+		assert.Contains(t, err.Error(), "role_arn is not configured", name)
+	}
 }

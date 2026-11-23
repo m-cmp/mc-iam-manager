@@ -36,8 +36,7 @@ import (
 // @title MC IAM Manager API
 // @version 0.7.3
 // @description MC IAM Manager API Documentation
-// @host localhost
-// @BasePath /api/v1
+// @BasePath /
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization

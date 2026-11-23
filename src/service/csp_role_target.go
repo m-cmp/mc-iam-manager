@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	iamtypes "github.com/aws/aws-sdk-go-v2/service/iam/types"
+	"github.com/aws/smithy-go"
 	"github.com/m-cmp/mc-iam-manager/constants"
 	"github.com/m-cmp/mc-iam-manager/model"
 )
@@ -57,6 +58,8 @@ func IsCspRoleProtectedError(err error) bool {
 type awsRoleAPI interface {
 	GetRole(ctx context.Context, params *iam.GetRoleInput, optFns ...func(*iam.Options)) (*iam.GetRoleOutput, error)
 	CreateRole(ctx context.Context, params *iam.CreateRoleInput, optFns ...func(*iam.Options)) (*iam.CreateRoleOutput, error)
+	GetOpenIDConnectProvider(ctx context.Context, params *iam.GetOpenIDConnectProviderInput, optFns ...func(*iam.Options)) (*iam.GetOpenIDConnectProviderOutput, error)
+	DeleteRole(ctx context.Context, params *iam.DeleteRoleInput, optFns ...func(*iam.Options)) (*iam.DeleteRoleOutput, error)
 }
 
 // awsRolePollInterval CreateRole 후 GetRole 재확인 간격 (테스트에서 줄인다)
@@ -92,23 +95,6 @@ func roleNameFromArn(arn string) string {
 		return ""
 	}
 	return arn[i+1:]
-}
-
-// isManagementRole 대상 CSP Role 이 어떤 IdP Config 의 관리용 Role(role_arn)인지 확인한다. 활성 여부와 관계없이 모든 Config 가 대상이다.
-func (s *CspRoleService) isManagementRole(roleName string) (bool, *model.CspIdpConfig, error) {
-	configs, err := s.cspIdpConfigRepo.List(nil)
-	if err != nil {
-		return false, nil, fmt.Errorf("failed to list IdP configs: %w", err)
-	}
-	for _, cfg := range configs {
-		if cfg.Config == nil {
-			continue
-		}
-		if arn := cfg.Config["role_arn"]; arn != "" && roleNameFromArn(arn) == roleName {
-			return true, cfg, nil
-		}
-	}
-	return false, nil, nil
 }
 
 // buildAwsOidcTrustPolicy 소속 IdP Config 의 oidc_provider_arn·audience 로 신뢰 정책을 만든다 (IAM-TECH-045 M1, env 사용 안 함).
@@ -161,6 +147,45 @@ func buildAwsTrustPolicy(req *model.CreateCspRoleRequest, cfg *model.CspIdpConfi
 	return doc, cfg.GetOidcProviderArn(), nil
 }
 
+// isAwsAccessDenied 관리용 Role 에 해당 IAM 권한이 없어 거부된 오류인지
+func isAwsAccessDenied(err error) bool {
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.ErrorCode() {
+		case "AccessDenied", "AccessDeniedException", "UnauthorizedOperation":
+			return true
+		}
+	}
+	return false
+}
+
+// verifyAwsOidcProvider 소속 Config 의 oidc_provider_arn 이 AWS 에 있고, audience 가 provider 의 ClientIDList 에 있는지 확인한다.
+//   - provider 가 없거나 audience 가 등록돼 있지 않으면 요청 오류(그 항목만 failed). 그대로 만들면 발급이 항상 실패한다
+//   - 관리용 Role 에 iam:GetOpenIDConnectProvider 권한이 없으면 WARN 을 남기고 건너뛴다(하위호환)
+func verifyAwsOidcProvider(ctx context.Context, api awsRoleAPI, cfg *model.CspIdpConfig) error {
+	if cfg == nil {
+		return nil
+	}
+	providerArn := cfg.GetOidcProviderArn()
+	out, err := api.GetOpenIDConnectProvider(ctx, &iam.GetOpenIDConnectProviderInput{OpenIDConnectProviderArn: aws.String(providerArn)})
+	switch {
+	case err == nil:
+	case isAwsNoSuchEntity(err):
+		return cspRoleRequestErrorf("IdP config %d (%s): OIDC provider %s does not exist in AWS", cfg.ID, cfg.Name, providerArn)
+	case isAwsAccessDenied(err):
+		log.Printf("[WARN] IdP config %d: cannot verify OIDC provider %s (iam:GetOpenIDConnectProvider denied) — skipped: %v", cfg.ID, providerArn, err)
+		return nil
+	default:
+		return fmt.Errorf("failed to check OIDC provider %s: %w", providerArn, err)
+	}
+	audience := cfg.GetAudience()
+	if out != nil && audience != "" && !containsString(out.ClientIDList, audience) {
+		return cspRoleRequestErrorf("IdP config %d (%s): audience %q is not in the client ID list of OIDC provider %s (%s)",
+			cfg.ID, cfg.Name, audience, providerArn, strings.Join(out.ClientIDList, ", "))
+	}
+	return nil
+}
+
 func isAwsNoSuchEntity(err error) bool {
 	var nse *iamtypes.NoSuchEntityException
 	return errors.As(err, &nse)
@@ -200,6 +225,12 @@ func (s *CspRoleService) ensureAwsRole(api awsRoleAPI, req *model.CreateCspRoleR
 		var err error
 		if trustDoc, federated, err = buildAwsTrustPolicy(req, idpConfig); err != nil {
 			return nil, "", err
+		}
+		// AWS 는 없는 provider 를 가리키는 신뢰 정책도 받아들이므로 만들기 전에 확인한다 (IAM-TECH-050)
+		if requestAuthMethod(req) != constants.AuthMethodSAML {
+			if err := verifyAwsOidcProvider(ctx, api, idpConfig); err != nil {
+				return nil, "", err
+			}
 		}
 	}
 
@@ -296,10 +327,8 @@ func (s *CspRoleService) ResolveTargetCspRole(req *model.CreateCspRoleRequest) (
 		return nil, "", err
 	}
 
-	if protected, cfg, err := s.isManagementRole(name); err != nil {
+	if err := s.GuardNotManagementRole(name, "", "mapped"); err != nil {
 		return nil, "", err
-	} else if protected {
-		return nil, "", &CspRoleProtectedError{Msg: fmt.Sprintf("CSP role %s is the management role of IdP config %d (%s) and cannot be mapped", name, cfg.ID, cfg.Name)}
 	}
 
 	idpConfig, err := s.resolveCspIdpConfig(req)
@@ -366,7 +395,7 @@ func (s *CspRoleService) CheckTargetCspRole(req model.CreateCspRoleRequest) CspR
 	out.CspRoleName = name
 	req.CspRoleName = name
 
-	if protected, cfg, err := s.isManagementRole(name); err != nil {
+	if protected, cfg, err := s.isManagementRole(name, ""); err != nil {
 		out.Status, out.Message = TargetCheckError, err.Error()
 		return out
 	} else if protected {
@@ -408,6 +437,10 @@ func (s *CspRoleService) CheckTargetCspRole(req model.CreateCspRoleRequest) CspR
 		out.Status = TargetCheckNotFound
 		if _, _, terr := buildAwsTrustPolicy(&req, idpConfig); terr != nil {
 			out.Message = "the role cannot be created: " + terr.Error()
+		} else if requestAuthMethod(&req) != constants.AuthMethodSAML {
+			if perr := verifyAwsOidcProvider(context.TODO(), api, idpConfig); perr != nil {
+				out.Message = "the role cannot be created: " + perr.Error()
+			}
 		}
 	default:
 		out.Status, out.Message = TargetCheckError, err.Error()
