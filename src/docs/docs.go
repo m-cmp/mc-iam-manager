@@ -3317,7 +3317,7 @@ const docTemplate = `{
         },
         "/api/initial-admin": {
             "post": {
-                "description": "Creates the initial platform admin user with necessary permissions. platform admin 생성인데",
+                "description": "Creates the initial platform admin user with necessary permissions. Unauthenticated, so it is refused with 403 once a platformAdmin user exists (after installation).",
                 "consumes": [
                     "application/json"
                 ],
@@ -3343,6 +3343,12 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "platform admin is already initialized",
                         "schema": {
                             "$ref": "#/definitions/model.Response"
                         }
@@ -6649,6 +6655,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -6700,6 +6715,15 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -7129,6 +7153,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7298,6 +7331,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7351,6 +7393,15 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -16039,8 +16090,8 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "0.7.3",
-	Host:             "localhost",
-	BasePath:         "/api/v1",
+	Host:             "",
+	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "MC IAM Manager API",
 	Description:      "MC IAM Manager API Documentation",

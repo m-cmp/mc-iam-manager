@@ -1,4 +1,4 @@
-basePath: /api/v1
+basePath: /
 definitions:
   constants.AuthMethod:
     enum:
@@ -1987,7 +1987,6 @@ definitions:
           $ref: '#/definitions/model.UserWorkspaceRole'
         type: array
     type: object
-host: localhost
 info:
   contact: {}
   description: MC IAM Manager API Documentation
@@ -4139,7 +4138,8 @@ paths:
       consumes:
       - application/json
       description: Creates the initial platform admin user with necessary permissions.
-        platform admin 생성인데
+        Unauthenticated, so it is refused with 403 once a platformAdmin user exists
+        (after installation).
       operationId: setupInitialAdmin
       parameters:
       - description: Setup Initial Admin Request
@@ -4153,6 +4153,10 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/model.Response'
+        "403":
+          description: platform admin is already initialized
           schema:
             $ref: '#/definitions/model.Response'
       summary: Setup initial platform admin
@@ -6391,6 +6395,12 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "409":
+          description: management role (IdP Config role_arn) is protected
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:
@@ -6458,6 +6468,12 @@ paths:
             $ref: '#/definitions/model.RoleMasterCspRoleMappingRequest'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: management role (IdP Config role_arn) is protected
           schema:
             additionalProperties:
               type: string
@@ -6706,6 +6722,12 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "409":
+          description: management role (IdP Config role_arn) is protected
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:
@@ -6777,6 +6799,12 @@ paths:
             type: object
         "404":
           description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: management role (IdP Config role_arn) is protected
           schema:
             additionalProperties:
               type: string
@@ -6855,6 +6883,12 @@ paths:
             $ref: '#/definitions/model.CspRole'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: management role (IdP Config role_arn) is protected
           schema:
             additionalProperties:
               type: string

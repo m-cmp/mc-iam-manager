@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -48,12 +49,13 @@ func NewAdminHandler(db *gorm.DB) *AdminHandler {
 
 // SetupInitialAdmin godoc
 // @Summary Setup initial platform admin
-// @Description Creates the initial platform admin user with necessary permissions. platform admin 생성인데
+// @Description Creates the initial platform admin user with necessary permissions. Unauthenticated, so it is refused with 403 once a platformAdmin user exists (after installation).
 // @Tags admin
 // @Accept json
 // @Produce json
 // @Param request body model.SetupInitialAdminRequest true "Setup Initial Admin Request"
 // @Success 200 {object} model.Response
+// @Failure 403 {object} model.Response "platform admin is already initialized"
 // @Router /api/initial-admin [post]
 // @Id setupInitialAdmin
 func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
@@ -89,6 +91,12 @@ func (h *AdminHandler) SetupInitialAdmin(c echo.Context) error {
 			Error:   true,
 			Message: "Failed to get admin token",
 		})
+	}
+
+	// 인증 없이 열려 있는 최초 설치 API 이므로, 설치가 끝난 뒤(platformAdmin 사용자가 있으면)에는 다시 실행하지 않는다 (IAM-BUG-014).
+	// 다시 실행하면 설치 계정 비밀번호가 env 값으로 되돌아가고 platformAdmin 이 다시 부여된다.
+	if blocked, resp := initialAdminAlreadyDone(c.Request().Context(), h.keycloakService, adminToken.AccessToken); blocked {
+		return c.JSON(resp.status, resp.body)
 	}
 
 	log.Printf("[DEBUG] Setting Platform Admin") // KC에 user, realm, client 생성
@@ -450,4 +458,24 @@ func splitCSVQuery(raw string) []string {
 		}
 	}
 	return out
+}
+
+type initialAdminBlock struct {
+	status int
+	body   model.Response
+}
+
+// initialAdminAlreadyDone platformAdmin 사용자가 이미 있으면 403, 확인 자체가 실패하면 500 으로 막는다.
+// realm·역할이 아직 없으면(클린 설치) 진행한다.
+func initialAdminAlreadyDone(ctx context.Context, kc service.KeycloakService, accessToken string) (bool, initialAdminBlock) {
+	done, err := kc.HasPlatformAdminUser(ctx, accessToken)
+	if err != nil {
+		log.Printf("[ERROR] initial-admin: failed to check existing platform admin: %v", err)
+		return true, initialAdminBlock{http.StatusInternalServerError, model.Response{Error: true, Message: "Failed to check existing platform admin"}}
+	}
+	if done {
+		log.Printf("[WARN] initial-admin called after installation — refused (platformAdmin already exists)")
+		return true, initialAdminBlock{http.StatusForbidden, model.Response{Error: true, Message: "platform admin is already initialized"}}
+	}
+	return false, initialAdminBlock{}
 }
