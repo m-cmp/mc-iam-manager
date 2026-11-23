@@ -283,8 +283,11 @@ func (r *RoleRepository) UpdateRoleWithSubs(role model.RoleMaster, roleTypes []c
 func (r *RoleRepository) UpdateRoleWithSubsWithTx(tx *gorm.DB, role model.RoleMaster, roleTypes []constants.IAMRoleType) (*model.RoleMaster, error) {
 	var updatedRole *model.RoleMaster
 
-	// 1. 역할 마스터 수정
-	if err := tx.Save(&role).Error; err != nil {
+	// 1. 역할 마스터 수정 — 요청으로 바꾸는 이름·설명·상위 역할만 갱신한다.
+	// Save 는 모든 컬럼을 쓰므로 요청에 없는 created_at 이 0001-01-01 로, predefined 가 false 로 덮어써졌다
+	if err := tx.Model(&model.RoleMaster{}).Where("id = ?", role.ID).
+		Select("name", "description", "parent_id").
+		Updates(map[string]interface{}{"name": role.Name, "description": role.Description, "parent_id": role.ParentID}).Error; err != nil {
 		return nil, fmt.Errorf("역할 수정 실패: %w", err)
 	}
 
