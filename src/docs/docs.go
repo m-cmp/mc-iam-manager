@@ -3317,7 +3317,7 @@ const docTemplate = `{
         },
         "/api/initial-admin": {
             "post": {
-                "description": "Creates the initial platform admin user with necessary permissions. platform admin 생성인데",
+                "description": "Creates the initial platform admin user with necessary permissions. Unauthenticated, so it is refused with 403 once a platformAdmin user exists (after installation).",
                 "consumes": [
                     "application/json"
                 ],
@@ -3343,6 +3343,12 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "platform admin is already initialized",
                         "schema": {
                             "$ref": "#/definitions/model.Response"
                         }

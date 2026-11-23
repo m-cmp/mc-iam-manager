@@ -4139,7 +4139,8 @@ paths:
       consumes:
       - application/json
       description: Creates the initial platform admin user with necessary permissions.
-        platform admin 생성인데
+        Unauthenticated, so it is refused with 403 once a platformAdmin user exists
+        (after installation).
       operationId: setupInitialAdmin
       parameters:
       - description: Setup Initial Admin Request
@@ -4153,6 +4154,10 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/model.Response'
+        "403":
+          description: platform admin is already initialized
           schema:
             $ref: '#/definitions/model.Response'
       summary: Setup initial platform admin

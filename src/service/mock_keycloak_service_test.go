@@ -35,6 +35,10 @@ func (m *mockKeycloakService) CheckRealm(ctx context.Context) (bool, error)     
 func (m *mockKeycloakService) CreateRealm(ctx context.Context, accessToken string) (bool, error) {
 	return false, nil
 }
+func (m *mockKeycloakService) HasPlatformAdminUser(ctx context.Context, accessToken string) (bool, error) {
+	return false, nil
+}
+
 func (m *mockKeycloakService) ExistRealm(ctx context.Context, accessToken string) (bool, error) {
 	return false, nil
 }
