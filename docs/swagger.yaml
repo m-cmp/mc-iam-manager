@@ -1,4 +1,4 @@
-basePath: /api/v1
+basePath: /
 definitions:
   constants.AuthMethod:
     enum:
@@ -1974,7 +1974,6 @@ definitions:
           $ref: '#/definitions/model.UserWorkspaceRole'
         type: array
     type: object
-host: localhost
 info:
   contact: {}
   description: MC IAM Manager API Documentation
