@@ -92,6 +92,18 @@ func (h *RoleHandler) unmapAllCspRoles(roleID uint, resp *roleSaveResponse) erro
 	return nil
 }
 
+// cspRoleErrorStatus CspRole 서비스 오류의 HTTP 상태: 관리용 Role 보호 409, 요청 오류 400, 그 외 500
+func cspRoleErrorStatus(err error) int {
+	switch {
+	case service.IsCspRoleProtectedError(err):
+		return http.StatusConflict
+	case service.IsCspRoleRequestError(err):
+		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
 func failedCspRoleResult(r cspRoleResult, err error) cspRoleResult {
 	r.Result = service.TargetResultFailed
 	r.Error = err.Error()

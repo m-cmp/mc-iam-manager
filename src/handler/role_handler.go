@@ -848,6 +848,7 @@ func (h *RoleHandler) CreateWorkspaceRole(c echo.Context) error {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
+// @Failure 409 {object} map[string]string "management role (IdP Config role_arn) is protected"
 // @Security BearerAuth
 // @Router /api/roles/csp [post]
 // @Id createCspRole
@@ -866,10 +867,7 @@ func (h *RoleHandler) CreateCspRole(c echo.Context) error {
 
 	createdRole, err := h.cspRoleService.CreateCspRole(&req)
 	if err != nil {
-		if service.IsCspRoleRequestError(err) {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(cspRoleErrorStatus(err), map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusCreated, createdRole)
@@ -886,6 +884,7 @@ func (h *RoleHandler) CreateCspRole(c echo.Context) error {
 // @Success 200 {object} model.CspRole
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
+// @Failure 409 {object} map[string]string "management role (IdP Config role_arn) is protected"
 // @Security BearerAuth
 // @Router /api/roles/csp/id/{roleId} [put]
 // @Id updateCspRole
@@ -902,7 +901,7 @@ func (h *RoleHandler) UpdateCspRole(c echo.Context) error {
 	}
 
 	if err := h.cspRoleService.UpdateCspRole(roleIDInt, &req); err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(cspRoleErrorStatus(err), map[string]string{"error": err.Error()})
 	}
 
 	updatedRole, err := h.cspRoleService.GetCspRoleByID(roleIDInt)
@@ -1447,6 +1446,7 @@ func (h *RoleHandler) DeleteWorkspaceRole(c echo.Context) error {
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
+// @Failure 409 {object} map[string]string "management role (IdP Config role_arn) is protected"
 // @Security BearerAuth
 // @Router /api/roles/csp/id/{roleId} [delete]
 // @Id deleteCspRole
@@ -1473,6 +1473,11 @@ func (h *RoleHandler) DeleteCspRole(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "해당 ID의 CSP 역할을 찾을 수 없습니다"})
 	}
 
+	// 관리용 Role 은 매핑 삭제·AWS DeleteRole 전에 막는다 (409). 남은 매핑 해제는 DELETE /roles/csp-roles 로 한다
+	if err := h.cspRoleService.GuardCspRoleNotManagementRole(existing, "deleted"); err != nil {
+		return c.JSON(cspRoleErrorStatus(err), map[string]string{"error": err.Error()})
+	}
+
 	if err := h.roleService.DeleteRoleCspRoleMappingsByCspRoleID(cspRoleIDInt); err != nil {
 		log.Printf("csp 역할 매핑 삭제 실패 - ID: %d, 에러: %v", cspRoleIDInt, err)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 매핑 삭제 실패: %v", err)})
@@ -1480,7 +1485,7 @@ func (h *RoleHandler) DeleteCspRole(c echo.Context) error {
 
 	if err := h.cspRoleService.DeleteCspRole(cspRoleIDInt); err != nil {
 		log.Printf("csp 역할 삭제 실패 - ID: %d, 에러: %v", cspRoleIDInt, err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("역할 삭제 실패: %v", err)})
+		return c.JSON(cspRoleErrorStatus(err), map[string]string{"error": fmt.Sprintf("역할 삭제 실패: %v", err)})
 	}
 
 	log.Printf("csp 역할 레코드 삭제 성공 - ID: %d", cspRoleIDInt)
@@ -2084,6 +2089,7 @@ func (h *RoleHandler) RemoveWorkspaceRole(c echo.Context) error {
 // @Success 201 {object} model.RoleMasterCspRoleMappingRequest
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
+// @Failure 409 {object} map[string]string "management role (IdP Config role_arn) is protected"
 // @Security BearerAuth
 // @Router /api/roles/csp-roles [post]
 // @Id addCspRoleMappings
@@ -2123,6 +2129,11 @@ func (h *RoleHandler) AddCspRoleMappings(c echo.Context) error {
 	}
 	if cspRole == nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "해당 역할이 CSP 역할에 정의 되어 있지 않습니다"})
+	}
+
+	// 관리용 Role(IdP Config role_arn)은 사용자 매핑 대상이 아니다 (409)
+	if err := h.cspRoleService.GuardCspRoleNotManagementRole(cspRole, "mapped"); err != nil {
+		return c.JSON(cspRoleErrorStatus(err), map[string]string{"error": err.Error()})
 	}
 
 	// 대상 CspRole 이 발급에 쓸 수 있는 상태인지 확인 (소속 IdP Config, 인증 방식·CSP 타입 일치, idp/iam identifier)
@@ -2287,6 +2298,7 @@ func (h *RoleHandler) GetCspRoleMappings(c echo.Context) error {
 // @Success 201 {array} model.CspRole
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
+// @Failure 409 {object} map[string]string "management role (IdP Config role_arn) is protected"
 // @Security BearerAuth
 // @Router /api/roles/csp/batch [post]
 // @Id createCspRoles
@@ -2305,10 +2317,7 @@ func (h *RoleHandler) CreateCspRoles(c echo.Context) error {
 
 	createdRoles, err := h.cspRoleService.CreateCspRoles(&req)
 	if err != nil {
-		if service.IsCspRoleRequestError(err) {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(cspRoleErrorStatus(err), map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusCreated, createdRoles)

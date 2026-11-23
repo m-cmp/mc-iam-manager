@@ -6649,6 +6649,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -6700,6 +6709,15 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -7129,6 +7147,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7298,6 +7325,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -7351,6 +7387,15 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "management role (IdP Config role_arn) is protected",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {

@@ -81,6 +81,11 @@ func (s *CspRoleService) CreateCspRole(req *model.CreateCspRoleRequest) (*model.
 		req.CspRoleName = constants.CspRoleNamePrefix + req.CspRoleName
 	}
 
+	// 관리용 Role(IdP Config role_arn)은 CspRole 로 등록하지 않는다 (409)
+	if err := s.GuardNotManagementRole(req.CspRoleName, req.IamIdentifier, "registered as a CSP role"); err != nil {
+		return nil, err
+	}
+
 	// 2. DB 중복 확인 — status="failed" 레코드는 재시도 허용
 	existing, err := s.cspRoleRepo.GetCspRoleByName(req.CspRoleName, req.CspType)
 	if err != nil {
@@ -413,6 +418,13 @@ func (s *CspRoleService) UpdateCspRole(id uint, req *model.CreateCspRoleRequest)
 	if err != nil {
 		return fmt.Errorf("failed to get existing role: %v", err)
 	}
+	// 관리용 Role 레코드는 IAM 으로 바꾸지 않고, 다른 레코드를 관리용 Role 로 바꾸는 것도 막는다 (409)
+	if err := s.GuardCspRoleNotManagementRole(existingRole, "updated"); err != nil {
+		return err
+	}
+	if err := s.GuardNotManagementRole(req.CspRoleName, req.IamIdentifier, "set as a CSP role"); err != nil {
+		return err
+	}
 	if req.CspRoleName != "" {
 		existingRole.Name = req.CspRoleName
 	}
@@ -452,6 +464,10 @@ func (s *CspRoleService) DeleteCspRole(id uint) error {
 	role, err := s.cspRoleRepo.GetRoleByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to find CSP role: %w", err)
+	}
+	// 관리용 Role 은 IAM 으로 지우지 않는다 (AWS DeleteRole 이 호출되어 IAM 기능이 멈춘다, 409)
+	if err := s.GuardCspRoleNotManagementRole(role, "deleted"); err != nil {
+		return err
 	}
 
 	if role.CspType == "aws" {
