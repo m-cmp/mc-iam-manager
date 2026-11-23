@@ -92,7 +92,16 @@ func (s *CspRoleService) CreateCspRole(req *model.CreateCspRoleRequest) (*model.
 		return nil, fmt.Errorf("failed to check existing CSP role: %w", err)
 	}
 	if existing != nil && existing.Status != "failed" {
-		return existing, nil
+		if req.CspType != "aws" {
+			return existing, nil
+		}
+		// AWS 는 DB 레코드만 믿지 않고 GetRole 로 다시 확인한다 (IAM-BUG-051).
+		// 있으면 값을 다시 동기화하고, AWS 에서 지워졌으면(NoSuchEntity) 소속 Config 기준으로 다시 만든다.
+		// 소속 Config 를 지정하지 않은 요청은 기존 레코드의 Config 를 쓴다.
+		if req.CspIdpConfigID == nil && existing.CspIdpConfigID != nil {
+			cfgID := *existing.CspIdpConfigID
+			req.CspIdpConfigID = &cfgID
+		}
 	}
 
 	// 3. 소속 IdP Config 확정 (CSP 계정 → IdP Config → CspRole)
@@ -471,7 +480,7 @@ func (s *CspRoleService) DeleteCspRole(id uint) error {
 	}
 
 	if role.CspType == "aws" {
-		if err := s.deleteAwsIamRole(role.Name); err != nil {
+		if err := s.deleteAwsIamRole(role); err != nil {
 			return err
 		}
 	}
@@ -480,22 +489,21 @@ func (s *CspRoleService) DeleteCspRole(id uint) error {
 }
 
 // deleteAwsIamRole AWS IAM Role을 삭제합니다. (private, AWS 전용)
-func (s *CspRoleService) deleteAwsIamRole(roleName string) error {
-	issuedBy := "system"
-	credential, err := s.tempCredentialRepo.GetOrCreateValidCredential("aws", "oidc", "ap-northeast-2", nil, issuedBy, func() (*model.TempCredential, error) {
-		return s.createNewAwsCredential(issuedBy)
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get or create valid credential: %v", err)
+func (s *CspRoleService) deleteAwsIamRole(role *model.CspRole) error {
+	var cfg *model.CspIdpConfig
+	if role.CspIdpConfigID != nil {
+		cfg, _ = s.cspIdpConfigRepo.GetByID(*role.CspIdpConfigID)
 	}
-
-	awsCfg, err := s.createAwsConfigWithTempCredential(credential)
+	api, err := s.awsRoleClientFor(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to create AWS config with temp credential: %v", err)
+		return err
 	}
-
-	awsIamClient := iam.NewFromConfig(awsCfg)
-	if _, err := awsIamClient.DeleteRole(context.TODO(), &iam.DeleteRoleInput{RoleName: aws.String(roleName)}); err != nil {
+	if _, err := api.DeleteRole(context.TODO(), &iam.DeleteRoleInput{RoleName: aws.String(role.Name)}); err != nil {
+		// AWS 에서 이미 지워진 Role 이면 DB 레코드만 정리한다 (IAM-BUG-052: 404 로 실패하면 레코드를 지울 방법이 없었다)
+		if isAwsNoSuchEntity(err) {
+			log.Printf("[WARN] CSP role %s: AWS role does not exist — removing the DB record only", role.Name)
+			return nil
+		}
 		return fmt.Errorf("failed to delete IAM role: %v", err)
 	}
 	return nil

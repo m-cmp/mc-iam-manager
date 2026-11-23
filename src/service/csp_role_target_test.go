@@ -26,6 +26,7 @@ type fakeAwsRoleAPI struct {
 	createErr   error
 	getCalls    int
 	createCalls []*iam.CreateRoleInput
+	deleteCalls []string
 }
 
 func newFakeAwsRoleAPI() *fakeAwsRoleAPI {
@@ -64,6 +65,16 @@ func (f *fakeAwsRoleAPI) GetOpenIDConnectProvider(_ context.Context, in *iam.Get
 		return nil, &iamtypes.NoSuchEntityException{Message: aws.String("provider not found")}
 	}
 	return &iam.GetOpenIDConnectProviderOutput{ClientIDList: ids}, nil
+}
+
+func (f *fakeAwsRoleAPI) DeleteRole(_ context.Context, in *iam.DeleteRoleInput, _ ...func(*iam.Options)) (*iam.DeleteRoleOutput, error) {
+	name := aws.ToString(in.RoleName)
+	f.deleteCalls = append(f.deleteCalls, name)
+	if _, ok := f.roles[name]; !ok {
+		return nil, &iamtypes.NoSuchEntityException{Message: aws.String("role not found")}
+	}
+	delete(f.roles, name)
+	return &iam.DeleteRoleOutput{}, nil
 }
 
 func (f *fakeAwsRoleAPI) CreateRole(_ context.Context, in *iam.CreateRoleInput, _ ...func(*iam.Options)) (*iam.CreateRoleOutput, error) {
