@@ -159,6 +159,19 @@ func (h *RoleHandler) applyCspRoleTargets(roleID uint, reqs []model.CreateCspRol
 		r := cspRoleResult{CspRoleName: req.CspRoleName, CspType: req.CspType, AuthMethod: authMethod}
 
 		if m, ok := current[cspRoleKey(req.CspRoleName, req.CspType, authMethod)]; ok {
+			// 기존 매핑이 관리용 Role 이면(부트스트랩 9-4 등으로 남은 매핑) 유지하지 않고 해제하고 protected 로 알린다
+			if gerr := h.cspRoleService.GuardNotManagementRole(m.CspRoleName, m.IamIdentifier, "mapped"); gerr != nil {
+				r.CspRoleID = m.CspRoleID
+				if derr := h.roleService.DeleteRoleCspRoleMapping(roleID, m.CspRoleID, m.AuthMethod); derr != nil {
+					r = failedCspRoleResult(r, fmt.Errorf("failed to remove management role mapping: %w", derr))
+				} else {
+					r = failedCspRoleResult(r, fmt.Errorf("%w (existing mapping removed)", gerr))
+				}
+				log.Printf("[WARN] role %d: existing mapping to management role %s removed: %v", roleID, m.CspRoleName, gerr)
+				resp.Warnings = append(resp.Warnings, fmt.Sprintf("%s: not mapped: %s", req.CspRoleName, r.Error))
+				resp.CspRoleResults = append(resp.CspRoleResults, r)
+				continue
+			}
 			r.CspRoleID, r.Result = m.CspRoleID, service.TargetResultUnchanged
 			resp.CspRoleResults = append(resp.CspRoleResults, r)
 			continue

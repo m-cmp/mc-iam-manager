@@ -72,3 +72,30 @@ func TestManagementRoleGuard_Handlers(t *testing.T) {
 	assert.Less(t, rec.Code, 300, rec.Body.String())
 	assert.Zero(t, countMappings(t, db, master.ID))
 }
+
+// 부트스트랩 9-4 가 남긴 "Master → 관리용 Role" 매핑은 PUT 에서 같은 항목을 요청해도 unchanged 로 두지 않고 해제한다
+func TestUpdateRole_ExistingManagementRoleMappingRemoved(t *testing.T) {
+	db := setupAuthMethodTestDB(t)
+	h := NewRoleHandler(db)
+	mgmt := "mciam-t050-mgmt94"
+	cfg := seedAwsManagementConfig(t, db, "t050-94", mgmt)
+	legacy := &model.CspRole{Name: mgmt, CspType: "aws", Status: "created", IamIdentifier: cfg.Config["role_arn"], CspIdpConfigID: &cfg.ID}
+	require.NoError(t, db.Create(legacy).Error)
+	master := &model.RoleMaster{Name: "t050-admin94"}
+	require.NoError(t, db.Create(master).Error)
+	require.NoError(t, db.Create(&model.RoleSub{RoleID: master.ID, RoleType: constants.RoleTypeCSP}).Error)
+	require.NoError(t, db.Create(&model.RoleMasterCspRoleMapping{RoleID: master.ID, CspRoleID: legacy.ID, AuthMethod: constants.AuthMethodOIDC}).Error)
+
+	rec, out := callRoleSave(t, h, http.MethodPut, master.ID,
+		fmt.Sprintf(`{"name":"t050-admin94","roleTypes":["csp"],"cspRoles":[{"cspRoleName":%q,"cspType":"aws"}]}`, mgmt))
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	rs := resultsByName(out.CspRoleResults)
+	require.Contains(t, rs, mgmt)
+	assert.Equal(t, "failed", rs[mgmt].Result)
+	assert.Equal(t, "protected", rs[mgmt].ErrorCode)
+	assert.Contains(t, rs[mgmt].Error, "existing mapping removed")
+	assert.Len(t, out.Warnings, 1)
+	assert.Zero(t, countMappings(t, db, master.ID), "관리용 Role 매핑을 남기지 않는다")
+	var still model.CspRole
+	require.NoError(t, db.First(&still, legacy.ID).Error, "레코드는 지우지 않는다(정리는 SQL)")
+}
